@@ -1,0 +1,19 @@
+{
+  "plan_id": "1015",
+  "item": "TST-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "3fd139538073c8e2dbec8f7cc43753574091cab3"
+    }
+  },
+  "evidence": "staged tree 3fd1395",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-11",
+  "seal": "28038443f57c508f12f46436ab13f604a8c2e3985d86bfd3f63f1325c0d39df7"
+}

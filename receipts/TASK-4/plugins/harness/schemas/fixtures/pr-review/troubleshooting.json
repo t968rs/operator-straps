@@ -1,0 +1,53 @@
+{
+  "$schema": "troubleshooting.schema.json",
+  "_meta": {
+    "purpose": "Q&A recovery recipes for the most common failure modes encountered while running pr-review. SKILL.md cites a sample subset; this file is the source of truth.",
+    "schema_version": "1.0",
+    "last_reviewed": "2026-10-10",
+    "eviction_policy": "preserve verbatim until count > 20; then fold non-recurring entries into a 'historical Q&A -- fixed' line citing last-PR/commit. Same one-shot eviction discipline as rationalization_table.json."
+  },
+  "items": [
+    {
+      "id": "T001",
+      "question": "I'm on branch X but the PR says branch Y",
+      "answer": "Run `git checkout <Y>`. Verify with `git log --oneline -5`. Re-run Phase 4 from Check 1.",
+      "recovery_command": "git checkout <Y>"
+    },
+    {
+      "id": "T002",
+      "question": "BASE_SHA or HEAD_SHA is not on my current branch",
+      "answer": "Your local is stale or you are on the wrong branch. `git fetch origin && git checkout -t origin/<headRefName>`. Re-run Phase 4.",
+      "recovery_command": "git fetch origin"
+    },
+    {
+      "id": "T003",
+      "question": "Working tree is dirty",
+      "answer": "Inspect each dirty file. Commit+push if it belongs to the PR; stash if it does not. Re-run Phase 4.",
+      "recovery_command": "git diff <file>  # then commit-and-push, or git stash"
+    },
+    {
+      "id": "T004",
+      "question": "The PR's base branch is not `main`",
+      "answer": "Expected and fine. Record `baseRefName` verbatim from Phase 1 Check 1. Projects use integration branches (often `dev`) and feature-parents.",
+      "recovery_command": null
+    },
+    {
+      "id": "T005",
+      "question": "The PR has > 20 files. Should this skill scope the review?",
+      "answer": "Scoping is mechanical in both skills. pr-review: `pr_review.py capture` scopes it (one slot per non-empty bucket plus triggered lenses and OVERALL); dispatch every printed row. pr-team: the orchestrator's PLAN mode scopes it from the same buckets and lens catalog; fan out every slot in its dispatch plan.",
+      "recovery_command": null
+    },
+    {
+      "id": "T006",
+      "question": "The user says they want HUMAN reviewers",
+      "answer": "Do not use this skill. Run `gh pr edit <N> --add-reviewer @user` directly.",
+      "recovery_command": "gh pr edit <N> --add-reviewer @user"
+    },
+    {
+      "id": "T007",
+      "question": "The reviewers returned findings -- now what?",
+      "answer": "pr-review: Phase 3 runs `pr_review.py merge`, `amend` when needed, then `build` (writes the review JSON and runs the Phase 4 first run); Phase 5 then starts with the Phase 4 second run. pr-team: dispatch the orchestrator in CONSOLIDATE mode (Dispatch protocol step 3), which assembles the review JSON and runs the Phase 4 first run.",
+      "recovery_command": null
+    }
+  ]
+}

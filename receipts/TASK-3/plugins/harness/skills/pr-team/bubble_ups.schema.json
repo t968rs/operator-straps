@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pr-team bubble_ups sidecar",
+  "$id": "https://schemas.local/harness/pr-team/bubble_ups.schema.json",
+  "description": "Sidecar file written by `harness:pr-team-fixer` in MODE=PLAN (initial bubbled issues, classified at planning time) and rewritten in MODE=CLOSEOUT (`FAIL` fixer IDs added with classification='fixer_failed'; JSON Schema cannot enforce append-only deltas). Consumed by the QA pass script's Property C4 check. The file lives at `<runtime_dir>/bubble_ups.json` and is namespace-scoped to a single skill invocation.",
+  "$comment": "Dialect note: this schema and its siblings dispatch_plan.schema.json + terminals.schema.json declare draft-2020-12; the companion PR_REVIEW.schema.json is draft-07. Schemas in this family are draft-2020-12 - do not copy-paste keywords across the dialect boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "items"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "pattern": "^pr[0-9]{1,7}_[0-9]{8}T[0-9]{6}Z$",
+      "description": "Verbatim copy of the dispatch plan's run_id; ties this sidecar to its run."
+    },
+    "items": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "classification",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[CIM][0-9]+$",
+            "description": "Issue ID from the consolidated PR review JSON. MUST match an id in issues.{critical,important,minor}[].id.",
+            "$comment": "The field is named id (not issue_id) because every id field in this schema family identifies the entity it lives on - agents use agent_id, issues use id in their parent context. This matches the pattern in PR_REVIEW.schema.json and terminals.schema.json (agent_id is explicit; issue_id is only used in fork-fields where it is distinct from the agent_id field)."
+          },
+          "classification": {
+            "type": "string",
+            "oneOf": [
+              {
+                "const": "architectural_ambiguity",
+                "description": "Two or more reasonable - and 'weight-bearing' - resolutions exist; user decision required."
+              },
+              {
+                "const": "out_of_scope",
+                "description": "Real issue, but outside this PR's scope."
+              },
+              {
+                "const": "needs_follow_up",
+                "description": "Requires net-new work exceeding Phase 5 mechanical scope."
+              },
+              {
+                "const": "fixer_failed",
+                "description": "A fixer attempted the issue and returned FAIL; added in MODE=CLOSEOUT."
+              }
+            ],
+            "description": "Why this issue was bubbled."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "One-line freetext explanation. For `fixer_failed`, includes the fixer's FAIL REASON (e.g., 'fixer FAIL: missing file at path X').",
+            "$comment": "Capped at 200 chars to mirror the FAIL REASON contract in return_contract.md."
+          }
+        }
+      }
+    }
+  }
+}

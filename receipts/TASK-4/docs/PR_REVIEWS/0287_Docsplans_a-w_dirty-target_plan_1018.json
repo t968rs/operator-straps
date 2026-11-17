@@ -1,0 +1,735 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 287,
+  "pr_title": "Docs(plans): `a-w` dirty-target plan 1018",
+  "branch": "1157-a-w-committed",
+  "base_branch": "main",
+  "base_sha": "3e5908715a6f6d78f794d5c1142ec693a06e03f2",
+  "head_sha": "29dd371c3672dcd56e8641134263b5c7a365ceba",
+  "review_date": "2026-11-13",
+  "verdict": "READY TO MERGE - 25 of 25 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 4333,
+    "deletions": 281,
+    "files_changed": 35,
+    "source": {
+      "additions": 4317,
+      "deletions": 281,
+      "files_changed": 34
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/config.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/tests.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/docs.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/overall.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The attach schema block matches defaults.json (auto_resolve: []) and the AttachConfig/AutoResolve dataclasses and _attach/_auto_resolve checks in config.py: same keys, additionalProperties false, required pattern and in_favor_of, side enum worktree/branch.",
+    "The description's claims (case-sensitive fnmatch over the path, ambiguous rules refuse) agree with fnmatchcase and the ambiguity check in attach_merge.py.",
+    "Every new a-w test is behavioral: it builds a real repository and worktree under tmp_path and runs the real attach_worktree.py driver, asserting on git state (HEAD, index, status, file bytes) rather than stub calls.",
+    "Fault-injection tests in test_attach_worktree_dirty_edges.py stub only the low-level writer (merge.write_land, merge.overwrite, os.chdir) and then execute the printed undo lines for real, comparing a full before/after snapshot of status, index and file bytes.",
+    "The resolution loop is covered end to end: exit 2 stop, --continue, --abort, target moving during resolution, hand-aborted rebases, resets during the stop, pre-rebase hooks refusing, merge commits under --committed, and a rebase already in progress.",
+    "test_attach_worktree_config_source.py pins the subtle case where untracked .claude/harness.json lives only in the main checkout while the target branch sits in a linked worktree.",
+    "Config tests check validation both with jsonschema and with it hidden via sys.modules, matching the project's _OPTIONAL fallback contract.",
+    "Removed tests in test_attach_worktree_script.py (dirty-target refusal, conflict markers in target, --committed refusing a moved target) are each replaced by tests of the new behavior in the dirty and resolve modules, and test_attach_worktree_index.py now asserts the target HEAD and absence of markers instead of a reset --hard recovery.",
+    "worktree_change stages into a copied GIT_INDEX_FILE and records a loose commit, so the worktree's index, its staged/unstaged split and HEAD survive the trial merge.",
+    "The land is exact: diff-tree from the snapshot HEAD to the settled tree with pinned prefixes, applied with git apply --index only after a race check against a fresh snapshot and a git stash create backup.",
+    "Post-backup land failures carry backup and partial undo lines that handle added paths separately, since git restore aborts on a path neither HEAD nor the index holds.",
+    "take_side maps rebase stages correctly (3 is the replayed worktree commit, 2 the target) and falls back to git rm when the chosen side deleted the path.",
+    "check_resolved refuses to land from a HEAD that is not the finished rebase onto target_head, so an aborted rebase or a hand reset cannot revert target commits or bring in excluded ones.",
+    "The Parser subclass sends usage errors to exit 1, so exit 2 keeps meaning only 'stopped for resolution'.",
+    "config._attach and _auto_resolve repeat the schema's shape checks for loads without jsonschema, and the key reaches all four places (defaults.json, schema, config.py, README).",
+    "a-w SKILL.md exit codes match the driver: Parser.error exits 1 so that exit 2 is only StopForResolution, and abort returns 0 (plan D5).",
+    "The HARNESS_RULES exception is limited to the d-w worktree. It names the operations the agent still never runs, and the a-w and d-w skill texts repeat it.",
+    "DesignEvolution P1-P3, EX1 and EX2 record every departure from the frozen spec, each with the test node that pins it. Receipts cite the extra test files under those change ids.",
+    "Plan sweep S1 classifies every hit of the old wording, including the intentionally kept todo-c69j text, so no stale 'no tracked changes' or 'three-way conflict' wording remains in the docs.",
+    "The resolution-loop steps in SKILL.md match stop_lines() in attach_resolve.py: the git add command, then --continue or --abort with --worktree.",
+    "The resolution loop is described consistently across a-w SKILL.md, d-w SKILL.md, HARNESS_RULES.md (history-rule exception) and the README row. No reference to the old three-way-conflict or reset --hard flow remains.",
+    "Parser.error routes usage errors to exit 1, so exit 2 means only 'stopped for resolution', as the SKILL exit-code table states.",
+    "check_resolved refuses to land from a HEAD that is not the finished rebase onto target_head, or that still carries an excluded cut. A hand-run reset or abort during a stop therefore cannot revert target commits.",
+    "The argument-hint, the argument-split paragraph and parse_args agree on the new flags (--auto-resolve, --continue, --abort). check_resume enforces the documented rule that --continue and --abort take no target, mode or new rules.",
+    "Errors past the backup point carry the backup and path-scoped undo lines in AttachError.report, which matches the SKILL Backup and undo bullet.",
+    "The target checkout never receives conflict markers. An in-memory git merge-tree trial decides the route before anything is written, and conflicts are resolved in the disposable worktree.",
+    "Every land path (first run, --continue, the D4 restart, the --committed fast-forward) takes a fresh git stash create backup right after its race check, so the printed undo always matches the state it overwrites (DesignEvolution P3, pinned by test_continue_backs_up_a_ruled_dirty_path_edited_during_the_stop).",
+    "check_resolved checks the ancestry of target_head, patch_base and the carried cut before any land after a resolution. A hand-run rebase --abort, reset or merge during a stop cannot land a revert of target commits or carry excluded history.",
+    "The land is hardened against config: diff-tree with pinned a/ b/ prefixes ignores diff.noprefix, :(exclude,literal) pathspecs and --literal-pathspecs undo lines resist glob and magic names, and ls-tree --full-tree finds a ':foo' path.",
+    "The tests are behavioral against real temporary git repositories. They include fault injection that runs the printed recovery lines and compares the whole checkout state before and after, rather than mock-chain wiring.",
+    "attach.auto_resolve follows the four-place config checklist (defaults, schema, typed frozen dataclass with validation that also runs without jsonschema, README row), and decision D6 pins fnmatchcase so rules match the same files on every OS.",
+    "The argparse subclass maps usage errors to exit 1, keeping exit 2 reserved for a resolution stop that callers can branch on.",
+    "The new config key touches all four checklist places together (defaults.json, the schema, AutoResolve/AttachConfig with _attach validation that works without jsonschema, and the README key table), and test_config_attach.py pins each one.",
+    "Retiring the old conflict path (markers in the target, reset --hard undo, the clean-target requirement) lands in the README row, the a-w and d-w skills, HARNESS_RULES and test_attach_worktree_index.py together, and test_attach_worktree_docs.py keeps the old wording from returning.",
+    "Every departure from the frozen spec (P1-P3, EX1-EX2) is recorded in DesignEvolution.json with its pinning test, and the TASK-2 and TASK-3 receipts cite those changes for their extra test files.",
+    "The exit codes stay consistent across the docstring, the SKILL, the release note and the code: the Parser subclass sends usage errors to exit 1, so exit 2 means only a resolution stop.",
+    "The version bump is consistent: plugin.json, the v1.0.0 release table and the plan's TASK-5 all say harness 0.72.0.",
+    "The failure-path tests inject faults into real git repositories and then run the printed undo lines to prove the target is restored, rather than asserting on stub calls.",
+    "The target never sees a conflict: `git merge-tree --write-tree` settles the outcome in memory, and the land is an exact `git apply --index` of a `diff-tree` patch with pinned a/ b/ prefixes, so `diff.noprefix` cannot redirect it (tested).",
+    "Every land path takes its own `git stash create` backup right after the race check, and the partial-failure recovery lines are proven by tests that run the printed undo commands and compare the whole checkout byte for byte.",
+    "`check_resolved` refuses to land from a HEAD that is not the attach's own rebase result (hand `rebase --abort`, `reset --hard`, a hand merge at round two), which closes the 'land a revert of target commits' routes; each has a regression test.",
+    "Usage errors are remapped to exit 1 so exit 2 means only 'stopped for resolution', a small detail that keeps agent automation honest.",
+    "The config key lands in all four required places, with jsonschema-free shape validation that names the failing field path.",
+    "Paths are handled literally throughout (`--literal-pathspecs`, `:(exclude,literal)`, `ls-tree --full-tree` with exact name match), with tests for glob and pathspec-magic names."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "Walking test lacks a WALK_ROOTS marker, failing the select_tests contract",
+        "file": "tests/skills/test_attach_worktree_dirty_edges.py",
+        "files": [
+          "tests/skills/test_attach_worktree_dirty_edges.py",
+          "tests/scripts/test_select_tests.py",
+          "tools/select_tests.py"
+        ],
+        "lines": "196-200",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_state() calls main.rglob(\"*\") (line 198), so tools/select_tests.py classifies the module as a tree walker, but the module declares no module-level WALK_ROOTS literal. tests/scripts/test_select_tests.py::test_every_walking_test_declares_existing_walk_roots (lines 470-485) collects it into `unmarked` and fails at this head; that test walks tests/ and is selected by this PR. Until fixed, the selector also runs this file on every change outside docs/. The walk only touches a tmp_path checkout, so the correct marker is the empty tuple.\n\nAlso (roast): tests/skills/test_attach_worktree_dirty_edges.py calls `main.rglob(\"*\")` in `_state` (line 198) and declares no module-level `WALK_ROOTS`. `tools/select_tests.py` treats any test whose code matches `rglob(` as a walker, and `tests/scripts/test_select_tests.py::test_every_walking_test_declares_existing_walk_roots` (lines 470-485) asserts `unmarked == []`. That contract test declares `WALK_ROOTS = (\"tests/\",)`, so this PR selects it and it goes red; the push to `main` runs it too. Without the marker the file would also run on every pull request outside `docs/`. The other seven new test files don't walk, so this one file is the whole problem. A one-line omission that turns CI red.",
+        "fix": [
+          "Add `WALK_ROOTS = ()  # walks only the tmp_path checkout` at module level, next to `_GIT_ENV`.",
+          "Add `WALK_ROOTS = ()` at module level in tests/skills/test_attach_worktree_dirty_edges.py (after the imports, beside `_GIT_ENV`), since `_state` walks only the `tmp_path` checkout."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Refusal messages direct the agent to run rebase and reset that HARNESS_RULES and the a-w skill forbid it",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py",
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/d-w/SKILL.md"
+        ],
+        "lines": "84-89,93-99,102-103",
+        "reviewer": "system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:88-89 tells the agent 'Each refusal names its way out; follow it as the error states', and HARNESS_RULES.md:26-30 limits the history-rule exception to the script, saying the agent never runs rebase, merge, cherry-pick or reset. Two refusals the agent can hit name raw history commands as their way out: refuse_foreign_rebase (attach_resolve.py:207-212) says to run `git -C <wt> rebase --continue` or `rebase --abort`, and unstarted (attach_resolve.py:199-201, reachable from a --continue D4 restart) says to 'recover it with git -C <wt> reset --hard <head>'. An agent following SKILL.md runs a history rewrite that the rules reserve for the developer. The SKILL exit-1 bucket for a dropped attach ('report it to the developer and stop', SKILL.md:96-99) and the 'follow it as the error states' line give conflicting instructions for the unstarted message.\n\nAlso (docs): a-w SKILL.md says that when the move succeeded but the removal failed, 'the error names the removal command'. d-w SKILL.md says a-w 'names the hand-run git worktree remove --force'. finish() in attach_worktree.py names it only for an AttachError from remove_worktree. An OSError (for example from os.chdir(main)) becomes 'the move succeeded but removing the worktree failed: <detail>' with no command.",
+        "fix": [
+          "Scope SKILL.md:88-89 to ways out through the script: 'Follow a refusal that names --continue or --abort; a refusal that names a git rebase or reset command goes to the developer, who runs it.'",
+          "Or reword the two messages in attach_resolve.py so they address the developer (for example 'the developer can recover it with ...' and 'ask the developer to finish or drop it'), and add a sentence to the SKILL exit-1 section saying so.",
+          "In finish(), add the command to the OSError message: '...; remove it with git worktree remove --force <worktree>'.",
+          "Or soften both skill texts to say the error explains the failure, without promising the command."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Windows apply-failure test passes even when no apply failure or recovery happens",
+        "file": "tests/skills/test_attach_worktree_dirty_edges.py",
+        "lines": "259-269",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_real_apply_failure_prints_recovery_lines_that_restore_the_target asserts only returncode == 1, runs whatever undo lines exist, and compares state. If the attach refuses before writing anything (any early refusal, or git succeeding against the open handle and a later step failing without writes), _undo_commands() returns [] and the state is trivially unchanged, so the test passes without exercising the recovery path its name claims. The sibling tests guard against this ('simulated' in err, a backup regex); this one has neither.",
+        "fix": [
+          "Assert the failure branch and the recovery output before running the undo: e.g. `assert \"apply\" in done.stderr, done.stderr`, `assert re.search(r\"backup\\b.*\\b[0-9a-f]{40}\\b\", done.stdout), done.stdout` and `assert _undo_commands(done.stdout), done.stdout`.",
+          "Also assert the target was actually changed before the undo (e.g. `assert _state(main) != before`) so the restore is proven, not vacuous."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README a-w row says a rule settles a dirty path in every mode",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/a-w/commands/attach_merge.py"
+        ],
+        "lines": "32",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The a-w row says a move that would write a dirty path 'refuses unless an --auto-resolve rule settles it'. For --committed that is false: check_dirty(..., fast_forward=True) in attach_merge.py refuses every dirty path the commits write, ruled or not, and the a-w SKILL.md overlap bullet says so. The row also names only the flag, not the attach.auto_resolve config rules, which settle the same paths.",
+        "fix": [
+          "Reword the README.md:32 bullet: 'In a staged move, a path the move would write that is dirty in the target refuses unless an attach.auto_resolve or --auto-resolve rule settles it (a worktree rule overwrites it after the backup); --committed refuses every dirty path it writes.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "README attach.auto_resolve row misstates the scope and the config source",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "510",
+        "reviewer": "docs, skill_package, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The key row says the rules 'settle a conflicted path without a prompt' and are 'read from the target checkout's harness.json'. a-w never prompts: an unruled conflict stops with exit 2. In staged mode the rules also settle a dirty-path overlap. config_root() in attach_worktree.py falls back to the main checkout's harness.json when the target checkout has none (plan D2). The schema description in harness.schema.json:133 has the same 'target checkout' wording.\n\nAlso (skill_package): The README key row (README.md:510) says the rules are 'read from the target checkout's harness.json' and that they settle 'a conflicted path'. config_root() at attach_worktree.py:82-85 falls back to the main checkout's harness.json when the target checkout has none. SKILL.md (Auto-resolve rules) and attach_merge.stage_final also apply the rules to dirty-path overlaps in staged mode, not only to conflicts.\n\nAlso (overall): The README key-table row for attach.auto_resolve (line 510) and the schema description (harness.schema.json:133) both say a-w reads the list 'from the target checkout's harness.json'. config_root() in attach_worktree.py loads the main checkout's config when the target checkout has no .claude/harness.json (decision D2, pinned by test_untracked_main_checkout_rules_apply_to_a_target_in_a_linked_worktree). A developer with a target in a collector worktree would conclude the rules do not apply. The same row also says the rules 'settle a conflicted path', but in staged mode they also settle a dirty-path overlap.\n\nAlso (system_shape): README.md:510 and harness.schema.json:133 say a-w reads attach.auto_resolve 'from the target checkout's harness.json'. config_root (attach_worktree.py:83-86) uses the target's file only when it exists and otherwise loads the main checkout's. Plan decision D2 and test_attach_worktree_config_source.py pin that fallback. A developer whose target is a collector worktree reads the docs and expects the rules not to apply.\n\nAlso (system_shape): README.md:510 ('rules that settle a conflicted path') and harness.schema.json:133 ('applies to a path that conflicts') describe attach.auto_resolve as a conflict rule only. In staged mode, stage_final and check_overlap (attach_merge.py) apply the same rules to dirty-path overlaps: a `worktree` rule overwrites the developer's uncommitted edit in the target after the backup, and a `branch` rule drops the worktree's change to that path. SKILL.md 'Auto-resolve rules' says this, but the config-key docs, the place a developer reads before adding a rule to the project file, do not.\n\nAlso (roast): The README key-table row for `attach.auto_resolve` (\"rules that settle a conflicted path without a prompt\") and the schema description (\"Rules a-w applies to a path that conflicts\") describe conflict settling only. In staged mode the same project rule also governs a dirty-path overlap (`stage_final` -> `outcome`/`overwrite` in attach_merge.py:345-364): a `worktree` rule overwrites the developer's uncommitted edit in the target (after a stash-create backup), and a `branch` rule silently drops the worktree's change to that path. Someone adding `*offlineTestReport.json: worktree` to settle report conflicts also opts into overwriting their in-progress copy of it, and the config docs don't say so. Only the a-w SKILL.md mentions it.",
+        "fix": [
+          "Reword the README.md:510 row: 'a-w: rules that settle a conflicted path, or in staged mode a dirty-path overlap, without stopping for resolution; ... read from the target checkout's harness.json, else the main checkout's, together with --auto-resolve flags'. Mirror the source wording in the schema description.",
+          "Reword the README row: 'read from the target checkout's harness.json (else the main checkout's) together with --auto-resolve flags; settles a conflicted path, or in a staged move a dirty target path the move writes'.",
+          "Change both texts to: 'read from the target checkout's harness.json, else the main checkout's, together with --auto-resolve flags; in staged mode a rule also settles a dirty target path the move writes'.",
+          "README.md:510 and harness.schema.json:133: 'read from the target checkout's harness.json, or the main checkout's when the target checkout has none, together with --auto-resolve flags'.",
+          "Append to README.md:510 and harness.schema.json:133: 'In staged mode a rule also governs a path dirty in the target: worktree overwrites the uncommitted copy after a backup, branch keeps it and drops the worktree's change.'",
+          "Extend the README row and the `auto_resolve` schema description: in staged mode a rule also settles a dirty-path overlap in the target. A `worktree` rule overwrites the dirty copy after the backup, a `branch` rule keeps it and drops the worktree's change, and `--committed` refuses every dirty overlap."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Release note says every refusal changes nothing",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "files": [
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "147-150",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The Feat(a-w) entry says 'every refusal changes nothing'. The a-w SKILL.md exit-code section, and the code (keep_hint, check_moves_something), say some refusals inside the resolution loop leave the worktree rebased. Only the target is guaranteed unchanged.\n\nAlso (system_shape): docs/RELEASES/v1.0.0.md:148-149 says 'every refusal changes nothing'. SKILL.md exit-code section (lines 93-99) says that inside the resolution loop some refusals leave the worktree rebased, with the attach state kept or dropped. The release-note claim is true only of the target.",
+        "fix": [
+          "Change it to 'every refusal leaves the target unchanged'.",
+          "docs/RELEASES/v1.0.0.md:149: 'every refusal leaves the target unchanged'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "PR title calls a feature release a plan docs change",
+        "file": "plugins/harness/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/harness/.claude-plugin/plugin.json",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "3",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The PR is titled \"Docs(plans): `a-w` dirty-target plan 1018\". It ships a behavior change to a-w (dirty-target attach, trial merge, exit 2 resolution loop, `--committed` rebase), a new config key, a HARNESS_RULES exception to the history-rewrite rule, and a harness minor bump to 0.72.0. A squash-merge under that title files the feature under docs in history and in any changelog built from titles.",
+        "fix": [
+          "Retitle the PR to something like \"Feature(a-w): attach onto a dirty target with trial merge and in-worktree resolution (#161)\", matching the v1.0.0 release-note line."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "attach.auto_resolve description omits the main-checkout fallback",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "131-134",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The schema description says a-w reads the list from the target checkout's harness.json. config_root in attach_worktree.py uses the target's file only when it exists and otherwise reads the main worktree's .claude/harness.json, so the description is narrower than the code.",
+        "fix": [
+          "Append to the description: 'or, when the target checkout has none, the main checkout's'."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "History-rule exception has an ambiguous pronoun and leaves out one of the reset cases",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "files": [
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py"
+        ],
+        "lines": "26-30",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "HARNESS_RULES.md:29-30 reads 'the agent ... reruns it with --continue or --abort; it never runs rebase, merge, cherry-pick or reset itself'. The nearest antecedent of the second 'it' is the script, which does run rebase and reset, so the sentence can be read as contradicting the exception it closes. Line 28 also lists the script's resets as '--abort or a failed start'. settle_stop (attach_resolve.py:148-160) also resets the worktree to original_head when rules are ambiguous at a rebase stop.",
+        "fix": [
+          "HARNESS_RULES.md:29-30: replace '; it never runs' with '; the agent never runs'. Line 28: change 'on `--abort` or a failed start' to 'on `--abort`, a failed start, or ambiguous rules at a rebase stop'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "HARNESS_RULES trims for the size limit drop guidance outside a-w",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "files": [
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "tests/hooks/test_session_rules.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "27-30,49,98-99,122-124",
+        "reviewer": "docs, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "To fit the a-w exception under RULES_LIMIT (tests/hooks/test_session_rules.py), the PR rewords sections unrelated to a-w. Some facts are lost. The DesignEvolution bullet no longer says the schema resolves 'through the pinned schemas first, then the plugin's'; that is still true (schema_registry.py). The test bullet drops 'A directory is not scoped because it is smaller than the whole suite'. The pre-merge 'Squash-merge' case narrows from 'exploratory or WIP commits' to 'WIP commits'. Neither the plan's TASK-4 nor the release note mentions these edits.\n\nAlso (overall): To fit the a-w history exception under tests/hooks/test_session_rules.py RULES_LIMIT = 10000, the diff rewords rules outside a-w, and some rewordings change what they say. Squash-merge narrows from 'exploratory or WIP commits' to 'WIP commits' (line 49). The guard-run rule hardens from 'Prefer one agent owning a guard run' to 'One agent owns a guard run; others do not re-run it' (line 99). The schema-resolution clause '(resolved through the pinned schemas first, then the plugin's)' is gone from the DesignEvolution rule (line 123). Plan TASK-4 only asked to append the exception, and neither the TASK-4 receipt, DesignEvolution nor the v1.0.0 notes record these edits. The file is now 9998 of 10000 characters, so the next rules edit of any size fails test_rules_file_stays_under_limit.\n\nAlso (roast): Adding the a-w history exception pushed HARNESS_RULES.md against `RULES_LIMIT` (tests/hooks/test_session_rules.py:30), and the compensating trims change rules that every consuming session loads. Line 99 turns \"Prefer one agent owning a guard run over many re-running it\" into a ban (\"others do not re-run it\"). Line 123 drops the schema resolution order (\"resolved through the pinned schemas first, then the plugin's\"). Lines 98-99 drop \"A directory is not 'scoped' because it is smaller than the whole suite\", and line 49 drops \"exploratory\" from the squash-merge trigger. None of this is in TASK-4's action, which says \"append\". These are rule edits shipped as whitespace housekeeping.",
+        "fix": [
+          "Restore the pinned-schema parenthesis and 'exploratory', and find the space by tightening the new exception paragraph.",
+          "Or keep the trims and add a line to the PR description listing the HARNESS_RULES rewording outside the a-w exception.",
+          "Restore the dropped clauses (pinned-schema resolution order, 'exploratory', the 'prefer' wording) and shorten the new a-w exception at lines 27-30 to one sentence that points at the a-w SKILL for the loop, which already carries the --continue/--abort detail.",
+          "Or keep the trims but add one line to docs/RELEASES/v1.0.0.md naming the rule wording changes, and raise RULES_LIMIT deliberately in tests/hooks/test_session_rules.py so the file has working headroom.",
+          "Keep the original meaning where it changed: restore \"Prefer one agent owning a guard run\" wording (or record the stricter rule as an intended change) and the pinned-then-plugin schema resolution order, and find the bytes elsewhere (for example the pure re-wraps at lines 3-5 and 111-112 gain nothing).",
+          "Or record the meaning changes in the v1.0.0 release notes and the DesignEvolution catalog so the stricter guard-run rule is a decision, not a side effect."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Backup-and-undo bullet promises undo lines on a --committed failure",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/a-w/commands/attach_merge.py"
+        ],
+        "lines": "46-50",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The bullet says a failure past the backup point makes 'the error then print the backup and undo lines, since the target may hold part of the move'. That holds for the staged land (land() prints undo_lines(partial=True)). land_committed() prints only backup_line(stash) after a failed merge --ff-only and states the target did not move, so it prints no undo line.",
+        "fix": [
+          "Scope the parenthesis to staged mode: '(a staged move's error then prints the backup and undo lines, since the target may hold part of the move; a failed --committed fast-forward prints the backup and leaves the target where it was)'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Undo and stop lines quote only whitespace, so shell metacharacters in a path break the printed command",
+        "file": "plugins/harness/skills/a-w/commands/attach_merge.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_merge.py",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py",
+          "tests/skills/test_attach_worktree_dirty_edges.py"
+        ],
+        "lines": "82-84,437-457",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "show_path wraps a path in double quotes only when it holds whitespace. The undo lines (undo_lines, attach_merge.py:437) and stop_lines (attach_resolve.py) are meant to be pasted into a shell, and the skill tells the agent to run them on request or after a failure. Bash rejects or rewrites a path such as notes(old).md, a$b.txt or it's.md: a syntax error near '(', a variable expansion, or an unterminated quote. A path with both whitespace and a double quote also breaks. The test test_the_printed_undo_matches_paths_literally parses with shlex.split, which accepts '(' and '[', so it cannot catch this.",
+        "fix": [
+          "Make show_path return shlex.quote(path) whenever the path is not made only of [A-Za-z0-9_./@%+=:,-] characters. Add a case to test_the_printed_undo_matches_paths_literally with a path holding '(' and '$', run through sh -c so the shell parses each printed line."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Dead backward-compat shim for a state file without the cut field",
+        "file": "plugins/harness/skills/a-w/commands/attach_resolve.py",
+        "lines": "70",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "read_state does data.setdefault(\"cut\", data[\"patch_base\"]) for 'a state file written before the cut field'. attach_resolve.py is new in this PR and was added in one commit (c553e0a) whose write_state always writes cut (asdict(State) includes it), so no shipped or committed version ever wrote a state file without cut. The branch is dead code, and no test exercises it.",
+        "fix": [
+          "Delete line 70 (the setdefault and its comment); a state file missing cut then fails as unreadable through the existing KeyError/TypeError handler, which already tells the user to remove it."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "--abort runs reset --hard over a worktree the land refusal just called dirty, with no backup and no lost HEAD named",
+        "file": "plugins/harness/skills/a-w/commands/attach_resolve.py",
+        "lines": "140-145,288-290,300-305",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "land_resolved refuses a worktree with uncommitted changes after the resolution and offers '--continue, or --abort' (attach_resolve.py:288-290). abort() calls restore(), which runs 'reset -q --hard original_head' (attach_resolve.py:140-145). That deletes those uncommitted edits for good and drops the resolved HEAD without printing its sha. The spec (Decided item 7) justifies reset --hard as 'exact since the worktree was clean', and that premise fails on this route. Compare unstarted(), which does name the discarded resolved HEAD and how to recover it.",
+        "fix": [
+          "In abort(), before restore(): record HEAD and run 'git stash create' in the worktree when it is dirty. Add both shas to the abort report, for example 'the resolution at <sha> and the uncommitted edits in <stash> are dropped; recover with git -C <wt> reset --hard <sha> / git stash apply <stash>'.",
+          "Or drop '--abort' from the land_resolved uncommitted-changes message, so that route offers only committing and --continue."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Module docstring overstates the report's undo and the resume flags",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/commands/attach_merge.py",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py"
+        ],
+        "lines": "1-39",
+        "reviewer": "runtime, skill_package, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The attach_worktree.py docstring says 'every report prints the backup and a path-scoped undo', but land_committed (attach_merge.py:417) prints a whole-branch 'reset --keep <head>' undo, not a path-scoped one, and the --abort report (attach_resolve.abort) prints no backup line. The docstring also says --continue and --abort 'take no target or mode', but check_resume accepts a TARGET that resolves to the stopped branch and --committed when the stopped mode is committed; it refuses only mismatches.\n\nAlso (skill_package): attach_worktree.py:37-38 says every report prints the backup and a path-scoped undo. The --committed land (attach_merge.land_committed) prints `reset --keep <old head>`, which is not path-scoped, and the --abort report and refusals print no backup at all. SKILL.md (Backup and undo bullet) already says the undo matches the mode, so the docstring contradicts both the code and the skill.\n\nAlso (overall): The attach_worktree.py docstring ends 'every report prints the backup and a path-scoped undo' (lines 37-38). The --committed report prints 'reset --keep <old head>', a branch-wide undo (land_committed in attach_merge.py). The --abort report prints neither a backup nor an undo (attach_resolve.abort). The a-w SKILL states it correctly: 'undo commands that match the mode'.\n\nAlso (system_shape): attach_worktree.py:37-38 says 'every report prints the backup and a path-scoped undo'. land_committed (attach_merge.py) prints `undo: git -C <target> reset --keep <old head>`, which is a branch reset and not path-scoped. SKILL.md and README.md describe the per-mode undo correctly, so only the docstring drifts.\n\nAlso (system_shape): The PR is titled 'Docs(plans): a-w dirty-target plan 1018', but it carries attach_merge.py, attach_resolve.py, the attach_worktree.py rewrite, the attach.auto_resolve config key, the HARNESS_RULES exception and the harness 0.72.0 bump. The title lags the code; it is a documentation gap only.",
+        "fix": [
+          "Reword lines 31-32 and 37-38: 'Both read the state file ... and refuse a target or mode that differs from it' and 'every staged report prints the backup and a path-scoped undo; a committed land prints the backup and a reset --keep undo'.",
+          "Reword attach_worktree.py:37-38 to: 'A refusal changes nothing in the target and says why; a successful move prints the backup and an undo that matches the mode (path-scoped for a staged move, `reset --keep` for --committed).'",
+          "Reword to: 'every land report prints the backup and an undo that matches the mode (path-scoped for a staged move, reset --keep for --committed)'.",
+          "attach_worktree.py:37-38: 'every report prints the backup and an undo that matches the mode (path-scoped for a staged move, reset --keep for --committed).'",
+          "Retitle the PR, for example 'Feature(a-w): attach onto a dirty target, trial merge, auto-resolve rules and worktree resolution (plan 1018)', and summarize the code changes in the description."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "--continue restart with nothing left keeps state and asks for a rerun that repeats the error",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "175-176,242-245",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "When a resolution keeps the branch for every path, land_resolved -> check_moves_something (attach_resolve.py:267-278) drops the state and reports 'the attach is dropped', as SKILL.md:98-100 describes. If the target moved during the stop, land_resolved first refuses with 'rerun with --continue'. The --continue restart then goes through move_committed (attach_worktree.py:175-176, 'worktree has no commits beyond the target branch') or move_staged/no_change (attach_worktree.py:242-245), where the state is kept. keep_hint then appends 'rerun with --continue once that is fixed', and a rerun gives the same error. The same condition (a resolution with nothing to move) thus has two outcomes, and one of them points to a step that cannot succeed.",
+        "fix": [
+          "On the prior/restart path, drop the state when the resolved HEAD holds nothing over the new target, as check_moves_something does, and say 'the attach is dropped'.",
+          "Or make the prior-path refusals name only --abort (as no_change does for the staged case), so keep_hint leaves the message alone and no --continue loop is suggested."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "is_ancestor defined twice across the a-w command modules",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py"
+        ],
+        "lines": "191-192",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "attach_worktree.is_ancestor (repo, older, newer) and attach_resolve.is_ancestor (worktree, older, newer) have the same body (run_git merge-base --is-ancestor, returncode == 0). attach_worktree already imports both attach_merge and attach_resolve, so one copy is a duplicate.",
+        "fix": [
+          "Move is_ancestor into attach_merge.py next to run_git, delete both copies, and call merge.is_ancestor from attach_worktree.py (cut_point, patch_base) and attach_resolve.py (check_resolved).",
+          "Delete attach_worktree.is_ancestor and call resolve.is_ancestor at attach_worktree.py:214 and :234."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Staged pre-resolution check skips the untracked-in-the-way test that committed mode runs",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/commands/attach_merge.py"
+        ],
+        "lines": "249-268",
+        "reviewer": "runtime, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Before it starts a resolution, move_committed runs the full merge.check_overlap (dirty paths plus untracked files or files on a parent folder in the target). move_staged runs only merge.check_dirty (line 265). So a staged attach can send the agent through a full manual conflict resolution, then have land_resolved -> stage_final refuse because an untracked file sits on a written path, which the pre-check could have reported before any rebase. The state is kept and the attach can be recovered, but the agent's resolution effort is spent first.\n\nAlso (overall): On a staged move with unruled conflicts, move_staged runs only merge.check_dirty on the worktree's changed paths before it starts the worktree rebase (attach_worktree.py:265). It skips the untracked and blocked-parent check (check_overlap / untracked_on). An untracked file in the target on a path the move adds is visible at that moment, but it only refuses in stage_final, after the agent has resolved every stop and run --continue. move_committed already runs the full check_overlap before its rebase (attach_worktree.py, move_committed), so the two modes are inconsistent, and the spec's item 3 places the untracked refusal ahead of the trial.\n\nAlso (roast): On an unruled conflict, `move_staged` (attach_worktree.py:264-267) runs `require_clean` and `merge.check_dirty`, then starts the squash and rebase. It never runs `merge.check_overlap` (the untracked-in-the-way and file-where-a-folder-goes check) or `merge.check_governed`. `move_committed` does run `check_overlap` before `resolve.start` (line 185). So a staged move that is going to refuse anyway, because of an untracked file on a path it adds, first rebases the worktree and stops with exit 2. The agent resolves the conflict, and only at `--continue` does `stage_final` refuse with \"move them aside first\". The state survives, so nothing is lost except the agent's afternoon. It also breaks the 'known before the worktree is touched' promise the committed path keeps.",
+        "fix": [
+          "Replace merge.check_dirty(change.paths, snap.dirty, sides) at attach_worktree.py:265 with merge.check_overlap(target, change.paths, change.paths, snap.dirty, sides), so the staged path runs the same pre-check as move_committed.",
+          "Replace merge.check_dirty(change.paths, snap.dirty, sides) at attach_worktree.py:265 with merge.check_overlap(target, change.paths, change.paths, snap.dirty, sides), so an untracked or blocked-parent obstacle refuses before resolve.start_staged. Add a test that an untracked file on an added path refuses with exit 1 and no state file even when a conflict is pending.",
+          "Before `resolve.start_staged`, compute `written = merge.diff_paths(target, snap.head, final.tree)` and call `merge.check_overlap(target, {**change.paths, **written}, written, snap.dirty, sides)` in place of the bare `merge.check_dirty`, so both modes refuse an obstacle in the target before any history rewrite.",
+          "Or keep the current order and state in the a-w SKILL.md resolution-loop section that an untracked obstacle in the target is reported only at the land, after the resolution."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "OSError removal failure does not name the removal command",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/d-w/SKILL.md"
+        ],
+        "lines": "271-280",
+        "reviewer": "skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:102-103 says that when the move succeeded but the worktree removal failed, the error names the removal command, and d-w SKILL.md:71-72 says a-w names the hand-run `git worktree remove --force \"<path>\"`. finish() at attach_worktree.py:271-279 does this only for the AttachError raised by remove_worktree. An OSError (for example os.chdir(main) failing) becomes 'the move succeeded but removing the worktree failed: <errno text>' with no command, so the agent gets no removal command to relay.\n\nAlso (system_shape): a-w SKILL.md:101-102 says 'If the move succeeded but the worktree removal failed ... the error names the removal command', and d-w SKILL.md:69-72 says a-w 'names the hand-run git worktree remove --force \"<path>\"'. In finish (attach_worktree.py:271-280), an OSError, such as a failed os.chdir before the removal (pinned by test_a_failed_chdir_before_removal_still_prints_the_report), produces 'the move succeeded but removing the worktree failed: <exc>' and names no command.",
+        "fix": [
+          "In finish(), for the non-AttachError branch, append the command: f\"...failed: {message}; remove it with git worktree remove --force {worktree.as_posix()}\".",
+          "attach_worktree.py:278: append the command to the OSError message: f\"...failed: {message}; remove it with git worktree remove --force {worktree.as_posix()}\"."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Plan-internal design id in a shipped docstring",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "lines": "315",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "attach_worktree.py:315 says '--continue: finish a stopped rebase and land, or (D4) restart the flow from the resolved HEAD'. 'D4' is a design-decision id from plan 1018. It means nothing to a reader of the plugin, which ships without the plan.",
+        "fix": [
+          "Drop '(D4)' from the resume() docstring, or replace it with a plain phrase such as 'when the rebase already finished'."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "d-w finishing bullet says 'One case' and then gives a second",
+        "file": "plugins/harness/skills/d-w/SKILL.md",
+        "lines": "67-72",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The bullet opens with 'One case takes the hand-run git worktree remove --force' (discarded work or nothing to move), then names a second: a move that landed but whose worktree removal failed. The count contradicts the text after it.\n\nAlso (skill_package): d-w SKILL.md:67-72 begins with 'One case takes the hand-run git worktree remove --force' (discarded work or nothing to move). The same paragraph then names a second hand-run case: the move succeeded but a-w failed to remove the worktree. The count conflicts with the paragraph's own content.",
+        "fix": [
+          "Change 'One case takes the hand-run' to 'Two cases take the hand-run', or fold the removal-failure sentence into the first case's list.",
+          "Change 'One case takes' to 'Two cases take' and keep both cases together, or reword the opening so it does not count the cases."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "hash(cfg) == hash(cfg) states its intent only implicitly",
+        "file": "tests/lib/test_config_attach.py",
+        "lines": "33",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The assertion can only fail by raising TypeError when the config is unhashable; as written it reads like a tautology. The intent (the tuple-of-dataclass auto_resolve keeps HarnessConfig hashable) is not stated.",
+        "fix": [
+          "Replace with `hash(cfg)  # auto_resolve must keep the frozen config hashable` or `assert {cfg}` with a message naming hashability."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "resolve_edges docstring says every worktree is cut from main's one commit",
+        "file": "tests/skills/test_attach_worktree_resolve_edges.py",
+        "lines": "1-5,230-242",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring states each test's `wt` is 'a detached worktree cut from its one commit', but the `lagging` fixture (used by test_a_rebase_aborted_by_hand_from_a_foreign_cut_refuses and test_a_restart_keeps_the_original_cut_...) cuts `wt` from branch `other`, a commit `feature` never held; that foreign cut is the point of those tests.",
+        "fix": [
+          "Extend the docstring: 'the `lagging` fixture instead cuts `wt` from a branch `other` that `feature` never merged'."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Repo-and-git helpers copied across six new attach test modules",
+        "file": "tests/skills/test_attach_worktree_resolve_edges.py",
+        "files": [
+          "tests/skills/test_attach_worktree_resolve_edges.py",
+          "tests/skills/test_attach_worktree_resolve.py",
+          "tests/skills/test_attach_worktree_dirty.py",
+          "tests/skills/test_attach_worktree_dirty_edges.py",
+          "tests/skills/test_attach_worktree_continue_backup.py",
+          "tests/skills/test_attach_worktree_config_source.py"
+        ],
+        "lines": "19-53,207-209",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "_GIT_ENV, _git, _write, _commit, the script_path fixture, the `repos` fixture and _rebasing/_state_file are duplicated nearly verbatim across test_attach_worktree_dirty.py, _dirty_edges.py, _resolve.py, _resolve_edges.py, _continue_backup.py and _config_source.py (and _rebasing twice: resolve.py:76, resolve_edges.py:207). A change to how the fixture repo is built (e.g. a new git env var for CI) must be made six times.",
+        "fix": [
+          "Move the shared helpers into a `_`-prefixed module such as tests/skills/_attach_repo.py (select_tests already follows `_`-prefixed helpers in tests/ folders) and import them."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "GIT_SEQUENCE_EDITOR relies on GNU sed",
+        "file": "tests/skills/test_attach_worktree_resolve_edges.py",
+        "lines": "217,293",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "Two tests drive an interactive rebase with GIT_SEQUENCE_EDITOR=\"sed -i -e '1i break'\" / \"'1a break'\". BSD/macOS sed rejects `-i` without a suffix and the one-line `1i text` form, so the setup subprocess (check=True) errors there. CI (Ubuntu, Git for Windows) has GNU sed, so this is portability polish for local runs.",
+        "fix": [
+          "Use a Python editor instead: GIT_SEQUENCE_EDITOR set to a quoted `sys.executable -c` one-liner that inserts `break` into the todo file argument.",
+          "Or skip those tests when `sed --version` does not report GNU."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M4",
+      "classification": "out_of_scope",
+      "reason": "The only fix is retitling PR 287 on GitHub; the PR title is the developer's text, not a file in the tree."
+    },
+    {
+      "id": "M21",
+      "classification": "architectural_ambiguity",
+      "reason": "Four modules are verbatim copies of plan 1018's frozen planned tests; sharing helpers makes them diverge, which needs a refreeze or DesignEvolution entry."
+    },
+    {
+      "id": "M19",
+      "classification": "architectural_ambiguity",
+      "reason": "The file is a verbatim copy of plan 1018's frozen planned test; an edit makes it diverge, which needs a refreeze or DesignEvolution entry."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 287 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"9e1cf123dbb85e8847f7df31dd6e773f66344bc1\",\"headRefName\":\"1157-a-w-committed\",\"headRefOid\":\"29dd371c3672dcd56e8641134263b5c7a365ceba\",\"last_sha\":\"29dd371c3672dcd56e8641134263b5c7a365ceba\",\"mergeCommit\":null,\"number\":287,\"state\":\"OPEN\",\"title\":\"Docs(plans): `a-w` dirty-target plan 1018\",\"url\":\"https://github.com/t968rs/operator-straps/pull/287\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1157-a-w-committed",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1157-a-w-committed",
+        "head_ref_name": "1157-a-w-committed",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "9e1cf123dbb85e8847f7df31dd6e773f66344bc1",
+        "head_sha": "12ecb088fb63b0a6816961f87caf237f2735ed8e",
+        "base_ancestor_command": "git merge-base --is-ancestor 9e1cf123dbb85e8847f7df31dd6e773f66344bc1 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 12ecb088fb63b0a6816961f87caf237f2735ed8e HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - No edit in this part: the key-row wording is in README.md:510 and harness.schema.json:133, owned by the other part. config_root (attach_worktree.py:82-85) is the main-checkout fallback those texts must state.; README.md:510 attach.auto_resolve row: rules settle a conflicted path or, in staged mode, a dirty-path overlap; an unruled conflict stops with exit 2; config read from the target's harness.json or the main checkout's when the target has none; harness.schema.json attach.auto_resolve description: source now reads target harness.json or the main checkout's when the target has none; added the staged-mode dirty-path overlap sentence (worktree overwrites after backup, branch keeps it and drops the worktree change). README.md:510 is in the other part."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - No edit in this part: the schema description (harness.schema.json:131-134) is owned by the other part. config_root (attach_worktree.py:82-85) is the fallback to append.; harness.schema.json attach.auto_resolve description now includes 'or, when the target checkout has none, the main checkout's' (same edit as M2)."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Module docstring: lines 30-31 now say the resume flags refuse a target or mode that differs from the state file; lines 36-37 now say a successful move prints the backup and an undo matching the mode (path-scoped for staged, reset --keep for --committed), and a refusal changes nothing.; attach_resolve.py: no edit, the fix is the attach_worktree.py docstring (other part); the --abort report now names its recovery shas (M11); no edit in this part: land and land_committed docstrings do not claim a path-scoped undo for every report; the attach_worktree.py docstring fix is in another part"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - resume() docstring: dropped the plan id '(D4)', now reads 'or restart the flow from the resolved HEAD'."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - attach_resolve.py: no edit, the fix is HARNESS_RULES.md wording (other part); settle_stop's reset on ambiguous rules is the case that wording adds; History-rule exception names the agent as subject of the closing clause (no ambiguous 'it') and lists the reset cases as --abort, a failed start or ambiguous rules at a rebase stop"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - attach_resolve.py: no edit, stop_lines, unstarted and refuse_foreign_rebase already route every path through attach_merge.show_path, so the shlex.quote fix there (other part) covers them; show_path returns shlex.quote(path) instead of double quotes only for whitespace, so undo and report paths with shell metacharacters print as safe single shell words; the 're' import is replaced by 'shlex'; Added test_the_printed_undo_survives_shell_metacharacters: paths notes(old).md, a$b.txt and it's.md, each printed undo line run through sh -c (skipped without sh)"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Deleted the dead setdefault('cut', ...) shim in read_state; a state file without cut now fails through the existing unreadable-state handler"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - abort() now records HEAD and runs git stash create on a dirty worktree before restore(), and the report names the dropped HEAD and stash sha with reset --hard / stash apply recovery commands (or says the edits could not be saved when stash create refuses an unmerged index)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - README.md:32 a-w row: a dirty-path refusal now scoped to staged moves, names attach.auto_resolve alongside --auto-resolve, and states --committed refuses every dirty path it writes"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - no edit in this part: land_committed prints only the backup line after a failed merge --ff-only and its docstring claims no undo line; the parenthesis wording fix is in plugins/harness/skills/a-w/SKILL.md (other part); SKILL.md Backup-and-undo bullet: undo lines on failure scoped to a staged move; a failed --committed fast-forward prints the backup and leaves the target where it was."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Feat(a-w) entry now says 'every refusal leaves the target unchanged' instead of 'every refusal changes nothing'; No SKILL.md edit: exit-code section (lines 93-103) already states that inside the resolution loop some refusals leave the worktree rebased. The release-note wording fix is in docs/RELEASES/v1.0.0.md, another part."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Restored 'exploratory or WIP commits', the 'Prefer one agent owning a guard run over many re-running it' wording and the pinned-then-plugin schema resolution order; paid for it by tightening the a-w exception and dropping the duplicate 'a-w removes the worktree itself' (line 69 already says a-w drops the worktree); file now 9979 chars, under RULES_LIMIT; tests/hooks/test_session_rules.py: limit kept, it matches the 10000-char SessionStart additionalContext cap; docs/RELEASES/v1.0.0.md: no note needed once the meanings are restored"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Windows real apply-failure test now asserts 'apply' in stderr, a backup sha in stdout and non-empty undo lines before running the undo"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Added module-level WALK_ROOTS = () beside _GIT_ENV; _state walks only the tmp_path checkout; No edit in tests/scripts/test_select_tests.py: the missing WALK_ROOTS marker is in tests/skills/test_attach_worktree_dirty_edges.py, another part. This file is cited as the contract test that asserts the marker.; The WALK_ROOTS marker belongs in tests/skills/test_attach_worktree_dirty_edges.py (other part); tools/select_tests.py already classifies the walker correctly and needs no edit"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - d-w finishing bullet now opens 'Two cases take the hand-run git worktree remove --force' and names the landed-move-with-failed-removal case beside the discarded/nothing-to-move case"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Module docstring adds that the lagging fixture instead cuts wt from a branch other that feature never merged"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - Replaced the GNU sed GIT_SEQUENCE_EDITOR values with _break_editor(index), a quoted sys.executable -c one-liner that inserts a break line into the todo file (index 0 for '1i', 1 for '1a'); checked through sh against a sample todo"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - move_committed's no-commits refusal on a --continue restart now comes from new no_commits() and names only --abort (as no_change does for staged), so keep_hint adds no --continue loop; attach_resolve.py: land_resolved/keep_hint need no change; SKILL.md: the 'state kept' bucket already sends a refusal naming --abort there"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - move_staged now runs merge.check_overlap(target, change.paths, change.paths, snap.dirty, sides) in place of check_dirty, so an untracked or blocked-parent obstacle refuses before resolve.start_staged, as in move_committed; attach_merge.py: check_overlap already exists, no edit"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - a-w SKILL.md resolution-loop text now says to follow refusals naming --continue or --abort and to hand refusals naming a git rebase or reset command to the developer; the finish() OSError removal command is already present (attach_worktree.py finish); attach_resolve.py messages, HARNESS_RULES.md and d-w SKILL.md: consistent with the scoped skill text, no edit"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - attach_worktree.is_ancestor deleted; cut_point and patch_base call resolve.is_ancestor, the single copy at attach_resolve.py:244 (outside fixer waves)"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "12ecb08 (working-tree snapshot; developer commits) - finish() OSError branch now names git worktree remove --force <worktree> (attach_worktree.py:283,294) (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-13",
+      "evidence": "460746e (working-tree snapshot; developer commits) - closed, no action: Developer retitled PR 287 on GitHub to Feature(a-w): attach onto a dirty target with trial merge and in-worktree resolution (#161)"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "460746e (working-tree snapshot; developer commits) - test_config_attach.py:33 now reads hash(cfg) with a comment naming the hashability intent; plan copy left as frozen, PLAN check 1018 passes (outside fixer waves)"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "460746e (developer-confirmed defer) - Developer deferred the helper consolidation; tracker todo-dx3b"
+    }
+  ]
+}

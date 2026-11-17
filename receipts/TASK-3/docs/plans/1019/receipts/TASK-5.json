@@ -1,0 +1,42 @@
+{
+  "plan_id": "1019",
+  "item": "TASK-5",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "a951803e5db9949690cb1e02fa16ba8f4ce74701"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_a_lease_admits_its_holder_and_refuses_every_other_writer",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_recounts_a_hand_appended_close_candidate",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_frees_the_lease_when_the_catalog_cannot_load",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_init_holds_the_lock",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_migrate_ids_holds_the_lock",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_add_inbox_holds_the_lock_and_keeps_the_queued_file",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_inbox_put_queues_and_add_inbox_drains"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_todo_sync_catalog_lock_cli.py::test_a_lease_admits_its_holder_and_refuses_every_other_writer tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_recounts_a_hand_appended_close_candidate tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_frees_the_lease_when_the_catalog_cannot_load tests/scripts/test_todo_sync_catalog_lock_cli.py::test_init_holds_the_lock tests/scripts/test_todo_sync_catalog_lock_cli.py::test_migrate_ids_holds_the_lock tests/scripts/test_todo_sync_catalog_lock_cli.py::test_add_inbox_holds_the_lock_and_keeps_the_queued_file tests/scripts/test_todo_sync_catalog_lock_cli.py::test_inbox_put_queues_and_add_inbox_drains"
+    }
+  },
+  "evidence": "staged tree a951803: 7 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/lib/harness_lib/todo_sync/retire.py",
+        "change": "EX1"
+      },
+      {
+        "path": "tests/scripts/test_todo_sync_lock_reference_scan.py",
+        "change": "EX1"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "cd8969d59b515818dd22572fca753ee71339abf060539f1419a3cab5e2cc7641"
+    }
+  },
+  "date": "2026-11-15",
+  "seal": "392444fa3dbe302b633c55c37ab7fff1fa1e3423525660d5def4ac641281de33"
+}

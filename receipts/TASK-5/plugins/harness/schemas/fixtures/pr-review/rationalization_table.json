@@ -1,0 +1,323 @@
+{
+  "$schema": "rationalization_table.schema.json",
+  "_meta": {
+    "purpose": "Rationalizations observed in testing of the pr-review skill. Each row pairs a tempting shortcut with the reality that defeats it. Source-of-truth catalog; SKILL.md cites a sample subset.",
+    "schema_version": "1.0",
+    "last_reviewed": "2026-10-10",
+    "eviction_policy": "preserve verbatim until count > 30; then fold non-recurring rows into a single trailing 'historical rationalizations -- fixed' line citing last-PR/commit where each row last fired. Rows stay verbatim in their original position until the threshold is hit; the eviction is one-shot, not per-PR."
+  },
+  "rationalizations": [
+    {
+      "id": "R001",
+      "rationalization": "User says they're on the right branch, no need to verify",
+      "reality": "User reassurance is the exact pressure this skill exists to resist. Phase 4 Check 1 takes 50ms. Run it.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R002",
+      "rationalization": "SHA ancestry is tautological on a just-pushed branch",
+      "reality": "Force-pushes, resets, divergent fetches, worktrees. The check is cheap. Run it in Phase 4.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R003",
+      "rationalization": "Base branch is probably `main`, I'll just write that",
+      "reality": "Never. Projects use integration branches (often `dev`) and feature-parents. Copy `baseRefName` from Phase 1 Check 1 verbatim.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R004",
+      "rationalization": "Phase 4 clean tree check is overkill, I was just here",
+      "reality": "The branch state can change between review dispatch and fix application. Phase 4 Check 3 is mandatory.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R005",
+      "rationalization": "User said the dirty files are just debug logging -- I'll trust them",
+      "reality": "30 seconds of `git diff` vs. a bad commit. Always verify in Phase 4.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R006",
+      "rationalization": "I can silently reinterpret 'dispatch the review' as agent dispatch",
+      "reality": "Only as Phase 2 defines it: one `harness:pr-reviewer` `Agent` call per row `pr_review.py capture` printed, with the row's model and prompt verbatim. Never silently substitute another dispatch.",
+      "category": "general_skill_discipline",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R007",
+      "rationalization": "I can fill in a stub JSON for Phase 3 to move faster",
+      "reality": "Phase 3 schema forbids stubs. `verification_log.dispatch_time` and `verdict` fields require real values.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R008",
+      "rationalization": "I know the schema structure -- I'll write the JSON from memory / the skill description",
+      "reality": "The skill description lists field names, not structure. `issues` is a categorized object (`{critical, important, minor}`), not a flat array. `bubble_up` is a flat array of per-item objects (`{id, classification, reason}`), mirroring the pr-team sidecar shape. Do not write the JSON; `pr_review.py build` assembles and validates it.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R009",
+      "rationalization": "'Stop if verification fails' means stop checking, not stop dispatching",
+      "reality": "Stop means ABORT entirely. Report the failure. Do not proceed under any interpretation.",
+      "category": "general_skill_discipline",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R010",
+      "rationalization": "I can guess reviewer handles from CODEOWNERS",
+      "reality": "This skill does not add human reviewers. If the user wants humans, they name them explicitly or you stop and ask.",
+      "category": "general_skill_discipline",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R011",
+      "rationalization": "I can glance at `gh pr view` output instead of doing a named comparison",
+      "reality": "Phase 4 Check 2 is a named assertion: `$CURRENT_BRANCH = $headRefName`. Run it as a test, not a visual scan.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R012",
+      "rationalization": "The skill verifies envelope, so I should also peek at the diff to be thorough",
+      "reality": "No. Content review is downstream. Scope creep hurts the pipeline.",
+      "category": "general_skill_discipline",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R013",
+      "rationalization": "Time pressure means I can shortcut checks",
+      "reality": "Time pressure means you are MORE likely to make a mistake, not less. Checks stay mandatory under all pressure.",
+      "category": "general_skill_discipline",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R014",
+      "rationalization": "I can write `clean_tree_check = 'OK'` without running the command",
+      "reality": "That is a lie, not a shortcut. `git status --porcelain` never outputs the string \"OK\". Paste raw stdout or the field is a stub.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R015",
+      "rationalization": "The session-start `gitStatus` block tells me the branch, I can skip Phase 4 Check 1",
+      "reality": "Session state is a snapshot, not current truth. It ages the moment it is captured. Run Phase 4 Check 1 fresh, capture the stdout.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R016",
+      "rationalization": "I'll write the Phase 3 JSON after I summarize findings for the user",
+      "reality": "No. Phase 3 is the atomic close. Write the JSON FIRST, summarize from it SECOND. Deferral = forgetting.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R017",
+      "rationalization": "File is named `debug_*` or `tmp_*` or `scratch_*`, probably safe to skip",
+      "reality": "Filenames are social signals, not permissions. Read the diff regardless.",
+      "category": "branch_safety",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R018",
+      "rationalization": "A one-line 'reviewers returned, writing verdict now' heartbeat to the user is fine",
+      "reality": "No. Any pre-JSON text is a protocol violation. Heartbeats are drafts wearing a disguise -- once one line is acceptable, two lines are, then a paragraph. The atomic close has no size threshold.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R019",
+      "rationalization": "The verdict is obviously READY TO MERGE, the JSON is just ceremony",
+      "reality": "The ceremony IS the evidence. There is no verdict without the recorded file. This rationalization is a deferral waiting to happen -- by the time you finish composing the user summary that feels like the \"real\" work, the JSON write will have evaporated from your intent.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R020",
+      "rationalization": "I'll draft the summary in a scratch note / thinking block while I work on the JSON",
+      "reality": "No drafts. No scratch notes. No parallel bookkeeping. Run `build`, then compose the user-facing summary from the file it wrote. \"Draft\" is just \"deferral\" relabeled.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R021",
+      "rationalization": "The PR touches CICD but the reviewers will catch any structural issues",
+      "reality": "They will not. PR #783 had both internal `code-reviewer` and external Copilot miss obvious schema/registry/runner-modes drift. Run Phase 1 Check 2 (structural guards) BEFORE dispatch. Schema-vs-data consistency is mechanically verifiable; reviewers are not.",
+      "category": "cicd_guards",
+      "originating_pr": 783,
+      "last_seen_pr": 783
+    },
+    {
+      "id": "R022",
+      "rationalization": "Check 2 (structural guards) is conditional, so it's optional",
+      "reality": "Conditional on file paths, not on judgment. `pr_review.py capture` reads the PR files and pattern-matches in Phase 1; when a trigger fires, the suite runs and a capture exit 1 is a STOP. The condition is the trigger, not an out.",
+      "category": "cicd_guards",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R023",
+      "rationalization": "User said 'parallel reviewers' so 2 reviewers is the answer",
+      "reality": "The user signal is a floor, not a ceiling. The bucket count `pr_review.py capture` computes in Phase 1 is the actual floor; dispatch every row it printed. PR #893 had 4 natural buckets reviewed by 2 lenses -- the C1 blocker was caught by accident, not by design.",
+      "category": "multi_domain_review",
+      "originating_pr": 893,
+      "last_seen_pr": 893
+    },
+    {
+      "id": "R024",
+      "rationalization": "I'll re-scope the planned slots -- one reviewer looks redundant",
+      "reality": "Scoping is mechanical in both skills. pr-review: `pr_review.py capture` computes buckets, lens triggers and the small-PR cut; dispatch every printed row unchanged, with no slot added, dropped or merged by judgment. pr-team: the orchestrator's PLAN mode computes the slots under CrossCuttingLensCatalog policy (its only merges are the ones that policy permits, with the rationale it requires); fan out every planned slot. Re-scoping by gut feel silently under-scopes the review.",
+      "category": "multi_domain_review",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R025",
+      "rationalization": "A reviewer subagent already wrote a JSON to docs/PR_REVIEWS/, I'll just leave it there alongside mine",
+      "reality": "No. Exactly one 4-digit-prefixed review JSON may exist for the PR. `build` refuses to write while a straggler exists; fold its findings into the run (or delete it if it duplicates the run's reports), then rerun build.",
+      "category": "straggler_handling",
+      "originating_pr": 893,
+      "last_seen_pr": 893
+    },
+    {
+      "id": "R026",
+      "rationalization": "I can skip Phase 4 because branch safety already ran somewhere earlier",
+      "reality": "Phase 4 runs TWICE: once after Phase 3 (baseline), once before Phase 5 (temporal re-verification). The second run is mandatory before fixes. If it did not run immediately before \"fix the issues\", it has not run.",
+      "category": "phase4_two_run",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R027",
+      "rationalization": "Phase 4 ran after Phase 3, so I can skip it before Phase 5",
+      "reality": "No. The first run captures baseline; the second run enforces temporal validity. Branch state can change between review-completion and fix-time. Always re-run Phase 4 when user says \"fix\".",
+      "category": "phase4_two_run",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R028",
+      "rationalization": "The working tree was clean after Phase 3, so it's still clean now",
+      "reality": "Do NOT assume. Git status can change (user edited files, stashed, switched branches). Phase 4 second run verifies temporal validity -- run all checks fresh.",
+      "category": "phase4_two_run",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R029",
+      "rationalization": "Reading source files is enough context to dispatch, but I should pause to summarize the plan first",
+      "reality": "The summary is for the user; the plan is the dispatch prompt itself. If you have the context to write the prompt, dispatch. The user reviews the result, not the intent.",
+      "category": "phase5_fix_application",
+      "originating_pr": 918,
+      "last_seen_pr": 918
+    },
+    {
+      "id": "R030",
+      "rationalization": "User-facing text after Phase 4 second-run is a courtesy, not a deferral",
+      "reality": "Anything between 'Phase 4 second-run gate clears' and 'Haiku agents dispatched' is by definition a deferral. Rule 1.5 forbids it by name.",
+      "category": "phase5_fix_application",
+      "originating_pr": 918,
+      "last_seen_pr": 918
+    },
+    {
+      "id": "R031",
+      "rationalization": "JSONL append is soft-error so omitting the attempt is fine if it would slow me down",
+      "reality": "Soft-error means a FAILURE of the call doesn't block transition. It does NOT mean omitting the call is permitted. The attempt is mandatory; the failure is forgivable.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R032",
+      "rationalization": "Phase 4 first-run can run on the next turn -- the user will say 'continue'",
+      "reality": "Phase 4 first-run runs inside `build` (Phase 3 Step 3), not as a separate phase. There is no next turn between Phase 3 and Phase 4 first-run.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R033",
+      "rationalization": "After emitting the protocol-state announcement, I have signaled state, so the user takes over",
+      "reality": "Announcing state is not delivering state. The summary is a report of work already done, not a promise of work to do. The summary (Phase 3 Step 5) fires only after Steps 1-4 have landed.",
+      "category": "phase3_atomic_close",
+      "originating_pr": null,
+      "last_seen_pr": null
+    },
+    {
+      "id": "R034",
+      "rationalization": "Showing the dispatch plan lets the user redirect early -- saves time on the wrong fix",
+      "reality": "If the dispatch prompt is wrong, the Haiku result will show it in 30 seconds and re-dispatching costs nothing. A user round-trip costs minutes.",
+      "category": "phase5_fix_application",
+      "originating_pr": 918,
+      "last_seen_pr": 918
+    },
+    {
+      "id": "R035",
+      "rationalization": "Verdict already says READY TO MERGE - Phase 5 is unnecessary",
+      "reality": "Severity gates the verdict, not Phase 5. READY TO MERGE means merge is unblocked; the fix queue is independent. Run Phase 5 anyway. Per SKILL Rule 0, lack of Criticals/Importants is a stronger reason to run Phase 5, not weaker.",
+      "category": "phase5_fix_application",
+      "originating_pr": 934,
+      "last_seen_pr": 934
+    },
+    {
+      "id": "R036",
+      "rationalization": "All findings are Minor - they're optional / can ship as a follow-up PR",
+      "reality": "Phase 5 runs every queued finding by default. The skip path is per-issue (out-of-scope OR ambiguous-fix), never per-severity. A Minor whose fix is mechanical and in-scope still runs.",
+      "category": "phase5_fix_application",
+      "originating_pr": 934,
+      "last_seen_pr": 934
+    },
+    {
+      "id": "R037",
+      "rationalization": "Fix-load is small, I'll just write a summary and let the dev decide which to take",
+      "reality": "That delegates Phase 5 to the dev. The skill exists so the agent does the work. Dispatch the fixes, then let the dev review the diff. Per-issue skip with rationale is permitted; whole-phase skip is not.",
+      "category": "phase5_fix_application",
+      "originating_pr": 934,
+      "last_seen_pr": 934
+    },
+    {
+      "id": "R038",
+      "rationalization": "Phase 3 Step 5 is labeled the terminal step, so I can yield to the user after emitting the summary",
+      "reality": "The 'terminal step' label names WHERE the phase's user-visible output lands; it does NOT grant a yield permit. Yielding is governed by the NEXT phase's entry condition. Phase 5 fires automatically - control flows from Phase 3 Step 5 directly into Phase 4 second-run (Phase 5's first action) with no turn boundary. The pr-review skill has exactly ONE true terminal: Phase 5 Step 8 (Phase 5 Step 0's terminal line on a zero-issue review).",
+      "category": "phase3_atomic_close",
+      "originating_pr": 1132,
+      "last_seen_pr": 1132
+    },
+    {
+      "id": "R039",
+      "rationalization": "I followed the skill literally - Phase 3 Step 5 said 'terminal step' - so the yield was correct per the prose",
+      "reality": "The skill prose had a real ambiguity (now corrected in PR #1133). When two skill statements contradict - 'terminal step / control may yield' vs 'Phase 5 begins automatically' - the auto-entry rule wins because it is the load-bearing one. Cooperative parsing of an ambiguous skill defaults to the action-completing read, never the action-deferring read.",
+      "category": "phase3_atomic_close",
+      "originating_pr": 1132,
+      "last_seen_pr": 1132
+    }
+  ]
+}

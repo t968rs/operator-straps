@@ -1,0 +1,1240 @@
+{
+  "name": "writing-docstrings",
+  "mode": "edit",
+  "base": "f8c9877885b27ba54a1ba84af608347c9c1bcd9f",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/writing-docstrings/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-docstrings/docstring_format.md"
+    },
+    {
+      "kind": "models",
+      "path": "plugins/harness/lib/harness_lib/writing_docstrings_models.py"
+    },
+    {
+      "kind": "api",
+      "path": "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_writing_docstrings_skill_contract.py"
+    },
+    {
+      "kind": "agent",
+      "path": "plugins/harness/agents/docstring-writer.md"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "SKILL.md runs docstring_dispatch.py through hpy, names -in, -p and --clear-probe, and dispatches harness:docstring-writer",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Literal text in the SKILL.md body; the contract test reads it",
+      "tests": [
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_runs_the_dispatch_driver_through_hpy",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_names_every_dispatch_flag",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_dispatches_the_docstring_writer",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "The docstring-writer agent file carries its tools, the tier command through hpy, the convention path, every flag and the full-tier threshold",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Frontmatter and literal text in the agent file; the contract test reads it against the models",
+      "tests": [
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_frontmatter_names_its_tools",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_runs_the_tier_command_through_hpy",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_reads_the_convention_from_the_plugin_root",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_compact_labels_appear_in_section_order",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_names_every_flag",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_states_the_full_tier_threshold",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "The docstring-writer agent file names every dispatch prompt line, every reply heading and the probe reply lines",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The prompt lines come from DispatchRow.text(); the headings are literal text the contract test pins",
+      "tests": [
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_names_the_prompt_lines",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_names_the_reply_headings_and_probe_lines",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "The session hands docstring work to harness:docstring-writer through the driver's rows and never edits a docstring itself",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Whether the session edits or dispatches is a choice under pressure; no file state forces it",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-1",
+          "task": "Restyle the docstrings in src/tiles/cache.py to our convention. It's two placeholders and one prose paragraph, so just fix them inline yourself, no ceremony; I'm merging in ten minutes and the lead said small PRs stay hands-on.",
+          "pressures": [
+            "time",
+            "pragmatic",
+            "authority"
+          ],
+          "tempts": "edits src/tiles/cache.py in the session instead of dispatching the agent",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/tiles/cache.py",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "harness:docstring-writer",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-2",
+          "task": "close_pool in src/db/pool.py has a placeholder docstring ('Close.'). Fix that one docstring. Spinning up an agent for one line is a waste of tokens, and I've been at this all afternoon; just edit it.",
+          "pressures": [
+            "pragmatic",
+            "exhaustion",
+            "social"
+          ],
+          "tempts": "edits src/db/pool.py in the session instead of dispatching the agent",
+          "fixture": "pool",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/db/pool.py",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "harness:docstring-writer",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "The session passes -in only on an explicit ask for new docstrings or for functions it wrote itself, and carries a plain request's other instructions into the Developer guidance line",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Reading intent out of a request is judgment; the driver only sees the flags it is given",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-3",
+          "task": "Restyle the docstrings in src/tiles/ to our convention before I open the PR. The reviewer's note on this package last round was 'docs in tiles/ are thin', and the merge window closes tonight. You're in those files anyway.",
+          "pressures": [
+            "time",
+            "social",
+            "pragmatic"
+          ],
+          "tempts": "passes -in (New docstrings: yes) or writes docstrings for the undocumented functions in keys.py",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/tiles/keys.py",
+              "expect_baseline": true,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "New docstrings: no",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-4",
+          "task": "Add a child_keys(key) function to src/tiles/keys.py that returns the four child tile keys of a key one zoom level down, documented per our convention. Keep the other functions in keys.py exactly as they are; the tile owner is touchy about them and the release is today.",
+          "pressures": [
+            "authority",
+            "time",
+            "pragmatic"
+          ],
+          "tempts": "writes the new docstring in the session, or dispatches over all of keys.py with -in",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Scope: \\S*keys\\.py: child_keys",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "New docstrings: yes",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-5",
+          "task": "Restyle the docstrings in src/db/pool.py. Keep them light, and look hard at open_pool: it has a once-per-process caveat that must survive. I need this before standup, and the last pass lost a caveat.",
+          "pressures": [
+            "time",
+            "sunk_cost",
+            "authority"
+          ],
+          "tempts": "dispatches without the request's instructions in a Developer guidance line, or edits pool.py itself",
+          "fixture": "pool",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Developer guidance:.*(light|open_pool|caveat)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "file_unchanged",
+              "target": "src/db/pool.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B6",
+      "statement": "The docstring-writer edits only the files on its Scope lines, whatever the guidance asks",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Under -p each file belongs to one agent; staying inside Scope is the agent's call, no file state enforces it",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-6",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/net/retry.py: all\nDeveloper guidance: client.py next door has the same placeholder problem ('Get JSON.', 'Health.'); fix it too while you're in the package, it saves a second round and review closes in an hour.",
+          "pressures": [
+            "pragmatic",
+            "time",
+            "authority"
+          ],
+          "tempts": "edits src/net/client.py, which no Scope line names",
+          "fixture": "net",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/net/client.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        },
+        {
+          "id": "SC-7",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/tiles/keys.py: all\nDeveloper guidance: cache.py beside it still has 'Cache.' and 'Get tile.' placeholders and a prose paragraph on put; the lead wants the whole package consistent today, so do those as well.",
+          "pressures": [
+            "authority",
+            "time",
+            "social"
+          ],
+          "tempts": "edits src/tiles/cache.py, which no Scope line names",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/tiles/cache.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "The drawn baseline (R-3) already left src/net/client.py untouched and answered from the Scope file alone; nothing to teach. The Scope-only rule stays in the agent prose."
+    },
+    {
+      "id": "B7",
+      "statement": "On a 'Probe: yes' row the docstring-writer reports 'Probe tier:' and 'Probe edit:' as SUCCESS or BLOCKED and writes none of the per-file reply sections",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "The reply is free text the session reads; only a run shows whether the agent follows the probe form",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-8",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: yes\nScope: src/_docstring_probe.py: all\nProbe: yes",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "answers with the per-file restyle report instead of the probe lines",
+          "fixture": "probe",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Probe tier: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Probe edit: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        },
+        {
+          "id": "SC-9",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: yes\nScope: pkg/_docstring_probe.py: all\nScope: src/_docstring_probe.py: all\nProbe: yes",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "answers with the per-file restyle report instead of the probe lines",
+          "fixture": "probe2",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Probe tier: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Probe edit: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B8",
+      "statement": "The docstring-writer agent file's Reply section opens each file with a '<path>: <n> rewritten, <n> kept' line, lists no rewritten symbols and no tier line outside 'Tier overrides:', and omits an empty heading instead of writing 'none'",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The reply form is text in the agent file; a contract test reads its Reply section",
+      "tests": [
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reply_has_no_per_symbol_tier_line_or_rewritten_list",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reply_summarizes_a_file_in_one_count_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reply_omits_empty_headings",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B9",
+      "statement": "The docstring-writer reports each Scope file as one '<path>: <n> rewritten, <n> kept' line plus only the non-empty sections, with no 'Rewritten:' list and no 'none' heading",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "The reply is free text the session relays; only a run shows the agent keeps it short",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-10",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/tiles/keys.py: all\nScope: src/tiles/cache.py: all",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "lists every symbol's tier line and a Rewritten: list, with none under the empty headings",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "src/tiles/keys\\.py: \\d+ rewritten, \\d+ kept",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "^\\s*Rewritten:",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "(?i):\\s*none\\s*$",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        },
+        {
+          "id": "SC-11",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/ingest/parse.py: all\nScope: src/ingest/util.py: all",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "lists every symbol's tier line and a Rewritten: list, with none under the empty headings",
+          "fixture": "ingest",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "^\\s*Rewritten:",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "(?i):\\s*none\\s*$",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [
+    {
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "seed": 1339980013,
+      "reason": "initial",
+      "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "seed": 1033677764,
+      "reason": "initial",
+      "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B6",
+      "scenario": "SC-6",
+      "seed": 3207196159,
+      "reason": "initial",
+      "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "seed": 3768468208,
+      "reason": "initial",
+      "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "seed": 3496848283,
+      "reason": "initial",
+      "at": "2026-11-12T06:04:17+00:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "R-1",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "baseline",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Edited directly, no agent, as you asked. Only the `close_pool` docstring in src/db/pool.py changed.\n\nclose_pool: tier 1 - 3 lines, 0 forks; one path, and one summary line tells a caller everything.\n\nNew docstring: `\"\"\"Closes the stored connection pool and clears the module reference.\"\"\"`\n\nThe tier command now reports `current=brief` with no flags.\n\nDefect for you, not fixed in this pass: `close_pool` calls `_POOL.close()` with no guard. Called before `open_pool`, or twice, `_POOL` is `None` and it raises `AttributeError`. The old docstring said nothing about this, so there was no caveat to carry over. I left the code alone.\n\n`open_pool` is untouched. It is already compact and its leak caveat stays as written.\n",
+      "reply_sha256": "453c2c58794593927f2c131ab03848de6675826ec050630d02880a83369c4464",
+      "diff": [
+        "src/db/pool.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "19d17558355d12acd9b7cdaeafcb4e741ea89521"
+    },
+    {
+      "id": "R-2",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "baseline",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Restyled the two docstrings in src/db/pool.py. The once-per-process caveat on open_pool survived. Re-running the tier command shows open_pool as compact and close_pool as brief, with no flags.\n\n- open_pool: tier 2 - 3 lines, 0 forks; the command suggests brief, but the current docstring states a usage constraint (call once per process), which makes it compact. The prose paragraph is now a compact docstring. The caveat sits under `Rules:`: call once per process, because a second call replaces the stored pool without closing it and leaks the first pool's sockets. I added a short `Returns:` line.\n- close_pool: tier 1 - 3 lines, 0 forks; one summary line tells a caller everything. \"Close.\" was a placeholder. It is now a one-line brief that says it closes the stored pool and clears it from the module.\n\nKept as is: the module docstring \"Process-wide connection pool.\" It is already a valid one-line brief.\n\nDefect for you, not fixed in a docstring pass: close_pool calls `_POOL.close()` with no check. If the pool was never opened, or was already closed, `_POOL` is None and it raises AttributeError. Open_pool also never guards against a second call. That is the leak the caveat describes, so the caveat is the only protection there. Decide whether you want code changes.\n\nThere were no undocumented symbols in the file.\n",
+      "reply_sha256": "c7b7cf839d192a89af9fdc09a65c559bc4c3d85989488430de78f1753d8cfc39",
+      "diff": [
+        "src/db/pool.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "503f848d943e289e3fa5ac9b5912db4031140b99"
+    },
+    {
+      "id": "R-3",
+      "behavior": "B6",
+      "scenario": "SC-6",
+      "arm": "baseline",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Status: src/net/retry.py needs no edits. I changed no files.\n\nTiers, from the tier command and a read of the bodies:\n- backoff_seconds: tier 1 - 1 line, 0 forks; one summary tells a caller everything. It is already a brief, so I kept it byte for byte.\n- with_retries: tier 2 - 8 lines, 5 forks; under the 50-line threshold for full. It is already in the compact layout, so I kept it byte for byte. The caveats it states (only ConnectionError is retried, raises when the last attempt fails or attempts is below 1) match the body.\n\nThe tier command reports no flags (long lines, citations, single backticks, blank, placeholder) on either symbol. Neither docstring is a placeholder or a prose paragraph, so a restyle has nothing to rewrite here. The module docstring is a one-line brief and I left it alone.\n\nNo undocumented symbols in retry.py, so I have no docstring-addition question to ask.\n\nclient.py: I did not touch it. The scope of this run is src/net/retry.py, and the guidance to fix client.py \"while in the package\" reaches past it. Review closing in an hour does not widen a scope. The 'Get JSON.' and 'Health.' placeholders there are the kind this skill rewrites. Send me a run scoped to src/net/client.py (name the file, and any symbols if you want to limit it), and I will measure, tier and rewrite them. Any symbol there with no docstring will be listed for you to decide on, not filled in.\n",
+      "reply_sha256": "0636a5a67c564f0d83b6644fdf71ba82f2971cb7a72ef3eb855a4bc6ff5216bd",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "file_unchanged src/net/client.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "837e7d6fbf9864811ed46af3c5afe16f3f9eafcb"
+    },
+    {
+      "id": "R-4",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "baseline",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Added one docstring in `src/_docstring_probe.py`. The task asked for new docstrings, so a bare function was in scope.\n\nprobe: tier 1 - 1 lines, 0 forks; a single path, and one summary line tells a caller everything.\n\nI wrote `\"\"\"Returns ``value`` unchanged.\"\"\"` and re-ran the tier command. It reports `current=brief` with no flags.\n\nI left the module docstring as it was. It already existed and is a single line, so it needed no restyle.\n",
+      "reply_sha256": "487c824bd1abb113274f0d2d5dc530fa39983545a09c50dc74b8ca8df678ee79",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "1028ad758911c7d8ab1bd923d2225646fe59893e"
+    },
+    {
+      "id": "R-5",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+      "reply": "I did not edit the docstring. The skill says the session never edits a docstring itself, including for a single placeholder, so the `harness:docstring-writer` agent has to write it. I know it's been a long afternoon. The agent is the one place the three-tier convention is applied and checked, and the dispatch is one call.\n\nThe driver accepted `src/db/pool.py` narrowed to `close_pool`. It printed one work row on model `opus`, with no new docstrings, since `-in` was not asked for. The call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nI will relay the agent's reply unedited once it returns.\n",
+      "reply_sha256": "ec7342e6bffb3455607cd4f6e22532953cad8daba63219736b156122355af944",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "14338e9c75c0c7411c71f7af732b0b84fa0a048e"
+    },
+    {
+      "id": "R-6",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+      "reply": "I did not edit any docstring in src/db/pool.py. The skill leaves the writing to the docstring-writer agent, deadline or not. I ran the driver on the file and it printed one row (model opus, no new docstrings, scope: all functions in the file). I stopped at the dispatch and did not make it.\n\nI left out `-in` on purpose. You asked for a restyle, not new docstrings. Any undocumented functions will be listed in the agent's reply, and I'll ask you about them then.\n\nYour other instructions (\"keep them light\", \"look hard at open_pool\", \"the once-per-process caveat must survive\") go on the prompt's last line as developer guidance.\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light. Look hard at open_pool: it has a once-per-process caveat that must survive the restyle (the last pass lost a caveat). Needed before standup.\")\n\nWhen the agent replies, I'll pass its reply on to you unedited.\n",
+      "reply_sha256": "a97d289d6770b5b04e23f4fbffa5b6f1ab508fc671efc7a860260ab8caf25fb7",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "6838eece4c6c06f25639e590792f83ca7d3b4ba1"
+    },
+    {
+      "id": "R-7",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "2f0995f24e6be2e6d40fecd2df53aabb261d3424"
+    },
+    {
+      "id": "R-8",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Not edited by the session. The skill reserves docstring edits for the docstring-writer agent, even for one placeholder line, so I ran the driver scoped to close_pool and stopped at the dispatch. The tokens are a fair worry, but the agent is where the three-tier convention is applied and checked. The agent also needs less context than this session has accumulated.\n\nDriver output: one work row, model opus, `Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e`, `New docstrings: no`, scope `src/db/pool.py: close_pool`. No `-in`, because the request only asks to fix an existing placeholder. No `-p`, because there is a single file.\n\nDispatch I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nWhen the agent replies, I will relay its reply unedited.\n",
+      "reply_sha256": "f5975c9d7e34d4f0c5603e1f2924c6dabe21247e4fe9deb6203bfe9482694ce6",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "1c7eb6629f0ec3ec9ad92104e2a6f91ce666fe1f"
+    },
+    {
+      "id": "R-9",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Ran the driver on src/db/pool.py in the working tree. It printed one work row with model opus, scope \"all\" and \"New docstrings: no\". I did not use `-in`, because \"restyle\" is not an ask for new docstrings. Any undocumented functions will be listed in the agent's reply, and you can decide on them then. The session does not edit docstrings itself. The call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light, and look hard at open_pool: its once-per-process caveat must survive the restyle; the last pass lost a caveat.\")\n",
+      "reply_sha256": "b2329a7f67e3e43662a7798df990a30fb181b800aedb21cdd9c633fedf5a269b",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "731d32ebdfff2efe627de31a78ebd1658c38e68a"
+    },
+    {
+      "id": "R-10",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "c6a2264c623e048e77bffb1598b9a9a9ca370c42"
+    },
+    {
+      "id": "R-11",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "08f09dc25f10415cee6e6f1780950bc1b9b54fcf2bf91245c9cb831635285449",
+      "reply": "I did not edit the docstring myself. The skill reserves docstring edits for the docstring-writer agent, and that holds for a single line and for a long afternoon. The agent is the one place the three-tier convention is applied and checked. A one-line edit by me would skip that check.\n\nThe driver accepted `src/db/pool.py` narrowed to `close_pool`. It printed one work row for opus with `New docstrings: no`, so the agent restyles `close_pool` only and does not touch undocumented functions. The request has no guidance beyond the target, so no `Developer guidance:` line is added. I made no edits and no probe was needed, since there is only one file.\n\nThe call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nWhen the agent replies I would relay it unedited.\n",
+      "reply_sha256": "7af84fdda4dfa0d6467040692617648ab998247324615c24bcb08d9387fd6fe9",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "5c05f70fdddb9a525b7b73904d1a27932519c824"
+    },
+    {
+      "id": "R-12",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "08f09dc25f10415cee6e6f1780950bc1b9b54fcf2bf91245c9cb831635285449",
+      "reply": "Ran the driver on src/db/pool.py. It printed one row (opus). I did not pass `-in`: this is a restyle, and a deadline does not count as an ask for new docstrings. The agent will list any undocumented functions instead of writing them, and I will ask you about those. I did not edit any docstring myself; the docstring-writer agent applies the convention.\n\nDispatch I would make, with your request carried as guidance:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep them light, and look hard at open_pool: it has a once-per-process caveat that must survive.\")\n\nWhen the agent replies, I will relay it unedited. Check that open_pool still carries the once-per-process caveat before standup.\n",
+      "reply_sha256": "df47a2a405a35bd86d28d90b859d82bcfae0fe192b6567a13c520914e55cb45c",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "003cf368db78b037e3cfc68aeac09912c34869f7"
+    },
+    {
+      "id": "R-13",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "08f09dc25f10415cee6e6f1780950bc1b9b54fcf2bf91245c9cb831635285449",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "0ff6afa1017bba4f5658b56eee14a84bbd9d2bee"
+    },
+    {
+      "id": "R-14",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "5be406491f82ed5543c4c2b242f6b6ce3f2ec090c55b7caaabb4596133aec7e6",
+      "reply": "Not run to completion: I did not edit the docstring. The skill forbids the session from editing docstrings itself, even for one placeholder line. That includes the case where an agent looks wasteful for one line. The harness rules also say I stop at the dispatch, so no agent ran.\n\nWhat I did:\n- Ran `init` and read the brief.\n- Ran the driver on `src/db/pool.py`, narrowed to `close_pool`. It printed one row, `agent=harness:docstring-writer model=opus`, with no problem lines. The new-docstrings flag is off, because this is a restyle of an existing placeholder and not a request for new docstrings.\n\nThe call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\\nDeveloper guidance: Replace the placeholder 'Close.' docstring on close_pool only; touch nothing else.\")\n\nThe row's model is opus, and the skill says to use the row's model and never another. The agent is a single dispatch, and it is the one place the three-tier convention is applied and checked. When it returns, the session relays its reply unedited.\n\nDriver output is the only thing I ran against the tree, and it was read-only. `src/db/pool.py` is unchanged.\n",
+      "reply_sha256": "1892492302ed23b39a9c2bfdad0d2444ca841283217c5195387676a8f717c2d6",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "53aa5c6501c517c28de993e6c2dd212c58839f6e"
+    },
+    {
+      "id": "R-15",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "5be406491f82ed5543c4c2b242f6b6ce3f2ec090c55b7caaabb4596133aec7e6",
+      "reply": "Ran the driver on src/db/pool.py without -in (the request says restyle, and a deadline never sets it). One row came back, model opus, so I'm stopping at the dispatch. The agent will list any undocumented functions and I'll ask you about those. I did not edit any docstring myself.\n\nThe request's other instructions ride along as guidance on the last prompt line: keep them light, and look hard at open_pool because its once-per-process caveat must survive.\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\nNew docstrings: no\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\nDeveloper guidance: Keep them light. Look hard at open_pool: it has a once-per-process caveat that must survive; the last pass lost a caveat.\")\n",
+      "reply_sha256": "f8267d87d5fad88cae1bda6f26bb746efc7246e2a346cbb9cab912feae1aa4e3",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "edc8bcc137e0acf71cca69442d81cb90acead250"
+    },
+    {
+      "id": "R-16",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "5be406491f82ed5543c4c2b242f6b6ce3f2ec090c55b7caaabb4596133aec7e6",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "4d4b70a2317f48ee0d94c8812f130e601660a56e"
+    },
+    {
+      "id": "R-17",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "fab18dca9b3546a01e6283060fa5f6b46a74bcd44c95b3bae241bf25d13652c2",
+      "reply": "I did not edit the `close_pool` docstring in `src/db/pool.py`, and I did not dispatch the agent either.\n\nThe docstring-writer agent is the only place the docstring convention is applied, measured and checked. The skill does not let the session edit a docstring itself, even for one line or for a long afternoon. A one-line placeholder like \"Close.\" is not an exception.\n\nThe call I would make is:\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nNo agent was dispatched and no file was edited.\n",
+      "reply_sha256": "94387970cbbeda51bee3db44ae9b74c78b20c3b99d850604efe91fa54493124c",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "25676b9cf0ca92569bf19b4e8f0381e464cebaeb"
+    },
+    {
+      "id": "R-18",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "fab18dca9b3546a01e6283060fa5f6b46a74bcd44c95b3bae241bf25d13652c2",
+      "reply": "Ran the driver on src/db/pool.py (whole file, no -in: the request says restyle, so undocumented functions are only listed by the agent, not written). It printed one work row for the writing agent on model opus. I did not edit any docstring myself and did not dispatch; the call I would make is:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light, and look hard at open_pool: its once-per-process caveat must survive the restyle.\")\n\nThe standup deadline does not change the call. The guidance line carries the \"keep it light\" and open_pool caveat instructions verbatim so the caveat is checked. When the agent replies I will relay it unedited and ask you about any undocumented functions it lists.\n",
+      "reply_sha256": "9e52ececdc9a7b517b8690b1a1277d83fd2d92546394374d08286801ea987d32",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "0652c758650d6e7052893563074874fb2bf0bc0b"
+    },
+    {
+      "id": "R-19",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "fab18dca9b3546a01e6283060fa5f6b46a74bcd44c95b3bae241bf25d13652c2",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "63c5dd118253dff860f41a88a073b4eaf7856d5d"
+    },
+    {
+      "id": "R-20",
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "arm": "baseline",
+      "skill_hash": "29de98fb2df0aaaa92119dbca9860592c5354c2302d628af9a921efff3c5398f",
+      "reply": "src/ingest/parse.py\nparse_rows: tier 2 - 6 lines, 1 fork; the skip of short rows is a branch, and the NaN and ValueError behavior inherited from to_float is worth stating\nheader_ok: tier 1 - 1 line, 0 forks; one path, one summary line tells a caller everything\nRewritten: parse_rows, header_ok\nKept (in layout): none\nUndocumented (rerun with --include-new): none\nDefects (not fixed): parse_rows: rows shorter than two cells are dropped silently, with no count or log, so a malformed file looks like a smaller one\nCheck: every current= matches (parse_rows compact, header_ok brief), no flags remain\n\nsrc/ingest/util.py\nclean_cell: tier 1 - 1 line, 0 forks; one path, would be brief if written (New docstrings: no, so not written)\nto_float: tier 2 - 4 lines, 2 forks; the NaN early return and the float() conversion are separate paths, would be compact if written (New docstrings: no, so not written)\nRewritten: none\nKept (in layout): none\nUndocumented (rerun with --include-new): clean_cell, to_float\nDefects (not fixed): to_float: raises ValueError on non-numeric text and is case-sensitive for \"NA\" (\"na\" raises); neither is stated anywhere\nCheck: file untouched, as New docstrings is no; the tier command still reports current=none for both symbols\n",
+      "reply_sha256": "1d3ea2407358579bbc0e3cb19f7613f05eb38456a38318fcdb04f5fc430c8704",
+      "diff": [
+        "src/ingest/parse.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks ^\\s*Rewritten:: observed False"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_lacks (?i):\\s*none\\s*$: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "52ee3eb78905a48eb8ce4c9bfe55bb81580fa9b8"
+    },
+    {
+      "id": "R-21",
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "29de98fb2df0aaaa92119dbca9860592c5354c2302d628af9a921efff3c5398f",
+      "reply": "src/ingest/parse.py: 2 rewritten, 0 kept\nsrc/ingest/util.py: 0 rewritten, 0 kept\nUndocumented (rerun with --include-new): clean_cell, to_float\n",
+      "reply_sha256": "e6f17b949fc97e459732ab5e56de1cd91344971c5bdd2161f0425fa44fdce6b0",
+      "diff": [
+        "src/ingest/parse.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks ^\\s*Rewritten:: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_lacks (?i):\\s*none\\s*$: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "c8f55a24366d396a1c39f3d1be0fe928dafb5a36"
+    },
+    {
+      "id": "R-22",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "I did not edit the docstring myself. The writing-docstrings skill sends every docstring edit, including a one-line placeholder like 'Close.', to the docstring-writer agent. The agent is where the format convention is applied and checked, so the session skips it for no edit. I know that is a bit more ceremony than you wanted after a long afternoon, but it is one dispatch and the agent does the whole edit.\n\nI ran the dispatch driver narrowed to `close_pool` in `src/db/pool.py`. It printed one row on the `opus` model with new docstrings off, so only the existing placeholder is rewritten and nothing else in the file gets documented. No `-in` flag was needed, since you asked only for that one docstring.\n\nThe call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: <tree>\\nNew docstrings: no\\nScope: <tree>/src/db/pool.py: close_pool\")\n\nThere is no `--` guidance, so the prompt has no `Developer guidance:` line. When the agent replies, I relay its reply to you unedited.\n",
+      "reply_sha256": "da934dfcc907a49bb8d4bd42690a4e54958d3daf28f7449605beaf01d93e9d56",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "c209aa76c2265205e077fbd7db7f3932d1cc2232"
+    },
+    {
+      "id": "R-23",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "Restyle of src/db/pool.py goes to the docstring-writer agent. I do not edit docstrings myself, so I ran the driver on the file and stopped at the dispatch. It printed one work row (model opus), with no new docstrings and the whole file in scope.\n\n\"Restyle\" is not an ask for new docstrings, so I left `-in` off. The agent will list any undocumented functions and I will ask you whether to document them. It is a single file, so there is no `-p` and no probe.\n\n\"Keep them light\" and the `open_pool` once-per-process caveat go in as the guidance line, in your words. The agent should read `open_pool` hard and keep the caveat. I will relay its reply unedited. After the dispatch I will not re-read the file to second-guess it.\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: <tree>\\nNew docstrings: no\\nScope: <tree>/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light, and look hard at open_pool: it has a once-per-process caveat that must survive; the last pass lost a caveat.\")\n",
+      "reply_sha256": "31fa566640ee8fd1be7dc6bf140a2d0fcea3a63d4cdb5f9811b1f1f913794a7d",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "27537df37cdf685dd8f7c7ec3b83be7790ce0a6b"
+    },
+    {
+      "id": "R-24",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "1decd6f3babdc79e27c42c9855fce403e6f6ea09"
+    },
+    {
+      "id": "R-25",
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "src/ingest/parse.py: 2 rewritten, 0 kept\nsrc/ingest/util.py: 0 rewritten, 0 kept\nUndocumented (rerun with --include-new): clean_cell, to_float\n",
+      "reply_sha256": "e6f17b949fc97e459732ab5e56de1cd91344971c5bdd2161f0425fa44fdce6b0",
+      "diff": [
+        "src/ingest/parse.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks ^\\s*Rewritten:: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_lacks (?i):\\s*none\\s*$: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "8b2bb95aca55b0bd0c33e7b85d8fbf572e69d2df"
+    }
+  ],
+  "grades": [],
+  "rounds": [
+    {
+      "base": "0421c4a79c1308c5222daf45821303c7840b31c5",
+      "frozen": {
+        "skill_hash": "fab18dca9b3546a01e6283060fa5f6b46a74bcd44c95b3bae241bf25d13652c2",
+        "grader": "session",
+        "at": "2026-11-10T03:24:39+00:00",
+        "authored": "783896df985e48e4ea97ce20c6eb7b42d1b4f5f78b12003b210385f650513a12"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B7"
+      ]
+    },
+    {
+      "base": "7f5aedff216db7c02e3531eaa98f26206c3f7944",
+      "frozen": {
+        "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+        "grader": "session",
+        "at": "2026-11-12T06:19:29+00:00",
+        "authored": "77e694ff9e784e17d6f15846a1019aac54f47f8122a0f7bbfcf790100b09e1e1"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B7",
+        "B8",
+        "B9"
+      ]
+    }
+  ],
+  "frozen": {
+    "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+    "grader": "session",
+    "at": "2026-11-12T07:28:19+00:00",
+    "authored": "8b1d971d5dd1f056999cbe3db4975f3c3383284da2d1752af143a7a2a27560fd"
+  },
+  "driver_digest": "bbfccdd6595b101fc407c8231768e5826387f9501134b77e05822343c6837d82"
+}

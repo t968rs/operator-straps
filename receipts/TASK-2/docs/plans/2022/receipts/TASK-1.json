@@ -1,0 +1,45 @@
+{
+  "plan_id": "2022",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "60a0994f0f4088982703955bb591f6e56cfcb20c"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_todo_snapshot_html.py::test_first_line_is_the_t2_header_then_the_doctype",
+        "tests/lib/test_todo_snapshot_html.py::test_title_names_top_n_and_the_render_date",
+        "tests/lib/test_todo_snapshot_html.py::test_the_table_keeps_its_columns",
+        "tests/lib/test_todo_snapshot_html.py::test_one_row_per_top_item_in_rank_order",
+        "tests/lib/test_todo_snapshot_html.py::test_cells_carry_badges_sizes_and_score",
+        "tests/lib/test_todo_snapshot_html.py::test_text_is_escaped",
+        "tests/lib/test_todo_snapshot_html.py::test_code_spans_become_code_elements",
+        "tests/lib/test_todo_snapshot_html.py::test_stub_links_wrap_the_id_and_number_the_extras",
+        "tests/lib/test_todo_snapshot_html.py::test_links_follow_row_position_not_id",
+        "tests/lib/test_todo_snapshot_html.py::test_gh_issue_links_to_its_source_url",
+        "tests/lib/test_todo_snapshot_html.py::test_gh_issue_without_a_source_url_uses_the_configured_repo",
+        "tests/lib/test_todo_snapshot_html.py::test_gh_cell_falls_back_to_tracker_related_then_none",
+        "tests/lib/test_todo_snapshot_html.py::test_details_carry_summary_proposal_decision_and_ranking",
+        "tests/lib/test_todo_snapshot_html.py::test_malformed_fields_render_without_raising",
+        "tests/lib/test_todo_snapshot_html.py::test_summary_block_counts_the_whole_catalog_above_the_table",
+        "tests/lib/test_todo_snapshot_html.py::test_an_empty_catalog_draws_a_note_and_no_rows",
+        "tests/lib/test_todo_snapshot_html.py::test_theme_and_loader_are_inlined_with_no_network_address",
+        "tests/lib/test_todo_snapshot_html.py::test_stamp_is_stable_and_follows_the_content",
+        "tests/lib/test_todo_snapshot_html.py::test_live_script_carries_the_stamp_and_date",
+        "tests/lib/test_todo_snapshot_html.py::test_the_loader_reloads_only_on_a_new_stamp",
+        "tests/lib/test_todo_snapshot_html.py::test_status_and_kind_badges_have_theme_rules"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_todo_snapshot_html.py::test_first_line_is_the_t2_header_then_the_doctype tests/lib/test_todo_snapshot_html.py::test_title_names_top_n_and_the_render_date tests/lib/test_todo_snapshot_html.py::test_the_table_keeps_its_columns tests/lib/test_todo_snapshot_html.py::test_one_row_per_top_item_in_rank_order tests/lib/test_todo_snapshot_html.py::test_cells_carry_badges_sizes_and_score tests/lib/test_todo_snapshot_html.py::test_text_is_escaped tests/lib/test_todo_snapshot_html.py::test_code_spans_become_code_elements tests/lib/test_todo_snapshot_html.py::test_stub_links_wrap_the_id_and_number_the_extras tests/lib/test_todo_snapshot_html.py::test_links_follow_row_position_not_id tests/lib/test_todo_snapshot_html.py::test_gh_issue_links_to_its_source_url tests/lib/test_todo_snapshot_html.py::test_gh_issue_without_a_source_url_uses_the_configured_repo tests/lib/test_todo_snapshot_html.py::test_gh_cell_falls_back_to_tracker_related_then_none tests/lib/test_todo_snapshot_html.py::test_details_carry_summary_proposal_decision_and_ranking tests/lib/test_todo_snapshot_html.py::test_malformed_fields_render_without_raising tests/lib/test_todo_snapshot_html.py::test_summary_block_counts_the_whole_catalog_above_the_table tests/lib/test_todo_snapshot_html.py::test_an_empty_catalog_draws_a_note_and_no_rows tests/lib/test_todo_snapshot_html.py::test_theme_and_loader_are_inlined_with_no_network_address tests/lib/test_todo_snapshot_html.py::test_stamp_is_stable_and_follows_the_content tests/lib/test_todo_snapshot_html.py::test_live_script_carries_the_stamp_and_date tests/lib/test_todo_snapshot_html.py::test_the_loader_reloads_only_on_a_new_stamp tests/lib/test_todo_snapshot_html.py::test_status_and_kind_badges_have_theme_rules"
+    }
+  },
+  "evidence": "staged tree 60a0994: 21 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "d1b1923d6fba78249fa2d56d36a204a7f6e790598193a19d3a3d5aec131f0925"
+}

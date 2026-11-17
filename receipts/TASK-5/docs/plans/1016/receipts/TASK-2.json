@@ -1,0 +1,44 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b0b5f8ebadc140f04f4fb592abd36b9de17db81d"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_review_adversarial_models.py::test_workflow_references_name_the_script_the_agent_and_the_model",
+        "tests/lib/test_review_adversarial_models.py::test_attack_finding_requires_a_non_empty_attack",
+        "tests/lib/test_review_adversarial_models.py::test_code_refuter_report_holds_attack_findings",
+        "tests/lib/test_review_adversarial_models.py::test_record_validates_an_adv_code_id_as_a_code_refuter_report",
+        "tests/lib/test_review_adversarial_models.py::test_record_add_validates_an_adv_code_id",
+        "tests/lib/test_review_adversarial_models.py::test_record_draft_validates_an_adv_code_id",
+        "tests/lib/test_review_adversarial_models.py::test_load_report_validates_an_adv_code_file",
+        "tests/lib/test_review_adversarial_models.py::test_record_attacks_round_trips_through_load_report",
+        "tests/lib/test_review_adversarial_models.py::test_record_attacks_refuses_an_id_outside_adv_code",
+        "tests/lib/test_review_adversarial_models.py::test_record_attacks_draft_reads_the_draft_file",
+        "tests/lib/test_review_adversarial_models.py::test_finding_key_is_stable_and_content_sensitive",
+        "tests/lib/test_review_adversarial_models.py::test_report_digest_follows_the_findings_list",
+        "tests/lib/test_review_adversarial_models.py::test_refutation_needs_evidence_when_refuted",
+        "tests/lib/test_review_adversarial_models.py::test_record_refutations_writes_the_target_report_digest",
+        "tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[missing]",
+        "tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[extra]",
+        "tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[duplicate]",
+        "tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_target_without_a_report",
+        "tests/lib/test_review_adversarial_models.py::test_record_refutations_draft_reads_the_draft_file",
+        "tests/lib/test_review_adversarial_models.py::test_load_refutations_round_trips"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_review_adversarial_models.py::test_workflow_references_name_the_script_the_agent_and_the_model tests/lib/test_review_adversarial_models.py::test_attack_finding_requires_a_non_empty_attack tests/lib/test_review_adversarial_models.py::test_code_refuter_report_holds_attack_findings tests/lib/test_review_adversarial_models.py::test_record_validates_an_adv_code_id_as_a_code_refuter_report tests/lib/test_review_adversarial_models.py::test_record_add_validates_an_adv_code_id tests/lib/test_review_adversarial_models.py::test_record_draft_validates_an_adv_code_id tests/lib/test_review_adversarial_models.py::test_load_report_validates_an_adv_code_file tests/lib/test_review_adversarial_models.py::test_record_attacks_round_trips_through_load_report tests/lib/test_review_adversarial_models.py::test_record_attacks_refuses_an_id_outside_adv_code tests/lib/test_review_adversarial_models.py::test_record_attacks_draft_reads_the_draft_file tests/lib/test_review_adversarial_models.py::test_finding_key_is_stable_and_content_sensitive tests/lib/test_review_adversarial_models.py::test_report_digest_follows_the_findings_list tests/lib/test_review_adversarial_models.py::test_refutation_needs_evidence_when_refuted tests/lib/test_review_adversarial_models.py::test_record_refutations_writes_the_target_report_digest tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[missing] tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[extra] tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[duplicate] tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_target_without_a_report tests/lib/test_review_adversarial_models.py::test_record_refutations_draft_reads_the_draft_file tests/lib/test_review_adversarial_models.py::test_load_refutations_round_trips"
+    }
+  },
+  "evidence": "staged tree b0b5f8e: 20 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-12",
+  "seal": "842f0dbff0320482024a931becc106d39e6f68869a79d0a175a817492ec0d740"
+}

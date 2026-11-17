@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2022: TODO snapshot as one HTML page</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae; --code-fg: #8250df; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; --accent: #79c0ff;
+  --code-fg: #d2a8ff; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--accent); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--muted); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 2022: TODO snapshot as one HTML page</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2022_TODO_snapshot_as_one_HTML_page_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2022</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2022</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-17</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1165-todo-snapshot-html -&gt; main</dd><dt>Base commit</dt><dd><code>73dc114</code></dd><dt>Frozen</dt><dd>2026-11-17 at <code>1d808de</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: Snapshot page renderer and its page assets</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Render, T2 and init use the one snapshot page</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Canned message, config docs, version and release notes for the page</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 What shape does the HTML snapshot take?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D1A</code> One fixed page TODO_Snapshot.html in todo.snapshots.dir, rewritten by every render, plus a todo_live.js stamp beside it; an open page polls the stamp and reloads itself when it changes</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D1B</code> A dated TODO_Snapshot_YYYY_MMDD.html per render, as the markdown snapshots were</li><li><code>D1C</code> A static shell page whose script draws the whole table from a full-catalog sidecar</li></ul><p class="why">Developer delegated every design call for issue 288 (2026-11-17 session: no brainstorming input). The issue asks for one page instead of a new document per render. Drawing the table in Python keeps one renderer (D1C would duplicate it in JS), and the stamp gives the plan page&#x27;s live reload without a second renderer. The T2 header stays the first line.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 What happens to todo.snapshots.name_pattern?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D2A</code> Keep the key and its load-time check so existing configs validate; render, init and T2 stop reading it; the schema and README call it legacy</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D2B</code> Remove the key (a breaking config change)</li><li><code>D2C</code> Keep T2 reading the newest dated markdown when the page is absent</li></ul><p class="why">Developer delegated every design call for issue 288 (2026-11-17 session: no brainstorming input). Removing a key is a breaking change across the marketplace; a T2 fallback to stale markdown would keep warning on files nothing rewrites.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 What does the Summary block above the table hold (issue 280)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D3A</code> Catalog counts: items, per status and per kind as badges, trackers and close candidates</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D3B</code> A second list of the top-N headings with their badges</li></ul><p class="why">Developer delegated every design call for issue 288 (2026-11-17 session: no brainstorming input). The top-N table is already one screen; the counts give the whole catalog at a glance, which the table cannot.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 Where does an item&#x27;s prose go (issue 278 direction)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D4A</code> A &lt;details&gt; in the Item cell: summary, proposed change, decision question and ranking reason, folded by default</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D4B</code> Nowhere: the table carries only the row fields</li></ul><p class="why">Developer delegated every design call for issue 288 (2026-11-17 session: no brainstorming input). Keeps the tabular format at a glance while the catalog prose is one click away instead of a JSON lookup.</p></section>
+<section class="decision" id="decision-D5"><h3>D5 Does render keep the snapshot files out of git?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D5A</code> No: the project decides; the TODO canned commit message covers the page and the stamp</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D5B</code> Yes: render writes a .gitignore in the snapshots folder, as plan live.js does</li></ul><p class="why">Developer delegated every design call for issue 288 (2026-11-17 session: no brainstorming input). Projects already commit snapshots (the canned TODO set names them); this repository ignores them in its own .gitignore.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>RELOAD_MS</td><td>3000</td><td>plugins/harness/lib/harness_lib/plan_render_html.py:35</td><td>D1A</td></tr>
+<tr><td>todo.top_n default</td><td>10</td><td>plugins/harness/config/defaults.json:77</td><td>-</td></tr>
+<tr><td>harness version</td><td>0.75.0 -&gt; 0.76.0</td><td>plugins/harness/.claude-plugin/plugin.json:3</td><td>-</td></tr>
+<tr><td>page file</td><td>TODO_Snapshot.html</td><td>issue 288</td><td>D1A</td></tr>
+<tr><td>stamp file</td><td>todo_live.js</td><td>issue 288</td><td>D1A</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>T2 snapshot header (first line of the page)</strong>: <code>&lt;!-- todo-snapshot source=docs/TODO/RepoToDo.json top=10 rows_sha256=&lt;64 hex&gt; rendered=2026-11-17 --&gt;</code>, copied from <code>plugins/harness/lib/harness_lib/todo_sync/sources.py:24-25</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>TODO_Snapshot_</code>: <code>README.md</code> (change: canned row and the todo key table name the page (TASK-3)), <code>docs/TODO/RepoToDo.json</code> (reference: catalog prose, not rewritten), <code>plugins/harness/config/defaults.json</code> (keep: name_pattern default stays (D2A)), <code>plugins/harness/config/harness.schema.json</code> (change: name_pattern described as legacy (TASK-3)), <code>plugins/harness/lib/harness_lib/canned_messages.py</code> (keep the dated pattern, add the page and stamp (TASK-3)), <code>plugins/harness/lib/harness_lib/todo_sync/__init__.py</code> (change: snapshot_name removed, render writes the page (TASK-2)), <code>plugins/harness/scripts/todo_sync.py</code> (change: render and init docstrings (TASK-2)), <code>plugins/todo-watch/hooks/checks.test.ts</code> (keep: fixture file name; the mod watches the folder), <code>plugins/todo-watch/hooks/testWorld.ts</code> (keep: fixture file name; the mod watches the folder), <code>tests/contract/test_root_separation.py</code> (change: render output is the page (TASK-2)), <code>tests/lib/_todo_helpers.py</code> (change: SNAP_REL is the page (TASK-2)), <code>tests/lib/test_canned_messages.py</code> (keep: the dated pattern still matches), <code>tests/lib/test_config.py</code> (keep: name_pattern default still loads), <code>tests/lib/test_todo_sync_inbox.py</code> (change: drain renders the page (TASK-2)), <code>tests/lib/test_todo_sync_rules_todo.py</code> (change: newest-dated T2 test replaced (TASK-2)), <code>tests/lib/test_todo_sync_scaffold.py</code> (change: init writes the page, pattern refusal removed (TASK-2)), <code>tests/scripts/test_branch_commit_msg.py</code> (keep: canned TODO file fixture), <code>tests/scripts/test_branch_commit_msg_canned_fold.py</code> (keep: canned TODO file fixture), <code>tests/scripts/test_todo_sync.py</code> (change: markdown render tests removed (TASK-2)), <code>tests/scripts/test_todo_sync_intake.py</code> (change: init prints the page path (TASK-2))</li>
+<li><strong>S2</strong> <code>snapshot_markdown|aligned_table|gh_cell|_item_cell|_escape_links|snapshot_name</code>: <code>docs/PROVENANCE.md</code> (change: the table now lives in snapshot_html.py (TASK-3)), <code>plugins/harness/lib/harness_lib/todo_sync/__init__.py</code> (change: snapshot_name and snapshot_markdown use removed (TASK-2)), <code>plugins/harness/lib/harness_lib/todo_sync/report.py</code> (change: markdown table helpers removed (TASK-2)), <code>plugins/harness/lib/harness_lib/todo_sync/scaffold.py</code> (change: _check_snapshot_name removed (TASK-2)), <code>tests/lib/test_canned_messages.py</code> (keep: test name only (test_a_snapshot_name_matches_by_pattern)), <code>tests/lib/test_todo_sync_scaffold.py</code> (change: the pattern refusal test is removed (TASK-2))</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: Snapshot page renderer and its page assets <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py</code>, <code>plugins/harness/pages/styles/todo.css</code>, <code>plugins/harness/pages/components/todo.js</code>, <code>tests/lib/test_todo_snapshot_html.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:35-36</code> holds <code>RELOAD_MS = 3000 PAGES = plugin_root() / &quot;pages&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:60-67</code> holds <code>def _asset(folder: str, name: str) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/report.py:159-161</code> holds <code>def snapshot_header(source: str, top: int, rows_sha256: str, rendered: str) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/report.py:164-172</code> holds <code>def gh_cell(item: Dict[str, Any]) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/report.py:176</code> holds <code>_CODE_SPAN = re.compile(r&quot;(?&lt;!`)(`+)(?!`).+?(?&lt;!`)\1(?!`)&quot;, re.S)</code></li>
+<li><code>plugins/harness/pages/styles/shared.css:1-2</code> holds <code>:root { color-scheme: light dark;</code></li>
+</ul>
+<p class="action">Create plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py (Optional/Union typing, functions under 50 lines, no first or second person). Constants PAGE_NAME=&#x27;TODO_Snapshot.html&#x27;, LIVE_NAME=&#x27;todo_live.js&#x27;, LIVE_HEAD=&#x27;window.TODO_LIVE = &#x27;, RELOAD_MS=3000, PAGES=plugin_root()/&#x27;pages&#x27;. Frozen dataclass SnapshotPage(header, catalog, top, top_n, rendered, source, links=(), gh_repo=None). inline(text): html-escape, backtick code spans (the report.py _CODE_SPAN rule) become &lt;code&gt; with the fence stripped. render_page(page) -&gt; str: line 1 the header, line 2 &lt;!DOCTYPE html&gt;; &lt;title&gt;TODO Snapshot: Top N (date)&lt;/title&gt;; &lt;h1&gt;TODO Snapshot: Top N&lt;/h1&gt;; a note naming the source catalog, the render date and todo_sync.py render as the writer (edits are overwritten); &lt;section id=&quot;summary&quot;&gt; with a &lt;dl&gt;: Items &lt;total&gt;, Status badges with counts, Kind badges with counts (most first, then by name), Trackers, Close candidates; then the table: &lt;th&gt; Rank Item Status Kind Blast LoE Score GH, one &lt;tr class=&quot;row&quot; data-rank=...&gt; per top item. Item cell: &lt;details&gt;&lt;summary&gt; holding &lt;a class=&quot;id&quot; href=links[k][0]&gt;id&lt;/a&gt; (or &lt;span class=&quot;id&quot;&gt;id&lt;/span&gt; without links or with a non-string id), the inline title and numbered extra stub links (&gt;2&lt;/a&gt;, &gt;3&lt;/a&gt; ...)&lt;/summary&gt; then the item&#x27;s summary, proposed change, decision question and why_ranked, each only when a non-empty string. Status and Kind cells are &lt;span class=&quot;badge status&quot; data-status=...&gt; and &lt;span class=&quot;badge kind&quot; data-kind=...&gt;; Score is score:.2f. GH cell: each gh_issues number links to the url of the item&#x27;s gh_issue source whose ref is #N, else https://github.com/&lt;gh_repo&gt;/issues/N when gh_repo is set, else plain #N; no issues: &#x27;tracker #N&#x27;, else &#x27;related #a, #b&#x27;, else &#x27;none&#x27;. Every field read tolerates malformed types (lists, numbers, None) without raising. No items: a note &#x27;No items in the catalog.&#x27; and no rows. Inline &lt;style&gt; = shared.css + todo.css and, last in &lt;body&gt;, &lt;script&gt;var TODO_PAGE = {json sort_keys: src, reloadMs, stamp};\n&lt;todo.js&gt;&lt;/script&gt;, &#x27;&lt;&#x27; escaped as \u003c. The stamp is the sha256 hex of the page rendered with an empty stamp. page_stamp(text) reads the stamp back (None when absent). live_script(stamp, rendered) -&gt; &#x27;window.TODO_LIVE = {&quot;stamp&quot;: .., &quot;rendered&quot;: ..};\n&#x27;. Create pages/styles/todo.css (table borders and zebra rows, sticky header, badge pills for status and kind with NEEDS_DECISION and OPEN colors from the shared variables, summary dl grid, details prose muted) and pages/components/todo.js (IIFE: load() swaps a &lt;script id=todo-live src=TODO_PAGE.src+now&gt;, onload reloads the page when window.TODO_LIVE.stamp differs from TODO_PAGE.stamp; setInterval(load, TODO_PAGE.reloadMs)). Copy the planned test file from docs/plans/2022/tests/tests/lib/test_todo_snapshot_html.py first.</p>
+<ul>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_first_line_is_the_t2_header_then_the_doctype</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_title_names_top_n_and_the_render_date</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_the_table_keeps_its_columns</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_one_row_per_top_item_in_rank_order</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_cells_carry_badges_sizes_and_score</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_text_is_escaped</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_code_spans_become_code_elements</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_stub_links_wrap_the_id_and_number_the_extras</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_links_follow_row_position_not_id</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_gh_issue_links_to_its_source_url</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_gh_issue_without_a_source_url_uses_the_configured_repo</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_gh_cell_falls_back_to_tracker_related_then_none</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_details_carry_summary_proposal_decision_and_ranking</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_malformed_fields_render_without_raising</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_summary_block_counts_the_whole_catalog_above_the_table</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_an_empty_catalog_draws_a_note_and_no_rows</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_theme_and_loader_are_inlined_with_no_network_address</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_stamp_is_stable_and_follows_the_content</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_live_script_carries_the_stamp_and_date</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_the_loader_reloads_only_on_a_new_stamp</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_html.py::test_status_and_kind_badges_have_theme_rules</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 2022 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Render, T2 and init use the one snapshot page <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/todo_sync/__init__.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/sources.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/rules_todo.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/scaffold.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/report.py</code>, <code>plugins/harness/scripts/todo_sync.py</code>, <code>tests/scripts/test_todo_sync_render_page.py</code>, <code>tests/lib/test_todo_snapshot_wiring.py</code>, <code>tests/scripts/test_todo_sync.py</code>, <code>tests/lib/_todo_helpers.py</code>, <code>tests/lib/test_todo_sync_rules_todo.py</code>, <code>tests/lib/test_todo_sync_inbox.py</code>, <code>tests/lib/test_todo_sync_scaffold.py</code>, <code>tests/scripts/test_todo_sync_intake.py</code>, <code>tests/contract/test_root_separation.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/__init__.py:154-157</code> holds <code>return f&quot;TODO_Snapshot_{date:%Y}_{date:%m%d}.md&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/__init__.py:174-177</code> holds <code>text = snapshot_markdown(header, top, todo.top_n, rendered, _stub_links(cfg, top)) return write_atomic(cfg.path(todo.snapshots.dir) / name, text)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/locking.py:127-129</code> holds <code>snap = render_snapshot(cfg, dt.date.today())</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:295-296</code> holds <code>render_snapshot(cfg, day)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/scaffold.py:108-114</code> holds <code>def _check_snapshot_name(cfg: HarnessConfig, day: dt.date) -&gt; None:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/scaffold.py:121-122</code> holds <code>return render_snapshot(cfg, day)</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:400-401</code> holds <code>print(render_snapshot(cfg, args.date or dt.date.today()))</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/sources.py:253-257</code> holds <code>pattern = re.compile(self.cfg.todo.snapshots.name_pattern)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/rules_todo.py:86-87</code> holds <code>&quot;no snapshot matching todo.snapshots.name_pattern&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/report.py:217-225</code> holds <code>def snapshot_markdown(header: str, top: Sequence[Dict[str, Any]], top_n: int, rendered: str,</code></li>
+<li><code>tests/lib/_todo_helpers.py:22</code> holds <code>SNAP_REL = f&quot;{SNAP_DIR}/TODO_Snapshot_2026_1019.md&quot;</code></li>
+<li><code>tests/contract/test_root_separation.py:331</code> holds <code>&quot;todo_sync render&quot;: &quot;docs/RESEARCH/_TODO/Snapshots/TODO_Snapshot_2026_1021.md&quot;,</code></li>
+</ul>
+<p class="action">In todo_sync/__init__.py: drop snapshot_name and the name_pattern refusal; render_snapshot(cfg, date) keeps its signature and callers (locking._settle, inbox, scaffold._first_snapshot, the driver), reads the catalog as before, builds SnapshotPage(header, catalog.data, top, top_n, rendered, posix(catalog), _stub_links(cfg, top), cfg.todo.gh_repo), writes the page to &lt;snapshots dir&gt;/TODO_Snapshot.html with write_atomic, then todo_live.js with live_script(page_stamp(text), rendered), and returns the page path; update the module docstring. sources.py: Snapshot loads the fixed page (no pattern scan; docstrings updated). rules_todo.t2: the no-page finding names the page path and says &#x27;no snapshot page TODO_Snapshot.html&#x27;. scaffold.py: remove _check_snapshot_name and the snapshot_name import. report.py: remove snapshot_markdown, _item_cell, _table_row, aligned_table, gh_cell, _escape_links, _LINK_ESCAPES, _CODE_SPAN and the unused re import; the docstring names only snapshot_header. scripts/todo_sync.py: render and init docstrings describe the page and the stamp, init no longer refuses on name_pattern. Existing tests: _todo_helpers.SNAP_REL becomes the page; test_todo_sync.py drops the markdown render tests (test_render_then_t2_is_clean through test_render_refuses_a_name_the_pattern_rejects, and _cells, _render_rows) now covered by the new driver file; test_todo_sync_rules_todo.py drops test_t2_newest_snapshot_wins and test_t2_no_snapshot asserts the page path; test_todo_sync_inbox.py asserts the page and its refusal text no longer names name_pattern; test_todo_sync_scaffold.py asserts the page and drops the pattern refusal test; test_todo_sync_intake.py expects &#x27;created &lt;SNAP_DIR&gt;/TODO_Snapshot.html&#x27;; test_root_separation.py TODO_OUTPUTS names the page. Copy the planned files tests/scripts/test_todo_sync_render_page.py and tests/lib/test_todo_snapshot_wiring.py from docs/plans/2022/tests/ first.</p>
+<ul>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_render_writes_the_page_and_its_stamp_and_t2_is_clean</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_a_second_render_rewrites_the_one_page</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_rows_link_their_stubs_by_position</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_gh_and_tracker_cells</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_render_tolerates_malformed_link_fields</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_render_with_null_stub_name</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_the_name_pattern_no_longer_gates_render</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_render_page.py::test_t2_reads_the_page_not_a_dated_markdown_snapshot</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_wiring.py::test_sources_reads_the_page</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_wiring.py::test_t2_is_clean_on_an_in_sync_page</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_wiring.py::test_t2_without_the_page_names_it</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_wiring.py::test_t2_edited_top_row_warns_on_the_page</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_todo_snapshot_wiring.py::test_init_writes_the_page_and_its_stamp</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_todo_sync.py tests/lib/test_todo_sync_rules_todo.py tests/lib/test_todo_sync_inbox.py tests/lib/test_todo_sync_scaffold.py tests/scripts/test_todo_sync_intake.py tests/contract/test_root_separation.py tests/lib/test_todo_sync_snapshot_header.py tests/lib/test_todo_sync_stub_links.py -q</code>: all passed</li>
+<li>Record it: <code>plan.py record 2022 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Canned message, config docs, version and release notes for the page <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/canned_messages.py</code>, <code>plugins/harness/config/harness.schema.json</code>, <code>README.md</code>, <code>plugins/harness/agents/todo-editor.md</code>, <code>docs/PROVENANCE.md</code>, <code>.gitignore</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>tests/lib/test_todo_snapshot_canned.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/canned_messages.py:38</code> holds <code>&quot;TODO_Snapshot_*.md&quot;,</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:246</code> holds <code>renders the dated snapshot</code></li>
+<li><code>.gitignore:245</code> holds <code>docs/TODO/Snapshots/TODO_Snapshot*.md</code></li>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.75.0&quot;,</code></li>
+</ul>
+<p class="action">canned_messages.py: the TODO set adds &#x27;TODO_Snapshot.html&#x27; and &#x27;todo_live.js&#x27; and keeps &#x27;TODO_Snapshot_*.md&#x27;. harness.schema.json: snapshots.dir says render writes TODO_Snapshot.html and todo_live.js there; name_pattern says it is legacy, kept so configs validate, read by no rule or command. README.md: the canned row adds the page and the stamp; the todo key table rows for todo.snapshots.dir and name_pattern match the schema; the TODO section names the page (opens from disk, reloads itself after a render). todo-editor.md line 246 &#x27;renders the dated snapshot&#x27; becomes &#x27;renders the snapshot page&#x27;. docs/PROVENANCE.md row 17 names snapshot_html.py for the table. .gitignore: the snapshot ignore line also covers TODO_Snapshot.html and todo_live.js. harness plugin.json 0.75.0 -&gt; 0.76.0. docs/RELEASES/v1.0.0.md: harness row Now 0.76.0 and one change line (issues 288, 278, 280, plan 2022). Copy the planned file tests/lib/test_todo_snapshot_canned.py first.</p>
+<ul>
+<li>Test <code>tests/lib/test_todo_snapshot_canned.py::test_the_page_and_its_stamp_take_the_todo_message</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_canned_messages.py tests/lib/test_config.py -q</code>: all passed</li>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: validation passes</li>
+<li>Record it: <code>plan.py record 2022 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2022/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

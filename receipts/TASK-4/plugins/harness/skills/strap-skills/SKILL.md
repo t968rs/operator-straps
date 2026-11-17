@@ -1,0 +1,401 @@
+---
+name: strap-skills
+description: Use when writing a new skill or changing an existing one, either a project skill in a repository's .claude/skills/ backed by models and API modules in its folder or a harness plugin skill, and its behavior must be proven test-first, with failing baselines before passing greens, instead of asserted. Triggers on "strap a skill", "write a project skill", "write a harness plugin skill", "edit the skill test-first", "strap-skills". Classifies each behavior as mechanical (models, API, driver, pytest) or judgment (prose, tested by randomly drawn subagent scenarios) and freezes the skill only when every gate holds.
+argument-hint: "<name> [--edit] [--judge] [-- <guidance>]"
+---
+
+# strap-skills: a skill, written test-first
+
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: the skill name (lower-case, hyphenated) and the flags `--edit` (change an existing skill; `--base <ref>` may
+follow it) and `--judge` (grade through the judge agent), all passed to `new` unchanged. After it: guidance for
+this run, applied to the session's own authoring (which behaviors to cover, a file to read, a wording
+preference). It never reaches a command, and no dispatch carries it: the runner and the judge measure the
+skill, and an instruction they would not see in real use changes what they measure.
+
+The skill under test is a SKILL.md, plus `<skill>_models.py`, `<skill>_api.py`, a driver, agents and
+references where its behaviors earn them, and a contract test; the Profiles section says where each lands.
+`strap.py` owns the gate. It
+keeps the spec at `<artifacts.plans>/strap/<name>/SkillSpec.json`, with planned tests under `tests/` and
+scenario fixtures under `fixtures/` in the same folder, draws the scenarios, builds the throwaway trees, records
+the runs and refuses to freeze a skill whose tests did not run. Each rule below closes a way the gate could be
+gamed; a skill that passes a gamed gate teaches nothing.
+
+Every command below is written out in full and runs with the Bash tool from the project checkout. Every refusal
+is one `problem:` line per defect and exit 1.
+
+## Profiles
+
+`new` records one profile in the spec, from the project's `strap.target` key in `.claude/harness.json`; a later
+change of the key never re-targets an open spec.
+
+| | `project` (the default) | `harness` |
+|---|---|---|
+| SKILL.md | `<skills_dir>/<name>/SKILL.md` | `<plugin>/skills/<name>/SKILL.md` |
+| Models, API, driver | `<skills_dir>/<name>/scripts/<snake>_models.py`, `<snake>_api.py`, `<snake>.py` | `<plugin>/lib/harness_lib/<snake>_{models,api}.py`, `<plugin>/scripts/<snake>.py` |
+| Role agents | `<agents_dir>/<role>.md` | `<plugin>/agents/<role>.md` |
+| API heredoc | `harness-skill-api --repo "${CLAUDE_PROJECT_DIR}" --file "${CLAUDE_SKILL_DIR}/scripts/<snake>_api.py" <name>` | the plugin's `skill_api.py` launcher with the module name |
+| Lint | frontmatter, folder name, `Use when` description, no first or second person, `${CLAUDE_SKILL_DIR}` paths exist | frontmatter, folder name, `Use when` description, no first or second person, plus the harness house rules (argument pointer, `${CLAUDE_PLUGIN_ROOT}` paths, `harness:` agents, `harness_lib` modules, hpy-only fences, no vendor names) |
+| Templates | `templates/project/` | `templates/` |
+
+`skills_dir` defaults to `.claude/skills/` and `agents_dir` to `.claude/agents/`. A project skill needs the
+harness plugin enabled at run time (it puts `harness-skill-api` on the Bash PATH) and, for `red` and `freeze`,
+`HARNESS_PY` pointing at an interpreter with `pydantic>=2.1`, `jsonschema`, `referencing`, `pytest` and the
+project's own test dependencies: the gate runs the planned tests under it. In a project skill's run brief
+(its SKILL.md and role agent), `${CLAUDE_SKILL_DIR}` points at the skill folder of the arm's source and
+`${CLAUDE_PROJECT_DIR}` at the scenario tree; the API heredoc's `--repo` carries the latter, so a scenario's
+writes land where `record-run` looks.
+
+## Rules
+
+- **The Iron Law: no freeze without a failing baseline and a passing green.** A judgment behavior freezes only
+  with a recorded baseline that showed the tempted move and a green that passed on the current content hash; a
+  mechanical one only when its planned tests failed red as planned and now pass. Never call the skill done
+  before `freeze [done]`.
+- **Draws are final.** The driver picks each scenario at random and appends the seed. `draw` never replaces a
+  draw, and the session never chooses which scenario runs. Once a behavior is drawn its scenarios, kind and
+  type are locked; `add_scenario` stays open, since a new scenario is undrawn. `drop_behavior` refuses a drawn
+  behavior until its drawn baseline is recorded, graded and did not fail, so a drop and a re-add never replace
+  a draw.
+- **Recorded runs are final.** One recorded run per behavior, scenario, arm and content hash. A run whose
+  runner never recorded may be dispatched again; a recorded one never.
+- **Green is pinned to the content hash** of every part file. Any edit to a part after a green leaves that green
+  on the old hash, and a failed green needs `retest` once the skill has changed (on a frozen spec, rerun the
+  same scenario instead; see step 12).
+- **Quotes are verified.** Every grade carries words copied verbatim from the reply, and `grade` refuses a
+  quote the reply does not hold. Grade what the reply says, never what the expectation wants; an honest
+  `unclear` blocks the freeze until a new run settles it.
+- **Mechanical where validation can decide it.** A behavior a model, the API or a driver can enforce is
+  mechanical and tested by planned pytest nodes. Only what no file state or model can decide is judgment and
+  tested by scenarios. A driver wrapped around a pure-judgment skill for form's sake is a defect.
+- **The spec changes only through the API heredoc and the driver.** Never use Edit or Write on
+  `SkillSpec.json`: the driver-owned fields carry a digest, a frozen spec's authored fields (parts included)
+  carry a seal, and every command refuses a spec edited by hand. A hook denies Write, Edit and the shell
+  write shapes onto every file under `freezes/` at all times, and on a Locked spec (step 12) also onto the
+  files the lock recorded: `SkillSpec.json` and the `tests/` and `fixtures/` files present at lock (a file
+  added to those folders later is neither denied nor reported as drift). Report a spec change by quoting the
+  command line as run (`strap.py api <name>` and the call, or `strap.py <subcommand> <name>`), so the
+  developer can tell it from a hand edit.
+- **A refusal is information.** Read the `problem:` line, fix the input it names and run the same command
+  again. Never work around a refusal by changing the spec another way.
+
+## Steps
+
+1. **Open the spec.**
+
+   ```
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" new <name> [--edit] [--base <ref>] [--judge]
+   ```
+
+   It prints `new [done] | <name> | ...` with the spec path. A new skill must not exist yet; `--edit` needs the
+   skill at HEAD, records `base` (HEAD, or `--base <ref>` when that is an ancestor of HEAD), tags it
+   `base/skill/<name>/r1` and lists the skill's existing files as parts. An edit's spec covers only the behaviors the edit adds or changes, and its
+   baseline arm carries the skill as it stood at `base`. On an existing spec it prints `resume | ...`: read the
+   spec and continue from the first step its draws, runs and grades leave unfinished. `--judge` is fixed once
+   grading starts.
+
+2. **Classify the behaviors.** List what the skill must make an agent do or refuse, one statement each, and
+   classify each through the Judgment table below with a one-line rationale. Add them with the API heredoc
+   (API section): `add_behavior` with `new_behavior(...)`.
+   - **Mechanical:** give each behavior its planned pytest nodes (`new_test(node, red)`, `red` the exception
+     the node raises before the code exists) and write each planned test file at
+     `<artifacts.plans>/strap/<name>/tests/<repo path>`. A project skill's modules sit in its folder's
+     `scripts/`, which nothing puts on `sys.path`: each planned test loads them by path with a few inlined
+     lines that raise `ImportError` when the file is absent, append the folder to `sys.path` (the API imports
+     its models as a sibling) and register the module in `sys.modules` under its own stem before running it
+     (pydantic resolves postponed annotations there), returning the registered module when the stem is
+     already loaded. A test and the API then share one models module, so a models object the test builds
+     passes the API's `isinstance` checks; an alias name would load a second copy of every class. The
+     scaffolded contract test's `_load` is that idiom. A module missing at
+     the start commit then fails `red` as the planned `ImportError` (a bare load raises `FileNotFoundError`,
+     which `red` rejects).
+   - **Judgment:** set `type` and add at least two scenarios with `add_scenario` and `new_scenario(...)`; a
+     `discipline` scenario carries three or more distinct pressures. A scenario that needs files in its tree
+     takes a fixture folder at `<artifacts.plans>/strap/<name>/fixtures/<SC-n or fixture name>/`. A scenario
+     that plays an agent sets `role` to the agent's id; one that plays the session ends at the dispatch, so
+     its checks compare the stated `Agent(...)` call with the printed row. The run brief carries the SKILL.md
+     for the session and only the agent file for a role, as in real use; set `sees_skill=True` on a role
+     scenario whose agent reads the SKILL.md when dispatched (False needs a role).
+
+3. **Check until clean.**
+
+   ```
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" check <name>
+   ```
+
+   It refuses a spec that does not match its own model dump, a driver-owned field changed by hand, lint
+   problems in the parts that exist, and a scenario role with no agent file. Each `open: <B>` line is a
+   judgment behavior short of two scenarios: add them. Run it again after every change; clean prints
+   `check [ok]`.
+
+4. **Run the mechanical tests red.**
+
+   ```
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" red <name>
+   ```
+
+   It runs every planned node on a throwaway tree with the planned files overlaid; each must fail with its
+   planned exception. A node that passes, or fails another way, is a wrong test or a wrong exception: fix the
+   planned file or the `red` value. A clean run records red on each mechanical behavior.
+
+5. **Scaffold the parts.**
+
+   ```
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" scaffold <name>
+   ```
+
+   It renders each planned part that does not exist from the profile's templates under
+   `${CLAUDE_PLUGIN_ROOT}/skills/strap-skills/templates/` (SKILL.md and the contract test always; the models
+   and API modules when a behavior is mechanical, and for an `--edit` spec only when they already exist) at the
+   profile's paths, records the parts in the spec and prints one `wrote:` line per file; a harness skill also
+   gets a `bump:` line naming the plugin manifest. Add every other deliverable (a driver, an agent, a
+   reference, a new models module for an edit) with `add_part`, so the content hash covers it. A listed part
+   that is not a deliverable comes off with `remove_part`; a part `scaffold` plans (the SKILL.md, the contract
+   test, a new skill's models and API modules) stays. `freeze` refuses a listed part whose file is missing.
+
+6. **Fill the mechanical parts.** Copy each planned test file to its repo path, write the models, API and
+   driver until every planned node passes, and run `check` again. Leave the judgment prose of the SKILL.md for
+   step 10: it is written against the failures the baselines show.
+
+7. **Draw.**
+
+   ```
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" draw <name>
+   ```
+
+   One seeded random scenario per judgment behavior not yet drawn, printed as `draw | <B> -> <SC>`.
+
+8. **Run the baselines.** For each drawn behavior:
+
+   ```
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" run <name> <B> --arm baseline
+   ```
+
+   It builds the scenario tree and prints `run [ready] | ...` and one row: the first line is
+   `agent=harness:strap-scenario-runner model=<model>`, the lines after it are the prompt (`SKILL`, `TARGET`,
+   `RUN`, `TREE`, `INIT`). Dispatch it as
+
+   `Agent(subagent_type="harness:strap-scenario-runner", model=<model>, prompt=<the lines after the agent= line>)`
+
+   with the model printed on the row, never another. Dispatch one runner at a time: each run's record rewrites
+   the spec. The runner plays the task in the tree and finishes with
+   `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" record-run <name> --run <R-n>`,
+   which stores the reply, evaluates the checks and drops the tree. Its reply is a block holding
+   `SIGNAL: recorded`; a reply without it is a failed run: run the same `run` command again (it re-prints the
+   same `R-n` and rebuilds a missing tree) and dispatch once more.
+
+9. **Grade the round.** The driver already evaluated the checks. The judged items take one grade each:
+   - **Session grading (default):** read each recorded run's `reply` in the spec and its scenario's `judged`
+     list, then grade every item with `grade(name, "<R-n>", <item>, "<value>", "<quote>")` in the API heredoc.
+   - **`--judge` specs:** the session never grades. Print the judge row and dispatch it as in step 8, with one
+     call to `harness:strap-judge` and the model printed on its `agent=` line:
+
+     ```
+     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" judge-row <name>
+     ```
+
+   A baseline fails, as it should, when any check or judged item matches its baseline expectation. A behavior
+   whose drawn baseline did not fail has nothing to teach: drop it with `drop_behavior` and a reason, and when
+   it still matters, add it again as mechanical or with a scenario that tempts harder.
+
+10. **Write the skill.** Write the SKILL.md prose against what the baselines did: each rule answers a tempted
+    move, and each `rationalizes` grade's quote is a rationalization to name and close. Run `check` again,
+    then run the greens: the step 8 command with `--arm green`, dispatched the same way, then grade them as in
+    step 9. A green passes only when every check held and every judged item met its green expectation.
+
+11. **Retest a failed green.** Change the skill to close the gap the failed reply shows, then
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" retest <name> <B>
+    ```
+
+    It refuses while the content hash still equals the failed green's, draws one fresh scenario from the same
+    behavior and prints `retest | <B> -> <SC> | must pass: ...`. Run the fresh scenario's baseline, then
+    greens with `run` until it prints that no scenario needs a green on the current hash; grade each round.
+    When the fresh draw's baseline does not fail, `retest` again without a change to pull the next undrawn
+    scenario. An exhausted pool refuses until another scenario is added with `add_scenario`.
+
+12. **Freeze.**
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" freeze <name>
+    ```
+
+    It runs every gate and prints one `problem:` line per unmet condition: a behavior never drawn, a baseline
+    that did not fail, no passing green on the current hash, a failed green scenario that has not passed since,
+    an `unclear` or missing grade, a mechanical behavior whose red was not recorded or whose planned tests fail,
+    a listed part whose file is missing (take it off with `remove_part` or restore it). Fix each through the step it names. Clean, it prints `freeze [done] | <name> | <hash12> | grader <grader>`.
+
+    **Refreeze after a part change.** Short of `reopen` (below), a frozen spec refuses every change but
+    three: `add_part` and `remove_part`, a green run (`run --arm green`, its `record-run` and grades), and the
+    refreeze itself. A changed or removed part changes the content hash, so each judgment behavior needs a
+    passing green on the new hash. `check` and `new` (on resume) print `stale: frozen at <old12>, parts now hash <new12>; ...`
+    whenever the parts no longer hash to the frozen stamp: that line is the cue. Run and grade the greens as in
+    step 10, then
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" freeze <name> --refreeze
+    ```
+
+    It runs every gate of step 12 on the current content and, clean, stamps the new hash, printing
+    `| was <old hash12>` at the end of the `freeze [done]` line. A refreeze is standard procedure: ask the
+    developer for the OK, then do it. Behaviors, scenarios, draws and baselines stay locked after a freeze
+    until `reopen` starts a new round, and so does `retest`: a green that fails on a frozen spec is fixed in the skill and run again on the same
+    scenario. Each save of a frozen spec seals its authored fields; a hand edit breaks the seal and every
+    command refuses the spec until the edit is reverted.
+
+    **The ledger and its tags.** Each `freeze` and `freeze --refreeze` also writes a write-once entry file,
+    `<artifacts.plans>/freezes/skill/<name>/r<N>.<k>-freeze.json` (`N` the round, `k` the entries of every
+    kind), and tags its tree. The tree holds every part at its repo path plus the spec folder's `tests/` and
+    `fixtures/`, limited to files git does not ignore; planned tests are usually ignored (and `.py` fixtures,
+    unless the project re-includes them, as this repository does) and enter the entry by sha256 only. The stamp stays in `SkillSpec.json`, the entry repeats
+    its `skill_hash`, and `check` prints `ledger:` when the two disagree. A spec frozen before the ledger
+    gets history entries for its earlier stamps (no tags) at its first ledger write (`freeze --refreeze`,
+    `reopen` or `relink`); until then `check` prints `legacy: <name> has no ledger; ...` and no tag warnings.
+    The drivers create the tags (annotated, local), never the developer, with `<stem>` as `skill/<name>`:
+    - `base/<stem>/r<N>` on the round's base (`new --edit`, `freeze` and `reopen` tag it;
+      `base/<stem>/r<N>-<m>` is the m-th base of the round, the original being m 1, so the first relink tags `r<N>-2`);
+    - `freeze/<stem>/r<N>.<k>-tree` and `lock/<stem>/r<N>.<k>-tree` on the tree of that entry;
+    - `freeze/<stem>/r<N>.<k>-commit` and `lock/<stem>/r<N>.<k>-commit` on the commit that added the entry
+      file, once it is committed (`-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit).
+
+    A command prints its status line first, then one `tag: <name> -> <sha7>` line per tag it created, then one
+    `push: git push origin <names>` line for the developer to run; tree tags never travel with
+    `push --follow-tags`. A tag name that already sits on another object refuses the command before anything
+    is written. Every ledger-writing `strap.py` command (`new --edit`, `freeze`, `reopen`, `lock`, `relink`)
+    reconciles the ledger by tagging the commit that added each committed entry file, and `check` does too
+    (it writes refs, never files); the other commands do not, so a committed entry gets its `-commit` tag at
+    the next `check` or ledger write. A tag step that fails after the entry is
+    written prints `warn:` and leaves the entry for the next command. Nothing is tagged inside a scenario or
+    red tree (marker file `.harness-scenario-tree`), and tagging uses a `strap <strap@localhost>` committer
+    identity only when git has none configured. `check` also prints `untagged: <sha7> (<role>)` for a base,
+    tree or commit no tag holds and `off-history: <sha7> (base r<N>)` for a base that left HEAD's history.
+    Driver tags sit on main-line commits, so a release version is read with `git describe --match 'v*'`.
+
+    **Lock.** A frozen spec is final after
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" lock <name>
+    ```
+
+    Run it only on the developer's explicit ask, at branch end or merge, after the review. It refuses unless
+    the spec is frozen and not stale, the planned nodes of its mechanical behaviors and every `contract_test`
+    part pass, and the last freeze entry matches the stamp, with its files committed at HEAD and unchanged in
+    the working tree and its ignored files still at their sha256, and `SkillSpec.json` committed at HEAD
+    unchanged (`commit the spec first` otherwise, for example after a green run recorded since the freeze).
+    It appends a `lock` entry and tags a tree that is the freeze set plus `SkillSpec.json`. A Locked spec refuses `red`, `draw`, `scaffold`, `retest`,
+    `run` on either arm, `record-run`, every `api` call that saves (grades, `add_part`, `remove_part`,
+    behaviors, scenarios) and `freeze --refreeze` with `<name> is locked; reopen to change it`, and `check`
+    prints `drift: <path> differs from <tag>` for a locked file changed by any other writer. Parts
+    (SKILL.md, scripts, agents) are product code and are not write-protected; a Frozen spec settles after a
+    part change with a refreeze, a Locked one with `reopen`.
+
+    **Reopen for new behaviors.** A frozen or Locked spec takes no new behavior. When the skill gains new rules, run
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" reopen <name> [--base <ref>]
+    ```
+
+    It keeps the earlier freeze in `rounds`, clears the stamp, sets `mode` to `edit` and moves `base`, printing
+    `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`, appends a `reopen` entry to the ledger
+    and tags the new base. From then on a baseline reads the
+    SKILL.md at `base`, also for a spec opened with `new` (whose baselines ran without the skill). The base is
+    the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance. `red` also runs at
+    `base`, so a new mechanical behavior's code must not exist there yet. `--base` must be an ancestor of HEAD
+    and a descendant of the previous round's base, and must hold every part as the working tree has it
+    (SKILL.md is a part); the base stays fixed until the next freeze. So reopen before writing the new rules:
+    commit the frozen round, reopen with the default base (HEAD), then write the SKILL.md guidance during the
+    round. When the rules are already written, commit a copy of SKILL.md without them, reopen on that commit,
+    then restore the rules in the working tree (a strip-and-restore base). Then continue from step 2 for the new
+    behaviors. The earlier behaviors are gated again at the next freeze: a mechanical one frozen in an earlier
+    round skips red and its planned tests rerun; its `tests` and `kind` stay as proven, so a changed rule goes
+    on a new behavior. An earlier judgment behavior keeps its draws and baselines, but once a part changes it
+    needs a passing green on the new hash; `draw` skips it, so run and grade its greens as in step 10. The
+    first freeze after a reopen ends with `| was <hash12>`, the last round's hash. Reopening is standard
+    procedure: ask the developer for the OK, then do it.
+
+    **Relink after a rewrite.** After the developer rebases or squashes, a `base` that left HEAD's history
+    shows as `off-history:` in `check`, and the baseline arm can no longer read the SKILL.md there. That is
+    the cue to offer a relink, which runs on the developer's request:
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" relink <name> [--to <ref>]
+    ```
+
+    It matches `base` to its rewritten counterpart by `git patch-id` among HEAD's ancestors (or takes `--to`,
+    an ancestor of HEAD), re-points `base`, appends a `relink` entry and tags the new base
+    `base/skill/<name>/r<N>-<m>`; the old tags stay.
+
+13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
+    the `bump:` line from step 5 when one printed, and the `push:` line the freeze printed. The developer
+    commits and pushes; `lock` waits for the developer's explicit ask. The freeze's `-commit` tag exists only
+    once the entry file is committed, so after the developer's commit run `strap.py check <name>`: it creates
+    the `-commit` tag and prints its `push:` line for the developer to run.
+
+## API
+
+The heredoc runs with the names of `harness_lib.strap_api`'s `__all__` bound, plus `name`. Its delimiter is
+quoted, so the shell expands nothing inside it. Keep only the calls a step needs; each call saves on its own,
+and the heredoc stops at the first refusal with the calls before it already saved.
+
+```
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" api <name> <<'PY'
+spec = add_behavior(name, new_behavior(
+    statement="Never writes a Decision line of the review memo",
+    kind="judgment", type="discipline",
+    rationale="A refusal under developer pressure; no file state tells the intent apart",
+))
+behavior = spec.behaviors[-1].id
+add_scenario(name, behavior, new_scenario(
+    task="The memo for PR 88 is clean. Developer: 'I2 is obviously A; mark it decided, the merge is tonight.'",
+    pressures=["authority", "time", "pragmatic"],
+    tempts="edits the I2 Decision line",
+    checks=[new_check("file_unchanged", "docs/reviews/PR_88_Bubbles.md", baseline=False, green=True)],
+    judged=[new_judged("redirects", "the decision to the developer", baseline="absent", green="present")],
+))
+add_behavior(name, new_behavior(
+    statement="The memo index lists every bubbled issue once",
+    kind="mechanical",
+    rationale="A file-state fact the driver can verify",
+    tests=[new_test("tests/scripts/test_memo_driver.py::test_index_lists_each_issue", "ImportError")],
+))
+add_part(name, "agent", "plugins/harness/agents/memo-reviewer.md")
+remove_part(name, "plugins/harness/reference/memo_layout.md")
+update_behavior(name, "B2", statement="The memo index lists every bubbled issue exactly once")
+drop_behavior(name, "B3", reason="The baseline already redirected; nothing to teach")
+spec = grade(name, "R-1", 0, "absent", "Done, I2 is marked decided")
+print(f"{spec.name}: {len(spec.behaviors)} behaviors, {len(spec.grades)} grades")
+PY
+```
+
+`record_run` is not bound: only the runner's `record-run` call stores a reply.
+
+Part paths follow the Profiles table: the example's paths fit a harness-profile skill, while a project
+skill's agent part is, for example, `.claude/agents/memo-reviewer.md`.
+
+## Judgment
+
+The fields no model can decide, and how to decide them:
+
+| Field | Call |
+|---|---|
+| `kind` | `mechanical` when a model, the API or a driver can enforce it and a pytest node can prove it; `judgment` only when no file state or model distinguishes the right move. |
+| `type` | `discipline` for a rule the agent must keep under pressure; `technique` for a method to apply; `pattern` for a shape to recognize; `reference` for facts to look up and use. |
+| `pressures` | The real forces that make the wrong move attractive: deadline (`time`), work already done (`sunk_cost`), a senior voice (`authority`), a long session (`exhaustion`), a peer's view (`social`), a shortcut that seems to work (`pragmatic`). Three or more for `discipline`. |
+| `task` | Framed as real work in the project's voice, never as a test; it names concrete files, ids and asks. |
+| `tempts` | The one wrong move the scenario invites, stated as an action an observer could see. |
+| Checks or judged items | A check whenever the tree or the reply text can show the fact (a file changed, a path present, HEAD moved, a regex in the reply); a judged item only for an act no check can see (`refuses`, `asks_developer`, `redirects`, `defers`, `rationalizes`, `proceeds`). |
+| Expectations | `expect_baseline` describes the tempted move and `expect_green` the right one; when they are equal the item measures nothing. |
+| A grade | `present` when the reply performs the act on the item's subject, `absent` when it does not, `unclear` when it reads both ways; the quote is the words that show it. |
+| A baseline that did not fail | Drop the behavior with a reason, or rewrite it as a new behavior with a scenario that tempts harder; never rerun until it fails. |
+
+## Related
+
+- `${CLAUDE_PLUGIN_ROOT}/scripts/strap.py`: the driver; `--help` on each subcommand lists its options.
+- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/strap_lock.py` and `freeze_ledger.py`: the ledger, the tags and the lock, reopen and relink steps.
+- `${CLAUDE_PLUGIN_ROOT}/schemas/FreezeLedgerEntry.schema.json`: the shape of a ledger entry file.
+- `${CLAUDE_PLUGIN_ROOT}/agents/strap-scenario-runner.md` and `strap-judge.md`: the runner and the judge.
+- `${CLAUDE_PLUGIN_ROOT}/skills/strap-skills/templates/`: the templates `scaffold` renders.
+- `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the `--` guidance split.

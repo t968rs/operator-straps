@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2023: Parallel TODO Editing Remix</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2023: Parallel TODO Editing Remix</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2023_Parallel_TODO_Editing_Remix_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2023</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2023</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-17</dd><dt>Spec</dt><dd><code>https://github.com/t968rs/operator-straps/issues/309</code></dd><dt>Branch</dt><dd>4166-todo-sync-parallel-followup -&gt; 1166-todo-snapshot-table-format</dd><dt>Base commit</dt><dd><code>c072dfc</code></dd><dt>Frozen</dt><dd>2026-11-17 at <code>35a2ae7</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: lease acquire --wait SECONDS</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Split drafts its spec before it takes the lease</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Field updates: validate, queue and drain</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: inbox put --update in the driver and its usage document</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: todo-edit: parallel splits and the update operation</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-6">TASK-6: README, release notes and the harness version</a> <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 How does a split that finds the catalog lease held wait for it, once the lease moves to just before its dry run (catalog_lock waits 10 s by default)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D1A</code> lease acquire --wait SECONDS in the driver; the split passes --wait 300 and reruns acquire up to 3 times in all on a held-lease refusal; the default stays 10 s</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D1B</code> No driver change; the agent prose loops on the 10 s acquire</li><li><code>D1C</code> acquire waits until the 30-minute lease staleness</li></ul><p class="why">Developer choice 2026-11-17. The project rule puts settings a driver can act on in the driver, not in prose; 300 s plus the run fits one Bash call under its 600 s cap.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Where do queued field updates live and what drains them?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D2A</code> The same todo-inbox folder and name scheme, files holding {&quot;updates&quot;: [...]}; add --inbox drains adds and updates oldest first in one write; the todo-watch mod is unchanged</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D2B</code> A sibling update --inbox drain with its own folder or name prefix; the mod gains a second drain call</li></ul><p class="why">Developer choice 2026-11-17. One drain keeps one catalog write and one summary line; the mod drains by running add --inbox and passes its inbox: line through unparsed.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 Which item fields may a queued update set?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D3A</code> Exactly the fields an add spec may carry, less issue and url</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D3B</code> The D3A fields plus catalog_entry_ids</li></ul><p class="why">Developer choice 2026-11-17. The add spec list is already validated (types and the item schema); links, sources, issues, tracker and computed fields stay with the script.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 What skill surface comes with the driver changes?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D4A</code> todo-edit --split takes several ids and --update ID[, ID ...] -- &lt;guidance&gt; is new; either dispatches one todo-editor per id in one message; --update drains once</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D4B</code> Multi-id --split only; updates are queued by any agent with inbox put --update, documented only</li><li><code>D4C</code> Driver and agent prose only</li></ul><p class="why">Developer choice 2026-11-17. Issue 309 acceptance dispatches three splits in one message; the update operation gives research findings a queued route into the catalog.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>write lock default wait</td><td>10.0 seconds</td><td>plugins/harness/lib/harness_lib/catalog_lock.py:39</td><td>-</td></tr>
+<tr><td>split lease wait</td><td>300 seconds (--wait 300)</td><td>Bash tool foreground timeout cap of 600000 ms; the wait plus the run fits one call</td><td>D1A</td></tr>
+<tr><td>split lease acquire tries</td><td>3 in all</td><td>issue 309 Recommendation 1</td><td>D1A</td></tr>
+<tr><td>split acquire Bash timeout</td><td>330000 ms</td><td>300 s wait plus 30 s for the run</td><td>D1A</td></tr>
+<tr><td>update fields</td><td>title, kind, summary, proposed_change, blast_radius, loe, impact, severity, why_ranked, needs_decision, decision_question, status, files, related_gh_issues, code_snippet</td><td>plugins/harness/lib/harness_lib/todo_sync/reshape.py:108-111</td><td>D3A</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>inbox drain line (todo-watch takes the stdout line starting &#x27;inbox: &#x27;)</strong>: <code>inbox: added 1 item(s): todo-k7qf (#9); updated 1 item(s): todo-c4ch (summary, severity); overwrote todo-c4ch summary; rejected 1 (x.json); check drift=0</code>, copied from <code>plugins/todo-watch/hooks/inbox.ts:52</code></li>
+<li><strong>queued update file (one update per file, as an add file holds one item)</strong>: <code>{&quot;updates&quot;: [{&quot;id&quot;: &quot;todo-c4ch&quot;, &quot;fields&quot;: {&quot;summary&quot;: &quot;Narrowed to one file.&quot;}}]}</code>, copied from <code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:110</code></li>
+<li><strong>queued inbox file name (update files keep it, so the mod&#x27;s queued test still holds)</strong>: <code>20261117T101500123456Z-00-a1b2c3.json</code>, copied from <code>plugins/todo-watch/hooks/inbox.ts:73-74</code></li>
+<li><strong>lease acquire line, read by the todo-editor for its token</strong>: <code>lease: 3f9c0a1b2c3d4e5f</code>, copied from <code>plugins/harness/scripts/todo_sync.py:358</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>inbox put</code>: <code>README.md</code> (keep: describes add and sync queueing; the todo-edit paragraph changes in TASK-6), <code>docs/RELEASES/v1.0.0.md</code> (change: a release bullet for inbox put --update (TASK-6)), <code>plugins/harness/agents/todo-editor.md</code> (change: the update operation queues with inbox put --update (TASK-5)), <code>plugins/harness/config/harness.schema.json</code> (keep: the --file-issue repo description), <code>plugins/harness/scripts/todo_sync.md</code> (change: inbox put --update documented (TASK-4)), <code>plugins/harness/scripts/todo_sync.py</code> (change: the --update option and its docstring (TASK-4)), <code>plugins/harness/skills/add-todo/SKILL.md</code> (keep: add runs queue items as before), <code>plugins/harness/skills/sync-gh-todo/SKILL.md</code> (keep: sync runs queue items as before), <code>plugins/todo-watch/README.md</code> (keep: the mod still runs add --inbox, which now applies queued updates too (D2A); no mod change), <code>tests/scripts/test_todo_sync_usage_doc.py</code> (keep: reads the parser), <code>tests/skills/test_sync_gh_todo_skill_contract.py</code> (keep: sync prose guard), <code>tests/skills/test_todo_inbox_prose_contract.py</code> (keep: add and sync prose guard)</li>
+<li><strong>S2</strong> <code>lease acquire</code>: <code>README.md</code> (change: a split holds the lease from its dry run (TASK-6)), <code>docs/RELEASES/v1.0.0.md</code> (keep: the earlier lease bullet stays; a new bullet is added (TASK-6)), <code>plugins/harness/agents/todo-editor.md</code> (change: split takes the lease after drafting, with --wait 300 (TASK-2)), <code>plugins/harness/scripts/todo_sync.md</code> (change: the --wait row (TASK-1)), <code>plugins/harness/scripts/todo_sync.py</code> (change: --wait option and docstring (TASK-1)), <code>tests/skills/test_todo_inbox_prose_contract.py</code> (change: the docstring names when a split holds the lease (TASK-2))</li>
+<li><strong>S3</strong> <code>split (ID|todo-[a-z0-9]{4})</code>: <code>README.md</code> (change: the todo-edit line takes several split ids and --update (TASK-6)), <code>plugins/harness/agents/todo-editor.md</code> (keep: the one-id split example in the frontmatter still holds), <code>plugins/harness/scripts/todo_sync.md</code> (keep: the driver&#x27;s split takes one id), <code>plugins/harness/scripts/todo_sync.py</code> (keep: the driver&#x27;s split takes one id), <code>plugins/harness/skills/todo-edit/SKILL.md</code> (change: --split ID[, ID ...] and --update (TASK-5)), <code>tests/lib/test_catalog_lock.py</code> (keep: a lock owner string in a test)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: lease acquire --wait SECONDS <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/todo_sync/locking.py</code>, <code>plugins/harness/scripts/todo_sync.py</code>, <code>plugins/harness/scripts/todo_sync.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/locking.py:57</code> holds <code>def acquire(cfg: HarnessConfig, owner: str) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/locking.py:64</code> holds <code>return catalog_lock.acquire_lease(lock_path(cfg), owner)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/locking.py:103</code> holds <code>token = acquire(cfg, owner)</code></li>
+<li><code>plugins/harness/lib/harness_lib/catalog_lock.py:372</code> holds <code>def acquire_lease(path: PathLike, owner: str, wait: Optional[float] = None) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/catalog_lock.py:39</code> holds <code>WAIT_SECONDS = 10.0</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:228-229</code> holds <code>acq.add_argument(&quot;--owner&quot;, required=True, help=&quot;Who holds the lease, named in every refusal.&quot;)</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:358</code> holds <code>print(f&quot;lease: {locking.acquire(cfg, args.owner)}&quot;)</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:85</code> holds <code>``lease acquire --owner TEXT``</code></li>
+<li><code>plugins/harness/scripts/todo_sync.md:192</code> holds <code>| `--owner TEXT` | Required. Who holds the lease; named in every refusal. |</code></li>
+<li><code>plugins/harness/scripts/todo_sync.md:57</code> holds <code>A lock another owner holds is waited on for 10 seconds</code></li>
+</ul>
+<p class="action">Copy the planned test file from docs/plans/2023/tests/tests/scripts/test_todo_sync_lease_wait.py to tests/scripts/test_todo_sync_lease_wait.py first. In locking.py change acquire to `acquire(cfg: HarnessConfig, owner: str, wait: Optional[float] = None) -&gt; str` and pass `wait` on: `catalog_lock.acquire_lease(lock_path(cfg), owner, wait)`; its docstring says it waits up to `wait` seconds for a held lease or write lock (catalog_lock.WAIT_SECONDS when None). `leased` keeps calling `acquire(cfg, owner)`. In todo_sync.py add a module-level argparse type `_seconds(text: str) -&gt; float` (float(text); a non-number or a negative value raises argparse.ArgumentTypeError(&#x27;must be a number of seconds, 0 or more&#x27;), so argparse reports `argument --wait: ...`). In `_leases` add `acq.add_argument(&quot;--wait&quot;, type=_seconds, metavar=&quot;SECONDS&quot;, help=&quot;Wait up to SECONDS for a held lease or write lock before refusing (default: 10).&quot;)` after --owner; `_lease`&#x27;s acquire branch calls `locking.acquire(cfg, args.owner, args.wait)`. Module docstring: the entry reads ``lease acquire --owner TEXT [--wait SECONDS]`` and adds that --wait sets how long a held lease or write lock is waited on before the refusal (default 10 seconds; a todo-editor split passes 300). todo_sync.md: in `lease acquire` add the row `| `--wait SECONDS` | Wait up to SECONDS for a held lease or write lock before refusing (default 10). A todo-editor split passes 300. |` after --owner, and in Locking add that `lease acquire --wait SECONDS` waits that long instead of 10 seconds. Optional/Union typing, no first or second person, line length 110.</p>
+<ul>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_acquire_waits_past_the_default_for_a_lease_freed_meanwhile</code> fails with TypeError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_acquire_refuses_once_its_own_wait_runs_out</code> fails with TypeError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_lease_acquire_takes_a_wait_in_seconds</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_defaults_to_the_lock_wait</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[-1]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[soon]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_lease_wait.py::test_the_driver_waits_for_the_held_lease</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/todo_sync/locking.py plugins/harness/scripts/todo_sync.py tests/scripts/test_todo_sync_lease_wait.py</code>: All checks passed!</li>
+<li>Run <code>python -m pytest tests/scripts/test_todo_sync_usage_doc.py tests/scripts/test_todo_sync_catalog_lock_cli.py tests/lib/test_catalog_lock.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2023 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Split drafts its spec before it takes the lease <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/agents/todo-editor.md</code>, <code>tests/skills/test_todo_inbox_prose_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/agents/todo-editor.md:73-74</code> holds <code>Retire, split and refresh write the catalog, so each holds the catalog lease from its first step to its reply</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:122</code> holds <code>1. `TS lease acquire --owner &quot;todo-editor split&quot;`</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:126-127</code> holds <code>When the item holds only one deliverable, stop and report that instead of inventing parts (the **finish** release still runs).</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:128</code> holds <code>3. Write the spec to `&lt;state_dir&gt;/todo-sync/split-&lt;id&gt;.json`:</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:134</code> holds <code>4. `TS split &lt;id&gt; --spec &lt;path&gt; --dry-run --lease &lt;token&gt;`.</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:241</code> holds <code>Runs for retire, split and refresh, which hold a lease.</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:257-258</code> holds <code>A retire, split or refresh run that holds a lease still runs `TS lease release &lt;token&gt;` before the reply</code></li>
+<li><code>tests/skills/test_todo_inbox_prose_contract.py:4-5</code> holds <code>Retire, split and refresh runs hold a lease from start to reply.</code></li>
+<li><code>tests/skills/test_todo_inbox_prose_contract.py:72-76</code> holds <code>assert &quot;TS lease acquire --owner&quot; in section</code></li>
+</ul>
+<p class="action">Copy docs/plans/2023/tests/tests/skills/test_todo_editor_split_lease_contract.py to tests/skills/test_todo_editor_split_lease_contract.py first. In todo-editor.md renumber the split section: 1. read the item and what it points at, find the independent deliverables (old step 2); a one-deliverable item stops and reports that, and no lease is held yet, so no release runs (drop &#x27;(the **finish** release still runs)&#x27;). 2. write the spec to `&lt;state_dir&gt;/todo-sync/split-&lt;id&gt;.json` (old step 3, unchanged; the path is per id, so parallel drafts never collide). 3. `TS lease acquire --owner &quot;todo-editor split&quot; --wait 300`, run with a Bash timeout of 330000 ms; keep the token; every split command below passes `--lease &lt;token&gt;`. A `problem:` line naming a holder means another run holds the catalog: run the same command again, up to 3 times in all; the third refusal ends the run (relay it); any other `problem:` line ends the run at once. 4. the dry run (old step 4), adding that it reads the catalog as it is now, so a split that landed while this one drafted shows up here as a `problem:` line: fix the spec and rerun once. 5-7: old steps 5-7. Rules, &#x27;Queue, never write&#x27;: keep the sync/add sentence; replace the lease sentence with: Retire and refresh hold the catalog lease from their first step to their reply; a split drafts its spec first and holds the lease from the step before its dry run to its reply, so several splits draft at once and apply one at a time; either way no drain or other run writes in between. finish: &#x27;Runs for retire, split and refresh once they hold a lease.&#x27; Stop conditions: add that a split stopping before its lease step holds none and runs no release. In tests/skills/test_todo_inbox_prose_contract.py change only the module docstring sentence &#x27;Retire, split and refresh runs hold a lease from start to reply.&#x27; to &#x27;Retire and refresh runs hold a lease from start to reply, a split from its dry run to its reply.&#x27;</p>
+<ul>
+<li>Test <code>tests/skills/test_todo_editor_split_lease_contract.py::test_split_writes_its_spec_before_it_takes_the_lease</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_editor_split_lease_contract.py::test_split_takes_the_lease_right_before_its_dry_run</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_editor_split_lease_contract.py::test_split_waits_for_a_lease_another_run_holds</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_editor_split_lease_contract.py::test_a_one_deliverable_split_stops_without_a_release</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_editor_split_lease_contract.py::test_the_rules_say_when_a_split_holds_the_lease</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/skills/test_todo_inbox_prose_contract.py tests/skills/test_todo_edit_skill_contract.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2023 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Field updates: validate, queue and drain <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/todo_sync/updates.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/inbox.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/reshape.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:108-111</code> holds <code>ADD_REQUIRED = (&quot;title&quot;, &quot;kind&quot;, &quot;summary&quot;, &quot;proposed_change&quot;, &quot;blast_radius&quot;, &quot;loe&quot;, &quot;impact&quot;, &quot;severity&quot;,</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:113</code> holds <code>ISSUE_KEYS = (&quot;issue&quot;, &quot;url&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:195-200</code> holds <code>raise TodoSyncError(f&quot;item {n}: {key} must be {wanted}&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:212-219</code> holds <code>raise TodoSyncError(f&quot;item {n}: {where}: {errors[0].message[:200]}&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:233</code> holds <code>_check_types(n, spec)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:242</code> holds <code>_check_item(n, item)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:416</code> holds <code>def _rerank(data: Dict[str, Any], fresh: Container[str] = ())</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:457</code> holds <code>what = &quot;split spec&quot; if key == &quot;parts&quot; else &quot;add spec&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/ids.py:154-157</code> holds <code>return &quot;note&quot;, f&quot;{code} was retired&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/ids.py:176</code> holds <code>def resolve_ids(catalog: Dict[str, Any], raws: Iterable[str]) -&gt; List[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:94</code> holds <code>def _write_items(cfg: HarnessConfig, items: Sequence[Any]) -&gt; Tuple[Path, ...]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:110</code> holds <code>json.dumps({&quot;items&quot;: [item]}, indent=2, ensure_ascii=False)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:193</code> holds <code>out = add_items(working, read_spec(claim[1], &quot;items&quot;), day, rng)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:53-55</code> holds <code>drift: Optional[int] = None</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:341</code> holds <code>raise TodoSyncError(f&quot;inbox: added {_added_text(added)}, then: {exc}&quot;) from exc</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:343</code> holds <code>return DrainResult(added if accepted else (), refused, drift)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/inbox.py:358</code> holds <code>line = f&quot;inbox: added {len(result.added)} item(s): {_added_text(result.added)}&quot;</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:329</code> holds <code>print(&quot;\n&quot;.join(inbox.drain_lines(inbox.drain(cfg))))</code></li>
+</ul>
+<p class="action">Copy docs/plans/2023/tests/tests/lib/test_todo_sync_updates.py to tests/lib/test_todo_sync_updates.py first. reshape.py: `_check_types(n, spec, label: str = &quot;item&quot;)` and `_check_item(n, item, label: str = &quot;item&quot;)` put `label` where they now say `item` in their messages (callers unchanged); read_spec names the spec from {&quot;parts&quot;: &quot;split spec&quot;, &quot;items&quot;: &quot;add spec&quot;, &quot;updates&quot;: &quot;update spec&quot;}. New updates.py (module docstring; functions under 50 lines): `UPDATE_FIELDS` = the ADD_REQUIRED + ADD_OPTIONAL keys less ISSUE_KEYS, in that order; frozen dataclass `Updated(catalog, updated, rescored, reranked)` where `updated` is a tuple of (id, fields tuple), one entry per item in first-update order, its fields merged in first-set order; `merge_updated(pairs)` does that merge and the drain reuses it. `apply_updates(catalog, entries) -&gt; Updated` works on a deep copy: todo_ids.require_stable(catalog, &quot;update&quot;); an empty list raises &#x27;update needs at least one update in the spec&#x27;; per entry n (from 1): not a dict -&gt; &#x27;update n is not an object&#x27;; no non-empty string `id` -&gt; &#x27;update n names no id&#x27;; `fields` missing, not a dict or empty -&gt; &#x27;update n sets no field&#x27;; a key outside UPDATE_FIELDS -&gt; &#x27;update n sets &lt;key&gt;; an update never sets it&#x27;; reshape._check_types(n, fields, &quot;update&quot;); the id through todo_ids.resolve_ids (a retired, split or unknown id raises its message, prefixed &#x27;update n: &#x27;); an (id, field) an earlier entry of the same list set -&gt; &#x27;update n sets &lt;id&gt; &lt;field&gt; again; one spec sets a field once&#x27;; then the item takes a deep copy of each value and reshape._check_item(n, item, &quot;update&quot;) runs; finally reshape._rerank(data) and the Updated. inbox.py: `_write_items(cfg, items, key: str = &quot;items&quot;)` writes `{key: [item]}`; new `put_updates(cfg, spec) -&gt; PutResult`: read_spec(spec, &quot;updates&quot;), load_catalog(cfg, &quot;update&quot;), apply_updates (RankingError becomes TodoSyncError; nothing written on any refusal), then _write_items(cfg, entries, &quot;updates&quot;). The drain reads each claimed file as updates when its object holds an &quot;updates&quot; list, else as add items as now; an update file runs apply_updates on the working catalog, a (id, field) an earlier file of the same drain set is appended once to `overwritten`, and any TodoSyncError, RankingError or ValueError rejects the file as an add file is rejected. Keep _absorb under 50 lines (a per-file helper). DrainResult gains `updated` and `overwritten` (both default ()), after `drift`; drain passes them by keyword. A drain where only updates landed still writes, renders and checks. The failure text after a landing names what landed: &#x27;inbox: added ..., then:&#x27; or &#x27;inbox: updated ..., then:&#x27; or both joined by &#x27;; &#x27;. drain_lines: nothing landed and nothing refused -&gt; &#x27;inbox: empty&#x27;; nothing landed -&gt; &#x27;inbox: rejected K (&lt;names&gt;)&#x27; as now; else &#x27;inbox: &#x27; + &#x27;; &#x27;.join of, in order, &#x27;added N item(s): &lt;id&gt; (#N|note), ...&#x27;, &#x27;updated M item(s): &lt;id&gt; (&lt;f1&gt;, &lt;f2&gt;), ...&#x27;, &#x27;overwrote &lt;id&gt; &lt;field&gt;, ...&#x27;, &#x27;rejected K (&lt;names&gt;)&#x27;, then &#x27;check drift=D&#x27; (the formats[] example). Update the inbox.py module docstring: the inbox also holds field updates, one per file, applied by the same drain.</p>
+<ul>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_update_fields_are_the_add_fields_without_the_issue</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_apply_updates_sets_the_fields_and_reranks</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_an_update_leaves_every_other_field</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_an_id_is_read_in_any_case_and_without_its_prefix</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[rank]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[catalog_entry_ids]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_a_retired_or_split_id_is_refused</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[severity]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[no-id]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_one_spec_sets_a_field_once</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_an_empty_spec_is_refused</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_put_updates_queues_one_file_per_update_and_leaves_the_catalog</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_put_updates_writes_nothing_on_a_refusal</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_drain_applies_adds_and_updates_in_one_write</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_a_later_update_of_one_field_wins_and_is_named</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_updates_of_one_item_from_two_files_merge_their_fields</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_of_a_retired_id</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_that_sets_a_computed_field</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_drain_lines_name_the_updates_and_the_overwrites</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_updates.py::test_drain_lines_of_adds_alone_are_unchanged</code> fails with ImportError, then passes</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/todo_sync/updates.py plugins/harness/lib/harness_lib/todo_sync/inbox.py plugins/harness/lib/harness_lib/todo_sync/reshape.py tests/lib/test_todo_sync_updates.py</code>: All checks passed!</li>
+<li>Run <code>python -m pytest tests/lib/test_todo_sync_inbox.py tests/lib/test_todo_sync_add.py tests/lib/test_todo_sync_reshape.py tests/lib/test_todo_sync_add_note.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2023 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: inbox put --update in the driver and its usage document <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1, TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/todo_sync.py</code>, <code>plugins/harness/scripts/todo_sync.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/todo_sync.py:218-219</code> holds <code>put.add_argument(&quot;--spec&quot;, type=Path, required=True, help=&#x27;JSON file: {&quot;items&quot;: [{...}, {...}]}.&#x27;)</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:220-221</code> holds <code>put.add_argument(&quot;--file-issue&quot;, action=&quot;store_true&quot;,</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:333-335</code> holds <code>result = inbox.put(cfg, args.spec, args.file_issue)</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:80</code> holds <code>``inbox put --spec PATH [--file-issue]``</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:76</code> holds <code>``inbox: added N item(s): &lt;id&gt; (#N|note), ...[; rejected K (&lt;files&gt;)]; check drift=D`` line</code></li>
+<li><code>plugins/harness/scripts/todo_sync.md:47</code> holds <code>| `add --inbox` | `/harness:add-todo` and `/harness:sync-gh-todo` after their agent returns, and the `todo-watch` mod. |</code></li>
+<li><code>plugins/harness/scripts/todo_sync.md:48</code> holds <code>| `inbox put` | The `harness:todo-editor` agent, for `add` and `sync` runs. |</code></li>
+<li><code>plugins/harness/scripts/todo_sync.md:168</code> holds <code>| `--inbox` | Add every queued inbox file in one catalog write, oldest first.</code></li>
+<li><code>plugins/harness/scripts/todo_sync.md:173</code> holds <code>### `inbox put`</code></li>
+<li><code>plugins/todo-watch/hooks/inbox.ts:112</code> holds <code>const argv = [r.python, r.script, &#x27;add&#x27;, &#x27;--inbox&#x27;, &#x27;--project&#x27;, r.project]</code></li>
+</ul>
+<p class="action">Copy docs/plans/2023/tests/tests/scripts/test_todo_sync_update_cli.py to tests/scripts/test_todo_sync_update_cli.py first. todo_sync.py `_adders`: on `put` add `--update` (store_true, help &#x27;Queue field updates of existing items: the spec is {&quot;updates&quot;: [{&quot;id&quot;: ..., &quot;fields&quot;: {...}}]}.&#x27;). `_inbox`: with args.update, a --file-issue raises TodoSyncError(&#x27;inbox put --update takes no --file-issue (an update files no issue)&#x27;), else `inbox.put_updates(cfg, args.spec)`; either way print one `queued &lt;repo-relative path&gt;` line per file as now. Module docstring: the entry reads ``inbox put --spec PATH [--file-issue | --update]`` and says --update queues field updates of existing items (each field one an add spec may carry other than issue and url; each id a live item, a retired or split id refused; one spec sets a field of an item once; the whole spec checked against the catalog first, then one inbox file per update); the ``add`` entry&#x27;s --inbox sentence says queued updates are applied with the queued items in name order, then the catalog is re-ranked, a later queued update of a field an earlier one set wins and the line names it, and gives the line as `inbox: [added N item(s): ...; ][updated M item(s): &lt;id&gt; (&lt;fields&gt;), ...; ][overwrote &lt;id&gt; &lt;field&gt;, ...; ][rejected K (&lt;files&gt;); ]check drift=D`. Update the first paragraph&#x27;s list to name field updates. todo_sync.md: Who runs what, `inbox put` row: the todo-editor for add and sync runs, and with --update for update runs (any agent may queue updates); `add --inbox` row: &#x27;/harness:add-todo, /harness:sync-gh-todo and /harness:todo-edit --update after their agents return, and the todo-watch mod&#x27;; `add` table, --inbox row: names the applied updates and the line above; `inbox put` section: a paragraph on --update and a `| `--update` | ... |` row.</p>
+<ul>
+<li>Test <code>tests/scripts/test_todo_sync_update_cli.py::test_inbox_put_takes_an_update_flag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_update_cli.py::test_put_update_queues_and_add_inbox_applies</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_update_cli.py::test_parallel_queued_updates_land_in_one_drain_with_drift_0</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_a_computed_field</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_file_issue</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/scripts/todo_sync.py tests/scripts/test_todo_sync_update_cli.py</code>: All checks passed!</li>
+<li>Run <code>python -m pytest tests/scripts/test_todo_sync_usage_doc.py tests/scripts/test_todo_sync_catalog_lock_cli.py tests/scripts/test_todo_sync.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2023 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: todo-edit: parallel splits and the update operation <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2, TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/todo-edit/SKILL.md</code>, <code>plugins/harness/agents/todo-editor.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/todo-edit/SKILL.md:4</code> holds <code>argument-hint: &quot;--retire ID[, ID ...] [--delete-retired] | --split ID | --refresh  [-- &lt;guidance&gt;]&quot;</code></li>
+<li><code>plugins/harness/skills/todo-edit/SKILL.md:24</code> holds <code>| `--split` | exactly one | `--split todo-m3x9 -- one part per module` | `opus` |</code></li>
+<li><code>plugins/harness/skills/todo-edit/SKILL.md:34-36</code> holds <code>When the operation is missing or unknown, `--split` names more than one id</code></li>
+<li><code>plugins/harness/skills/todo-edit/SKILL.md:43</code> holds <code>One `Agent` call: `subagent_type=&quot;harness:todo-editor&quot;`, the model from the table</code></li>
+<li><code>plugins/harness/skills/todo-edit/SKILL.md:48</code> holds <code>Operation: &lt;retire | split | refresh&gt;</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:10-14</code> holds <code>The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired, Project root, Guidance)</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:61</code> holds <code>the split and add spec files under `&lt;state_dir&gt;/todo-sync/`</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:272</code> holds <code>Operation: &lt;retire | split | refresh | sync | add&gt;</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:276</code> holds <code>Added: &lt;queued: &lt;title&gt; (#N [&lt;url&gt;] | note) for sync and add</code></li>
+<li><code>plugins/harness/agents/todo-editor.md:284</code> holds <code>Sync and add run no check: their `Check` line reads `not run (the drain checks)`.</code></li>
+<li><code>tests/contract/test_dispatch_skill_headers.py:79</code> holds <code>assert _prompt_block(&quot;todo-edit&quot;)[1].startswith(&quot;Operation: &quot;)</code></li>
+<li><code>tests/skills/test_todo_edit_skill_contract.py:21-22</code> holds <code>_REPLY_FIELDS = (&quot;Operation&quot;, &quot;Result&quot;, &quot;Retired ids&quot;, &quot;Prose fixed&quot;, &quot;Added&quot;, &quot;Stubs&quot;, &quot;Resolved&quot;, &quot;Close&quot;,</code></li>
+<li><code>plugins/harness/skills/add-todo/SKILL.md:77</code> holds <code>sh &quot;${CLAUDE_PLUGIN_ROOT}/scripts/hpy&quot; &quot;${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py&quot; add --inbox</code></li>
+</ul>
+<p class="action">Copy docs/plans/2023/tests/tests/skills/test_todo_edit_parallel_contract.py to tests/skills/test_todo_edit_parallel_contract.py first. todo-edit SKILL.md: argument-hint &quot;--retire ID[, ID ...] [--delete-retired] | --split ID[, ID ...] | --update ID[, ID ...] | --refresh  [-- &lt;guidance&gt;]&quot;; description adds queuing field updates of items (trigger &#x27;update todo-m3x9&#x27;). Step 1 table: `--split` one or more (`--split todo-m3x9, k7qf -- one part per module`, opus); new row `--update` one or more, guidance required (`--update todo-m3x9 -- severity 4: the parser drops rows`, opus). Stop conditions: drop &#x27;`--split` names more than one id&#x27;; add &#x27;`--update` with no guidance&#x27; and &#x27;`--update` names none&#x27; to the hint cases. Step 2: `--retire` and `--refresh` make one Agent call as now; `--split` and `--update` make one `Agent` call per id, all in one message, each prompt naming its one id on the `Ids:` line (splits then draft at once and take the catalog lease one at a time; updates only queue). The prompt block keeps its six lines with `Operation: &lt;retire | split | refresh | update&gt;`. New Step 3, for --update only: once every agent has returned, drain once with a fenced line `sh &quot;${CLAUDE_PLUGIN_ROOT}/scripts/hpy&quot; &quot;${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py&quot; add --inbox` run from the project root, reading its line as add-todo Step 4 does (`inbox: updated ...`, `; rejected ...` naming files kept as `.rejected.json` beside a `.reason.txt`, `inbox: empty` when nothing waited or the todo-watch mod drained first, a lock held by `todo_sync.py add --inbox` meaning the mod is draining). Old Step 3 becomes Step 4: relay every agent&#x27;s reply, one per id, then the drain line. todo-editor.md: frontmatter description adds queuing field updates of existing items and the update operation; Rules &#x27;Edit only&#x27; adds update spec files; &#x27;Queue, never write&#x27; covers sync, add and update; new `## update` section after `## add`: Runs for `Operation: update`, `Ids:` one item, `Guidance:` what to change. 1. Grep and Read the item; read what the guidance names, checking claims as add level 1 does. 2. Choose new values only for `title`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`, `proposed_change`, `code_snippet`, `files`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`, `related_gh_issues`; each value replaces the field whole; the script refuses every other field (`id`, `rank`, `priority`, `depends_on`, `unblocks`, `sources`, `gh_issues`, `tracker`, `catalog_entry_ids`), and the drain rescores from severity, impact, loe and blast_radius. 3. Write `{&quot;updates&quot;: [{&quot;id&quot;: &quot;&lt;id&gt;&quot;, &quot;fields&quot;: {...}}]}` to `&lt;state_dir&gt;/todo-sync/update-&lt;stamp&gt;-&lt;rand&gt;.json` (stamp and rand as in sync). 4. `TS inbox put --update --spec &lt;path&gt;`: no lease, no catalog write; on a `problem:` line fix the spec and rerun once. 5. List it under `Added` as `queued update: &lt;id&gt; (&lt;fields&gt;)`; skip finish: the skill drains. Reply block keeps its ten field names: Operation adds `update`; Result for sync, add and update is the first queued line; Added names `queued update: &lt;id&gt; (&lt;fields&gt;)` for update; &#x27;Sync, add and update run no check&#x27;. Stop conditions: an update id the script refuses (retired, split, unknown) is relayed verbatim.</p>
+<ul>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_argument_hint_takes_several_split_ids_and_an_update</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_update_without_guidance_stops_at_the_hint</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_split_and_update_dispatch_one_agent_per_id_in_one_message</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_the_skill_drains_the_inbox_once_after_the_update_agents</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_queues_updates_and_holds_no_lease</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_names_the_fields_an_update_may_set</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_reports_queued_updates_under_added</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/skills/test_todo_inbox_prose_contract.py tests/skills/test_todo_edit_skill_contract.py tests/skills/test_todo_editor_split_lease_contract.py tests/contract/test_dispatch_skill_headers.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2023 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: README, release notes and the harness version <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-5</p>
+<p><strong>Files:</strong> <code>README.md</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>README.md:439</code> holds <code>`/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t | --refresh`</code></li>
+<li><code>README.md:478-480</code> holds <code>its retire, split and refresh hold a lease from `lease acquire` to `lease release`</code></li>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.77.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:28</code> holds <code>| harness | 0.65.1 | 0.77.0 |</code></li>
+</ul>
+<p class="action">README.md: the todo-edit line reads `/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t[, m3x9] | --update todo-sp7t -- &lt;what to change&gt; | --refresh` and the paragraph adds: several split ids dispatch one agent each in one message, drafting at once and applying one at a time under the lease; --update dispatches one agent per id that queues field updates with `todo_sync.py inbox put --update`, and the skill drains them once with `add --inbox`. The lease sentence (line 478-480) says retire and refresh hold a lease from `lease acquire` to `lease release`, a split from its dry run (`lease acquire --wait 300`), and update runs queue like adds. plugin.json: harness version 0.77.0 -&gt; 0.78.0. docs/RELEASES/v1.0.0.md: the harness row reads `| harness | 0.65.1 | 0.78.0 |`; append bullets: Feat(todo-sync) `lease acquire --wait SECONDS`, and a todo-editor split drafts its spec before it takes the lease, so parallel splits draft at once and apply one at a time; Feat(todo-sync) `inbox put --update` queues field updates of existing items (the add-spec fields less issue and url; a retired, split or unknown id and any other field refused) and `add --inbox` applies them with queued adds in one write, naming a later update that overwrote an earlier one&#x27;s field; Feat(harness) `/harness:todo-edit --split` takes several ids and `--update ID[, ID ...] -- &lt;guidance&gt;` dispatches one todo-editor per id.</p>
+<ul>
+<li>Run <code>git grep -n -F -e &quot;--update todo-sp7t&quot; -- README.md</code>: README.md:</li>
+<li>Run <code>git grep -n -F -e &quot;\&quot;version\&quot;: \&quot;0.78.0\&quot;&quot; -- plugins/harness/.claude-plugin/plugin.json</code>: plugin.json:3:</li>
+<li>Run <code>git grep -n -F -e &quot;| harness | 0.65.1 | 0.78.0 |&quot; -- docs/RELEASES/v1.0.0.md</code>: v1.0.0.md:28:</li>
+<li>Record it: <code>plan.py record 2023 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2023/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

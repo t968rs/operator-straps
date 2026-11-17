@@ -1,0 +1,93 @@
+{
+  "harness_version": null,
+  "base_branch": null,
+  "integration_branches": [],
+  "skills_dir": ".claude/skills/",
+  "agents_dir": ".claude/agents/",
+  "strap": {
+    "target": "project"
+  },
+  "plugins": {},
+  "schemas_dir": ".claude/agent-schemas",
+  "state_dir": ".claude/state/harness",
+  "scratch_folder": "docs/_scratch/",
+  "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
+  "agent_usage_path": "docs/_harness/agent_usage.jsonl",
+  "exclusions": ".claude/review_exclusions.json",
+  "artifacts": {
+    "reviews": "docs/PR_REVIEWS",
+    "plans": "docs/PLANS",
+    "summaries": "docs/PR_SUMMARIES",
+    "commit_messages": "docs/_commit_messages",
+    "scratch": "docs/_scratch/pr_review",
+    "research": "docs/RESEARCH",
+    "planning_prefixes": ["docs/superpowers/", "docs/PLANS/"]
+  },
+  "tests": {
+    "roots": ["tests/"],
+    "file_pattern": "(^|/)test_[^/]*\\.py$|(^|/)conftest\\.py$|\\.test\\.(ts|tsx|js)$",
+    "registry": null,
+    "registry_names": [],
+    "timings": null,
+    "fixer_test_seconds": null,
+    "defer_flags": [],
+    "serial_flags": []
+  },
+  "review": {
+    "guard_suite": [],
+    "local_guards": [],
+    "local_test_pattern": "(^|/)test_[^/]*_local\\.py$",
+    "registry_guards": [],
+    "structural_guard_prefixes": [],
+    "content_pin_pattern": null,
+    "lenses": null,
+    "domain_pointers": [],
+    "tracking_paths": []
+  },
+  "commit_buckets": [
+    {"bucket": "Artifact", "prefixes": ["docs/PR_REVIEWS/", "docs/PR_SUMMARIES/"], "names": [], "suffixes": ["matrix.jsonl", "agent_usage.jsonl"]},
+    {"bucket": "Planning", "prefixes": ["docs/superpowers/", "docs/PLANS/"], "names": ["CLAUDE.md", "DesignEvolution.json"], "suffixes": []},
+    {"bucket": "Agent", "prefixes": [".claude/"], "names": [], "suffixes": []},
+    {"bucket": "Cicd", "prefixes": [".github/workflows/"], "names": [], "suffixes": []},
+    {"bucket": "Test", "prefixes": ["tests/"], "names": [], "suffixes": []},
+    {"bucket": "Runtime", "prefixes": ["src/"], "names": [], "suffixes": []},
+    {"bucket": "Docs", "prefixes": ["docs/"], "names": [], "suffixes": []}
+  ],
+  "auto_approve_python_c": false,
+  "auto_title": false,
+  "worktree_root": null,
+  "worktree_setup": [],
+  "worktree_baseline": [],
+  "attach": {
+    "auto_resolve": []
+  },
+  "runlogs": {
+    "dir": null,
+    "name_pattern": "(?:.*\\D)?(?P<date>\\d{4}-\\d{2}-\\d{2})(?:_(?P<time>\\d{6}))?\\.(?:txt|log)"
+  },
+  "docstrings": {
+    "line_length": 110
+  },
+  "canned_messages": [],
+  "todo": {
+    "folder": null,
+    "catalog": "RepoToDo.json",
+    "catalog_schema": "RepoToDo.schema.json",
+    "stub_name": "_IMPL_TODO.md",
+    "top_n": 10,
+    "snapshots": {
+      "dir": "Snapshots",
+      "name_pattern": "TODO_Snapshot_(?P<date>\\d{4}_?\\d{2}_?\\d{2})\\.md"
+    },
+    "research": {
+      "catalog": "ResearchImplementationCatalog.json",
+      "anchor_pattern": "^catalog_entry:\\s*\\S+#(?P<id>[a-z0-9-]+)\\s*$",
+      "ignore_folders": []
+    },
+    "plans": {"pairs": true},
+    "gh": {"repo": null, "max_age_hours": 24},
+    "rules": {"disabled": [], "warn_counts": false},
+    "inject_context": true,
+    "notice": {"style": "banner", "toast_seconds": 60, "items": 3}
+  }
+}

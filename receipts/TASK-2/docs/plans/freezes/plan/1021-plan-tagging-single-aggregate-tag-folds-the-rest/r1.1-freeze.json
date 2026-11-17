@@ -1,0 +1,27 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "509cb5a1a7e6e678bd659544c74d395da283b9a3",
+  "files": {
+    "docs/plans/1021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_ActionPlan.json": "bba23e0c63b83cc1b2c96c3b406a7a4b378271c6"
+  },
+  "ignored": {
+    "docs/plans/1021/tests/tests/lib/test_freeze_git_archive.py": "83167d1655f7c32a0ec9c82fa5e71664e23ac089ef9947ea0f11b7f4aa6404a3",
+    "docs/plans/1021/tests/tests/scripts/__pycache__/_plan_archive_helpers.cpython-312.pyc": "4bd429459db2682b7acb1d0ec77693c2f2d285ee799cb7ea3f344ea73288656e",
+    "docs/plans/1021/tests/tests/scripts/test_plan_archive.py": "2962bd9ba69f79939e5680b75bfefd9237d0dc70d4a1f67fb74c6b44db39ad45",
+    "docs/plans/1021/tests/tests/scripts/test_plan_archive_check.py": "279821d04cb335bec1602aedf10dcfd90318880cfc1898757237a0a0948bb7df",
+    "docs/plans/1021/tests/tests/skills/test_write_plan_archive_contract.py": "71f736de103e3803902ab546ad524447737750081fd918b53d8b9e3ad83066a9"
+  },
+  "at": "2026-11-16T23:00:15+00:00",
+  "base": "36c328ebc8c1e5eb54afaee3a6736b95b2cd3940",
+  "history": false,
+  "digest": "eebb5ba2b698d4bae29225db51fd8272487ede2310ae76716356148342568b08",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

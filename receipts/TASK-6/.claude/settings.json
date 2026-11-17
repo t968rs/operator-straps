@@ -1,0 +1,22 @@
+{
+  "enabledPlugins": {
+    "harness@operator-straps": true,
+    "agent-watcher@operator-straps": true,
+    "session-bookmark@operator-straps": true,
+    "git-status@operator-straps": true,
+    "pytest-scope@operator-straps": true,
+    "todo-watch@operator-straps": true,
+    "bubble-stamp@operator-straps": true,
+    "superpowers-lt@operator-straps": true,
+    "banner-status@operator-straps": true,
+    "parallel2-lanes@operator-straps": true
+  },
+  "extraKnownMarketplaces": {
+    "operator-straps": {
+      "source": {
+        "source": "github",
+        "repo": "t968rs/operator-straps"
+      }
+    }
+  }
+}

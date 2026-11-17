@@ -1,0 +1,1123 @@
+{
+  "plan_id": "0006",
+  "plan_created": "2026-11-04",
+  "completed": "2026-11-04",
+  "source_document": "GitHub issues #195, #192, #193 and the 2026-11-03 design conversation",
+  "documentation": "docs/plans/0006_agent_watcher_PIP.md",
+  "branch": "1123-agent-watcher",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Rename the usage log and its schema to agent_usage (issue #192)",
+      "action": "1. `git mv docs/_harness/pr_review_agent_usage.jsonl docs/_harness/agent_usage.jsonl` (rows unchanged: history).\n2. `git mv plugins/harness/schemas/pr_review_agent_usage.schema.json plugins/harness/schemas/agent_usage.schema.json`; set `$id` to the new file name and `title` to `Agent Usage`. Keep every rule; the description keeps its meaning (TASK-4 widens the rules).\n3. `plugins/harness/config/defaults.json`: `agent_usage_path` -> `docs/_harness/agent_usage.jsonl`. Mirror it in `plugins/pr-review-watch/hooks/config.ts` DEFAULT_AGENT_USAGE_PATH and the USAGE constant in `plugins/pr-review-watch/hooks/tracker.test.ts`.\n3b. `.claude/harness.json`: add `\"agent_usage_path\": \"docs/_harness/agent_usage.jsonl\"` in the same commit as the `git mv`. This repo's sessions run the published (main) pr-review-watch 0.5.1, which reads that key, so its next row lands in the new log instead of recreating the old one. The key stays after the merge: it equals the new default. If a dispatch recreated `docs/_harness/pr_review_agent_usage.jsonl` before the commit, append its rows to `agent_usage.jsonl` and delete it.\n4. `plugins/harness/config/harness.schema.json` agent_usage_path description: `agent usage JSONL: one row per Agent dispatch (repo data).` (the mod name goes in TASK-2).\n5. `canned_messages.py` LOOKUP: replace `pr_review_agent_usage.jsonl` with `agent_usage.jsonl`. `default_exclusions.py`: reason `agent usage rows`. `tools/harness_usage_charts.py` USAGE_FILE and docstring.\n6. `git mv tests/schemas/test_pr_review_agent_usage_schema.py tests/schemas/test_agent_usage_schema.py` and point `_SCHEMA_FILE` at the new name; update `_SCHEMA_REL` in `tests/mods/test_pr_review_watch_usage_contract.py`, the path literals in `tests/lib/test_config.py`, `test_default_exclusions.py`, `test_canned_messages.py`, `test_branch_commits.py`, and the doc comment in `plugins/pr-review-watch/hooks/usageRow.ts`.\n7. `tests/scripts/test_phase4_branch_safety_second_run.py:281`: update the literal only if it encodes the default path; else leave it.\n8. README.md key table and `plugins/pr-review-watch/README.md` config table: the new default.\n9. Bump `plugins/harness/.claude-plugin/plugin.json` to 0.55.0 (the plan's one harness bump).\n10. Copy the planned `tests/lib/test_agent_usage_rename.py`. Verify: the planned nodes, `python -m pytest tests/lib/test_config.py tests/lib/test_default_exclusions.py tests/lib/test_canned_messages.py tests/lib/test_branch_commits.py tests/schemas/test_agent_usage_schema.py tests/mods/test_pr_review_watch_usage_contract.py tests/mods/test_pr_review_watch_config_mirror.py -q`.",
+      "files": [
+        "docs/_harness/agent_usage.jsonl",
+        "docs/_harness/pr_review_agent_usage.jsonl",
+        "plugins/harness/schemas/agent_usage.schema.json",
+        "plugins/harness/schemas/pr_review_agent_usage.schema.json",
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/canned_messages.py",
+        "plugins/harness/lib/harness_lib/default_exclusions.py",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "tools/harness_usage_charts.py",
+        "README.md",
+        "plugins/pr-review-watch/hooks/config.ts",
+        "plugins/pr-review-watch/hooks/tracker.test.ts",
+        "plugins/pr-review-watch/hooks/usageRow.ts",
+        "plugins/pr-review-watch/README.md",
+        "tests/schemas/test_agent_usage_schema.py",
+        "tests/schemas/test_pr_review_agent_usage_schema.py",
+        "tests/mods/test_pr_review_watch_usage_contract.py",
+        "tests/lib/test_config.py",
+        "tests/lib/test_default_exclusions.py",
+        "tests/lib/test_canned_messages.py",
+        "tests/lib/test_branch_commits.py",
+        "tests/scripts/test_phase4_branch_safety_second_run.py",
+        "tests/lib/test_agent_usage_rename.py",
+        ".claude/harness.json"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 1a05a09: 4 test node(s) passed",
+      "verification_references": [
+        "1a05a09566ac407bbbda84e77e417f314a1043d7",
+        "tree d8a755fccc43471b4758605e861b40ff4cf07025",
+        "python -m pytest -q tests/lib/test_agent_usage_rename.py::test_default_usage_path_is_agent_usage tests/lib/test_agent_usage_rename.py::test_schema_file_is_agent_usage tests/lib/test_agent_usage_rename.py::test_canned_message_covers_the_new_log tests/lib/test_agent_usage_rename.py::test_the_usage_log_moved"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/config/defaults.json:13",
+          "expect": "\"agent_usage_path\": \"docs/_harness/pr_review_agent_usage.jsonl\""
+        },
+        {
+          "at": "plugins/harness/schemas/pr_review_agent_usage.schema.json:3",
+          "expect": "schemas/pr_review_agent_usage.schema.json"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/canned_messages.py:32",
+          "expect": "\"pr_review_agent_usage.jsonl\","
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/default_exclusions.py:37",
+          "expect": "(_normalized(cfg.agent_usage_path), \"pr-review agent usage rows\")"
+        },
+        {
+          "at": "tools/harness_usage_charts.py:29",
+          "expect": "USAGE_FILE = \"pr_review_agent_usage.jsonl\""
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/config.ts:9",
+          "expect": "export const DEFAULT_AGENT_USAGE_PATH = 'docs/_harness/pr_review_agent_usage.jsonl'"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.test.ts:19",
+          "expect": "const USAGE = `${ROOT}/docs/_harness/pr_review_agent_usage.jsonl`"
+        },
+        {
+          "at": "tests/schemas/test_pr_review_agent_usage_schema.py:19",
+          "expect": "_SCHEMA_FILE = PLUGIN_ROOT / \"schemas\" / \"pr_review_agent_usage.schema.json\""
+        },
+        {
+          "at": "tests/mods/test_pr_review_watch_usage_contract.py:19",
+          "expect": "_SCHEMA_REL = \"plugins/harness/schemas/pr_review_agent_usage.schema.json\""
+        },
+        {
+          "at": "tests/lib/test_config.py:49",
+          "expect": "assert load_config(make_project()).agent_usage_path == \"docs/_harness/pr_review_agent_usage.jsonl\""
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.54.0\","
+        },
+        {
+          "at": ".claude/harness.json:4",
+          "expect": "\"exclusions\": \".claude/pr_review_exclusions.json\","
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_agent_usage_rename.py::test_default_usage_path_is_agent_usage",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_agent_usage_rename.py::test_schema_file_is_agent_usage",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_agent_usage_rename.py::test_canned_message_covers_the_new_log",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_agent_usage_rename.py::test_the_usage_log_moved",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Rename the pr-review-watch mod to agent-watcher, behavior unchanged",
+      "action": "1. `git mv plugins/pr-review-watch plugins/agent-watcher`. In plugin.json: name `agent-watcher`, version 0.6.0, description naming every agent dispatch.\n2. Rename the state key `'pr-review-watch'` to `'agent-watcher'` in `types/index.d.ts` and every `atom({ plugin: ... })` and `$.ui.mount({ plugin: ... })` in hooks and tests.\n3. Strings the mod writes: usage and matrix notes `agent-watcher auto row; ...` (usageRow.ts, matrixRow.ts and their tests), dev_commit suffix `(agent-watcher auto)` (tracker.ts, tests), toast prefix `agent-watcher:`, OWNER_NOTE `[agent-watcher] Matrix rows for this run are recorded by the agent-watcher mod; skip the manual JSONL append (pr-review Phase 3 Step 4).`\n4. Harness prose that names the mod or the note: `plugins/harness/skills/pr-review/SKILL.md` (lines 316, 402, 459, 567), `review-local/SKILL.md:36`, `agents/pr-team-orchestrator.md:376`, `config/harness.schema.json` (agent_usage_path description), `schemas/agent_usage.schema.json` (description, notes), `lib/harness_lib/default_exclusions.py` (docstring and matrix reason), `schemas/catalogs/CrossCuttingLensCatalog.json`.\n5. Repo wiring: `.claude-plugin/marketplace.json` entry name and source, `.claude/settings.json` enable key `agent-watcher@operator-straps`, `.github/workflows/ci.yml:126` loop, `.claude/pr_review_exclusions.json` reason, `CLAUDE.md` mod list and config-mirror line, `README.md`, `docs/PROVENANCE.md` (destination column only: the source path `.claude/mods/{pr-review-watch,...}` keeps its name), `.claude/skills/porting-into-straps/SKILL.md`, the comments in `plugins/band-line/README.md`, `plugins/band-line/hooks/band.tsx`, `plugins/bubble-stamp/hooks/review.ts`, `review.test.ts`, `plugins/todo-watch/README.md`, `plugins/session-bookmark/README.md`, `tools/harness_usage_charts.py`.\n6. Tests: `git mv` the three `tests/mods/test_pr_review_watch_*.py` to `tests/mods/test_agent_watcher_*.py`; update the `plugins/pr-review-watch/` path constants there and in `tests/mods/test_local_run_key_mirror.py`, `tests/skills/test_bubble_memo_agents_contract.py`, `tests/schemas/test_agent_usage_schema.py` (notes strings); `tests/contract/test_bubble_stamp_registration.py:58-59` becomes `test_agent_watcher_moved_past_its_old_version` on the new path.\n7. Leave alone: history (docs/PR_REVIEWS, docs/plans, docs/PR_SUMMARIES, docs/_harness rows) and the hyphenated-name example in `review_plan.py:159` and `tests/lib/test_review_plan.py:281` (sweep S1).\n8. Migration note, a line starting ``Renamed from `pr-review-watch` `` (0.6.0), in `plugins/agent-watcher/README.md` and in the root `README.md` install section: enable `agent-watcher@operator-straps` and drop the old key; the usage log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).\n9. Copy the planned `tests/contract/test_agent_watcher_name.py`. Verify with its nodes, the commands, and `python -m pytest tests/mods/test_agent_watcher_config_mirror.py tests/mods/test_agent_watcher_matrix_contract.py tests/mods/test_agent_watcher_usage_contract.py tests/mods/test_local_run_key_mirror.py tests/skills/test_bubble_memo_agents_contract.py tests/contract/test_bubble_stamp_registration.py tests/schemas/test_agent_usage_schema.py tests/scripts/test_select_tests.py -q`.",
+      "files": [
+        "plugins/agent-watcher/.claude-plugin/plugin.json",
+        "plugins/agent-watcher/types/index.d.ts",
+        "plugins/agent-watcher/hooks/tracker.ts",
+        "plugins/agent-watcher/hooks/band.tsx",
+        "plugins/agent-watcher/hooks/phase5Scan.ts",
+        "plugins/agent-watcher/hooks/usageRow.ts",
+        "plugins/agent-watcher/hooks/matrixRow.ts",
+        "plugins/agent-watcher/hooks/contract.ts",
+        "plugins/agent-watcher/hooks/config.ts",
+        "plugins/agent-watcher/README.md",
+        "plugins/agent-watcher/hooks/tracker.test.ts",
+        "plugins/agent-watcher/hooks/band.test.tsx",
+        "plugins/agent-watcher/hooks/usageRow.test.ts",
+        "plugins/agent-watcher/hooks/matrixRow.test.ts",
+        ".claude-plugin/marketplace.json",
+        ".claude/settings.json",
+        ".github/workflows/ci.yml",
+        ".claude/pr_review_exclusions.json",
+        "CLAUDE.md",
+        "README.md",
+        "docs/PROVENANCE.md",
+        ".claude/skills/porting-into-straps/SKILL.md",
+        "plugins/band-line/README.md",
+        "plugins/band-line/hooks/band.tsx",
+        "plugins/bubble-stamp/hooks/review.ts",
+        "plugins/bubble-stamp/hooks/review.test.ts",
+        "plugins/todo-watch/README.md",
+        "plugins/session-bookmark/README.md",
+        "tools/harness_usage_charts.py",
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/skills/review-local/SKILL.md",
+        "plugins/harness/agents/pr-team-orchestrator.md",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/schemas/agent_usage.schema.json",
+        "plugins/harness/lib/harness_lib/default_exclusions.py",
+        "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json",
+        "tests/mods/test_agent_watcher_config_mirror.py",
+        "tests/mods/test_agent_watcher_matrix_contract.py",
+        "tests/mods/test_agent_watcher_usage_contract.py",
+        "tests/mods/test_local_run_key_mirror.py",
+        "tests/skills/test_bubble_memo_agents_contract.py",
+        "tests/contract/test_bubble_stamp_registration.py",
+        "tests/schemas/test_agent_usage_schema.py",
+        "tests/contract/test_agent_watcher_name.py",
+        "plugins/agent-watcher/.gitignore",
+        "plugins/agent-watcher/tsconfig.json",
+        "plugins/agent-watcher/.claude-plugin/icon.png",
+        "plugins/agent-watcher/hooks/hooks.json",
+        "plugins/agent-watcher/hooks/register.ts",
+        "plugins/agent-watcher/hooks/root.ts",
+        "plugins/agent-watcher/hooks/watch.ts",
+        "plugins/agent-watcher/hooks/runs.ts",
+        "plugins/agent-watcher/hooks/runKey.ts",
+        "plugins/agent-watcher/hooks/bubbles.ts",
+        "plugins/agent-watcher/hooks/sentinels.ts",
+        "plugins/agent-watcher/hooks/bubbles.test.ts",
+        "plugins/agent-watcher/hooks/config.test.ts",
+        "plugins/agent-watcher/hooks/contract.test.ts",
+        "plugins/agent-watcher/hooks/phase5Scan.test.ts",
+        "plugins/agent-watcher/hooks/runKey.test.ts",
+        "plugins/agent-watcher/hooks/runs.test.ts",
+        "plugins/agent-watcher/hooks/sentinels.test.ts",
+        "plugins/pr-review-watch/.gitignore",
+        "plugins/pr-review-watch/tsconfig.json",
+        "plugins/pr-review-watch/README.md",
+        "plugins/pr-review-watch/.claude-plugin/plugin.json",
+        "plugins/pr-review-watch/.claude-plugin/icon.png",
+        "plugins/pr-review-watch/types/index.d.ts",
+        "plugins/pr-review-watch/hooks/hooks.json",
+        "plugins/pr-review-watch/hooks/register.ts",
+        "plugins/pr-review-watch/hooks/root.ts",
+        "plugins/pr-review-watch/hooks/watch.ts",
+        "plugins/pr-review-watch/hooks/config.ts",
+        "plugins/pr-review-watch/hooks/contract.ts",
+        "plugins/pr-review-watch/hooks/usageRow.ts",
+        "plugins/pr-review-watch/hooks/matrixRow.ts",
+        "plugins/pr-review-watch/hooks/tracker.ts",
+        "plugins/pr-review-watch/hooks/runs.ts",
+        "plugins/pr-review-watch/hooks/runKey.ts",
+        "plugins/pr-review-watch/hooks/bubbles.ts",
+        "plugins/pr-review-watch/hooks/sentinels.ts",
+        "plugins/pr-review-watch/hooks/phase5Scan.ts",
+        "plugins/pr-review-watch/hooks/band.tsx",
+        "plugins/pr-review-watch/hooks/band.test.tsx",
+        "plugins/pr-review-watch/hooks/bubbles.test.ts",
+        "plugins/pr-review-watch/hooks/config.test.ts",
+        "plugins/pr-review-watch/hooks/contract.test.ts",
+        "plugins/pr-review-watch/hooks/matrixRow.test.ts",
+        "plugins/pr-review-watch/hooks/phase5Scan.test.ts",
+        "plugins/pr-review-watch/hooks/runKey.test.ts",
+        "plugins/pr-review-watch/hooks/runs.test.ts",
+        "plugins/pr-review-watch/hooks/sentinels.test.ts",
+        "plugins/pr-review-watch/hooks/tracker.test.ts",
+        "plugins/pr-review-watch/hooks/usageRow.test.ts",
+        "tests/mods/test_pr_review_watch_config_mirror.py",
+        "tests/mods/test_pr_review_watch_matrix_contract.py",
+        "tests/mods/test_pr_review_watch_usage_contract.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 1a05a09: 6 test node(s) passed",
+      "verification_references": [
+        "1a05a09566ac407bbbda84e77e417f314a1043d7",
+        "tree d8a755fccc43471b4758605e861b40ff4cf07025",
+        "python -m pytest -q tests/contract/test_agent_watcher_name.py::test_the_manifest_names_agent_watcher tests/contract/test_agent_watcher_name.py::test_the_marketplace_lists_agent_watcher tests/contract/test_agent_watcher_name.py::test_the_project_enables_agent_watcher tests/contract/test_agent_watcher_name.py::test_ci_tests_agent_watcher tests/contract/test_agent_watcher_name.py::test_the_owner_note_names_agent_watcher tests/contract/test_agent_watcher_name.py::test_no_live_file_names_the_old_mod"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": ".claude-plugin/marketplace.json:14-15",
+          "expect": "\"name\": \"pr-review-watch\","
+        },
+        {
+          "at": ".claude/settings.json:4",
+          "expect": "\"pr-review-watch@operator-straps\": true,"
+        },
+        {
+          "at": ".github/workflows/ci.yml:126",
+          "expect": "for p in plugins/pr-review-watch plugins/git-status"
+        },
+        {
+          "at": "plugins/pr-review-watch/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.5.1\","
+        },
+        {
+          "at": "plugins/pr-review-watch/types/index.d.ts:78",
+          "expect": "'pr-review-watch': {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:72-74",
+          "expect": "'[pr-review-watch] Matrix rows for this run are recorded by the pr-review-watch mod; ' +"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:111",
+          "expect": "(pr-review-watch auto)"
+        },
+        {
+          "at": "plugins/harness/skills/pr-review/SKILL.md:402",
+          "expect": "`[pr-review-watch] Matrix rows for this run are recorded by the pr-review-watch mod` note"
+        },
+        {
+          "at": "tests/contract/test_bubble_stamp_registration.py:58-59",
+          "expect": "def test_pr_review_watch_moved_past_its_old_version(repo_root: Path) -> None:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_plan.py:159",
+          "expect": "Hyphens count as name characters, so ``pr-review`` does not match inside ``pr-review-watch``."
+        },
+        {
+          "at": "docs/PROVENANCE.md:40",
+          "expect": "| `.claude/mods/{pr-review-watch,session-bookmark}/**` | `plugins/{pr-review-watch,session-bookmark}/` |"
+        },
+        {
+          "at": "README.md:110",
+          "expect": "claude plugin install pr-review-watch@operator-straps"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/agent-watcher",
+          "expect": "164 pass, 0 fail"
+        },
+        {
+          "run": "claude plugin validate plugins/agent-watcher",
+          "expect": "Validation passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_agent_watcher_name.py::test_the_manifest_names_agent_watcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_agent_watcher_name.py::test_the_marketplace_lists_agent_watcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_agent_watcher_name.py::test_the_project_enables_agent_watcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_agent_watcher_name.py::test_ci_tests_agent_watcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_agent_watcher_name.py::test_the_owner_note_names_agent_watcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_agent_watcher_name.py::test_no_live_file_names_the_old_mod",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "Split agent-watcher into a generic core and a pr-review layer, behavior unchanged",
+      "action": "Layout (D1 io-closures, D7 direct-register):\n- `hooks/register.ts`: the composition root, the only file importing both sides: `registerCore(on, LAYERS)` then `registerPrReviewLayer(on)`; `LAYERS` from `hooks/layers/index.ts`.\n- `hooks/core/`: `layer.ts` (the `Layer` and `Io` types), `watch.ts`, `root.ts`, `config.ts` (state_dir, agent_usage_path; exports the parsed harness.json object for layers), `contract.ts` (header parse, return block, DEFINED_AGENTS, standalone ids, model family), `usageRow.ts`, `jsonl.ts` (appendValid, readJsonl, recordFailures), `tracker.ts` (Agent dispatch, loop ids, usage folding, usage append, the Stop/refresh fan-out to layers).\n- `hooks/layers/pr-review/`: `identify.ts` (RUN_ID/MODE/AGENT_ROLE header, MODES), `runKey.ts`, `sentinels.ts`, `phase5Scan.ts`, `bubbles.ts`, `matrixRow.ts`, `runs.ts` (phase, bubbled, settle, band text), `band.tsx`, `config.ts` (matrix_path, artifacts.reviews, artifacts.scratch, base_branch), `layer.ts` (`prReviewLayer` and `registerPrReviewLayer(on)`).\nInterface: `Layer = { name; identify(subagentType, header) => Claim | undefined; rowFields?(io, run, agent, completion) => Promise<FixerCounts-like extras>; onSettle?(io, run) => Promise<void>; stopReason?(io, stop) => Promise<string | undefined>; resultContext?(io, run, agent, result) => Promise<string[]> }`. Core appends what `resultContext` returns to the Agent tool result's `context`, in the same hook and order as `tracker.ts:571-573` today; `OWNER_NOTE` and `ownsRows` move to `hooks/layers/pr-review/layer.ts`, whose `resultContext` returns the note for a pr-review reviewer of a run recorded with a PR number. Pure functions take no `$`; anything needing the host takes `io`, built by a core function declaration `ioOf($)` (readText, listDir, exists, write, gitLine, toast, now, and the state reads and updates the layer needs). Layer hooks that the engine raises on their own (ui.render AbovePrompt, prompt.submit PHASE5_PENDING, session.end, session.compact, Bash/PowerShell refresh after `pr_review.py`, session.start pr-team recovery) are registered inside `registerPrReviewLayer(on)`.\nRules: no file under `hooks/core/` imports from `hooks/layers/`. Keep today's order inside one hook: record the dispatch or completion, then the layer settles (refresh, matrix flush), as `tracker.ts:566-573` and `:596-601` do now. Run-level pr-review data (pr, phase, runtimeDir, bubbled, bubbledFrom, verdict) may stay on `Run` as optional layer-owned fields, or move to a layer atom declared in `types/index.d.ts`; either way the state contract keeps every value it holds today. Functions taking `$` stay function declarations (`phase5Scan.ts:11`).\nTests: each `*.test.ts` moves beside its file; the end-to-end `tracker.test.ts` and `band.test.tsx` stay at `hooks/`. No test is dropped or weakened: the total stays at least 164. `config.test.ts` splits with `config.ts`: each case goes with the key it covers (`core/config.test.ts`, `layers/pr-review/config.test.ts`); the mirror test reads both config files. Update the path constants in `tests/mods/test_agent_watcher_*.py`, `test_local_run_key_mirror.py` and `tests/skills/test_bubble_memo_agents_contract.py`. Outside references to moved files: `plugins/bubble-stamp/hooks/review.ts:3` (bubbles.ts), `.claude/skills/porting-into-straps/SKILL.md` (the mod's config.ts / root.ts patterns) and `CLAUDE.md` (the mirror rule names agent-watcher's `hooks/core/config.ts` and `hooks/layers/pr-review/config.ts`). README: a Layout section (core, the Layer and Io contract, adding a layer). Copy the planned `tests/mods/test_agent_watcher_layers.py`.\nAs built (review 0208 I1 and the lane review): `contract.ts` splits like `config.ts`; `keyOfRunId`, `startedAtOfRunId` and the `RunKey` type live in `layers/pr-review/runKey.ts`, the identify cases move to `layers/pr-review/runs.test.ts` and the run-id cases to `runKey.test.ts`, and `hooks/tracker.test.ts` keeps its place with re-pointed imports. The pure run transitions (`newAgent`, `applyDispatch`, `applyCompletion`, `usageToLog`, `markUsageLogged`) live in `core/runs.ts` with `core/runs.test.ts`. The `Layer` interface gains `foldRun?(run, agentId, completion): Run` (pure, applied inside core's completion fold; pr-review's is the closer close) and `onComplete?(io, run, agentId, completion)` (side effects only: the `.matrix_owner` marker). `claimOf` returns the claiming layer, recorded as `Run.claimedBy`; `foldRun`, `onComplete`, `rowFields` and `resultContext` go only to that layer, `onSettle` and `stopReason` to every layer, each call isolated so one layer's throw never cancels another's, and the standalone drop runs in a `finally`. `Io` carries one closure per state key (D12). A two-layer test in `hooks/tracker.test.ts` drives the functions that take the layer list with a stub layer.",
+      "files": [
+        "plugins/agent-watcher/hooks/register.ts",
+        "plugins/agent-watcher/hooks/core/layer.ts",
+        "plugins/agent-watcher/hooks/core/tracker.ts",
+        "plugins/agent-watcher/hooks/core/contract.ts",
+        "plugins/agent-watcher/hooks/core/usageRow.ts",
+        "plugins/agent-watcher/hooks/core/config.ts",
+        "plugins/agent-watcher/hooks/core/jsonl.ts",
+        "plugins/agent-watcher/hooks/core/watch.ts",
+        "plugins/agent-watcher/hooks/core/root.ts",
+        "plugins/agent-watcher/hooks/layers/index.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/layer.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/identify.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/runKey.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/sentinels.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/phase5Scan.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/runs.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/band.tsx",
+        "plugins/agent-watcher/hooks/layers/pr-review/config.ts",
+        "plugins/agent-watcher/types/index.d.ts",
+        "plugins/agent-watcher/README.md",
+        "tests/mods/test_agent_watcher_config_mirror.py",
+        "tests/mods/test_agent_watcher_matrix_contract.py",
+        "tests/mods/test_agent_watcher_usage_contract.py",
+        "tests/mods/test_local_run_key_mirror.py",
+        "tests/skills/test_bubble_memo_agents_contract.py",
+        "tests/mods/test_agent_watcher_layers.py",
+        "plugins/agent-watcher/hooks/root.ts",
+        "plugins/agent-watcher/hooks/watch.ts",
+        "plugins/agent-watcher/hooks/config.ts",
+        "plugins/agent-watcher/hooks/contract.ts",
+        "plugins/agent-watcher/hooks/usageRow.ts",
+        "plugins/agent-watcher/hooks/matrixRow.ts",
+        "plugins/agent-watcher/hooks/tracker.ts",
+        "plugins/agent-watcher/hooks/runs.ts",
+        "plugins/agent-watcher/hooks/runKey.ts",
+        "plugins/agent-watcher/hooks/bubbles.ts",
+        "plugins/agent-watcher/hooks/sentinels.ts",
+        "plugins/agent-watcher/hooks/phase5Scan.ts",
+        "plugins/agent-watcher/hooks/band.tsx",
+        "plugins/agent-watcher/hooks/bubbles.test.ts",
+        "plugins/agent-watcher/hooks/config.test.ts",
+        "plugins/agent-watcher/hooks/contract.test.ts",
+        "plugins/agent-watcher/hooks/matrixRow.test.ts",
+        "plugins/agent-watcher/hooks/phase5Scan.test.ts",
+        "plugins/agent-watcher/hooks/runKey.test.ts",
+        "plugins/agent-watcher/hooks/runs.test.ts",
+        "plugins/agent-watcher/hooks/sentinels.test.ts",
+        "plugins/agent-watcher/hooks/usageRow.test.ts",
+        "plugins/agent-watcher/hooks/core/contract.test.ts",
+        "plugins/agent-watcher/hooks/core/usageRow.test.ts",
+        "plugins/agent-watcher/hooks/core/config.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/config.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/bubbles.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/phase5Scan.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/runKey.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/runs.test.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/sentinels.test.ts",
+        "plugins/bubble-stamp/hooks/review.ts",
+        ".claude/skills/porting-into-straps/SKILL.md",
+        "CLAUDE.md",
+        "plugins/agent-watcher/hooks/core/runs.test.ts",
+        "plugins/agent-watcher/hooks/core/runs.ts",
+        "plugins/agent-watcher/hooks/tracker.test.ts"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit d3d031b: 3 test node(s) passed",
+      "verification_references": [
+        "d3d031b6eb460ddadba3d646e6180f00cb708158",
+        "tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e",
+        "python -m pytest -q tests/mods/test_agent_watcher_layers.py::test_core_never_imports_a_layer tests/mods/test_agent_watcher_layers.py::test_register_wires_core_and_the_pr_review_layer tests/mods/test_agent_watcher_layers.py::test_the_layer_contract_never_takes_the_engine"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/pr-review-watch/hooks/register.ts:7-11",
+          "expect": "registerTracker(on) registerPhase5Context(on) registerBand(on)"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:566-573",
+          "expect": "await recordDispatch($, d, { model: e.model, effort: e.effort, subagentType: e.subagent_type }).catch(noop)"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:596-601",
+          "expect": "if (e.agentId !== undefined) await recordLoopEnd($, e.agentId, e).catch(noop)"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/phase5Scan.ts:11",
+          "expect": "taking `$` are function declarations: the engine follows `$` past an import only into one."
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:331-345",
+          "expect": "const countsFor = async ("
+        },
+        {
+          "at": "tests/mods/test_local_run_key_mirror.py:23",
+          "expect": "_RUN_KEY_TS_REL = \"plugins/pr-review-watch/hooks/runKey.ts\""
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:571-573",
+          "expect": "return { ...r, context: [...(r.context ?? []), OWNER_NOTE] }"
+        },
+        {
+          "at": "plugins/bubble-stamp/hooks/review.ts:3",
+          "expect": "`pr-review-watch/hooks/bubbles.ts`"
+        },
+        {
+          "at": "CLAUDE.md:17-18",
+          "expect": "`tests/mods/test_<mod>_config_mirror.py` checks the mirror"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/agent-watcher",
+          "expect": "0 fail, and at least 164 pass"
+        },
+        {
+          "run": "claude plugin validate plugins/agent-watcher",
+          "expect": "Validation passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_agent_watcher_layers.py::test_core_never_imports_a_layer",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_agent_watcher_layers.py::test_register_wires_core_and_the_pr_review_layer",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_agent_watcher_layers.py::test_the_layer_contract_never_takes_the_engine",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "Generic tracking: every dispatch, the header convention and open row fields (issue #193)",
+      "action": "1. Core tracks every Agent call (D5): drop the `isDefinedAgent` gate in `trackedDispatch`; a call no layer claims is a generic run of one. `DEFINED_AGENTS` stays as data (its contract test stays); built-ins and other plugins' agents log with `subagent_type` as given and `agent_id` the type's name after any plugin prefix (`general-purpose` when the call names none).\n2. Header convention: parse the leading block (D3) of uppercase `KEY: value` / `KEY=value` lines. Core reads the D2 skill key, `RUN_ID`, `AGENT_ROLE`, `AGENT_ID` and `PR` (`AGENT_ROLE` is the key the pr-review and pr-team headers and return blocks already use). Layers still claim first (pr-review and pr-team headers unchanged), with one change (D9): the pr-review layer's `identify` refuses a header whose skill key is present and is neither `pr-review` nor `pr-team`, so a skill that prints `RUN_ID`, `AGENT_ID` and `AGENT_ROLE: reviewer` under its own `SKILL:` line is a generic row, never a pr-team run. For an unclaimed dispatch every consumed value falls back instead of failing the row (D11), so D5's \"every dispatch is logged\" holds: skill from the key with a leading `<plugin>:` stripped, kept only when it matches SKILL_PATTERN (else `standalone`); role from AGENT_ROLE when it matches ROLE_PATTERN and is not `fixer` or `closer` (else `other`; those two need the counts only a layer computes); run_id from RUN_ID and agent_id from AGENT_ID unless the value holds `/` or `\\` (D8 applied to the columns), else the generated `standalone_<UTC>_<seq>` and the type name; pr from PR when it is a positive integer (else null). A raw value that fell back stays in `fields` under its key, subject to D8. 2b. Claim marker (D10): `Run.claimedBy` (added in TASK-3, unset for a generic run) now also replaces the standalone marker. The band's `activeAtom` write, the post-dispatch layer refresh and the after-row drop test that flag instead of `skill === 'standalone'` (today `tracker.ts:184`, `:190`, `:569`, now in `core/tracker.ts`). An unclaimed dispatch's state entry is keyed by its generated `standalone_<UTC>_<seq>` id whatever its header RUN_ID, so parallel dispatches that share a RUN_ID keep separate entries and each logs its own row.\n3. Rows of an unclaimed dispatch gain an optional `fields` object: every leading-block key core did not consume, value as written (trimmed). D8: a value holding a path separator (`/` or `\\`) is dropped with its key, so no local or absolute path reaches the log; any other value is cut to 200 characters (197 and `...`). Absent when empty. A layer-claimed row carries no `fields`, so pr-review and pr-team rows stay exactly as they are. pr and the fixer counts stay top-level.\n4. Schema `agent_usage.schema.json`: `skill` becomes a string with pattern `^[a-z][a-z0-9-]*$` (pr-review, pr-team, standalone still valid); `role` a string with pattern `^[a-z][a-z0-9_-]*$` (the six current roles still valid); add `fields` (object, propertyNames `^[A-Z][A-Z_]*$`, string values with maxLength 200 and pattern `^[^/\\\\]*$`, no path separator); `signal` description: `NO_BLOCK` when the agent returned without a return block, no standalone framing; title and description name every Agent dispatch. Old rows still validate.\n5. TS validator `core/usageRow.ts` follows the schema: drop the USAGE_SKILLS and USAGE_ROLES enums for the two patterns (export them as SKILL_PATTERN and ROLE_PATTERN), allow and check `fields`. Update `tests/mods/test_agent_watcher_usage_contract.py` to pin the patterns and the `fields` rule instead of the enums.\n6. TS tests: a built-in dispatch logs a row; a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields; a prompt whose header block ends before a body `SIGNAL:` line keeps that line out of fields; a pr-review slot dispatch logs exactly as before, with no `fields` key; a value over 200 characters is cut; a strap runner header (TREE, INIT) and a bubble-memo FILES line log no `/` or `\\` anywhere in the row's `fields`. Review 0208 cases: a header with `SKILL: bubble-memo`, RUN_ID, AGENT_ID and `AGENT_ROLE: reviewer` logs skill `bubble-memo` as a generic row with no matrix row, no band change and no pr-team run; `SKILL: harness:strap-skills` logs skill `strap-skills`; `SKILL: Strap Skills` logs `standalone` with `fields.SKILL`; an unclaimed `AGENT_ROLE: fixer` logs role `other`; `AGENT_ID: docs/x` and `RUN_ID: a/b` fall back to the type name and the generated id; `PR: 208` fills `pr`; a `SKILL: strap-skills` dispatch leaves the band's active run unchanged and its run is gone from state after its usage row; two concurrent dispatches under one RUN_ID log two rows.\n7. Root `README.md` (lines 40 and 429 describe the defined-agent gate): every Agent dispatch is logged. Mod README: the header convention, `fields`, and that every dispatch is logged. `tests/schemas/test_agent_usage_schema.py`: drop the `unknown-skill` and `unknown-role` rejection cases (now valid). Copy the planned `tests/schemas/test_agent_usage_open_rows.py`.",
+      "files": [
+        "plugins/agent-watcher/hooks/core/tracker.ts",
+        "plugins/agent-watcher/hooks/core/contract.ts",
+        "plugins/agent-watcher/hooks/core/usageRow.ts",
+        "plugins/agent-watcher/hooks/core/contract.test.ts",
+        "plugins/agent-watcher/hooks/core/usageRow.test.ts",
+        "plugins/agent-watcher/hooks/tracker.test.ts",
+        "plugins/agent-watcher/types/index.d.ts",
+        "plugins/agent-watcher/README.md",
+        "plugins/harness/schemas/agent_usage.schema.json",
+        "tests/mods/test_agent_watcher_usage_contract.py",
+        "tests/schemas/test_agent_usage_schema.py",
+        "tests/schemas/test_agent_usage_open_rows.py",
+        "README.md",
+        "plugins/agent-watcher/hooks/core/layer.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/identify.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/identify.test.ts"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit d3d031b: 7 test node(s) passed",
+      "verification_references": [
+        "d3d031b6eb460ddadba3d646e6180f00cb708158",
+        "tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e",
+        "python -m pytest -q tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates tests/schemas/test_agent_usage_open_rows.py::test_any_role_name_validates tests/schemas/test_agent_usage_open_rows.py::test_a_fields_object_validates tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:553",
+          "expect": "if (identify(subagentType, prompt, '') === undefined && !isDefinedAgent(subagentType)) return undefined"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:140-146",
+          "expect": "subagentType === undefined || !isDefinedAgent(subagentType)"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/usageRow.ts:15-17",
+          "expect": "export const USAGE_SKILLS = ['pr-review', 'pr-team', 'standalone'] as const"
+        },
+        {
+          "at": "plugins/harness/schemas/pr_review_agent_usage.schema.json:41-44",
+          "expect": "\"enum\": [\"pr-review\", \"pr-team\", \"standalone\"],"
+        },
+        {
+          "at": "plugins/harness/schemas/pr_review_agent_usage.schema.json:92",
+          "expect": "(the usual case for a standalone agent)"
+        },
+        {
+          "at": "tests/schemas/test_pr_review_agent_usage_schema.py:74",
+          "expect": "pytest.param(_row(skill=\"adhoc\"), id=\"unknown-skill\"),"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:109-110",
+          "expect": "const { AGENT_ID: agentId, AGENT_ROLE: role } = h"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:108-110",
+          "expect": "if (!agentId || (role !== 'reviewer' && role !== 'fixer')) return undefined"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:184",
+          "expect": "if (d.skill !== 'standalone') await update($, activeAtom, () => d.runId)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/agent-watcher",
+          "expect": "0 fail, and more pass than after TASK-3"
+        },
+        {
+          "run": "claude plugin validate plugins/agent-watcher",
+          "expect": "Validation passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_any_role_name_validates",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_a_fields_object_validates",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "Drivers and skill prompts open with SKILL:, strap's target becomes TARGET:, strap agents end with a --- block",
+      "action": "D2 skill-key, D4 leave, D6 dash-fence. The skill line is the first prompt line, right after the `agent=` line, so it opens the leading header block (D3).\n1. `plugins/harness/scripts/strap.py`: add pure helpers and route the printing through them: `runner_lines(name, run_id, tree, init) -> List[str]` (`agent=...`, `SKILL: strap-skills`, `TARGET: <name>`, `RUN:`, `TREE:`, `INIT: <init>`), used by `runner_row` (550-551); `judge_lines(name, runs, spec_path) -> List[str]` (`agent=...`, `SKILL: strap-skills`, `TARGET: <name>`, `RUNS: <a,b>`, `SPEC:`), used by judge-row (720-721); `recorded_block(name, run_id) -> str`, the column-1 block `---`, `SIGNAL: recorded`, `RUN:`, `TARGET:`, `---`, printed by record-run (702) in place of the ```text fence.\n2. `agents/strap-scenario-runner.md`: the prompt lines are `SKILL` (always `strap-skills`), `TARGET` (the skill under test), `RUN`, `TREE`, `INIT`; the init and record-run commands read `<TARGET>` (`init <TARGET> --run <RUN>`, `record-run <TARGET> --run <RUN>`); stop condition ``The prompt has no `TARGET`, `RUN` or `TREE` line.``; Reply still relays the printed block verbatim. `agents/strap-judge.md`: `TARGET` replaces `SKILL` as the skill under test (line 27, `api <TARGET>` at 47, stop condition at 73); Reply (81-82) keeps the graded lines, then ends with the block `---`, `SIGNAL: graded`, `RUNS: <run ids>`, `---`. `skills/strap-skills/SKILL.md:168`: the row's lines are `SKILL`, `TARGET`, `RUN`, ...\n3. `plugins/harness/scripts/bubble_memo.py`: `row_header(agent, model) -> List[str]` returning `agent=<agent> model=<model>` and `SKILL: bubble-memo`; investigator_row (197-198) and reviewer_row (210-211) start with it. `Memo:` and the other lines stay.\n4. `plugins/harness/lib/harness_lib/writing_docstrings_models.py` DispatchRow.text (114-115): `SKILL: writing-docstrings` after the `agent=` line; `Project root:` and the rest unchanged.\n5. Skill prose prompt blocks gain `SKILL: <skill>` as their first line: `skills/todo-edit/SKILL.md` (block at 40-46), `skills/sync-gh-todo/SKILL.md` (49-54), `skills/check-runlogs/SKILL.md` (38-43). Mixed-case lines stay (D4).\n6. Update the tests that pin these rows: `tests/scripts/test_strap_driver.py:315` (row order: SKILL: strap-skills, TARGET, RUN, TREE) and `:404` (the dashed block), `tests/scripts/test_strap_gate.py` judge-row (597-601), `tests/scripts/test_bubble_memo_driver.py` row tests, `tests/skills/test_docstring_dispatch_command.py:50`, `tests/lib/test_writing_docstrings_dispatch_api.py:245` (the skill line shifts each prompt line by one).\n7. Copy the planned `tests/contract/test_dispatch_skill_headers.py`. Verify: its nodes and `python -m pytest tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/scripts/test_bubble_memo_driver.py tests/skills/test_docstring_dispatch_command.py tests/lib/test_writing_docstrings_dispatch_api.py tests/skills/test_strap_skills_skill_contract.py -q`.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/scripts/bubble_memo.py",
+        "plugins/harness/lib/harness_lib/writing_docstrings_models.py",
+        "plugins/harness/skills/todo-edit/SKILL.md",
+        "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "plugins/harness/skills/check-runlogs/SKILL.md",
+        "plugins/harness/agents/strap-judge.md",
+        "plugins/harness/agents/strap-scenario-runner.md",
+        "tests/scripts/test_strap_driver.py",
+        "tests/scripts/test_strap_gate.py",
+        "tests/scripts/test_bubble_memo_driver.py",
+        "tests/skills/test_docstring_dispatch_command.py",
+        "tests/lib/test_writing_docstrings_dispatch_api.py",
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "tests/contract/test_dispatch_skill_headers.py",
+        "tests/skills/test_sync_gh_todo_skill_contract.py"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit d3d031b: 8 test node(s) passed",
+      "verification_references": [
+        "d3d031b6eb460ddadba3d646e6180f00cb708158",
+        "tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e",
+        "python -m pytest -q tests/contract/test_dispatch_skill_headers.py::test_strap_runner_row_names_strap_skills_then_the_target tests/contract/test_dispatch_skill_headers.py::test_strap_judge_row_names_strap_skills_then_the_target tests/contract/test_dispatch_skill_headers.py::test_strap_record_run_prints_a_dash_fenced_block tests/contract/test_dispatch_skill_headers.py::test_bubble_memo_rows_name_bubble_memo_first tests/contract/test_dispatch_skill_headers.py::test_docstring_rows_name_writing_docstrings_first tests/contract/test_dispatch_skill_headers.py::test_skill_prose_prompts_name_their_skill_first tests/contract/test_dispatch_skill_headers.py::test_strap_agents_read_the_target_line tests/contract/test_dispatch_skill_headers.py::test_the_judge_reply_ends_in_a_dash_fenced_block"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:550-551",
+          "expect": "f\"SKILL: {spec.name}\", f\"RUN: {run.id}\","
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:720-721",
+          "expect": "f\"RUNS: {','.join(pending)}\", f\"SPEC: {sa.spec_path(spec.name).as_posix()}\""
+        },
+        {
+          "at": "plugins/harness/scripts/bubble_memo.py:197-198",
+          "expect": "f\"agent={INVESTIGATOR_AGENT} model={INVESTIGATOR_MODEL}\", f\"PR: {review.pr}\","
+        },
+        {
+          "at": "plugins/harness/scripts/bubble_memo.py:210-211",
+          "expect": "f\"Memo: {memo_path(review.pr).as_posix()}\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/writing_docstrings_models.py:114-115",
+          "expect": "lines = [f\"agent={AGENT} model={self.model}\", f\"Project root: {self.project_root}\","
+        },
+        {
+          "at": "plugins/harness/agents/strap-judge.md:73",
+          "expect": "The prompt has no `SKILL`, `RUNS` or `SPEC` line."
+        },
+        {
+          "at": "plugins/harness/agents/strap-judge.md:81-82",
+          "expect": "One line per graded item: `<run> item <n>: <value>`"
+        },
+        {
+          "at": "plugins/harness/skills/todo-edit/SKILL.md:41",
+          "expect": "Operation: <retire | split | refresh>"
+        },
+        {
+          "at": "plugins/harness/skills/sync-gh-todo/SKILL.md:50",
+          "expect": "Operation: sync"
+        },
+        {
+          "at": "tests/scripts/test_strap_driver.py:404",
+          "expect": "assert \"SIGNAL: recorded\" in out and \"R-1\" in out"
+        },
+        {
+          "at": "plugins/harness/agents/strap-scenario-runner.md:27",
+          "expect": "`SKILL` (the skill name), `RUN` (the run id), `TREE`"
+        },
+        {
+          "at": "plugins/harness/agents/strap-scenario-runner.md:50",
+          "expect": "record-run <SKILL> --run <RUN> <<'REPLY'"
+        },
+        {
+          "at": "plugins/harness/agents/strap-scenario-runner.md:74",
+          "expect": "The prompt has no `SKILL`, `RUN` or `TREE` line."
+        },
+        {
+          "at": "plugins/harness/agents/strap-judge.md:47",
+          "expect": "api <SKILL> <<'PY'"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:168",
+          "expect": "the lines after it are the prompt (`SKILL`, `RUN`,"
+        },
+        {
+          "at": "plugins/harness/skills/check-runlogs/SKILL.md:41",
+          "expect": "Project root: <absolute project root>"
+        },
+        {
+          "at": "tests/scripts/test_strap_driver.py:315-316",
+          "expect": "out.index(f\"SKILL: {NAME}\")"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_strap_runner_row_names_strap_skills_then_the_target",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_strap_judge_row_names_strap_skills_then_the_target",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_strap_record_run_prints_a_dash_fenced_block",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_bubble_memo_rows_name_bubble_memo_first",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_docstring_rows_name_writing_docstrings_first",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_skill_prose_prompts_name_their_skill_first",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_strap_agents_read_the_target_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_dispatch_skill_headers.py::test_the_judge_reply_ends_in_a_dash_fenced_block",
+          "red": "AssertionError"
+        }
+      ]
+    }
+  ],
+  "base_commit": "3e2b4483be2e256636395cc6f5e98b100bfae3c5",
+  "frozen": {
+    "commit": "9eb0f9ef2d82e25f0bfc329835090bd1e6ee30db",
+    "tree": "ab12e8235579612ee585de338456134398132133",
+    "date": "2026-11-04",
+    "digest": "827a606891f4d1466f06d8ac3abccf8b009499c6852cf4c674c437871e84aa34"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How does a layer reach the engine (`$`) when the core calls it?",
+      "options": [
+        {
+          "id": "dollar-param",
+          "summary": "Layer methods take `$` and core passes it: `layer.onSettle($, run)`"
+        },
+        {
+          "id": "io-closures",
+          "summary": "Core builds an `Io` object of closures over `$` (read, list, write, toast, state update) and passes that; layers never see `$`"
+        }
+      ],
+      "chosen": "io-closures",
+      "rationale": "Spike on 2026-11-04 (`claude plugin validate` on a two-file probe mod): `layer.viaDecl?.($)` is refused with \"$ itself is passed as an argument\"; an `Io` built by a core function declaration and passed to `layer.rowFields(io, ...)` validates, reported as `$.fs.read (via ioOf)`."
+    },
+    {
+      "id": "D2",
+      "question": "Which header key names the dispatching skill, given that strap rows already print `SKILL: <skill under test>` and the strap agents read that line?",
+      "options": [
+        {
+          "id": "skill-key",
+          "summary": "`SKILL:` names the dispatching skill; strap's current `SKILL:` line is renamed `TARGET:` in strap.py, both strap agents and their init commands"
+        },
+        {
+          "id": "new-key",
+          "summary": "A new key (for example `HARNESS_SKILL:`) names the dispatching skill; strap's `SKILL:` line stays and lands in `fields`"
+        },
+        {
+          "id": "skill-as-is",
+          "summary": "`SKILL:` is read as written; strap rows log the skill under test as `skill`"
+        }
+      ],
+      "chosen": "skill-key",
+      "rationale": "Developer, 2026-11-04: `SKILL:` names the dispatching skill, as #193's example reads; strap's skill-under-test line becomes `TARGET:`."
+    },
+    {
+      "id": "D3",
+      "question": "Which prompt lines become a usage row's `fields`?",
+      "options": [
+        {
+          "id": "leading-block",
+          "summary": "The run of uppercase `KEY: value` (or `KEY=value`) lines at the top of the prompt, ending at the first line that is not one"
+        },
+        {
+          "id": "anywhere",
+          "summary": "Every column-1 uppercase key line anywhere in the prompt"
+        }
+      ],
+      "chosen": "leading-block",
+      "rationale": "Long prompts and briefs carry `SIGNAL:`-style lines in their body; only the leading block is the dispatch header."
+    },
+    {
+      "id": "D4",
+      "question": "Mixed-case prompt keys (todo-edit and sync-gh-todo `Operation:`/`Project root:`, docstring rows `Project root:`/`Scope:`, bubble-memo `Memo:`): rename to uppercase or leave?",
+      "options": [
+        {
+          "id": "leave",
+          "summary": "Leave them; drivers and skill prose only add the D2 skill line; mixed-case lines are not captured in `fields`"
+        },
+        {
+          "id": "uppercase",
+          "summary": "Rename every key to uppercase in drivers, skill prose and the agent files that read them, so they are captured"
+        }
+      ],
+      "chosen": "leave",
+      "rationale": "Developer, 2026-11-04: agent prompt contracts stay unchanged; only the skill line is added."
+    },
+    {
+      "id": "D5",
+      "question": "Which `Agent` dispatches does agent-watcher log?",
+      "options": [
+        {
+          "id": "all-dispatches",
+          "summary": "Every Agent call: defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents"
+        },
+        {
+          "id": "defined-only",
+          "summary": "Only agents the marketplace defines (today's DEFINED_AGENTS rule)"
+        }
+      ],
+      "chosen": "all-dispatches",
+      "rationale": "Developer, 2026-11-03: agent-watcher \"monitors and logs ALL agent dispatches\"."
+    },
+    {
+      "id": "D6",
+      "question": "Which return-block form does the watcher read?",
+      "options": [
+        {
+          "id": "dash-fence",
+          "summary": "One form: the column-1 `---` fenced block with a SIGNAL line; strap runner and judge adopt it"
+        },
+        {
+          "id": "accept-text-fence",
+          "summary": "Also accept a ```text fence"
+        },
+        {
+          "id": "keep-no-block",
+          "summary": "Leave strap rows at NO_BLOCK"
+        }
+      ],
+      "chosen": "dash-fence",
+      "rationale": "Developer, 2026-11-03: \"using the same form makes sense\"."
+    },
+    {
+      "id": "D7",
+      "question": "How do layer hooks (band, Stop, prompt line, shell refresh, session-start recovery) register?",
+      "options": [
+        {
+          "id": "direct-register",
+          "summary": "register.ts calls each layer's `registerXLayer(on)` function directly"
+        },
+        {
+          "id": "registry-loop",
+          "summary": "register.ts loops over LAYERS and calls `layer.register(on)`"
+        }
+      ],
+      "chosen": "direct-register",
+      "rationale": "Spike on 2026-11-04: `layer.register?.(on)` is refused with \"on is used other than as a call or an argument to a function of the module's own\"; a direct `registerProbeHooks(on)` validates."
+    },
+    {
+      "id": "D8",
+      "question": "How are `fields` values stored in the tracked usage log, given that headers carry paths (strap TREE, INIT, SPEC; bubble-memo FILES)?",
+      "options": [
+        {
+          "id": "as-written-capped",
+          "summary": "As written, cut to 200 characters; paths enter the log"
+        },
+        {
+          "id": "drop-path-keys",
+          "summary": "Core drops keys known to hold paths (TREE, INIT)"
+        },
+        {
+          "id": "drop-path-values",
+          "summary": "Core drops any value holding a path separator (`/` or `\\`), key included; other values cut to 200 characters"
+        }
+      ],
+      "chosen": "drop-path-values",
+      "rationale": "Developer, 2026-11-04: \"We do not want any local OR absolute paths\" in the log. A generic rule on the value catches every key, known or not; the schema rejects a separator so a row that slips one through fails validation. The cap bounds row size (local review 1123, I4)."
+    },
+    {
+      "id": "D9",
+      "question": "Which dispatches may the pr-review layer claim once any skill may print RUN_ID, AGENT_ID and AGENT_ROLE?",
+      "options": [
+        {
+          "id": "refuse-foreign-skill",
+          "summary": "identify refuses a header whose SKILL is present and not pr-review or pr-team"
+        },
+        {
+          "id": "reserve-roles",
+          "summary": "Reserve reviewer and fixer for the layer in the header convention; core logs a SKILL header before the layer claim"
+        }
+      ],
+      "chosen": "refuse-foreign-skill",
+      "rationale": "Review 0208 I2: today a RUN_ID + AGENT_ID + reviewer header with no PR line is claimed as pr-team. pr-review and pr-team headers carry no SKILL line, so refusing a foreign one changes nothing for them. Developer, 2026-11-04: amend and refreeze."
+    },
+    {
+      "id": "D10",
+      "question": "How does core tell a layer-claimed run from a generic one, and how are generic runs keyed?",
+      "options": [
+        {
+          "id": "claimed-by-flag",
+          "summary": "Run.claimedBy names the claiming layer; generic runs keyed by their generated id"
+        },
+        {
+          "id": "standalone-sentinel",
+          "summary": "Keep skill === 'standalone' as the marker"
+        }
+      ],
+      "chosen": "claimed-by-flag",
+      "rationale": "Review 0208 I2: once the skill comes from the SKILL header, the 'standalone' sentinel no longer marks unclaimed runs (band takeover, leaked runs, shared RUN_ID entries dropped early). Developer, 2026-11-04: amend and refreeze."
+    },
+    {
+      "id": "D11",
+      "question": "What does core do with a header value that fails its pattern or rule?",
+      "options": [
+        {
+          "id": "fallback-keep-raw",
+          "summary": "Fall back (standalone, other, generated id, type name, null pr); a `<plugin>:` skill prefix is stripped; the raw value stays in fields under D8"
+        },
+        {
+          "id": "widen-patterns",
+          "summary": "Widen the schema patterns to the values real headers carry"
+        },
+        {
+          "id": "drop-row",
+          "summary": "Reject the row (as first planned)"
+        }
+      ],
+      "chosen": "fallback-keep-raw",
+      "rationale": "Review 0208 I2: a rejected row breaks D5. Developer, 2026-11-04: strip the plugin prefix (`harness:strap-skills` logs `strap-skills`), schema skill pattern unchanged; PR fills the top-level pr; RUN_ID and AGENT_ID fall under the no-paths rule."
+    },
+    {
+      "id": "D12",
+      "question": "How does a layer member read and write mod state through `Io`?",
+      "options": [
+        {
+          "id": "per-key-closures",
+          "summary": "One Io closure per state key (runs, active, failures, phase5, missing)"
+        },
+        {
+          "id": "generic-atom-io",
+          "summary": "Generic `read(atom)` / `update(atom, change)` on Io"
+        }
+      ],
+      "chosen": "per-key-closures",
+      "rationale": "TASK-3 lane, 2026-11-04: `claude plugin validate` refused the generic form: \"the state library's read takes a source the scan can read: a reference whose plugin and key are string literals\". Cost: core declares the pr-review `phase5` and `missing` keys; a second layer with state edits core (README Layout section)."
+    }
+  ],
+  "values": [
+    {
+      "name": "mod test baseline",
+      "value": "164 pass, 0 fail, across 11 files",
+      "source": "`claude plugin test plugins/pr-review-watch` at 3e2b448 on 2026-11-04"
+    },
+    {
+      "name": "agent-watcher version",
+      "value": "0.6.0",
+      "source": "plugins/pr-review-watch/.claude-plugin/plugin.json:3 (0.5.1, bumped)"
+    },
+    {
+      "name": "harness version",
+      "value": "0.55.0",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3 (0.54.0, bumped once for the whole plan)"
+    },
+    {
+      "name": "usage log default path",
+      "value": "docs/_harness/agent_usage.jsonl",
+      "source": "issue #192"
+    },
+    {
+      "name": "usage schema file",
+      "value": "plugins/harness/schemas/agent_usage.schema.json",
+      "source": "issue #192 (schema follows the log name)"
+    }
+  ],
+  "formats": [
+    {
+      "name": "return block",
+      "example": "---\nSIGNAL: recorded\nRUN: R-1\nTARGET: retry-policy\n---",
+      "source": {
+        "at": "plugins/pr-review-watch/hooks/contract.ts:174-175",
+        "expect": "const fences = (lines: readonly string[]): number[] =>"
+      }
+    },
+    {
+      "name": "header line",
+      "example": "RUN_ID: pr205_20261104T060000Z",
+      "source": {
+        "at": "plugins/pr-review-watch/hooks/contract.ts:42",
+        "expect": "const HEADER_LINE = /^([A-Z][A-Z_]*)(?:=|: )(.*)$/"
+      }
+    },
+    {
+      "name": "usage row fields (TASK-4 adds the key to the allowed set at this line)",
+      "example": "\"fields\": {\"RUN\": \"R-3\", \"TARGET\": \"retry-policy\"}",
+      "source": {
+        "at": "plugins/pr-review-watch/hooks/usageRow.ts:90",
+        "expect": "const ALLOWED = new Set<string>([...USAGE_REQUIRED, ...USAGE_COUNT_FIELDS])"
+      }
+    },
+    {
+      "name": "strap record-run block (TASK-5 prints it in place of the ```text fence at this line)",
+      "example": "---\nSIGNAL: recorded\nRUN: R-1\nTARGET: x\n---",
+      "source": {
+        "at": "plugins/harness/scripts/strap.py:702",
+        "expect": "print(\"\\n\".join([\"```text\", \"SIGNAL: recorded\""
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "pr-review-watch|pr_review_watch",
+      "hits": {
+        ".claude-plugin/marketplace.json": "TASK-2: rename to agent-watcher",
+        ".claude/pr_review_exclusions.json": "TASK-2: rename to agent-watcher",
+        ".claude/settings.json": "TASK-2: rename to agent-watcher",
+        ".claude/skills/porting-into-straps/SKILL.md": "TASK-2: rename to agent-watcher",
+        ".github/workflows/ci.yml": "TASK-2: rename to agent-watcher",
+        "CLAUDE.md": "TASK-2: rename to agent-watcher",
+        "README.md": "TASK-2: rename to agent-watcher, plus the `Renamed from` migration note",
+        "docs/PROVENANCE.md": "TASK-2: destination column only; the source path .claude/mods/{pr-review-watch,...} stays",
+        "docs/PR_REVIEWS/0026_Impl_updates.json": "history; unchanged",
+        "docs/PR_REVIEWS/0037_0016_agent_jsonl.json": "history; unchanged",
+        "docs/PR_REVIEWS/0078_fixharness_write_bookmark_notes_in_the_main_session.json": "history; unchanged",
+        "docs/PR_REVIEWS/0147_featplugins_add_icon_images_for_multiple_plugins.json": "history; unchanged",
+        "docs/PR_REVIEWS/0174_1110_review_local.json": "history; unchanged",
+        "docs/PR_REVIEWS/0197_1117_writing_docstrings.json": "history; unchanged",
+        "docs/_harness/pr_review_agent_usage.jsonl": "logged rows (history); TASK-1 moves the file, rows unchanged",
+        "docs/_harness/pr_review_invocation_test_matrix.jsonl": "logged rows (history); unchanged",
+        "plugins/band-line/README.md": "TASK-2: rename to agent-watcher",
+        "plugins/band-line/hooks/band.tsx": "TASK-2: rename to agent-watcher",
+        "plugins/bubble-stamp/hooks/review.test.ts": "TASK-2: rename to agent-watcher",
+        "plugins/bubble-stamp/hooks/review.ts": "TASK-2: rename to agent-watcher",
+        "plugins/harness/agents/pr-team-orchestrator.md": "TASK-2: rename to agent-watcher",
+        "plugins/harness/config/harness.schema.json": "TASK-2: rename to agent-watcher",
+        "plugins/harness/lib/harness_lib/default_exclusions.py": "TASK-2: rename to agent-watcher",
+        "plugins/harness/lib/harness_lib/review_plan.py": "hyphenated-name example in a docstring; unchanged",
+        "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json": "TASK-2: rename to agent-watcher",
+        "plugins/harness/schemas/pr_review_agent_usage.schema.json": "TASK-1 moves it to agent_usage.schema.json; TASK-2 renames the mod in its text",
+        "plugins/harness/skills/pr-review/SKILL.md": "TASK-2: rename to agent-watcher",
+        "plugins/harness/skills/review-local/SKILL.md": "TASK-2: rename to agent-watcher",
+        "plugins/pr-review-watch/.claude-plugin/plugin.json": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/README.md": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/band.test.tsx": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/band.tsx": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/config.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/contract.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/matrixRow.test.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/matrixRow.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/phase5Scan.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/tracker.test.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/tracker.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/usageRow.test.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/hooks/usageRow.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/pr-review-watch/types/index.d.ts": "TASK-2: moves to plugins/agent-watcher/ and is renamed there",
+        "plugins/session-bookmark/README.md": "TASK-2: rename to agent-watcher",
+        "plugins/todo-watch/README.md": "TASK-2: rename to agent-watcher",
+        "tests/contract/test_bubble_stamp_registration.py": "TASK-2: rename to agent-watcher",
+        "tests/lib/test_review_plan.py": "hyphenated-name example input; unchanged",
+        "tests/mods/test_local_run_key_mirror.py": "TASK-2: rename to agent-watcher",
+        "tests/mods/test_pr_review_watch_config_mirror.py": "TASK-2: git mv to test_agent_watcher_config_mirror.py and rename",
+        "tests/mods/test_pr_review_watch_matrix_contract.py": "TASK-2: git mv to test_agent_watcher_matrix_contract.py and rename",
+        "tests/mods/test_pr_review_watch_usage_contract.py": "TASK-2: git mv to test_agent_watcher_usage_contract.py and rename",
+        "tests/schemas/test_pr_review_agent_usage_schema.py": "TASK-1 moves it to test_agent_usage_schema.py; TASK-2 renames the notes strings",
+        "tests/skills/test_bubble_memo_agents_contract.py": "TASK-2: rename to agent-watcher",
+        "tools/harness_usage_charts.py": "TASK-2: rename to agent-watcher"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "pr_review_agent_usage",
+      "hits": {
+        "README.md": "TASK-1: rename to agent_usage",
+        "plugins/harness/config/defaults.json": "TASK-1: rename to agent_usage",
+        "plugins/harness/lib/harness_lib/canned_messages.py": "TASK-1: rename to agent_usage",
+        "plugins/harness/schemas/pr_review_agent_usage.schema.json": "TASK-1: git mv to agent_usage.schema.json",
+        "plugins/pr-review-watch/README.md": "TASK-1: rename to agent_usage",
+        "plugins/pr-review-watch/hooks/config.ts": "TASK-1: rename to agent_usage",
+        "plugins/pr-review-watch/hooks/tracker.test.ts": "TASK-1: rename to agent_usage",
+        "plugins/pr-review-watch/hooks/usageRow.ts": "TASK-1: rename to agent_usage",
+        "tests/lib/test_branch_commits.py": "TASK-1: rename to agent_usage",
+        "tests/lib/test_canned_messages.py": "TASK-1: rename to agent_usage",
+        "tests/lib/test_config.py": "TASK-1: rename to agent_usage",
+        "tests/lib/test_default_exclusions.py": "TASK-1: rename to agent_usage",
+        "tests/mods/test_pr_review_watch_usage_contract.py": "TASK-1: rename to agent_usage",
+        "tests/schemas/test_pr_review_agent_usage_schema.py": "TASK-1: git mv to test_agent_usage_schema.py",
+        "tests/scripts/test_phase4_branch_safety_second_run.py": "TASK-1: exclusions fixture literal; change only if it encodes the default",
+        "tools/harness_usage_charts.py": "TASK-1: rename to agent_usage",
+        "docs/_harness/charts/avg_tokens_by_role.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/_harness/charts/model_share_closer.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/_harness/charts/model_share_fixer.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/_harness/charts/model_share_orchestrator.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/_harness/charts/model_share_other.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/_harness/charts/model_share_planner.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/_harness/charts/model_share_reviewer.svg": "generated by tools/harness_usage_charts.py; the developer regenerates it",
+        "docs/PR_REVIEWS/0037_0016_agent_jsonl.json": "history; unchanged",
+        "docs/PR_REVIEWS/0041_Featurebranch-commit-msg_pass_--base_through_and_keep_the_branch_TXT.json": "history; unchanged",
+        "docs/PR_REVIEWS/0056_Featuresession-bookmark_add-bookmark_skill_and_session_notes_in_th.json": "history; unchanged",
+        "docs/PR_REVIEWS/0059_Featurefold-in-review_systematic_fold_of_notes_pasted_test_output.json": "history; unchanged",
+        "docs/PR_REVIEWS/0072_1066_bcm_args.json": "history; unchanged",
+        "docs/PR_REVIEWS/0076_fixharness_seed_the_run_scratch_folder_and_.gitignore_lines_into_r.json": "history; unchanged",
+        "docs/PR_REVIEWS/0078_fixharness_write_bookmark_notes_in_the_main_session.json": "history; unchanged",
+        "docs/PR_REVIEWS/0082_featharness_add_amend-commit-msg_to_amend_a_drafted_commit_breakdown.json": "history; unchanged",
+        "docs/PR_REVIEWS/0089_1071_sync_gh_issues.json": "history; unchanged",
+        "docs/PR_REVIEWS/0090_Featurecommit-msg_add_canned_messages_for_pre-determined_change_sets.json": "history; unchanged",
+        "docs/PR_REVIEWS/0091_Featurea-w_add_skill_to_move_detached_worktree_changes_onto_a_branch.json": "history; unchanged",
+        "docs/PR_REVIEWS/0094_Fixcommit-msg_pass_the_developers_--base_to_the_fork_and_keep_sav.json": "history; unchanged",
+        "docs/PR_REVIEWS/0095_Featurepr-sum_add_--local_capture_of_the_checked-out_branch.json": "history; unchanged",
+        "docs/PR_REVIEWS/0096_repo-todo_artifacts_ignore.json": "history; unchanged",
+        "docs/PR_REVIEWS/0099_Perfvalidate-pr-json-schema_exit_before_harness_imports_when_no_args.json": "history; unchanged",
+        "docs/PR_REVIEWS/0106_1087_agent_models.json": "history; unchanged",
+        "docs/PR_REVIEWS/0113_1089_commit_msg_performance.json": "history; unchanged",
+        "docs/PR_REVIEWS/0114_1090_parallel_dispatches.json": "history; unchanged",
+        "docs/PR_REVIEWS/0117_New_Skill_write-plan.json": "history; unchanged",
+        "docs/PR_REVIEWS/0118_PR_Review_Performance_Enhacements_wall-clock_focus.json": "history; unchanged",
+        "docs/PR_REVIEWS/0122_1095_bubble_memos.json": "history; unchanged",
+        "docs/PR_REVIEWS/0126_Fixharness_attach_worktree_patch_base.json": "history; unchanged",
+        "docs/PR_REVIEWS/0147_featplugins_add_icon_images_for_multiple_plugins.json": "history; unchanged",
+        "docs/PR_REVIEWS/0148_1101_writing_plans_rewrite.json": "history; unchanged",
+        "docs/PR_REVIEWS/0150_1103_d_w_guidance.json": "history; unchanged",
+        "docs/PR_REVIEWS/0158_1105_bug_pr_review.json": "history; unchanged",
+        "docs/PR_REVIEWS/0159_Fixpr-review_batch_and_dedupe_fixer_test_commands_into_one.json": "history; unchanged",
+        "docs/PR_REVIEWS/0160_c-msg_performance.json": "history; unchanged",
+        "docs/PR_REVIEWS/0164_Featuremerge-commit-msg_merge_commit_msg.py_stdin_build.json": "history; unchanged",
+        "docs/PR_REVIEWS/0169_Featurestrap_refreeze_a_frozen_spec_after_a_part_change.json": "history; unchanged",
+        "docs/PR_REVIEWS/0174_1110_review_local.json": "history; unchanged",
+        "docs/PR_REVIEWS/0187_Featurewriting-docstrings_add_the_writing-docstrings_skill.json": "history; unchanged",
+        "docs/PR_REVIEWS/0188_1116_strap_skills.json": "history; unchanged",
+        "docs/PR_REVIEWS/0196_1118_post_tool_use_hook.json": "history; unchanged",
+        "docs/PR_REVIEWS/0197_1117_writing_docstrings.json": "history; unchanged",
+        "docs/PR_REVIEWS/0199_Fixhooks_validate_only__ActionPlan.json_under_the_plans.json": "history; unchanged",
+        "docs/PR_REVIEWS/0202_Featurebubble-memo_run_the_memo_reviewer_only_on_request.json": "history; unchanged",
+        "docs/PR_REVIEWS/LOCAL_1122-parallel2-perf_1122-parallel2-perf.json": "history; unchanged"
+      }
+    }
+  ]
+}

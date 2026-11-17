@@ -1,0 +1,9 @@
+{
+  "name": "parallel2-lanes",
+  "version": "0.1.0",
+  "description": "parallel2 lanes: a lane's Agent spawn starts with its brief inline, the plan's model and its worktree; a band lists each run's lane status",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,27 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "35a2ae7dae05980d5c8401b5b262309cb0213cd8",
+  "files": {
+    "docs/plans/2023_Parallel_TODO_Editing_Remix_ActionPlan.json": "85ff86f2f47c246dbca2e307d93e8303b730a23a"
+  },
+  "ignored": {
+    "docs/plans/2023/tests/tests/lib/test_todo_sync_updates.py": "892dafbd03adb3624b55f4ab0aed1e34c12296b21c4e4355ab04262966831bb7",
+    "docs/plans/2023/tests/tests/scripts/test_todo_sync_lease_wait.py": "4fbb5656b9c8ca407b76756586e3b97e0b4bf818501ea65dece03611e7b29d0b",
+    "docs/plans/2023/tests/tests/scripts/test_todo_sync_update_cli.py": "a2f398eac1362b16c20a9a5e32e61d58f5b645baaa2960cf4fa2b7578b05b181",
+    "docs/plans/2023/tests/tests/skills/test_todo_edit_parallel_contract.py": "26bb31b1daaa1f86058178fa9fac06ce6f3182933bfc419cec1af411eddf42f9",
+    "docs/plans/2023/tests/tests/skills/test_todo_editor_split_lease_contract.py": "f554f639e506cd066b9ea3882a66181a071b4a7789265167c9dc038225e9e77d"
+  },
+  "at": "2026-11-17T19:49:49+00:00",
+  "base": "c072dfc56a717190dae26e34f817e2f88f8da454",
+  "history": false,
+  "digest": "51c55a401c86653a5e7fb6fb908d1f1d42f033aa5bdf6ee307e920e406e1d7f8",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

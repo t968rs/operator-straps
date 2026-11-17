@@ -1,0 +1,25 @@
+{
+  "plan_id": "1020",
+  "item": "TASK-5",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "37de1abd64dd61fbaeb8869f5810d24dddf74b43"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_plan_checks_decision_ids.py::test_a_decision_id_used_twice_is_a_problem"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_checks_decision_ids.py::test_a_decision_id_used_twice_is_a_problem"
+    }
+  },
+  "evidence": "staged tree 37de1ab: 1 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "159c57559e71354da4ee8099a82742ec3d182960cb18c14cd86d04f2263beed5"
+}

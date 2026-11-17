@@ -1,0 +1,389 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+  "$defs": {
+    "ChangeIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/IssueCategory",
+          "description": "Problem category."
+        },
+        "why_categorical": {
+          "description": "Brief categorical label or reason.",
+          "title": "Why Categorical",
+          "type": "string"
+        },
+        "why_free_form": {
+          "description": "Detailed explanation of the problem.",
+          "title": "Why Free Form",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "why_categorical",
+        "why_free_form"
+      ],
+      "title": "ChangeIssue",
+      "type": "object"
+    },
+    "ChangeOriginal": {
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "description": "Key of a document in primary_documents (spec, plan, primer, ...).",
+          "title": "Doc",
+          "type": "string"
+        },
+        "location": {
+          "description": "Section, line or paragraph reference within the document.",
+          "title": "Location",
+          "type": "string"
+        },
+        "indicated": {
+          "description": "The exact or paraphrased text or intent from the source document.",
+          "title": "Indicated",
+          "type": "string"
+        }
+      },
+      "required": [
+        "doc",
+        "location",
+        "indicated"
+      ],
+      "title": "ChangeOriginal",
+      "type": "object"
+    },
+    "ChangePhase": {
+      "description": "The lifecycle phase in which a design change was discovered.",
+      "enum": [
+        "spec-review",
+        "pr-bot-review",
+        "plan-review",
+        "post-exec-start"
+      ],
+      "title": "ChangePhase",
+      "type": "string"
+    },
+    "DesignChange": {
+      "additionalProperties": false,
+      "description": "One design change, traced from the original intent through the issue found to the new outcome.",
+      "properties": {
+        "id": {
+          "description": "Change ID: S=spec-review, PR=pr-bot-review, P=plan-review, EX=post-exec-start (self-sweep), CX=post-exec-start (external review), followed by a sequence number.",
+          "pattern": "^(S|PR|P|EX|CX)[0-9]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "discovered_by": {
+          "description": "Name or role of the reviewer who discovered this change.",
+          "title": "Discovered By",
+          "type": "string"
+        },
+        "phase": {
+          "$ref": "#/$defs/ChangePhase",
+          "description": "Lifecycle phase in which this change was discovered."
+        },
+        "items": {
+          "description": "Ids of the plan items the change touches.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "original": {
+          "$ref": "#/$defs/ChangeOriginal"
+        },
+        "issue": {
+          "$ref": "#/$defs/ChangeIssue"
+        },
+        "new_outcome": {
+          "$ref": "#/$defs/NewOutcome"
+        },
+        "why_new_outcome": {
+          "$ref": "#/$defs/WhyNewOutcome"
+        },
+        "date": {
+          "description": "Day the change was cataloged, `YYYY-MM-DD`.",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "title": "Date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "discovered_by",
+        "phase",
+        "original",
+        "issue",
+        "new_outcome",
+        "why_new_outcome"
+      ],
+      "title": "DesignChange",
+      "type": "object"
+    },
+    "EvolutionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "highest_impact_finding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The most critical or widely-consequential change."
+        },
+        "most_embarrassing_finding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The most obviously wrong or ridiculous mistake found."
+        },
+        "lessons": {
+          "description": "Key insights from the catalog.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Lessons",
+          "type": "array"
+        }
+      },
+      "title": "EvolutionSummary",
+      "type": "object"
+    },
+    "FindingRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "ID of the change entry; must match a change id.",
+          "pattern": "^(S|PR|P|EX|CX)[0-9]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "rationale": {
+          "description": "Why this change is the finding.",
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "rationale"
+      ],
+      "title": "FindingRef",
+      "type": "object"
+    },
+    "IdConventions": {
+      "additionalProperties": false,
+      "properties": {
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Narrative on the prefix mapping, sparse numbering and any phase-overlap rules.",
+          "title": "Comment"
+        },
+        "prefixes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Per-prefix description of what an ID with that prefix represents.",
+          "title": "Prefixes",
+          "type": "object"
+        }
+      },
+      "title": "IdConventions",
+      "type": "object"
+    },
+    "IssueCategory": {
+      "description": "What kind of problem a design change found in the original.",
+      "enum": [
+        "correctness",
+        "reference-accuracy",
+        "path-arithmetic",
+        "signature-mismatch",
+        "tdd-discipline",
+        "bash-discipline",
+        "dyad-drift",
+        "merge-conflict-risk",
+        "spec-coverage",
+        "fail-open-semantics",
+        "spec-plan-drift",
+        "yagni"
+      ],
+      "title": "IssueCategory",
+      "type": "string"
+    },
+    "NewOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "description": "Key of the document in primary_documents being updated.",
+          "title": "Doc",
+          "type": "string"
+        },
+        "indicated": {
+          "description": "The new or corrected text or direction.",
+          "title": "Indicated",
+          "type": "string"
+        }
+      },
+      "required": [
+        "doc",
+        "indicated"
+      ],
+      "title": "NewOutcome",
+      "type": "object"
+    },
+    "OutcomeCategory": {
+      "description": "Why the new direction replaced the original.",
+      "enum": [
+        "factual-correction",
+        "execution-blocker",
+        "merge-conflict-avoidance",
+        "spec-source-alignment",
+        "discoverability",
+        "mechanical-fix",
+        "convention-compliance",
+        "yagni",
+        "review-pin-update"
+      ],
+      "title": "OutcomeCategory",
+      "type": "string"
+    },
+    "WhyNewOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/OutcomeCategory",
+          "description": "Outcome category."
+        },
+        "free_form": {
+          "description": "Detailed explanation of why the new outcome is better or necessary.",
+          "title": "Free Form",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "free_form"
+      ],
+      "title": "WhyNewOutcome",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A plan-bound catalog of design changes across a feature's lifecycle.",
+  "properties": {
+    "plan_id": {
+      "description": "The 4-digit id of the catalog's plan.",
+      "pattern": "^[0-9]{4}$",
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "feature": {
+      "description": "Feature name or title.",
+      "title": "Feature",
+      "type": "string"
+    },
+    "issue": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "GitHub issue number.",
+      "title": "Issue"
+    },
+    "pr": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "GitHub PR number.",
+      "title": "Pr"
+    },
+    "branch_lineage": {
+      "description": "Branch ancestry chain: [base]-->[parent]-->[child].",
+      "title": "Branch Lineage",
+      "type": "string"
+    },
+    "primary_documents": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Links to key design documents (spec, plan, primer, research notes); `plan` is always present.",
+      "required": [
+        "plan"
+      ],
+      "title": "Primary Documents",
+      "type": "object"
+    },
+    "id_conventions": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IdConventions"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "changes": {
+      "description": "Design change entries, each tracing an issue from discovery through resolution.",
+      "items": {
+        "$ref": "#/$defs/DesignChange"
+      },
+      "title": "Changes",
+      "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvolutionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "plan_id",
+    "feature",
+    "branch_lineage",
+    "primary_documents"
+  ],
+  "title": "DesignEvolution",
+  "type": "object"
+}

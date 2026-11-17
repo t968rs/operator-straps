@@ -1,0 +1,45 @@
+{
+  "plan_id": "1018",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "53b8472039737a3d061e385a6577fc36e4b7f370"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_attach_worktree_resolve.py::test_an_unruled_conflict_stops_with_exit_2_and_leaves_the_target_clean",
+        "tests/skills/test_attach_worktree_resolve.py::test_continue_after_the_agent_resolves_stages_the_result",
+        "tests/skills/test_attach_worktree_resolve.py::test_staged_resolution_squashes_so_the_conflict_comes_up_once",
+        "tests/skills/test_attach_worktree_resolve.py::test_abort_returns_the_worktree_to_its_original_head_and_clears_the_state",
+        "tests/skills/test_attach_worktree_resolve.py::test_a_plain_rerun_while_stopped_refuses_naming_continue_and_abort",
+        "tests/skills/test_attach_worktree_resolve.py::test_continue_with_a_different_mode_refuses",
+        "tests/skills/test_attach_worktree_resolve.py::test_a_target_that_moves_during_resolution_refuses_then_continue_lands",
+        "tests/skills/test_attach_worktree_resolve.py::test_committed_rebases_onto_a_moved_target_and_fast_forwards",
+        "tests/skills/test_attach_worktree_resolve.py::test_committed_conflict_stops_then_continue_fast_forwards_keeping_messages",
+        "tests/skills/test_attach_worktree_resolve.py::test_committed_rule_settles_a_rebase_stop_on_its_own",
+        "tests/skills/test_attach_worktree_resolve.py::test_committed_with_a_dirty_overlap_refuses_even_under_a_rule",
+        "tests/skills/test_attach_worktree_resolve.py::test_committed_from_a_cut_the_target_lacks_carries_only_the_worktrees_commits",
+        "tests/skills/test_attach_worktree_resolve.py::test_the_module_docstring_names_the_new_interface",
+        "tests/skills/test_attach_worktree_continue_backup.py::test_continue_backs_up_a_ruled_dirty_path_edited_during_the_stop"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_attach_worktree_resolve.py::test_an_unruled_conflict_stops_with_exit_2_and_leaves_the_target_clean tests/skills/test_attach_worktree_resolve.py::test_continue_after_the_agent_resolves_stages_the_result tests/skills/test_attach_worktree_resolve.py::test_staged_resolution_squashes_so_the_conflict_comes_up_once tests/skills/test_attach_worktree_resolve.py::test_abort_returns_the_worktree_to_its_original_head_and_clears_the_state tests/skills/test_attach_worktree_resolve.py::test_a_plain_rerun_while_stopped_refuses_naming_continue_and_abort tests/skills/test_attach_worktree_resolve.py::test_continue_with_a_different_mode_refuses tests/skills/test_attach_worktree_resolve.py::test_a_target_that_moves_during_resolution_refuses_then_continue_lands tests/skills/test_attach_worktree_resolve.py::test_committed_rebases_onto_a_moved_target_and_fast_forwards tests/skills/test_attach_worktree_resolve.py::test_committed_conflict_stops_then_continue_fast_forwards_keeping_messages tests/skills/test_attach_worktree_resolve.py::test_committed_rule_settles_a_rebase_stop_on_its_own tests/skills/test_attach_worktree_resolve.py::test_committed_with_a_dirty_overlap_refuses_even_under_a_rule tests/skills/test_attach_worktree_resolve.py::test_committed_from_a_cut_the_target_lacks_carries_only_the_worktrees_commits tests/skills/test_attach_worktree_resolve.py::test_the_module_docstring_names_the_new_interface tests/skills/test_attach_worktree_continue_backup.py::test_continue_backs_up_a_ruled_dirty_path_edited_during_the_stop"
+    }
+  },
+  "evidence": "staged tree 53b8472: 14 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "tests/skills/test_attach_worktree_resolve_edges.py",
+        "change": "EX2"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX2": "7f191886e891365ad33794fe449d00267946d2f9bc61ff6604850cfa852b2cc2"
+    }
+  },
+  "date": "2026-11-13",
+  "seal": "1e5b7fa0d489abfc1d62439b4ebefb20d11a7fced6ec402900df99c41cf2c2c0"
+}

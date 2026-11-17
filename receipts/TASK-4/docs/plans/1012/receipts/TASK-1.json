@@ -1,0 +1,29 @@
+{
+  "plan_id": "1012",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "2a3cedc73bc41527bef8529affea1aedf0227806"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_config_canned_messages.py::test_project_sets_load_in_order",
+        "tests/lib/test_config_canned_messages.py::test_a_malformed_set_fails_the_load",
+        "tests/lib/test_config_canned_messages.py::test_a_malformed_set_fails_without_jsonschema",
+        "tests/lib/test_config_canned_messages.py::test_a_non_list_value_fails_without_jsonschema",
+        "tests/lib/test_config_canned_messages.py::test_the_default_is_no_project_sets"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_config_canned_messages.py::test_project_sets_load_in_order tests/lib/test_config_canned_messages.py::test_a_malformed_set_fails_the_load tests/lib/test_config_canned_messages.py::test_a_malformed_set_fails_without_jsonschema tests/lib/test_config_canned_messages.py::test_a_non_list_value_fails_without_jsonschema tests/lib/test_config_canned_messages.py::test_the_default_is_no_project_sets"
+    }
+  },
+  "evidence": "staged tree 2a3cedc: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-10",
+  "seal": "6e3730d35ac29547317d628f300223eb4190e5dd3a61de4c60f3d74ea8cb6050"
+}

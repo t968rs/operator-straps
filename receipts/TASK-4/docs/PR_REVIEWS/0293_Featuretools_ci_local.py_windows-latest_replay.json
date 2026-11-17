@@ -1,0 +1,344 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 293,
+  "pr_title": "Feature(tools): `ci_local.py` windows-latest replay",
+  "branch": "1160-local-testing",
+  "base_branch": "main",
+  "base_sha": "a9f71c3dba6263ec0198f602c5d185f606c95536",
+  "head_sha": "f2fedc7b5efb7c8c375d86c19ad06c80597957e7",
+  "review_date": "2026-11-16",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 678,
+    "deletions": 1,
+    "files_changed": 4,
+    "source": {
+      "additions": 676,
+      "deletions": 1,
+      "files_changed": 3
+    }
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (sonnet)",
+    "roast (opus)",
+    "failing_tests_1 (tests)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0293/pr293_20261116T190235Z/findings/tests.json",
+    "docs/_scratch/pr_review/0293/pr293_20261116T190235Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0293/pr293_20261116T190235Z/findings/docs.json",
+    "docs/_scratch/pr_review/0293/pr293_20261116T190235Z/findings/roast.json",
+    "docs/_scratch/pr_review/0293/pr293_20261116T190235Z/findings/failing_tests_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every test calls the real function under test with real inputs or tmp_path files and no mock chains; the ci.yml drift tests run against the real workflow file.",
+    "The DRIFTS parametrization first asserts the old text exists in ci.yml, so a reworded workflow fails the test loudly instead of passing as a no-op mutation.",
+    "The module loads by path with a sys.modules entry and cleanup, matching the neighboring tests/scripts files, and the one OS-dependent test carries cross_os plus a win32 skipif.",
+    "workflow_drift fails closed on the replay's command copies and exits 3 before any step runs, with an --ignore-drift escape.",
+    "Step semantics follow ci.yml closely: exit 5 read as a pass on Windows, the catalog runs after a failed pytest, and the hpy step is skipped after an earlier failure (matching the implicit success()).",
+    "fresh_out_dir refuses to empty a folder that lacks the tool's marker file, so a mistyped --out-dir cannot delete unrelated files.",
+    "Base-ref resolution is checked up front, so select_tests.py's silent fall back to a full run cannot masquerade as a selected run.",
+    "Functions are short, typed with Optional/Union-free typing, and the environment shaping is pure (ci_env, with_temp, dirty_warnings, shown take arguments) so it is testable without a Windows host.",
+    "CLAUDE.md:95-99 matches tools/ci_local.py: the --full, --python and --short-temp flags exist, exit 3 means drift or precondition, and the replay covers select_tests, -m cross_os pytest, the runtime catalog and the hpy check.",
+    "CLAUDE.md:73 now says the strict validation and mod tests run on Ubuntu only, which matches the plugins job in .github/workflows/ci.yml (runs-on ubuntu-latest).",
+    "tests/scripts/test_ci_local.py exists, so the drift-guard pointer in CLAUDE.md:99 is not dangling.",
+    "Every drift check is tested with a targeted ci.yml mutation (DRIFTS), so the guard is shown to fire for each check and not just to pass on the current file.",
+    "The replay reads select_tests.py's results through a real GITHUB_OUTPUT file, so it consumes the same output CI consumes instead of a parallel parse.",
+    "The comment at line 430 spells out GitHub's implicit success() rule for the hpy step, and run_windows encodes it: a catalog failure skips the hpy check, as it does on the runner.",
+    "fresh_out_dir only empties a folder that carries the tool's own marker file, so a mistyped --out-dir cannot wipe someone's work.",
+    "run_step resolves argv[0] against the replay PATH, which handles Windows' habit of searching the parent process's PATH.",
+    "The gap table says plainly what the replay cannot reproduce (merge commit, patch level, symlink privilege, code page) instead of overstating how faithful it is.",
+    "The CLAUDE.md edit is accurate: the plugins job does run on ubuntu-latest only, and the new paragraph matches the tool's flags and exit codes."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "git_bash_dirs finds no Git Bash folder on the windows-latest runner",
+        "file": "tools/ci_local.py",
+        "files": [
+          "tools/ci_local.py",
+          "tests/scripts/test_ci_local.py"
+        ],
+        "lines": "170-174",
+        "reviewer": "failing_tests_1",
+        "fix_kind": "judgment",
+        "summary": "CI run 43934925246 (pytest + ruff, windows-latest): tests/scripts/test_ci_local.py::test_git_bash_dirs_hold_sh fails with 'assert False' at test_ci_local.py:137; git_bash_dirs() returned no folder holding sh.exe. The step ran under C:/Program Files/Git/bin/bash.EXE. git_bash_dirs derives the Git root from shutil.which('git') by two .parent hops plus a mingw64 check (ci_local.py:170-174), so a git found outside the Git for Windows tree, or in a layout those hops miss, yields an empty list. Locally the function finds both folders whether PATH resolves git to Git/cmd, Git/bin or Git/mingw64/bin, so the failure cannot be reproduced here; the pasted CI output is the evidence. With an empty list the replay also loses Git Bash at the front of PATH (ci_env).",
+        "fix": [
+          "Locate the Git root by walking up from shutil.which('git'), shutil.which('bash') and shutil.which('sh'), plus %ProgramFiles%/Git, to the first ancestor holding usr/bin/sh.exe; return its mingw64/bin and usr/bin. Give the test assert a message naming shutil.which('git') so a future CI failure shows the resolved path."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Isolated gitconfig writes safe.directory values unescaped",
+        "file": "tools/ci_local.py",
+        "files": [
+          "tools/ci_local.py",
+          "tests/scripts/test_ci_local.py"
+        ],
+        "lines": "178-186",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "isolated_git_global formats each entry as a raw `directory = <value>` line. `git config --get-all` prints the decoded value, so an entry stored as `E:\\\\work\\\\repo` comes back as `E:\\work\\repo` and gets written back with single backslashes. Git's config parser rejects unknown escapes like `\\w` or `\\a` with a fatal 'bad config line', and an unquoted `#` or `;` in a path starts a comment. With GIT_CONFIG_GLOBAL pointing at that file, every git call in the replay fails. select_tests.py catches the CalledProcessError and quietly falls back to a full plan ('diff unreadable, running everything'), which is the outcome preconditions() exists to prevent. preconditions() misses it because git_out runs in the caller's environment. Every git-using test then fails as well. The one function that writes a config file is also the one without a test.",
+        "fix": [
+          "Build the file through git itself: create it empty, then run `git config --file <path> --add safe.directory <value>` once per entry, so git does its own escaping; add a test that round-trips an entry containing a backslash and a `#`.",
+          "Escape `\\\\` and `\"` in each value and wrap it in double quotes (`directory = \"...\"`), then validate the result with `git config --file <path> --list` and report a precondition problem if git rejects it."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "fresh_out_dir deletion guard has no test",
+        "file": "tests/scripts/test_ci_local.py",
+        "files": [
+          "tests/scripts/test_ci_local.py",
+          "tools/ci_local.py"
+        ],
+        "lines": "1-137",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "tools/ci_local.py fresh_out_dir (lines 439-446) rmtrees a user-supplied --out-dir unless it holds files without the .ci-local marker. It is the one destructive operation in the tool, and no test covers either branch: refusing a non-empty unmarked folder, or emptying a marked one and rewriting the marker. A regression in the guard would delete a developer's folder silently.\n\nAlso (roast): fresh_out_dir is the only thing that stops a mistaken --out-dir from being rmtree'd, and run_windows holds the logic that mirrors CI's skip and fail order (both-none passes, pytest-none skips the hpy step, a pytest or catalog failure skips hpy, pip failure stops the run). Neither has a test. The tested helpers are the easy ones; the logic that can delete a folder or misreport a verdict is not.",
+        "fix": [
+          "Add two tmp_path tests: an unmarked non-empty folder returns the 'holds files this tool did not write' message and keeps its files; a folder holding .ci-local is emptied and recreated with the marker; an empty or missing folder passes.",
+          "Add a test that fresh_out_dir refuses a non-empty folder without the marker and leaves its files in place, and that it clears a folder that has the marker.",
+          "Test run_windows with a tmp out_dir and a real tiny Selection (dry_run=True, or a stub python that exits with a chosen code) to cover the both-none, pytest-none and pytest-failure branches."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Drift table covers one of several guarded lines per check",
+        "file": "tests/scripts/test_ci_local.py",
+        "files": [
+          "tests/scripts/test_ci_local.py",
+          "tools/ci_local.py"
+        ],
+        "lines": "37-56,59-76",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "workflow_drift checks SELECT_LINES (two lines: the --base form and the --full form) and PYTEST_LINES (three lines: the args assignment, the pytest command with the junit path, and the rc 5 test). DRIFTS mutates only the --base select line and the args=(-m cross_os) line. Changing the --full form, the --junitxml path or the rc = 5 comparison in ci.yml would be caught only by code the tests never exercise, so an accidental all()-to-any() edit passes. The hpy and pip cases are covered; the three missing mutations are cheap to add.\n\nAlso (tests): windows_rc, pytest_argv and skip_reasons are tested as pure helpers, but run_windows, run_tests and verdict carry the replay's behavior: skip the hpy step after an earlier failure, return a pass when selection is 'none', stop on a pip failure, add the catalog step to failed. None is exercised. Since run_step takes dry_run, a dry-run call with a hand-built Selection and Context is a behavioral test with no stubbing.",
+        "fix": [
+          "Add DRIFTS rows for 'python tools/select_tests.py --full', '--junitxml=.artifacts/pytest-junit.xml' and '\"$rc\" = 5', each expecting its check name.",
+          "Add a test calling run_windows with dry_run=True, a Selection(pytest='none', ruff='none', ...) and a Selection with tests, asserting exit 0 and the printed step names via capsys."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "ci_env scrub test skips the RUNNER_ and CONDA_ prefixes",
+        "file": "tests/scripts/test_ci_local.py",
+        "files": [
+          "tests/scripts/test_ci_local.py",
+          "tools/ci_local.py"
+        ],
+        "lines": "79-96",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_ci_env_drops_session_variables_and_marks_the_runner drops CLAUDE, HARNESS_, GIT_, PYTHON, GITHUB_ and VIRTUAL_ENV, but not RUNNER_* or CONDA_*, which SCRUB (tools/ci_local.py:75) also lists. It also asserts no non-scrubbed variable besides TEMP survives, and not MSYSTEM. Separately, the module docstring at tools/ci_local.py:16-17 lists the dropped variables without GITHUB_ and RUNNER_, which the code drops too.",
+        "fix": [
+          "Add RUNNER_TEMP and CONDA_PREFIX to base and to the 'gone' tuple, and an unrelated variable such as APPDATA that must survive.",
+          "Add GITHUB_* and RUNNER_* to the docstring's list of dropped variables."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Module and prepare docstrings do not match the environment and return contract in code",
+        "file": "tools/ci_local.py",
+        "files": [
+          "tools/ci_local.py",
+          "tests/scripts/test_ci_local.py"
+        ],
+        "lines": "14-19,75,197-198,449-466",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring lists the dropped session variables as CLAUDE*, HARNESS_*, GIT_*, PYTHON*, CONDA_*, VIRTUAL_ENV, but SCRUB also drops GITHUB_* and RUNNER_*, and ci_env also sets MSYSTEM=MINGW64 and PYTHONNOUSERSITE=1, which are not named although they change the environment seen by tests. prepare's docstring says 'notes ride along either way', but on the out-dir failure path the list is the problem and no notes are returned (main prints it without a 'problem:' prefix).\n\nAlso (roast): SCRUB drops CLAUDE*, HARNESS_*, GIT_*, PYTHON*, GITHUB_*, RUNNER_*, VIRTUAL_ENV and CONDA_*, but not PYTEST_ADDOPTS, PYTEST_PLUGINS or PYTEST_DISABLE_PLUGIN_AUTOLOAD. A developer's `-x`, `-p no:cacheprovider` or `-n auto` therefore rides into a replay that claims to match the runner. The module docstring's list of scrubbed prefixes also leaves out GITHUB_* and RUNNER_*, which the code does drop.",
+        "fix": [
+          "Add GITHUB_*, RUNNER_*, MSYSTEM and PYTHONNOUSERSITE to the module docstring's environment paragraph.",
+          "Reword prepare's docstring: 'the context and the warning notes, or None and the problems'.",
+          "Add \"PYTEST_\" to SCRUB, list it in the docstring together with GITHUB_* and RUNNER_*, and add PYTEST_ADDOPTS to the `base` dict in test_ci_env_drops_session_variables_and_marks_the_runner."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "workflow_drift raises instead of reporting drift when the python job is renamed or removed",
+        "file": "tools/ci_local.py",
+        "files": [
+          "tools/ci_local.py",
+          ".github/workflows/ci.yml",
+          "tests/scripts/test_ci_local.py"
+        ],
+        "lines": "58,117-122,147-162,415-433",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring promises that workflow_drift exits 3 on a mismatch. job_lines uses lines.index(f\"  {job}:\"), which raises ValueError when ci.yml no longer has a `python:` job. main calls workflow_drift without a guard, so the user gets a traceback (exit 1) in place of the 'ci.yml no longer matches this replay' message. Renaming a job is a drift case this guard exists for.\n\nAlso (runtime): workflow_drift compares the commands, the step order, the matrix and the setup-python version. run_windows also copies ci.yml's `if:` logic: pip install runs when pytest or ruff is not 'none', pytest, hpy and the catalog follow `pytest != 'none'`, the catalog is `!cancelled()` plus the JUnit file, and hpy gets an implicit success() (comment at line 430). JOB_TIMEOUT_S mirrors `timeout-minutes: 15`. None of these is compared, so editing a condition in ci.yml leaves the replay quietly out of date, which the module docstring says drift detection prevents.\n\nAlso (roast): workflow_drift compares commands, step order, the matrix, the Python version and the ruff `if:`, but none of the other `if:` expressions that run_windows reimplements by hand: the pip step's `pytest != 'none' || ruff != 'none'`, pytest's `pytest != 'none'`, the catalog's `!cancelled() && hashFiles(...)`, and the hpy step's condition with no status function (the comment at line 430 depends on it). Changing any of them, for example hpy to `always()`, keeps the drift guard green while the replay's gating no longer matches CI. A drift guard that skips the branch logic only guards half of the replay.\n\nAlso (roast): job_lines calls `lines.index(f\"  {job}:\")`, which raises ValueError when the `python` job is renamed or removed. main() then exits with a traceback instead of the documented exit 3 and its 'ci.yml no longer matches' message, and test_replay_matches_the_workflow errors instead of failing on a named check. Renaming the job is exactly the kind of change this check is supposed to catch.",
+        "fix": [
+          "In job_lines, return [] when the job header is absent (or catch ValueError in workflow_drift) so the 'python job step order' check fails and main exits 3 with the drift message.",
+          "Add checks that the `if` text of the pip, pytest and hpy steps and of the catalog step equals a copied constant, and that `timeout-minutes: 15` appears in the job lines.",
+          "State in the module docstring that only the commands, order and matrix are guarded and that conditions are not.",
+          "Add one check per condition to `checks` (exact `steps.get(<label>, blank).cond == \"...\"` comparisons for the pip line, pytest, CATALOG_STEP and HPY_STEP), plus a DRIFTS row in the test for each one.",
+          "In workflow_drift, return [\"python job present\"] when `\"  python:\"` is not among the workflow lines, before calling job_lines; add a DRIFTS row that renames the job."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "core.autocrlf row reports the caller's global config, not the replay's",
+        "file": "tools/ci_local.py",
+        "lines": "237-253,256-258,261-266,293",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The replay swaps the global git config for an isolated file (isolated_git_global, GIT_CONFIG_GLOBAL in ci_env). gap_rows reads core.autocrlf through git_out, which runs in the caller's real environment, so the 'local' column shows the caller's global value while the replayed pytest sees only repo-local and system config. The table is meant to show the replay's difference from CI, and here it can show a value the replay never uses.\n\nAlso (roast): If the target interpreter cannot be launched, python_facts reports version 'unrunnable'. version_problem accepts that version whenever --any-python is set, so preconditions pass, and run_select's subprocess.run on a missing executable raises FileNotFoundError: the user gets a traceback where exit 3 with a problem line was expected. The flag is meant to waive the 3.11 requirement, not the requirement that the interpreter works.",
+        "fix": [
+          "Give git_out an optional env argument and pass ctx.env for the core.autocrlf and git --version rows, so the row shows what the replay sees.",
+          "In preconditions, report `--python <path> does not run` whenever ctx.facts[\"version\"] == \"unrunnable\", whether or not --any-python is set; extend test_version_gate_accepts_only_311 to cover it."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "dry-run never prints the catalog command",
+        "file": "tools/ci_local.py",
+        "lines": "237-253,261-272,401-412,503,505",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The --dry-run help says it will 'select, then print the other commands'. run_tests guards the catalog step with junit.is_file(), and a dry run never writes the JUnit file, so the catalog command is skipped silently. The pip, pytest and hpy commands do print. The dry run therefore shows 3 of the 4 later commands, and the catalog step is the one whose argv (junit and output paths) is least obvious.\n\nAlso (runtime): parse_args applies Path.absolute() to --python, so a bare name such as `--python python` becomes <cwd>/python, which does not exist. python_facts swallows the OSError and returns version 'unrunnable', and version_problem then reports 'python unrunnable is not 3.11.x', which hides the real cause. With --any-python the problem is skipped, and run_select then raises FileNotFoundError from subprocess.run (traceback, not exit 3). The docstring documents `--python EXE` and exit 3 for preconditions.",
+        "fix": [
+          "In run_tests, enter the catalog branch when `junit.is_file() or args.dry_run`, and call print_skips only when the file exists, so run_step prints the catalog command and returns 0 on a dry run.",
+          "Narrow the --dry-run help and docstring wording to say the catalog step is shown only after a real pytest run.",
+          "In parse_args, resolve a name with no directory part through shutil.which before .absolute().",
+          "In preconditions, add an explicit problem when facts['version'] == 'unrunnable' (e.g. 'cannot run <python>'), independent of --any-python, so exit 3 is returned before the select step."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "skip_reasons lets a malformed JUnit file crash the run after pytest has already reported",
+        "file": "tools/ci_local.py",
+        "lines": "382-388,406-407",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "run_tests parses the JUnit file with ElementTree.parse and catches nothing. A report truncated by a killed pytest (timeout) or a crash raises ParseError, so the user gets a traceback instead of the verdict line, and the catalog step and the exit code 1 are lost.",
+        "fix": [
+          "Wrap the parse in try/except ElementTree.ParseError and return an empty dict (optionally print 'junit unreadable'), so run_tests continues to the catalog step and the verdict."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 293 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"d9d7944567e97afefeb60fa6bad0257505573ccc\",\"headRefName\":\"1160-local-testing\",\"headRefOid\":\"f2fedc7b5efb7c8c375d86c19ad06c80597957e7\",\"last_sha\":\"f2fedc7b5efb7c8c375d86c19ad06c80597957e7\",\"mergeCommit\":null,\"number\":293,\"state\":\"OPEN\",\"title\":\"Feature(tools): `ci_local.py` windows-latest replay\",\"url\":\"https://github.com/t968rs/operator-straps/pull/293\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1160-local-testing",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1160-local-testing",
+        "head_ref_name": "1160-local-testing",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "d9d7944567e97afefeb60fa6bad0257505573ccc",
+        "head_sha": "f2fedc7b5efb7c8c375d86c19ad06c80597957e7",
+        "base_ancestor_command": "git merge-base --is-ancestor d9d7944567e97afefeb60fa6bad0257505573ccc HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor f2fedc7b5efb7c8c375d86c19ad06c80597957e7 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - Module docstring's dropped-variable list now names GITHUB_* and RUNNER_* (and VIRTUAL_ENV* as the prefix it is), matching SCRUB; test_ci_env_drops_session_variables_and_marks_the_runner: added RUNNER_TEMP and CONDA_PREFIX to base and the gone tuple, an APPDATA survival assert, and a MSYSTEM=MINGW64 assert"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - Module docstring names GITHUB_*/RUNNER_* drops and the MSYSTEM=MINGW64 and PYTHONNOUSERSITE=1 settings; prepare docstring reworded to 'the context and the warning notes, or None and the problems'; test-side needs no edit: the docstring and prepare-docstring fixes and any SCRUB change are in tools/ci_local.py, owned by the other part"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - git_out takes an optional env; gap_rows passes ctx.env for the git --version and core.autocrlf rows so they show what the replay sees under the isolated global config"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - run_tests enters the catalog branch on junit.is_file() or args.dry_run and prints skips only when the report exists, so a dry run shows the catalog command; preconditions also reports 'cannot run --python <path>' for an unrunnable interpreter regardless of --any-python, giving exit 3 instead of a traceback"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - skip_reasons catches ElementTree.ParseError, prints 'junit unreadable' and returns no counts, so run_tests continues to the catalog step and the verdict"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - Added fresh_out_dir tests: an unmarked non-empty folder is refused and keeps its files, a marked folder is emptied with the marker rewritten, a missing or empty folder passes; tools/ci_local.py: guard already correct, no edit needed"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - Added DRIFTS rows for the --full select line, the --junitxml path and the rc 5 test; tools/ci_local.py: checks already cover these lines, no edit needed"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - job_lines returns [] when the job header is absent, so a renamed or removed python job fails the drift checks and main exits 3; added a DRIFTS row renaming the job; ci.yml needs no edit"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - git_bash_dirs now uses git_root, which walks up from git, bash and sh on PATH plus %ProgramFiles%/Git to the first ancestor holding usr/bin/sh.exe; the test assert names the resolved paths"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f2fedc7 (working-tree snapshot; developer commits) - isolated_git_global writes entries through the new write_safe_directories, which runs git config --file --add per entry so git escapes values; added round-trip tests for backslash, # ; and quote entries and the empty case"
+    }
+  ]
+}

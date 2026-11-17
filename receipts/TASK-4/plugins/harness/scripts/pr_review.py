@@ -1,0 +1,2659 @@
+"""pr-review driver: capture a PR into reviewer briefs, merge findings, build the review, plan fix waves.
+
+Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KEY>/current`` names, where
+``KEY`` is the PR number ``NNNN`` or the local key ``local-<label>`` that ``--pr`` takes.
+
+``capture --pr N [--no-fetch] [--allow-closed] [--roast yes|no|roll]``
+    Phase 1 and the Phase 2 dispatch plan. One ``gh pr view`` read (raw stdout kept as ``phase1_meta.txt``
+    and the ``pr_metadata_check`` paste); a non-OPEN PR stops unless ``--allow-closed`` (a replay that
+    ``build`` refuses). Local git supplies the files; machine-generated paths are dropped; the rest sort into
+    review buckets; lens triggers, content pins and the structural guard decision are evaluated at the PR
+    head, and the guard suite runs in the working tree when it applies (a red guard stops; an applicable
+    guard run with the checkout off the PR head stops before running). Writes ``plan.json``, one brief and
+    one budgeted diff per reviewer slot, and prints one dispatch row per slot: ``agent=harness:pr-reviewer
+    model=<m>`` then the prompt (four header lines and ``Brief: <abs path>``). ``--plan PATH`` adds one
+    ``Plan: <path>`` line to every brief.
+``capture --range BASE..HEAD [--pr local-<label>] [--title T] [--plan PATH] [--roast ...]``
+    The same for a local commit range with no PR (the review-local skill): git, not gh, supplies the
+    metadata (``review_local_api.local_metadata``), the state is ``LOCAL`` and the run key is
+    ``local-<label>`` (default: the head branch's label). Every later subcommand takes that key as
+    ``--pr``; runs live under ``<artifacts.scratch>/<key>/`` and the review file is
+    ``LOCAL_<label>_<slug>.json``. ``fold --from-gh-review`` is refused on a local run.
+``capture ... -a`` / ``--adversarial``
+    An adversarial run. Before the run starts (``current`` unmoved) it is refused when the plugin's
+    Workflow script (``review_models.ADVERSARIAL_WORKFLOW``) is missing or the governing review schema (a
+    pinned copy first) lacks ``REFUTED``, ``BUBBLED`` or ``NOT_RESOLVED``. Plan paths are classified
+    (``review_adversarial``; notes print as ``note:`` lines), the code refuters (``adv_code`` or
+    ``adv_code_<bucket>``) cover the runtime, tests and unfrozen plan paths, and one findings refuter
+    (``adv_refute_<target>``) checks each reviewer and code-refuter slot. ``plan.json`` gains
+    ``adversarial`` and ``dispatch_time.adversarial_check`` (pending); the refuter briefs are written
+    beside the reviewer briefs, and the Workflow script is copied into the run directory (the Workflow tool
+    reads a ``scriptPath`` only under the working directory, so an ``-a`` capture runs in the session's
+    own project, with no ``--repo`` pointing elsewhere). The status line is followed by
+    ``scriptPath=<abs copy>`` and ``args=<one-line JSON>`` (one Workflow call) instead of the dispatch rows.
+    Without ``-a`` nothing of this is written.
+``init --pr N --agent adv_refute_<t> --run-id ID``
+    A findings refuter's first step. Refuses a run id that is not ``current`` and a target that has not
+    recorded (``reviewer <t> has not recorded``); prints each target finding once per key as
+    ``[<finding_key>] <severity> <name> <file>:<lines>`` with its summary indented below; a target
+    without findings gets an empty refutation report recorded and ``no findings: done``.
+``block --pr N --agent ID``
+    Reprint the return block of a recorded reviewer, code refuter or fixer report; for ``adv_refute_<t>``
+    the refutation block from ``refutations/<t>.json`` plus each entry's finding key, verdict and evidence.
+``fold --pr N --source ID --kind external|tests|developer|adhoc (--from-gh-review URL | --findings FILE|-)
+[--severity S]``
+    Record an outside review (an external reviewer, test results, the developer, ad-hoc feedback) as
+    ``findings/<ID>.json`` through ``review_models.record`` and register it in ``plan.json`` ``folded``
+    (``{id, kind, origin, at}``; a re-fold replaces both). ``--findings`` takes a JSON list of findings or
+    ``{"findings": [...], "strengths": [...]}``; ``--from-gh-review`` maps each inline comment of a GitHub
+    PR review to one ``judgment`` finding at ``--severity`` (default minor); a DISMISSED review or a blank one
+    without comments is refused (exit 1, nothing recorded). Before build the source is merge input. Once the
+    review is built the source is also appended (entry gains ``after_build: true``): its findings convert as
+    merge converts one report, ids continue per severity after the review's highest, nothing is renumbered
+    or auto-merged
+    (merge candidates against existing issues print as a note), the source is credited in ``reviewers``,
+    the verdict is recomputed and the review is written through the validated writer. The phase stays
+    ``fix-plan`` / ``fix`` inside an open Phase 5 pass and becomes ``consolidate`` otherwise, so only
+    ``bubble`` / ``waves`` open a pass. The printed ``next:`` step is the Phase 4 second run unless a Phase 5
+    pass is open, where it is ``waves`` for the new ids, then ``closeout``. Re-folding a source already in the
+    built review is refused, naming its ids; a built review whose Phase 4 first run failed (``pre_fix_time``
+    pending) refuses the fold until ``build --replace`` succeeds. A source id starting ``adv_`` is
+    refused (reserved for refuters).
+``merge --pr N [--force]``
+    Merge the reports of the plan's slots, its code refuters (``-a``), then its folded sources, into
+    ``draft.json`` and print the issue table, the merge candidates and the strengths count. A findings file
+    that is neither a slot, a code refuter nor a folded source is a problem. A draft carrying amend
+    operations is only replaced with ``--force``. Under ``-a`` every refute slot needs
+    ``refutations/<target>.json`` whose stored digest matches the target's current report (else
+    ``refutation stale: rerun adv_refute_<target>``); a refused merge writes no draft. The issues come from
+    ``review_merge.merge_adversarial`` (an all-refuted issue carries ``refuted``), the table gains a
+    ``refuted`` / ``upheld`` column and the mixed-group notes print as ``note:`` lines.
+``amend --pr N [--regrade I3=minor ...] [--merge I3+I7 ...]``
+    Apply regrades and id merges to ``draft.json`` in the order given, log them, reprint the table. A
+    regrade to ``mechanical`` or ``judgment`` sets the issue's fix kind in place (id kept), which picks the
+    fixer model.
+``build --pr N [--replace] [--waive-head-ancestry]``
+    Write ``<artifacts.reviews>/<NNNN>_<slug>.json`` from the plan and the draft, with the Phase 4 first run's
+    ``pre_fix_time`` when it succeeds (else the pending literal, a READY verdict turned into ``NOT READY TO
+    MERGE - Phase 4 first run failed: <reason>``, a problem and exit 1). ``--waive-head-ancestry`` also
+    accepts a run whose only STOP is ``sha_ancestry_check`` with ``head_ancestor_exit != 0`` and
+    ``base_ancestor_exit == 0``: ``pre_fix_time`` is inserted, ``plan.json`` records ``phase4_waiver`` and
+    a ``note:`` line is printed. A draft issue carrying ``refuted`` becomes a ``REFUTED`` resolution (written
+    before the Phase 4 run, so a held verdict still validates) and a ``refuted: <id> (<evidence first
+    line>)`` line; under ``-a`` build first repeats merge's refutation check (missing or stale
+    refutations refuse the build) and completes ``adversarial_check`` (verdict-entry counts, ``refuted_ids``,
+    ``unrefuted_ids``). ``--replace`` ignores a ``REFUTED`` resolution while ``draft.json`` still marks its
+    id ``refuted``; a developer ``refute`` / ``unrefute`` counts as Phase 5 begun.
+``refute --pr N ID --evidence TEXT``
+    Close one issue of the built review as ``REFUTED`` (a developer overrule, any phase after build, with or
+    without ``-a``); refused for an unknown or already closed id. Prints the id, tier, name and
+    ``file:lines``; the phase stays (``done`` stays ``done``); under ``-a`` the id joins ``refuted_ids``.
+``unrefute --pr N ID (--bubble --classification C --reason R | --fix [--reason R])``
+    Overrule a refutation (latest status ``REFUTED``, else refused): ``--fix`` appends ``NOT_RESOLVED``
+    (default evidence ``refutation overruled``) so the next ``waves`` plans it, and ``done`` moves to
+    ``fix``; ``--bubble`` appends ``BUBBLED`` and bubbles the id as ``bubble`` does (phase ``fix-plan``).
+    Clears the issue's ``refuted`` key in ``draft.json``; under ``-a`` the id joins ``unrefuted_ids``.
+``bubble --pr N ID --classification C --reason R``
+    Bubble one issue for the developer and recompute the verdict. An id whose latest resolution is
+    ``NOT_RESOLVED`` also gains a ``BUBBLED`` resolution; a ``REFUTED`` id is refused, naming ``unrefute``.
+``waves --pr N [--ids I3,M2]``
+    Plan fix waves over the undispositioned, unheld issues not yet fully recorded (or exactly ``--ids``; a
+    ``REFUTED`` id there is refused, naming ``unrefute``):
+    a partially fixed split issue is re-planned for its unrecorded parts only; fixer-bubbled ids stay out.
+    Each fixer's file set adds the registered tests targeting its issues' files and the existing paths
+    their fix options name. Registered tests that ``defer_reasons`` selects (summed ``tests.timings``
+    seconds over ``tests.fixer_test_seconds``, or a true ``tests.defer_flags`` path) appear in the brief as
+    ``deferred, do not run`` with their reason; the deferred tests and reasons are kept in ``waves.json``
+    ``deferred`` and stay deferred across follow-up waves.
+    Once a closeout has run (``closeout.json`` in the run), only fix entries closeout accepts count as
+    recorded, so an id whose entries it rejected is re-planned. Write ``waves.json`` (with each fixer's
+    parts) and the fixer briefs, print one dispatch row per fixer, wave by wave, then the held ids and the
+    pending fixer bubbles.
+``bubbles --pr N``
+    Read-only: print the fixer bubbles not yet in the review (``<id> (<classification>) from <fixer>:
+    <reason>``), or ``pending fixer bubbles: none``.
+``closeout --pr N [--closed M17=rationale ...] [--deferred I3="decision; tracker" ...]
+[--resolved I4=what ...]``
+    Resolve the validated fixes (only ids assigned to the recording fixer; a split issue only when every
+    planned part is recorded), close the named ids, record fixer bubbles, resolve each deferred id as a
+    developer-confirmed defer (kept in ``bubble_up``), resolve each ``--resolved`` id (a fix in the tree no
+    accepted fixer entry records; one of its files must have changed since ``build_head``; a ``REFUTED`` id
+    is refused, naming ``unrefute``, before anything is written), recompute the verdict and print the
+    canonical Phase 5 line (refuted ids counted apart from resolved ones), a ``hint:`` line per blocked id
+    (partially fixed ones aside)
+    whose files changed (the ``--resolved`` route), then a ``deferred tests:`` block (each file, its reason,
+    one pytest command) for the deferred tests (those saved in ``waves.json`` plus those deferred now) that
+    the paths changed since ``build_head`` reach. A planned fixer without a fix report, or an undispositioned
+    id its planned fixers never recorded, is a problem; so is a pending ``pre_fix_time``. Writes
+    ``closeout.json`` (head and problems) to the run, which switches later ``waves`` runs to
+    closeout-accepted entries.
+``config [--get KEY ...]``
+    Print the project's merged harness configuration as JSON, or with ``--get`` one line per dotted key
+    (``state_dir``, ``artifacts.reviews``): a string as-is, null as an empty line, anything else as JSON.
+    Skills and agents read the configuration through this instead of an inline ``-c`` snippet carrying a
+    path.
+
+Every review write is validated in process (schema, pending rule, issue counts), replaced atomically, then
+run through the real schema hook, which also clears the Phase 5 sentinel. Every failure, an argument error
+included, exits 1 with one ``problem: ...`` line per defect on stderr. Each successful subcommand records
+the run's position in ``plan.json`` ``phase``: ``review`` (capture, fold before build), ``consolidate``
+(merge, amend, build, fold after build outside an open pass), ``fix-plan`` (bubble, unrefute --bubble),
+``fix`` (waves; closeout with problems or undispositioned ids; unrefute --fix from ``done``; fold after build
+inside an open pass keeps ``fix-plan`` / ``fix``), ``done`` (closeout with every issue id dispositioned).
+``init`` and ``refute`` leave the phase as it is.
+
+Project and paths: ``--repo`` names the project (default: the git top level of the working directory); its
+``.claude/harness.json`` is activated once. Run scratch is ``artifacts.scratch``, reviews go to
+``artifacts.reviews``, registry tests come from ``tests.registry`` (deferred by ``tests.timings``,
+``tests.fixer_test_seconds`` and ``tests.defer_flags``), the structural guards from ``review.*``,
+brief pointers from ``review.domain_pointers`` and the lens catalog is the plugin's merged with
+``review.lenses``. Plugin assets (the Phase 4 script, the schema hook, the catalog, the library) resolve from
+the plugin root; nothing is written under it. Reviewer brief composition (``reviewer_brief`` over a
+``BriefContext`` and each planned ``Slot``) and the brief helpers the fixer briefs share live in
+``harness_lib.review_briefs``.
+
+``--pr`` takes a PR number ``N`` or a local key ``local-<label>`` (a ``capture --range`` run).
+
+Usage (Bash tool; ``$PR_REVIEW`` stands for
+``sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py"``)::
+
+    $PR_REVIEW [--repo DIR] capture --pr N [--no-fetch] [--allow-closed] [--plan PATH] [--roast yes|no|roll]
+        [-a]
+    $PR_REVIEW [--repo DIR] capture --range BASE..HEAD [--pr local-<label>] [--title T] [--plan PATH]
+        [--roast yes|no|roll] [-a]
+    $PR_REVIEW init --pr N --agent adv_refute_<t> --run-id ID
+    $PR_REVIEW block --pr N --agent ID
+    $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE|-) [--severity S]
+    $PR_REVIEW merge --pr N [--force]
+    $PR_REVIEW amend --pr N [--regrade ID=severity|fix_kind ...] [--merge KEEP+DROP ...]
+    $PR_REVIEW build --pr N [--replace] [--waive-head-ancestry]
+    $PR_REVIEW refute --pr N ID --evidence TEXT
+    $PR_REVIEW unrefute --pr N ID (--bubble --classification C --reason R | --fix [--reason R])
+    $PR_REVIEW bubble --pr N ID --classification C --reason R
+    $PR_REVIEW waves --pr N [--ids I3,M2]
+    $PR_REVIEW bubbles --pr N
+    $PR_REVIEW closeout --pr N [--closed ID=text ...] [--deferred ID=text ...] [--resolved ID=text ...]
+    $PR_REVIEW config [--get KEY ...]
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import random
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timezone
+from pathlib import Path
+from typing import (
+    Callable, Dict, Iterable, List, Mapping, NoReturn, Optional, Sequence, Set, Tuple, Union, cast,
+)
+
+_LIB = Path(__file__).resolve().parents[1] / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
+
+#: (module, v2-only attribute or None, pip requirement): the review models need pydantic>=2.1, the review
+#: schema validation needs jsonschema and referencing. referencing comes first because jsonschema imports
+#: it, so a missing referencing is named as itself.
+_REQUIRED_MODULES: Tuple[Tuple[str, Optional[str], str], ...] = (
+    ("pydantic", "model_validator", "pydantic>=2.1"),
+    ("referencing", None, "referencing"),
+    ("jsonschema", None, "jsonschema"),
+)
+
+
+def _missing_requirement() -> Optional[str]:
+    """Return the pip requirement of the first review dependency below its floor or absent, else None."""
+    from harness_lib.doctor import requirement_met
+
+    for module, attr, requirement in _REQUIRED_MODULES:
+        if not requirement_met(module, attr, requirement):
+            return requirement
+    return None
+
+
+_MISSING = _missing_requirement()
+if _MISSING is not None:
+    print(f"problem: {_MISSING} is not installed; pr_review needs it (pip install '{_MISSING}')",
+          file=sys.stderr)
+    sys.exit(1)
+
+from harness_lib import review_adversarial as ra  # noqa: E402
+from harness_lib import review_edit  # noqa: E402
+from harness_lib import review_merge as rmg  # noqa: E402
+from harness_lib import review_models as rm  # noqa: E402
+from harness_lib import review_plan as rp  # noqa: E402
+from harness_lib import review_waves as rwv  # noqa: E402
+from harness_lib import diff_delta  # noqa: E402
+from harness_lib.branch_capture import CaptureError, git, git_out  # noqa: E402
+from harness_lib.commit_diff import DiffStat  # noqa: E402
+from harness_lib.config import HarnessConfig, activate, active, load_config  # noqa: E402
+from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E402
+from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patches  # noqa: E402
+from harness_lib.pr_summary import PrFacts  # noqa: E402
+from harness_lib.project import plugin_root, project_root, schema_path  # noqa: E402
+from harness_lib.review_briefs import (  # noqa: E402
+    CODE_REFUTER_ROLE,
+    REFUTER_ROLE,
+    REMOVAL_DEFECTS,
+    TOO_LONG_RULE,
+    BriefContext,
+    code_refuter_brief,
+    draft_json,
+    header_lines,
+    hpy_command,
+    key_literal,
+    record_heredoc,
+    refuter_brief,
+    reviewer_brief,
+    target_label,
+)
+from harness_lib.review_bubbles import closed_ids, pending_bubbles  # noqa: E402
+from harness_lib import review_local_api as rla  # noqa: E402
+from harness_lib.review_local_models import (  # noqa: E402
+    LOCAL_STATE,
+    RunKey,
+    is_local_key,
+    parse_key,
+    parse_range,
+    review_file_glob,
+    review_file_name,
+)
+
+REVIEWER_AGENT = ra.REVIEWER_AGENT
+FIXER_AGENT = "harness:pr-fixer"
+PR_BLOCK_BUDGET = 1200
+PR_CHAR_BUDGET = 60_000
+GUARD_TAIL_LINES = 40
+CLOSEOUT_MARK = "closeout.json"
+GH_FIELDS = "number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit"
+GH_PROJECTION = (
+    "{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, "
+    "commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}"
+)
+_GH_KEYS = ("number", "title", "headRefName", "baseRefName", "state", "headRefOid")
+
+BUBBLE_QUESTIONS = (
+    "Are there two or more reasonable resolutions, AND does picking one need domain knowledge this session "
+    "does not have? (both yes: `architectural_ambiguity`)",
+    "Is the fix outside the PR's actual scope? (`out_of_scope`)",
+    "Does the fix need a developer call on an aesthetic or convention question with no codebase precedent? "
+    "(`architectural_ambiguity`)",
+)
+_TIER = {"C": "critical", "I": "important", "M": "minor"}
+_SECTION = re.compile(r"^=== (.+) \[([a-z]+), \+\d+ -\d+\] ===$")
+_CLIPPED = re.compile(r"^(\[omitted: |\.\.\. \d+ more diff lines omitted)|\.\.\.\[\+\d+ chars\]$")
+FOLD_KINDS = ("external", "tests", "developer", "adhoc")
+NAME_LIMIT = 120
+_GH_REVIEW_URL = re.compile(r"^https://github\.com/([^/\s]+)/([^/\s]+)/pull/(\d+)#pullrequestreview-(\d+)$")
+_GH_PR_URL = re.compile(r"^https://github\.com/([^/\s]+)/([^/\s]+)/pull/(\d+)")
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s")
+
+
+# --- subprocess seams (tests replace these) -----------------------------------------------------------------
+
+
+def _proc(cmd: Sequence[str], repo: Path, **kwargs: object) -> subprocess.CompletedProcess:
+    """Run ``cmd`` in ``repo`` with UTF-8 text capture; never raises on a non-zero exit."""
+    return subprocess.run(list(cmd), cwd=repo, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", **kwargs)
+
+
+def run_gh(repo: Path, args: Sequence[str]) -> str:
+    """Stdout of ``gh <args>``; raise ``CaptureError`` when gh is missing or fails."""
+    try:
+        result = _proc(["gh", *args], repo)
+    except OSError as exc:
+        raise CaptureError([f"gh could not run ({exc}); install gh or check PATH"]) from exc
+    if result.returncode != 0:
+        raise CaptureError([f"gh {' '.join(args[:3])} failed: {result.stderr.strip()}"])
+    return result.stdout
+
+
+def phase4_script() -> Path:
+    """The plugin's Phase 4 branch-safety script."""
+    return plugin_root() / "skills" / "pr-review" / "commands" / "phase4_branch_safety.py"
+
+
+def hook_script() -> Path:
+    """The plugin's PR_REVIEW schema hook."""
+    return plugin_root() / "hooks" / "validate_pr_json_schema.py"
+
+
+def adversarial_script() -> Path:
+    """The plugin's ``--adversarial`` Workflow script."""
+    return plugin_root() / rm.ADVERSARIAL_WORKFLOW
+
+
+def run_guards(repo: Path, suite: Sequence[str]) -> Tuple[int, str]:
+    """Run the structural guard suite with this interpreter in ``repo``; return the exit code and output."""
+    cmd = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *suite]
+    result = _proc(cmd, repo)
+    return result.returncode, result.stdout + result.stderr
+
+
+def run_phase4(repo: Path, pr: RunKey) -> Tuple[int, str, str]:
+    """Run the Phase 4 branch-safety script (first run) in ``repo``; return exit code, stdout and stderr."""
+    result = _proc([sys.executable, str(phase4_script()), str(pr)], repo)
+    return result.returncode, result.stdout, result.stderr
+
+
+def run_hook(repo: Path, review_path: Path) -> Tuple[int, str]:
+    """Run the schema hook on ``review_path`` as an Edit event from ``repo``; return exit code and stderr."""
+    event = {"tool_name": "Edit", "tool_input": {"file_path": str(review_path.resolve())}, "cwd": str(repo)}
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+    result = _proc([sys.executable, str(hook_script())], repo, input=json.dumps(event), env=env)
+    return result.returncode, result.stderr
+
+
+# --- json io ------------------------------------------------------------------------------------------------
+
+
+def _read_json(path: Path, hint: str = "") -> Dict[str, object]:
+    """JSON object at ``path``; raise ``CaptureError`` (with ``hint``) when missing or unreadable."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        raise CaptureError([f"cannot read {path} ({exc}){'; ' + hint if hint else ''}"]) from exc
+    if not isinstance(data, dict):
+        raise CaptureError([f"{path} must hold a JSON object"])
+    return data
+
+
+def _write_text(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` atomically (sibling temp file, then ``os.replace``)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8", newline="\n")
+    os.replace(tmp, path)
+
+
+def _write_json(path: Path, data: object) -> None:
+    """Write ``data`` as indented UTF-8 JSON, atomically."""
+    _write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+
+def _rel(repo: Path, path: Path) -> str:
+    """Repo-relative posix form of ``path`` (absolute posix when outside ``repo``)."""
+    try:
+        return path.resolve().relative_to(repo).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+# --- capture: metadata, scope, guards -----------------------------------------------------------------------
+
+
+def gh_command(pr: int) -> str:
+    """The Phase 1 Check 1 command line as recorded in ``pr_metadata_check``."""
+    return f"gh pr view {pr} --json {GH_FIELDS} --jq '{GH_PROJECTION}'"
+
+
+def read_metadata(repo: Path, pr: int) -> Tuple[Dict[str, object], str]:
+    """The projected ``gh pr view`` object and its raw stdout; raise ``CaptureError`` when unparseable."""
+    raw = run_gh(repo, ["pr", "view", str(pr), "--json", GH_FIELDS, "--jq", GH_PROJECTION])
+    try:
+        data = json.loads(raw)
+    except ValueError as exc:
+        raise CaptureError([f"gh pr view {pr} output does not parse ({exc})"]) from exc
+    missing = [k for k in _GH_KEYS if not isinstance(data, dict) or k not in data]
+    if missing:
+        raise CaptureError([f"gh pr view {pr} output lacks {', '.join(missing)}"])
+    return data, raw
+
+
+def metadata_check(pr: int, data: Mapping[str, object], raw: str, allow_closed: bool) -> Dict[str, str]:
+    """``pr_metadata_check`` block; a non-OPEN PR raises unless ``allow_closed`` (a replay)."""
+    state = str(data["state"])
+    if state != "OPEN" and not allow_closed:
+        problem = f"PR {pr} state={state}: Phase 1 stops on a non-OPEN PR (--allow-closed replays)"
+        raise CaptureError([problem])
+    result = f"OK (state={state})" if state == "OPEN" else f"REPLAY (state={state}; build refuses it)"
+    return {"command": gh_command(pr), "stdout": raw, "result": result}
+
+
+def pr_number(value: object) -> int:
+    """A PR number read from JSON (an int, or a digit string) as an int."""
+    return int(cast(Union[int, str], value))
+
+
+def pr_meta(data: Mapping[str, object]) -> PrMeta:
+    """``PrMeta`` from the projected gh object."""
+    merge = data.get("mergeCommit")
+    return PrMeta(pr_number(data["number"]), str(data["title"]), str(data["baseRefName"]),
+                  str(data["headRefName"]), str(data["headRefOid"]), str(merge) if merge else None)
+
+
+def split_reviewable(facts: PrFacts, patterns: Sequence[str]) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+    """(reviewable paths, excluded machine-generated paths), in PR order."""
+    excluded = tuple(f.path for f in facts.files if rp.is_excluded(f.path, patterns))
+    return tuple(f.path for f in facts.files if f.path not in excluded), excluded
+
+
+def skill_folders_at_head(repo: Path, head: str, reviewable: Sequence[str]) -> Tuple[str, ...]:
+    """The ``skills/<name>/`` folders ``reviewable`` touches that hold a ``SKILL.md`` at ``head``."""
+    candidates = rp.skill_candidates(reviewable)
+    if not candidates:
+        return ()
+    present = git_out(repo, "ls-tree", "-r", "-z", "--name-only", head, "--", *rp.skill_files(candidates))
+    return rp.skill_folders(candidates, present.split("\0"))
+
+
+def grep_lines(repo: Path, head: str, name: str, roots: Sequence[str]) -> List[str]:
+    """``<path>:<lineno>:<text>`` lines naming ``name`` under the top-level ``roots`` at ``head``."""
+    result = git(repo, "grep", "-I", "-n", "-F", name, head, "--", *roots)
+    if result.returncode == 1:
+        return []
+    if result.returncode != 0:
+        raise CaptureError([f"git grep {name} failed: {result.stderr.strip()}"])
+    prefix = f"{head}:"
+    return [line[len(prefix):] if line.startswith(prefix) else line for line in result.stdout.splitlines()]
+
+
+def lens_paths(repo: Path, facts: PrFacts, reviewable: Sequence[str], patterns: Sequence[str],
+               catalog: Mapping[str, object]) -> Tuple[Dict[str, Tuple[str, ...]], Tuple[str, ...]]:
+    """Triggered path-carrying lenses (per-skill-package, multi-artifact, the catalog's project lenses) and
+    the triggered skill names. A skill is any ``skills/<name>/`` folder holding a ``SKILL.md`` at the head
+    whose name a file outside it mentions."""
+    head = facts.head_sha
+    folders = skill_folders_at_head(repo, head, reviewable)
+    roots = rp.skill_grep_roots(folders)
+    folders = tuple(f for f in folders
+                    if rp.skill_mentioned(f, grep_lines(repo, head, rp.skill_name(f), roots), patterns))
+    skills = tuple(dict.fromkeys(rp.skill_name(f) for f in folders))
+    lenses: Dict[str, Tuple[str, ...]] = {}
+    if folders:
+        lenses[rp.Lens.SKILL_PACKAGE] = tuple(p for p in reviewable if p.startswith(folders))
+    new = rp.multi_artifact([(f.status, f.path) for f in facts.files if f.path in reviewable])
+    if new:
+        lenses[rp.Lens.MULTI_ARTIFACT] = new
+    lenses.update(rp.project_lens_paths(catalog, reviewable))
+    return lenses, skills
+
+
+def pinned_tests(repo: Path, facts: PrFacts) -> List[str]:
+    """Touched test files (not deleted) whose head content carries the configured content pin."""
+    pin = rp.content_pin()
+    pinned: List[str] = []
+    for f in facts.files:
+        if pin is not None and f.status != "D" and rp.is_pin_candidate(f.path):
+            text = git(repo, "show", f"{facts.head_sha}:{f.path}").stdout
+            pinned += [f.path] if pin.search(text) else []
+    return pinned
+
+
+def guard_command(suite: Sequence[str]) -> str:
+    """The recorded structural guard invocation, naming the interpreter ``run_guards`` actually uses."""
+    exe = Path(sys.executable).as_posix()
+    return f"{exe} -m pytest -q -p no:cacheprovider " + " ".join(suite)
+
+
+def guards_check(repo: Path, decision: rp.GuardDecision, at_head: bool) -> Dict[str, object]:
+    """``structural_guards_check`` block; run the suite when it applies and raise when it fails.
+
+    The suite runs in the working tree, so an applicable guard run off the PR head (``at_head`` False: HEAD
+    differs or reviewable PR paths carry local edits) raises instead of recording a result for other code.
+    """
+    if not decision.applies:
+        return {"applies": False, "command": "", "stdout_tail": "",
+                "result": "SKIPPED (no CICD/test-infra paths in PR)"}
+    if not at_head:
+        raise CaptureError(["structural guards apply but the working tree is not the PR head (HEAD differs "
+                            "or PR paths have local edits): check out the PR head, then rerun capture"])
+    rc, output = run_guards(repo, decision.suite)
+    tail = output.rstrip().splitlines()[-GUARD_TAIL_LINES:]
+    if rc != 0:
+        raise CaptureError([f"structural guards failed (rc {rc}): STOP, do not dispatch reviewers",
+                            *(f"  {line}" for line in tail[-5:])])
+    passed = re.search(r"(\d+) passed", "\n".join(tail))
+    return {"applies": True, "command": guard_command(decision.suite), "stdout_tail": "\n".join(tail),
+            "result": f"OK ({passed.group(1) if passed else 0} passed)"}
+
+
+def roast_choice(choice: str) -> bool:
+    """``yes`` / ``no``, or a fresh 50/50 roll for ``roll``."""
+    return choice == "yes" or (choice == "roll" and rp.roll_roast(random.Random()))
+
+
+def tree_at_head(repo: Path, head: str, paths: Sequence[str]) -> bool:
+    """True when HEAD is the PR head and none of ``paths`` has local edits, tracked or untracked."""
+    if git_out(repo, "rev-parse", "HEAD").strip() != head:
+        return False
+    return not status_paths(repo) & set(paths)
+
+
+def status_paths(repo: Path) -> Set[str]:
+    """Paths with local edits (staged, unstaged, untracked non-ignored), both sides of a staged rename."""
+    tokens = git_out(repo, "--no-optional-locks", "status", "--porcelain", "-z",
+                     "--untracked-files=all").split("\0")
+    paths: Set[str] = set()
+    pos = 0
+    while pos < len(tokens) and tokens[pos]:
+        entry = tokens[pos]
+        paths.add(entry[3:])
+        if entry[0] in "RC" or entry[1] in "RC":
+            pos += 1
+            paths.add(tokens[pos])
+        pos += 1
+    return paths
+
+
+def run_id_for(pr: RunKey) -> str:
+    """``pr<N>_<UTC yyyymmddTHHMMSSZ>``, or ``<local key>_<UTC yyyymmddTHHMMSSZ>``."""
+    return rm.run_id_for(pr, f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}")
+
+
+# --- capture: plan ------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Scope:
+    """Capture-time scope: reviewable and excluded paths, buckets, lenses, skills, guards, slots."""
+
+    reviewable: Tuple[str, ...]
+    excluded: Tuple[str, ...]
+    buckets: Dict[rp.PathBucket, Tuple[str, ...]]
+    notes: Tuple[str, ...]
+    lenses: Dict[str, Tuple[str, ...]]
+    skills: Tuple[str, ...]
+    guards: rp.GuardDecision
+    slots: Tuple[rp.Slot, ...]
+
+
+def plan_scope(repo: Path, facts: PrFacts, roast: bool, catalog: Mapping[str, object]) -> Scope:
+    """Exclusions, buckets (registry auto-merge), lens triggers, guard decision and the reviewer slots."""
+    ensure_default_exclusions(active())
+    patterns = rp.exclusion_patterns(repo)
+    reviewable, excluded = split_reviewable(facts, patterns)
+    buckets, notes = rp.merge_registry_into_tests(rp.sort_buckets(reviewable))
+    lenses, skills = lens_paths(repo, facts, reviewable, patterns, catalog)
+    decision = rp.guard_decision([f.path for f in facts.files], pinned_tests(repo, facts))
+    slots = rp.slot_plan(buckets, lenses, roast, reviewable, extra_lenses=rp.extra_lens_names(catalog))
+    return Scope(reviewable, excluded, buckets, notes, lenses, skills, decision, slots)
+
+
+def triggered_skill_folders(scope: Scope) -> Tuple[str, ...]:
+    """The triggered ``skills/<name>/`` folders, one per folder even when two roots share a name: those the
+    per-skill-package lens paths sit under."""
+    return rp.skill_candidates(scope.lenses.get(rp.Lens.SKILL_PACKAGE, ()))
+
+
+def review_stats(facts: PrFacts, excluded: Sequence[str]) -> Dict[str, object]:
+    """The PR totals plus ``source``: the same counts without the machine-generated ``excluded`` paths."""
+    left_out = frozenset(excluded)
+    stats = (DiffStat(f.path, f.added, f.deleted) for f in facts.files)
+    delta = diff_delta.from_stats(stats, left_out.__contains__)
+    return {"additions": facts.additions, "deletions": facts.deletions, "files_changed": len(facts.files),
+            "source": {"additions": delta.adds, "deletions": delta.subs, "files_changed": delta.files}}
+
+
+def review_meta(facts: PrFacts, excluded: Sequence[str]) -> Dict[str, object]:
+    """The review-document fields capture knows; ``excluded`` are the machine-generated paths."""
+    return {"pr": facts.number, "pr_title": facts.pr_title, "branch": facts.head, "base_branch": facts.base,
+            "base_sha": facts.merge_base, "head_sha": facts.head_sha, "stats": review_stats(facts, excluded)}
+
+
+def plan_document(run_id: str, data: Mapping[str, object], facts: PrFacts, scope: Scope,
+                  dispatch_time: Mapping[str, object], at_head: bool, roast: bool) -> Dict[str, object]:
+    """``plan.json`` content."""
+    return {
+        "run_id": run_id, "pr": facts.number, "state": data["state"], "url": data.get("url"),
+        "first_sha": data.get("first_sha"), "last_sha": data.get("last_sha"),
+        "meta": review_meta(facts, scope.excluded),
+        "excluded": list(scope.excluded), "buckets": scope.buckets, "registry_notes": list(scope.notes),
+        "lenses": scope.lenses, "skills": list(scope.skills), "guards": asdict(scope.guards), "roast": roast,
+        "slots": [s.record() for s in scope.slots], "dispatch_time": dict(dispatch_time),
+        "tree_at_head": at_head, "dispatch_epoch": _utc_now(), "build_head": None, "review_path": None,
+        "folded": [], "phase": "review",
+    }
+
+
+def _utc_now() -> str:
+    """Current UTC time, ISO 8601 to the second."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+# --- briefs (composed in harness_lib.review_briefs) ---------------------------------------------------------
+
+
+def load_catalog() -> Dict[str, object]:
+    """The plugin lens catalog merged with the project's lens file; a malformed lens file raises."""
+    try:
+        return rp.load_lens_catalog()
+    except (OSError, ValueError) as exc:
+        raise CaptureError([f"lens catalog: {exc}"]) from exc
+
+
+def agent_prompt(agent: str, role: str, run_id: str, pr: RunKey, brief: Path) -> str:
+    """An agent's prompt: four header lines and ``Brief: <abs path>``."""
+    return "\n".join([*header_lines(agent, role, run_id, pr), f"Brief: {brief.resolve().as_posix()}"])
+
+
+def dispatch_row(agent_type: str, model: str, agent: str, role: str, run_id: str, pr: RunKey,
+                 brief: Path) -> str:
+    """``agent=<type> model=<m>`` then the prompt: four header lines and ``Brief: <abs path>``."""
+    return f"agent={agent_type} model={model}\n" + agent_prompt(agent, role, run_id, pr, brief)
+
+
+def partial_paths(diff_text: str) -> List[str]:
+    """Paths whose diff section is summarized, character-clipped or omitted."""
+    out: List[str] = []
+    current, partial = None, False
+    for line in diff_text.splitlines() + ["=== <end> [full, +0 -0] ==="]:
+        match = _SECTION.match(line)
+        if match:
+            out += [current] if current and partial else []
+            current, partial = match.group(1), match.group(2) != "full"
+        elif _CLIPPED.search(line):
+            partial = True
+    return out
+
+
+def slot_diff(repo: Path, facts: PrFacts, slot: rp.Slot, patches: Optional[Mapping[str, str]] = None) -> str:
+    """Budgeted diff of the slot's paths that are not new files; ``patches`` holds already-read diffs."""
+    return paths_diff(repo, facts, slot.paths, patches)
+
+
+def paths_diff(repo: Path, facts: PrFacts, paths: Sequence[str],
+               patches: Optional[Mapping[str, str]] = None) -> str:
+    """Budgeted diff of ``paths`` that are not new files; ``patches`` holds already-read diffs."""
+    files = [f for f in facts.files if f.path in paths and f.status != "A"]
+    return budgeted_diff(repo, facts, files, PR_BLOCK_BUDGET, PR_CHAR_BUDGET, patches) if files else ""
+
+
+def _write_diff(run: Path, agent_id: str, text: str) -> Path:
+    """Write ``diffs/<agent_id>.diff`` (a placeholder line when ``text`` is empty) and return its path."""
+    diff_path = run / "diffs" / f"{agent_id}.diff"
+    _write_text(diff_path, text + "\n" if text else "(no modified paths in scope; new files only)\n")
+    return diff_path
+
+
+def write_briefs(repo: Path, run: Path, ctx: BriefContext, slots: Sequence[rp.Slot]) -> Dict[str, str]:
+    """Write ``diffs/<slot>.diff`` and ``briefs/<slot>.md`` for every slot (each path's diff read once);
+    return the per-path diffs read, for the refuter briefs to reuse."""
+    scoped = {p for slot in slots for p in slot.paths}
+    changed = [f for f in ctx.facts.files if f.path in scoped and f.status != "A"]
+    patches = file_patches(repo, ctx.facts, changed)
+    for slot in slots:
+        text = slot_diff(repo, ctx.facts, slot, patches)
+        diff_path = _write_diff(run, slot.id, text)
+        brief = reviewer_brief(ctx, slot, diff_path, partial_paths(text))
+        _write_text(run / "briefs" / f"{slot.id}.md", brief)
+    return patches
+
+
+def write_refuter_briefs(repo: Path, run: Path, ctx: BriefContext, refuters: ra.RefuterPlan,
+                         patches: Optional[Mapping[str, str]] = None) -> None:
+    """Write ``diffs/<id>.diff`` and ``briefs/<id>.md`` for each code refuter (``patches``: diffs already
+    read, a missing path read on demand) and ``briefs/<id>.md`` (a template ``init`` completes) for each
+    findings refuter."""
+    for code in refuters.code:
+        text = paths_diff(repo, ctx.facts, code.paths, patches)
+        diff_path = _write_diff(run, code.id, text)
+        _write_text(run / "briefs" / f"{code.id}.md",
+                    code_refuter_brief(ctx, code, diff_path, partial_paths(text)))
+    for slot in refuters.refute:
+        _write_text(run / "briefs" / f"{slot.id}.md", refuter_brief(ctx, slot))
+
+
+# --- capture command ----------------------------------------------------------------------------------------
+
+
+WORKFLOW_STEP = ("run the Workflow tool once with the scriptPath and args below, unchanged except "
+                 "args.guidance (null, or the developer's guidance text); dispatch no Agent rows:")
+
+
+def capture_summary(plan: Mapping[str, object], scope: Scope, refuters: Optional[ra.RefuterPlan] = None,
+                    notes: Sequence[str] = ()) -> List[str]:
+    """Status line and notes printed before the dispatch rows, or before the Workflow row under ``-a``
+    (``refuters`` set; ``notes`` are its plan-path notes)."""
+    guards = plan["dispatch_time"]["structural_guards_check"]["result"]  # type: ignore[index]
+    label = target_label(plan['pr'])  # type: ignore[arg-type]
+    status = (f"capture [done] | {label} | run {plan['run_id']} | slots: "
+              f"{', '.join(s.id for s in scope.slots)} | roast: {'yes' if plan['roast'] else 'no'} | "
+              f"guards: {guards}")
+    if refuters is not None:
+        status += (f" | adversarial: {len(refuters.code)} code refuter(s), {len(refuters.refute)} findings "
+                   f"refuter(s)")
+    lines = [status] + [f"note: {n}" for n in (*scope.notes, *notes)]
+    lines += [f"excluded (machine-generated): {len(scope.excluded)}"] if scope.excluded else []
+    lines += base_note(str(plan["meta"]["base_branch"]))  # type: ignore[index]
+    if refuters is not None:
+        return lines + [WORKFLOW_STEP, ""]
+    return lines + [f"dispatch every row below in one message (subagent_type={REVIEWER_AGENT}):", ""]
+
+
+def adversarial_refusals() -> None:
+    """Raise, before the run starts, when an ``-a`` run cannot work: the plugin's Workflow script is missing,
+    or the governing (possibly pinned) review schema lacks an adversarial status."""
+    script = adversarial_script()
+    problems = [] if script.is_file() else [
+        f"{script.as_posix()} is missing: capture -a needs the plugin's Workflow script; update the plugin, "
+        f"or capture without -a"]
+    schema = ra.schema_problem(schema_path(rmg.SCHEMA_NAME, active()))
+    problems += [schema] if schema else []
+    if problems:
+        raise CaptureError(problems)
+
+
+def adversarial_plan(repo: Path, run: Path, ctx: BriefContext, scope: Scope, plan: Dict[str, object],
+                     patches: Mapping[str, str]) -> Tuple[ra.RefuterPlan, List[str]]:
+    """Plan the refuters of an ``-a`` run, write their briefs (``patches``: the diffs the reviewer briefs
+    read), and record ``plan["adversarial"]`` and the pending ``adversarial_check``; return the plan and the
+    notes capture prints."""
+    plan_paths = ra.classify_plan_paths(scope.reviewable, ctx.at_head)
+    buckets = {bucket.value: tuple(paths) for bucket, paths in scope.buckets.items()}
+    code = ra.code_scope(buckets, plan_paths)
+    refuters = ra.refuter_slots([s.id for s in scope.slots], code, len(scope.reviewable))
+    write_refuter_briefs(repo, run, ctx, refuters, patches)
+    plan["adversarial"] = refuters.record()
+    plan["dispatch_time"]["adversarial_check"] = ra.adversarial_check(refuters)  # type: ignore[index]
+    notes = list(plan_paths.notes)
+    notes += [] if refuters.code else ["no runtime, tests or unfrozen plan paths: no code refuter; the "
+                                       "findings refuters still check every reviewer slot"]
+    return refuters, notes
+
+
+def stage_workflow_script(run: Path) -> Path:
+    """Copy the plugin's Workflow script into ``run`` and return the copy. The Workflow tool reads a
+    ``scriptPath`` only from the working directory or an added directory, and the plugin root is neither
+    in a consuming project. A copy that cannot be written is a ``CaptureError``."""
+    source = adversarial_script()
+    staged = run / source.name
+    tmp = staged.with_name(staged.name + ".tmp")
+    try:
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, tmp)
+        os.replace(tmp, staged)
+    except OSError as exc:
+        raise CaptureError([f"cannot stage {source}: {exc}"]) from exc
+    return staged
+
+
+def workflow_lines(run: Path, key: RunKey, run_id: str, scope: Scope, refuters: ra.RefuterPlan,
+                   script: Path) -> List[str]:
+    """The Workflow row: ``scriptPath=<abs>`` (``script``, the staged copy) and ``args=<one-line JSON>``."""
+    def prompt(agent: str, role: str) -> str:
+        return agent_prompt(agent, role, run_id, key, run / "briefs" / f"{agent}.md")
+
+    reviewers = [{"id": s.id, "model": s.model, "prompt": prompt(s.id, "reviewer")} for s in scope.slots]
+    prompts = {s.id: prompt(s.id, CODE_REFUTER_ROLE) for s in refuters.code}
+    prompts.update({s.id: prompt(s.id, REFUTER_ROLE) for s in refuters.refute})
+    args = ra.workflow_args(str(key), run_id, reviewers, refuters, prompts)
+    return [f"scriptPath={script.resolve().as_posix()}", f"args={json.dumps(args)}"]
+
+
+def capture_lines(run: Path, key: RunKey, plan: Mapping[str, object], scope: Scope,
+                  refuters: Optional[ra.RefuterPlan], notes: Sequence[str],
+                  script: Optional[Path] = None) -> List[str]:
+    """What capture prints: the summary, then one dispatch row per slot, or the Workflow row under ``-a``
+    (``refuters`` and ``script``, the staged Workflow script, both set)."""
+    run_id = str(plan["run_id"])
+    if refuters is not None and script is not None:
+        workflow = workflow_lines(run, key, run_id, scope, refuters, script)
+        return capture_summary(plan, scope, refuters, notes) + workflow
+    rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, key,
+                         run / "briefs" / f"{s.id}.md") for s in scope.slots]
+    return capture_summary(plan, scope) + [row + "\n" for row in rows]
+
+
+def base_note(base: str) -> List[str]:
+    """A note when the PR's base is not the project's configured base branch."""
+    configured = active().resolve_base_branch()
+    if base == configured:
+        return []
+    return [f"note: PR base {base} is not the configured base branch {configured}"]
+
+
+def pr_metadata(repo: Path, args: argparse.Namespace) -> Tuple[Dict[str, object], str, Dict[str, str]]:
+    """(metadata object, raw stdout, ``pr_metadata_check``) of the capture target: ``gh pr view`` for a
+    PR number, git for a ``--range`` local review (no gh call)."""
+    if args.range:
+        if args.allow_closed:
+            raise CaptureError(["--allow-closed applies to a PR number, not to a --range local review"])
+        rng = parse_range(args.range)
+        data, raw = rla.local_metadata(repo, args.pr, rng, args.title)
+        return data, raw, rla.local_check(rng, raw)
+    if args.pr is None or is_local_key(args.pr):
+        raise CaptureError(["capture takes --pr <PR number>, or --range BASE..HEAD for a local review "
+                            "(with an optional --pr local-<label>)"])
+    data, raw = read_metadata(repo, args.pr)
+    return data, raw, metadata_check(args.pr, data, raw, args.allow_closed)
+
+
+def plan_pointer(repo: Path, value: Optional[str]) -> Optional[str]:
+    """The ``--plan`` path as given, once it names an existing file (repo-relative or absolute)."""
+    if value is None:
+        return None
+    if not (repo / value).is_file():
+        raise CaptureError([f"--plan {value}: no such file under {repo.as_posix()}"])
+    return value
+
+
+def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``capture``: Phase 1 checks, the slot plan, briefs, diffs and the dispatch rows; under ``-a`` the
+    refuter plan and briefs too, with one Workflow row instead of the dispatch rows."""
+    if args.adversarial:
+        adversarial_refusals()
+    pointer = plan_pointer(repo, args.plan)
+    data, raw, check = pr_metadata(repo, args)
+    key = parse_key(data["number"])  # type: ignore[arg-type]
+    meta = rla.local_meta(data) if data["state"] == LOCAL_STATE else pr_meta(data)
+    facts = capture_pr(repo, meta, not args.no_fetch and data["state"] != LOCAL_STATE)
+    roast = roast_choice(args.roast)
+    catalog = load_catalog()
+    scope = plan_scope(repo, facts, roast, catalog)
+    at_head = tree_at_head(repo, facts.head_sha, scope.reviewable)
+    guards = guards_check(repo, scope.guards, at_head)
+    dispatch_time = {"pr_metadata_check": check, "structural_guards_check": guards}
+    run_id = run_id_for(key)
+    run = rm.start_run(key, run_id, repo)
+    plan = plan_document(run_id, data, facts, scope, dispatch_time, at_head, roast)
+    plan["plan_pointer"] = pointer
+    _write_text(run / "phase1_meta.txt", raw)
+    ctx = BriefContext(repo.as_posix(), _LIB.as_posix(), key, run_id, facts, at_head, catalog,
+                       triggered_skill_folders(scope), pointer)
+    patches = write_briefs(repo, run, ctx, scope.slots)
+    refuters, notes = adversarial_plan(repo, run, ctx, scope, plan, patches) if args.adversarial \
+        else (None, [])
+    script = stage_workflow_script(run) if args.adversarial else None
+    _write_json(run / "plan.json", plan)
+    print("\n".join(capture_lines(run, key, plan, scope, refuters, notes, script)))
+    return 0
+
+
+# --- run state: plan, reports, draft, review ----------------------------------------------------------------
+
+
+def load_plan(repo: Path, pr: RunKey) -> Tuple[Path, Dict[str, object]]:
+    """Current run directory and its ``plan.json``."""
+    run = rm.run_dir(pr, repo)
+    return run, _read_json(run / "plan.json", "rerun capture")
+
+
+def save_plan(run: Path, plan: Dict[str, object], phase: str) -> None:
+    """Write ``plan.json`` with ``phase`` set; called only once a subcommand's work has succeeded."""
+    plan["phase"] = phase
+    _write_json(run / "plan.json", plan)
+
+
+def report_sources(plan: Mapping[str, object]) -> List[Tuple[str, str, str]]:
+    """(report id, label, reviewers credit) for the plan's slots, its code refuters (``-a`` only), then its
+    folded sources, in order."""
+    slots = [(str(s["id"]), "slot", f"{s['id']} ({s['model']})") for s in plan["slots"]]  # type: ignore[union-attr]
+    code = (plan.get("adversarial") or {}).get("code") or []  # type: ignore[union-attr]
+    slots += [(str(c["id"]), "code refuter", f"{c['id']} ({c['model']})") for c in code]
+    folded = plan.get("folded") or []
+    return slots + [(str(f["id"]), "folded source", f"{f['id']} ({f['kind']})") for f in folded]  # type: ignore
+
+
+def stray_reports(run: Path, plan: Mapping[str, object]) -> List[str]:
+    """One problem per ``findings/*.json`` that is neither a slot, a code refuter (``-a``) nor a folded
+    source."""
+    known = {source for source, _, _ in report_sources(plan)}
+    folder = run / "findings"
+    found = sorted(folder.glob("*.json")) if folder.is_dir() else []
+    return [f"{_rel(run, p)} is neither a slot, a code refuter nor a folded source: fold it "
+            f"(fold --findings) or remove it" for p in found if p.stem not in known]
+
+
+def source_reports(run: Path, plan: Mapping[str, object]) -> List[rm.ReviewerReport]:
+    """Reports of the slots, the code refuters (``-a``), then the folded sources; a missing report or a
+    stray findings file raises."""
+    paths = [(source, label, run / "findings" / f"{source}.json")
+             for source, label, _ in report_sources(plan)]
+    problems = [f"no report for {label} {source} ({_rel(run, p)}): that reviewer has not recorded"
+                for source, label, p in paths if not p.is_file()]
+    problems += stray_reports(run, plan)
+    if problems:
+        raise CaptureError(problems)
+    return [rm.load_report(p) for _, _, p in paths]
+
+
+def issue_row(issue: Mapping[str, object], refuted_column: bool = False) -> str:
+    """``I3 important judgment path:lines [slots] name`` (a missing fix kind reads as judgment); with
+    ``refuted_column`` (an ``-a`` draft) a ``refuted`` / ``upheld`` column follows the fix kind."""
+    where = f"{issue['file']}:{issue['lines']}" if issue.get("lines") else str(issue["file"])
+    kind = issue.get("fix_kind") or "judgment"
+    if refuted_column:
+        kind = f"{kind} {'refuted' if 'refuted' in issue else 'upheld'}"
+    return (f"{issue['id']} {_TIER[str(issue['id'])[0]]} {kind} {where} [{issue.get('reviewer', '')}] "
+            f"{issue['name']}")
+
+
+def issue_table(issues: Sequence[Mapping[str, object]], strengths: int, refuted_column: bool = False) -> str:
+    """Issue rows, merge candidates and the strengths count."""
+    pairs = rmg.merge_candidates(list(issues))  # type: ignore[arg-type]
+    lines = [issue_row(i, refuted_column) for i in issues] or ["(no findings)"]
+    lines += ["merge candidates:" + ("" if pairs else " none"), *(f"  {a} + {b}" for a, b in pairs)]
+    return "\n".join(lines + [f"strengths: {strengths}"])
+
+
+def merge_refutations(run: Path, plan: Mapping[str, object],
+                      reports: Sequence[rm.ReviewerReport]) -> Optional[Dict[str, rm.RefutationReport]]:
+    """The refutation report of each ``-a`` refute slot, by target; None without ``-a``. A slot without
+    ``refutations/<target>.json``, or one whose stored digest differs from the target's current report,
+    raises."""
+    adversarial = plan.get("adversarial")
+    if not adversarial:
+        return None
+    current = {r.reviewer: rm.report_digest(r) for r in reports}
+    found: Dict[str, rm.RefutationReport] = {}
+    problems: List[str] = []
+    for slot in adversarial["refute"]:  # type: ignore[index]
+        path = run / "refutations" / f"{slot['target']}.json"
+        if not path.is_file():
+            problems.append(f"no refutations for {slot['target']} ({_rel(run, path)}): {slot['id']} has not "
+                            f"recorded")
+            continue
+        found[str(slot["target"])] = report = rm.load_refutations(path)
+        if report.report_digest != current.get(str(slot["target"])):
+            problems.append(f"refutation stale: rerun {slot['id']} (findings/{slot['target']}.json changed "
+                            f"after it recorded)")
+    if problems:
+        raise CaptureError(problems)
+    return found
+
+
+def _union(items: Iterable[str]) -> List[str]:
+    """Distinct ``items`` in first-seen order."""
+    return list(dict.fromkeys(items))
+
+
+def refuse_built(plan: Mapping[str, object], command: str) -> None:
+    """Raise when ``build`` already wrote the review: a draft change would never reach it."""
+    if plan.get("review_path"):
+        raise CaptureError([f"the review is built ({plan['review_path']}): {command} no longer applies; "
+                            f"fold new findings, or start a new capture to rebuild deliberately"])
+
+
+def _cmd_merge(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``merge``: reports -> ``draft.json`` and the issue table (refused once the review is built)."""
+    run, plan = load_plan(repo, args.pr)
+    refuse_built(plan, "merge")
+    path = run / "draft.json"
+    if path.is_file() and _read_json(path).get("amend") and not args.force:
+        raise CaptureError([f"{_rel(repo, path)} carries amend operations; rerun merge with --force to "
+                            f"drop them"])
+    reports = source_reports(run, plan)
+    refutations = merge_refutations(run, plan, reports)
+    issues, notes = (rmg.merge_findings(reports), []) if refutations is None \
+        else rmg.merge_adversarial(reports, refutations)
+    strengths = _union(s for r in reports for s in r.strengths)
+    sources = report_sources(plan)
+    _write_json(path, {"issues": issues, "strengths": strengths, "reviewers": [c for _, _, c in sources],
+                       "sources": [s for s, _, _ in sources], "amend": []})
+    save_plan(run, plan, "consolidate")
+    print(issue_table(issues, len(strengths), refutations is not None))
+    if notes:
+        print("\n".join(f"note: {n}" for n in notes))
+    return 0
+
+
+def _amend_one(issues: List[Dict[str, object]], kind: str, value: str) -> Tuple[List[Dict[str, object]], str]:
+    """Apply one ``regrade`` (``I3=minor`` moves the severity; ``I3=mechanical`` sets the fix kind in
+    place) or ``merge`` (``I3+I7``) operation; return issues and a note."""
+    if kind == "regrade":
+        issue_id, _, severity = value.partition("=")
+        kind_value = severity.strip().lower()
+        if kind_value in rmg.FIX_KINDS:
+            out = rmg.set_fix_kind(issues, issue_id.strip(), kind_value)
+            return out, f"{issue_id.strip()} -> {kind_value}"
+        before = {str(i["id"]) for i in issues}
+        out = rmg.regrade(issues, issue_id.strip(), severity.strip())
+        new = sorted({str(i["id"]) for i in out} - before)
+        return out, f"{issue_id.strip()} -> {', '.join(new)}"
+    ids = [i.strip() for i in value.split("+") if i.strip()]
+    if len(ids) < 2:
+        raise CaptureError([f"--merge {value!r} needs KEEP+DROP[+DROP...]"])
+    return rmg.merge_ids(issues, ids[0], ids[1:]), f"{'+'.join(ids[1:])} folded into {ids[0]}"
+
+
+def _cmd_amend(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``amend``: regrades and merges in argument order, logged in the draft (refused once built)."""
+    run, plan = load_plan(repo, args.pr)
+    refuse_built(plan, "amend")
+    path = run / "draft.json"
+    draft = _read_json(path, "run merge first")
+    if not args.ops:
+        raise CaptureError(["amend needs at least one --regrade or --merge"])
+    issues = list(draft["issues"])  # type: ignore[call-overload]
+    for kind, value in args.ops:
+        issues, note = _amend_one(issues, kind, value)
+        draft.setdefault("amend", []).append({"op": kind, "value": value, "result": note})  # type: ignore[union-attr]
+    draft["issues"] = issues
+    _write_json(path, draft)
+    save_plan(run, plan, "consolidate")
+    print(issue_table(issues, len(draft.get("strengths") or []),  # type: ignore[arg-type]
+                      bool(plan.get("adversarial"))))
+    return 0
+
+
+def commit_review(repo: Path, path: Path, doc: Mapping[str, object]) -> List[str]:
+    """Validate and write ``doc`` through ``review_edit.save_review`` (raise on problems; the file's LF / CRLF
+    style kept), then run the hook.
+
+    Returns the hook problem (a nonzero exit) as a list; the hook's informational stderr is echoed.
+    """
+    try:
+        review_edit.save_review(path, doc, repo)
+    except ValueError as exc:
+        raise CaptureError([line for line in str(exc).splitlines() if line.strip()]) from exc
+    rc, err = run_hook(repo, path)
+    if rc != 0:
+        return [f"schema hook exited {rc} on {_rel(repo, path)}: {' | '.join(err.strip().splitlines())}"]
+    for line in err.strip().splitlines():
+        print(f"hook: {line}")
+    return []
+
+
+def load_review(repo: Path, plan: Mapping[str, object]) -> Tuple[Path, Dict[str, object]]:
+    """The review path recorded by ``build`` and its document."""
+    if not plan.get("review_path"):
+        raise CaptureError(["no review recorded for this run; run build first"])
+    path = repo / str(plan["review_path"])
+    try:
+        return path, review_edit.load_review(path)
+    except (OSError, ValueError) as exc:
+        raise CaptureError([f"cannot read {path} ({exc})"]) from exc
+
+
+def all_issues(doc: Mapping[str, object]) -> List[Dict[str, object]]:
+    """Every issue of a review, critical first."""
+    return [i for tier in rmg.TIERS for i in doc["issues"].get(tier, [])]  # type: ignore[union-attr]
+
+
+# --- fold: outside reviews as findings sources --------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FoldInput:
+    """What one fold records: findings, strengths, where they came from and notes to print."""
+
+    findings: Tuple[Dict[str, object], ...]
+    strengths: Tuple[str, ...]
+    origin: str
+    notes: Tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class GhReview:
+    """One fetched PR review: its pull API path (``repos/<o>/<r>/pulls/<N>``), id, object and comments."""
+
+    base: str
+    review_id: str
+    review: Dict[str, object]
+    comments: Tuple[Dict[str, object], ...]
+
+
+def read_findings(value: str) -> Tuple[List[object], List[str], str]:
+    """(findings, strengths, origin) from a JSON file or ``-`` (stdin): a list of findings, or an object
+    ``{"findings": [...], "strengths": [...]}``; anything else raises."""
+    origin = "stdin" if value == "-" else Path(value).as_posix()
+    try:
+        data = json.loads(sys.stdin.read() if value == "-" else Path(value).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        raise CaptureError([f"--findings {origin}: cannot read JSON ({exc})"]) from exc
+    if isinstance(data, list):
+        return data, [], origin
+    if isinstance(data, dict) and isinstance(data.get("findings"), list):
+        return list(data["findings"]), [str(s) for s in data.get("strengths") or []], origin
+    raise CaptureError([f"--findings {origin}: expected a list of findings or an object with a findings "
+                        "list"])
+
+
+def _json_values(text: str) -> List[object]:
+    """Every JSON value in ``text`` (``gh api --paginate`` prints one per page), list values flattened."""
+    decoder, values, index, text = json.JSONDecoder(), [], 0, text.strip()
+    while index < len(text):
+        value, index = decoder.raw_decode(text, index)
+        values.extend(value if isinstance(value, list) else [value])
+        index = len(text) - len(text[index:].lstrip())
+    return values
+
+
+def gh_api(repo: Path, path: str, paginate: bool = False) -> List[object]:
+    """JSON values ``gh api [--paginate] <path>`` prints."""
+    return _json_values(run_gh(repo, ["api", *(["--paginate"] if paginate else []), path]))
+
+
+def plan_repo_slug(plan_url: object) -> str:
+    """``owner/repo`` (lowercase) of the captured PR url in plan.json; empty when it is not a GitHub url."""
+    match = _GH_PR_URL.match(str(plan_url or "").strip())
+    return f"{match.group(1)}/{match.group(2)}".lower() if match else ""
+
+
+def parse_review_url(url: str, pr: int, slug: str) -> Tuple[str, str]:
+    """(``repos/<o>/<r>/pulls/<N>``, review id) of a PR review URL; a malformed URL, another PR or another
+    repository (``slug``, from plan_repo_slug) raises."""
+    match = _GH_REVIEW_URL.match(url.strip())
+    if not match:
+        raise CaptureError([f"--from-gh-review {url!r} must look like "
+                            f"https://github.com/<owner>/<repo>/pull/<N>#pullrequestreview-<id>"])
+    owner, name, number, review_id = match.groups()
+    if int(number) != pr:
+        raise CaptureError([f"--from-gh-review names PR {number}, not PR {pr}"])
+    if not slug or f"{owner}/{name}".lower() != slug:
+        raise CaptureError([f"--from-gh-review names {owner}/{name}, not the PR's repository "
+                            f"({slug or 'plan.json has no GitHub PR url'})"])
+    return f"repos/{owner}/{name}/pulls/{number}", review_id
+
+
+def fetch_review(repo: Path, url: str, pr: int, slug: str) -> GhReview:
+    """The review ``url`` names and its inline comments, through ``run_gh``."""
+    base, review_id = parse_review_url(url, pr, slug)
+    review = next(iter(gh_api(repo, f"{base}/reviews/{review_id}")), None)
+    if not isinstance(review, dict):
+        raise CaptureError([f"gh api {base}/reviews/{review_id} returned no review object"])
+    comments = gh_api(repo, f"{base}/reviews/{review_id}/comments", paginate=True)
+    return GhReview(base, review_id, review, tuple(c for c in comments if isinstance(c, dict)))
+
+
+def review_skip(review: GhReview) -> Optional[str]:
+    """Why a review has nothing to fold (dismissed, or a blank body without inline comments), else None."""
+    name = f"pullrequestreview-{review.review_id}"
+    if str(review.review.get("state")) == "DISMISSED":
+        return f"{name} is DISMISSED; nothing to fold"
+    if not str(review.review.get("body") or "").strip() and not review.comments:
+        return f"{name} has a blank body and no inline comments; nothing to fold"
+    return None
+
+
+def added_files(repo: Path, review: GhReview) -> Set[str]:
+    """Files the PR adds (status ``added``), from the PR's file list."""
+    files = gh_api(repo, f"{review.base}/files", paginate=True)
+    return {str(f["filename"]) for f in files if isinstance(f, dict) and f.get("status") == "added"}
+
+
+def comment_lines(comment: Mapping[str, object], added: Set[str]) -> Optional[str]:
+    """``start-line`` / ``line``, else ``original_line``, else the diff position of an added file (it equals
+    the file line there), else None."""
+    line, start = comment.get("line"), comment.get("start_line")
+    if line:
+        return f"{start}-{line}" if start and start != line else str(line)
+    if comment.get("original_line"):
+        return str(comment["original_line"])
+    if comment.get("position") and comment.get("path") in added:
+        return str(comment["position"])
+    return None
+
+
+def _login(item: Mapping[str, object]) -> str:
+    """``user.login`` of a GitHub object, else empty."""
+    user = item.get("user")
+    return str(user.get("login") or "") if isinstance(user, dict) else ""
+
+
+def comment_finding(comment: Mapping[str, object], review: GhReview, severity: str,
+                    added: Set[str]) -> Dict[str, object]:
+    """One finding from one inline comment; the main session regrades it with ``amend`` afterwards."""
+    body = str(comment.get("body") or "").strip()
+    flat = " ".join(body.split())
+    who = _login(comment) or _login(review.review) or "reviewer"
+    finding: Dict[str, object] = {
+        "severity": severity, "name": _SENTENCE_END.split(flat, maxsplit=1)[0][:NAME_LIMIT].rstrip(),
+        "summary": f"{who} (pullrequestreview-{review.review_id}): {flat}", "fix": [body],
+        "file": str(comment["path"]), "fix_kind": "judgment"}
+    lines = comment_lines(comment, added)
+    return {**finding, "lines": lines} if lines else finding
+
+
+def gh_review_findings(repo: Path, review: GhReview, severity: str) -> List[Dict[str, object]]:
+    """One finding per inline comment with a path and a non-blank body; the PR file list is read only
+    when a comment needs a diff position mapped."""
+    usable = [c for c in review.comments if c.get("path") and str(c.get("body") or "").strip()]
+    needs = any(c.get("position") and not c.get("line") and not c.get("original_line") for c in usable)
+    added = added_files(repo, review) if needs else set()
+    return [comment_finding(c, review, severity, added) for c in usable]
+
+
+def gh_fold_input(repo: Path, url: str, pr: int, severity: str, slug: str) -> FoldInput:
+    """Findings of a GitHub PR review; a dismissed or empty review raises."""
+    review = fetch_review(repo, url, pr, slug)
+    skip = review_skip(review)
+    if skip:
+        raise CaptureError([skip])
+    body = " ".join(str(review.review.get("body") or "").split())
+    notes = (f"review body not folded (no file to anchor it): {body[:200]}; fold it with --findings when "
+             f"it names a defect",) if body else ()
+    return FoldInput(tuple(gh_review_findings(repo, review, severity)), (), url, notes)
+
+
+def fold_input(repo: Path, args: argparse.Namespace, slug: str) -> FoldInput:
+    """The findings ``--findings`` or ``--from-gh-review`` supplies; ``--severity`` fills a missing
+    severity."""
+    if args.findings is None:
+        return gh_fold_input(repo, args.from_gh_review, args.pr, args.severity, slug)
+    findings, strengths, origin = read_findings(args.findings)
+    filled = tuple({"severity": args.severity, **f} if isinstance(f, dict) else f for f in findings)
+    return FoldInput(filled, tuple(strengths), origin)  # type: ignore[arg-type]
+
+
+def credited_ids(doc: Mapping[str, object], source: str) -> List[str]:
+    """Ids of the review's issues whose ``reviewer`` credit names ``source``."""
+    return [str(i["id"]) for i in all_issues(doc)
+            if source in {s.strip() for s in str(i.get("reviewer", "")).split(",")}]
+
+
+def fold_check(plan: Mapping[str, object], source: str, doc: Optional[Mapping[str, object]] = None) -> None:
+    """Raise when ``source`` is a reviewer slot of the run, or when ``doc`` (the built review) already
+    carries ``source`` as a folded source: re-folding it would duplicate its issues. An ``adv_`` id is
+    reserved for the refuters of an ``-a`` run."""
+    if source.startswith("adv_"):
+        raise CaptureError([f"--source {source}: the adv_ prefix is reserved for refuter ids; pick another "
+                            f"id"])
+    if source in {str(s["id"]) for s in plan["slots"]}:  # type: ignore[union-attr]
+        raise CaptureError([f"--source {source} is a reviewer slot of this run; pick another id"])
+    if doc is not None and source in {str(f["id"]) for f in plan.get("folded") or []}:  # type: ignore[union-attr]
+        ids = ", ".join(credited_ids(doc, source)) or "no issues"
+        raise CaptureError([f"--source {source} is already in the built review ({ids}); re-folding it would "
+                            f"duplicate them: fold new findings under another --source id"])
+
+
+def with_folded(entries: Sequence[Mapping[str, object]], entry: Dict[str, object]) -> List[Dict[str, object]]:
+    """``entries`` with ``entry`` replacing the one of the same id in place, else appended."""
+    out = [entry if e["id"] == entry["id"] else dict(e) for e in entries]
+    return out if any(e["id"] == entry["id"] for e in entries) else [*out, entry]
+
+
+def fold_entry(args: argparse.Namespace, origin: str, after_build: bool) -> Dict[str, object]:
+    """The ``plan.json`` ``folded`` entry of one fold; ``after_build`` marks an append to a built review."""
+    entry: Dict[str, object] = {"id": args.source, "kind": args.kind, "origin": origin, "at": _utc_now()}
+    return {**entry, "after_build": True} if after_build else entry
+
+
+def print_fold(args: argparse.Namespace, source: FoldInput, notes: Sequence[str] = ()) -> None:
+    """The ``fold [done]`` line, then the source's notes and ``notes``."""
+    print(f"fold [done] | {args.source} ({args.kind}) | {len(source.findings)} finding(s) "
+          f"from {source.origin}")
+    lines = [*source.notes, *notes]
+    if lines:
+        print("\n".join(f"note: {n}" for n in lines))
+
+
+def _cmd_fold(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``fold``: record an outside review as a findings source of the run and register it; once the
+    review is built, also append its issues to the review (``fold_after_build``); a built review whose
+    Phase 4 first run failed refuses the fold before anything is written."""
+    run, plan = load_plan(repo, args.pr)
+    built = load_review(repo, plan) if plan.get("review_path") else None
+    if built:
+        require_phase4(built[1], "folding into the built review")
+    fold_check(plan, args.source, built[1] if built else None)
+    if args.from_gh_review and is_local_key(args.pr):
+        raise CaptureError([f"{args.pr} is a local review with no PR: --from-gh-review needs one; convert "
+                            "the review to a --findings file"])
+    source = fold_input(repo, args, plan_repo_slug(plan.get("url")))
+    rm.record(args.pr, args.source, list(source.findings), list(source.strengths), repo=repo,
+              run_id=str(plan["run_id"]))
+    entry = fold_entry(args, source.origin, built is not None)
+    plan["folded"] = with_folded(plan.get("folded") or [], entry)  # type: ignore[arg-type]
+    if built:
+        return fold_after_build(repo, run, plan, built, args, source)
+    save_plan(run, plan, "review")
+    stale = ["draft.json predates this fold: rerun merge (merge --force when the draft was amended)"] \
+        if (run / "draft.json").is_file() else []
+    print_fold(args, source, stale)
+    return 0
+
+
+# --- fold after build: append with fresh ids ----------------------------------------------------------------
+
+
+def recomputed_verdict(doc: Mapping[str, object]) -> str:
+    """``review_edit.recompute_verdict`` over the review's issues and dispositions; a pending
+    ``pre_fix_time`` holds READY."""
+    return str(review_edit.recompute_verdict(doc)["verdict"])
+
+
+def appended_review(doc: Mapping[str, object], added: Sequence[Dict[str, object]], credit: str,
+                    report: str, strengths: Sequence[str]) -> Dict[str, object]:
+    """``doc`` with ``added`` after its issues, ``credit`` in ``reviewers``, ``report`` in
+    ``scoped_review_files``, ``strengths`` joined and the verdict recomputed; dispositions are kept."""
+    out = json.loads(json.dumps(doc))
+    out["issues"] = rmg.issues_by_severity([*all_issues(out), *added])
+    out["reviewers"] = _union([*out.get("reviewers", []), credit])
+    out["scoped_review_files"] = _union([*out.get("scoped_review_files", []), report])
+    out["strengths"] = _union([*out.get("strengths", []), *strengths])
+    out["verdict"] = recomputed_verdict(out)
+    return out
+
+
+OPEN_PASS_PHASES = ("fix-plan", "fix")
+
+
+def folded_phase(phase: str) -> str:
+    """The phase a fold after build saves: ``phase`` inside an open Phase 5 pass, else ``consolidate``, so a
+    later fold still reads no open pass until ``bubble`` / ``waves`` open one."""
+    return phase if phase in OPEN_PASS_PHASES else "consolidate"
+
+
+def fold_next(phase: str) -> str:
+    """The ``next:`` line of a fold after build. Inside an open Phase 5 pass (``phase`` ``fix-plan`` /
+    ``fix``) the sentinel is still armed and the tree holds that pass's fixes, so the second run is skipped;
+    otherwise (after a closeout, or before Phase 5 began) Phase 5 starts at the second run."""
+    if phase in OPEN_PASS_PHASES:
+        return "next: waves (new ids only), then closeout (Phase 5 pass open: no second run)"
+    return "next: Phase 4 second run, then waves (new ids only)"
+
+
+def appended_lines(added: Sequence[Mapping[str, object]], verdict: str,
+                   pairs: Sequence[Tuple[str, str]], phase: str) -> List[str]:
+    """Summary, issue rows, merge-candidate note and the next step of a fold after build; ``phase`` is the
+    run's phase before the fold."""
+    ids = ", ".join(str(i["id"]) for i in added) or "none"
+    lines = [f"appended after build: {ids} | verdict: {verdict}", *(issue_row(i) for i in added)]
+    if pairs:
+        lines.append("note: merge candidates (not merged; amend does not run after build): "
+                     + ", ".join(f"{a} + {b}" for a, b in pairs))
+    return lines + [fold_next(phase)]
+
+
+def fold_after_build(repo: Path, run: Path, plan: Dict[str, object], built: Tuple[Path, Dict[str, object]],
+                     args: argparse.Namespace, source: FoldInput) -> int:
+    """Append the just-recorded source's issues to the built review through ``commit_review`` (the hook
+    runs), then save ``folded_phase``; a hook problem keeps the phase and raises after the write."""
+    path, doc = built
+    phase = str(plan.get("phase") or "")
+    report_path = run / "findings" / f"{args.source}.json"
+    report = rm.load_report(report_path)
+    existing = all_issues(doc)
+    added = rmg.append_findings(existing, report)
+    credit = f"{args.source} ({args.kind})"
+    out = appended_review(doc, added, credit, _rel(repo, report_path), report.strengths)
+    problems = commit_review(repo, path, out)
+    if problems:
+        _write_json(run / "plan.json", plan)
+    else:
+        save_plan(run, plan, folded_phase(phase))
+    print_fold(args, source)
+    print("\n".join(appended_lines(added, str(out["verdict"]), rmg.cross_candidates(existing, added), phase)))
+    if problems:
+        raise CaptureError(problems)
+    return 0
+
+
+# --- build --------------------------------------------------------------------------------------------------
+
+
+def review_dir(repo: Path) -> Path:
+    """The project's review directory (``artifacts.reviews``)."""
+    return repo / active().artifacts.reviews
+
+
+def review_target(repo: Path, plan: Mapping[str, object]) -> Path:
+    """``<artifacts.reviews>/<NNNN>_<slug>.json`` for the plan's PR, ``LOCAL_<label>_<slug>.json`` for a
+    local key."""
+    meta = plan["meta"]
+    slug = rmg.slugify_title(str(meta["pr_title"]))  # type: ignore[index]
+    key = parse_key(plan["pr"])  # type: ignore[arg-type]
+    name = review_file_name(key, slug) if isinstance(key, str) else f"{key:04d}_{slug}.json"
+    return review_dir(repo) / name
+
+
+def review_globs(pr: RunKey) -> Set[str]:
+    """The review file globs of one run key: padded and unpadded PR prefixes, or the local prefix."""
+    return {review_file_glob(pr)} if isinstance(pr, str) else {f"{pr:04d}_*.json", f"{pr}_*.json"}
+
+
+def straggler_check(repo: Path, pr: RunKey, target: Path, replace: bool) -> None:
+    """Raise on other review files for ``pr`` (padded or unpadded prefix) or an unreplaced existing target."""
+    folder = review_dir(repo)
+    found = sorted({p for n in review_globs(pr) for p in folder.glob(n)}) if folder.is_dir() else []
+    problems = [f"straggler review file {_rel(repo, p)}: fold it in or remove it before build"
+                for p in found if p.resolve() != target.resolve()]
+    if target.exists() and not replace:
+        problems.append(f"{_rel(repo, target)} exists; rerun build with --replace to overwrite it")
+    if problems:
+        raise CaptureError(problems)
+
+
+def phase5_state(repo: Path, run: Path, target: Path) -> List[str]:
+    """One problem per Phase 5 artifact a rebuild would orphan (dispositions, waves, fixes, closeout).
+
+    ``merge_findings`` renumbers ids, so a rebuild under live dispositions or fixer reports would attach them
+    to different findings. A ``REFUTED`` resolution counts only once ``draft.json`` no longer marks its id
+    ``refuted``: build wrote it from the draft and a rebuild writes it again, while a developer ``refute`` or
+    ``unrefute`` began Phase 5.
+    """
+    review = _read_json(target) if target.is_file() else {}
+    marked = draft_refuted(run)
+    review["post_review_resolutions"] = [
+        r for r in review.get("post_review_resolutions") or []  # type: ignore[union-attr]
+        if not (r.get("status") == "REFUTED" and str(r.get("id")) in marked)]
+    held = [f"{_rel(repo, target)} {k}" for k in ("post_review_resolutions", "bubbles", "bubble_up")
+            if review.get(k)]
+    held += [_rel(repo, run / n) for n in ("waves.json", "fixes", "closeout.json") if (run / n).exists()]
+    return [f"Phase 5 began ({name}): build --replace would renumber ids under it; start a new capture "
+            "instead" for name in held]
+
+
+def draft_refuted(run: Path) -> Set[str]:
+    """Ids of the run's ``draft.json`` issues that carry ``refuted``; empty without a draft."""
+    path = run / "draft.json"
+    issues = (_read_json(path).get("issues") or []) if path.is_file() else []
+    return {str(i["id"]) for i in issues  # type: ignore[union-attr]
+            if isinstance(i, dict) and "refuted" in i}
+
+
+def clear_draft_refuted(run: Path, issue_id: str) -> None:
+    """Drop ``refuted`` from the draft issue ``issue_id`` (when present), so a rebuild cannot refute it
+    again."""
+    path = run / "draft.json"
+    if issue_id not in draft_refuted(run):
+        return
+    draft = _read_json(path)
+    for issue in draft["issues"]:  # type: ignore[union-attr]
+        if str(issue["id"]) == issue_id:
+            issue.pop("refuted", None)
+    _write_json(path, draft)
+
+
+def complete_adversarial(run: Path, plan: Mapping[str, object], doc: Dict[str, object]) -> None:
+    """Under ``-a``, complete the review's ``adversarial_check`` with the build counts (verdict entries:
+    checked and refuted; code findings) and the issue ids the refuters closed (``REFUTED`` resolutions);
+    nothing without ``-a``."""
+    adversarial = plan.get("adversarial")
+    log = doc["verification_log"]["dispatch_time"]  # type: ignore[index]
+    if not adversarial or "adversarial_check" not in log:
+        return
+    targets = [run / "refutations" / f"{s['target']}.json" for s in adversarial["refute"]]  # type: ignore
+    coded = [run / "findings" / f"{c['id']}.json" for c in adversarial["code"]]  # type: ignore[index]
+    refutations = [rm.load_refutations(p) for p in targets if p.is_file()]
+    checked, refuted, code_findings = ra.build_counts(refutations,
+                                                      [rm.load_report(p) for p in coded if p.is_file()])
+    log["adversarial_check"] = ra.complete_check(log["adversarial_check"], checked, refuted, code_findings,
+                                                 ra.refuted_now(doc))
+
+
+def fresh_refutations(run: Path, plan: Mapping[str, object]) -> None:
+    """Under ``-a``, raise as ``merge`` does when a refute slot's refutations are missing or stale (a
+    report re-recorded after merge); nothing without ``-a``."""
+    if plan.get("adversarial"):
+        merge_refutations(run, plan, source_reports(run, plan))
+
+
+def refuted_lines(doc: Mapping[str, object]) -> List[str]:
+    """``refuted: <id> (<evidence first line>)`` per ``REFUTED`` resolution of a built review."""
+    return [f"refuted: {r['id']} ({(str(r['evidence']).splitlines() or [''])[0]})"
+            for r in doc.get("post_review_resolutions") or [] if r["status"] == "REFUTED"]  # type: ignore
+
+
+def build_meta(repo: Path, run: Path, plan: Mapping[str, object]) -> Dict[str, object]:
+    """``review_document`` metadata: the captured fields, today's date and the scoped report paths."""
+    meta = dict(plan["meta"])  # type: ignore[call-overload]
+    meta["review_date"] = date.today().isoformat()
+    meta["scoped_review_files"] = [_rel(repo, run / "findings" / f"{source}.json")
+                                   for source, _, _ in report_sources(plan)]
+    return meta
+
+
+def unmerged_sources(plan: Mapping[str, object], draft: Mapping[str, object]) -> List[str]:
+    """One problem per folded source missing from the draft's ``sources`` (a fold after the last merge)."""
+    merged = draft.get("sources")
+    if merged is None:
+        return []
+    return [f"folded source {f['id']} is not in draft.json: rerun merge (merge --force when amended)"
+            for f in plan.get("folded") or [] if f["id"] not in merged]  # type: ignore[union-attr, index, operator]
+
+
+def _json_object(text: str) -> Optional[Dict[str, object]]:
+    """``text`` parsed as a JSON object, else None."""
+    try:
+        value = json.loads(text) if text.strip() else None
+    except ValueError:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+_DIRTY_PATH_CAP = 5
+
+
+def _stopped_checks(block: Mapping[str, object]) -> List[str]:
+    """Names of the Phase 4 checks whose ``result`` is a STOP."""
+    return [n for n, b in block.items()
+            if isinstance(b, dict) and str(b.get("result", "")).startswith("STOP")]
+
+
+def _phase4_reason(rc: int, block: Optional[Mapping[str, object]]) -> str:
+    """Why a Phase 4 first run does not count, naming the STOP checks when the block lists any."""
+    if rc == 2:
+        return "argv error"
+    if block is None:
+        return "empty or non-JSON stdout (metadata failure)"
+    if rc != 1:
+        return "unexpected exit"
+    stops = _stopped_checks(block)
+    return f"a branch-safety check failed: {', '.join(stops)}" if stops else "a branch-safety check failed"
+
+
+def _clean_tree_hint(block: Optional[Mapping[str, object]]) -> str:
+    """The non-exempt paths of a STOPped clean-tree check (capped) and the exclusions file to extend."""
+    check = (block or {}).get("clean_tree_check")
+    if not isinstance(check, dict) or not str(check.get("result", "")).startswith("STOP"):
+        return ""
+    paths = [ln[3:] if len(ln) > 3 else ln for ln in str(check.get("filtered_stdout") or "").splitlines()
+             if ln.strip()]
+    if not paths:
+        return ""
+    more = f" (+{len(paths) - _DIRTY_PATH_CAP} more)" if len(paths) > _DIRTY_PATH_CAP else ""
+    return (f"; non-exempt paths: {', '.join(paths[:_DIRTY_PATH_CAP])}{more}; clean them or add a pattern "
+            f"to the exclusions file ({check.get('exclusions_fixture') or 'none configured'})")
+
+
+def head_desync_only(rc: int, block: Optional[Mapping[str, object]]) -> bool:
+    """True when the one STOP of a Phase 4 run is ``sha_ancestry_check`` with ``head_ancestor_exit != 0``
+    and ``base_ancestor_exit == 0`` (the remote PR head lags local HEAD; the operating rules waive it)."""
+    if rc != 1 or block is None:
+        return False
+    stops = _stopped_checks(block)
+    check = block.get("sha_ancestry_check")
+    return (stops == ["sha_ancestry_check"] and isinstance(check, dict)
+            and check.get("head_ancestor_exit") != 0 and check.get("base_ancestor_exit") == 0)
+
+
+def waiver_record(block: Mapping[str, object]) -> Dict[str, object]:
+    """The ``phase4_waiver`` entry ``plan.json`` keeps for a waived head-ancestry STOP."""
+    check = block["sha_ancestry_check"]
+    return {"check": "sha_ancestry_check", "flag": "--waive-head-ancestry",
+            "head_ancestor_exit": check["head_ancestor_exit"],  # type: ignore[index]
+            "base_ancestor_exit": check["base_ancestor_exit"],  # type: ignore[index]
+            "reason": "remote PR head is not an ancestor of local HEAD; merge base intact",
+            "waived_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+
+def apply_phase4(repo: Path, run: Path, pr: RunKey, doc: Dict[str, object],
+                 waive: bool = False) -> Tuple[Optional[str], Optional[Dict[str, object]]]:
+    """Run Phase 4, keep its output, and insert ``pre_fix_time`` on success or a waived head desync.
+
+    Returns (problem, waiver): the STOP problem when ``pre_fix_time`` stays pending, else None; the
+    ``waiver_record`` when ``waive`` applied, else None.
+    """
+    rc, out, err = run_phase4(repo, pr)
+    record = run / "phase4_first_run.json"
+    _write_json(record, {"rc": rc, "stdout": out, "stderr": err})
+    block = _json_object(out)
+    desync = head_desync_only(rc, block) and not is_local_key(pr)
+    if block is not None and (rc == 0 or (desync and waive)):
+        doc["verification_log"]["pre_fix_time"] = block  # type: ignore[index]
+        return None, (waiver_record(block) if rc != 0 else None)
+    reason = _phase4_reason(rc, block)
+    hold_ready_verdict(doc, reason)
+    hint = "; only the head ancestry failed: rerun build --replace --waive-head-ancestry" if desync else ""
+    return (f"phase4 first run rc {rc}: {reason}{_clean_tree_hint(block)}; pre_fix_time left pending "
+            f"(see {_rel(repo, record)}); "
+            f"STOP{hint}"), None
+
+
+def hold_ready_verdict(doc: Dict[str, object], reason: str) -> None:
+    """Turn a READY verdict into ``NOT READY TO MERGE - Phase 4 first run failed: <reason>``.
+
+    A pending ``pre_fix_time`` allows no READY verdict, so the review is still written when Phase 4 fails.
+    This override is a fifth verdict form, applied here rather than in ``review_merge.compute_verdict``.
+    """
+    if str(doc.get("verdict") or "").startswith("READY TO MERGE"):
+        doc["verdict"] = review_edit.PHASE4_HOLD.format(reason=reason)
+
+
+def _counts(doc: Mapping[str, object]) -> str:
+    """The tier counts, ``critical=<n> important=<n> minor=<n>``."""
+    return " ".join(f"{t}={len(doc['issues'].get(t, []))}" for t in rmg.TIERS)  # type: ignore[union-attr]
+
+
+def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``build``: review document, Phase 4 first run, validated write, hook."""
+    if args.waive_head_ancestry and is_local_key(args.pr):
+        raise CaptureError(["--waive-head-ancestry applies to a remote PR head; on a local run a "
+                            "head-ancestry STOP means the captured head was rewritten: "
+                            "rerun capture --range"])
+    run, plan = load_plan(repo, args.pr)
+    if plan["state"] not in ("OPEN", LOCAL_STATE):
+        raise CaptureError([f"capture recorded state={plan['state']} (an --allow-closed replay); "
+                            f"build refuses it"])
+    target = review_target(repo, plan)
+    if args.replace and phase5_state(repo, run, target):
+        raise CaptureError(phase5_state(repo, run, target))
+    draft = _read_json(run / "draft.json", "run merge first")
+    if unmerged_sources(plan, draft):
+        raise CaptureError(unmerged_sources(plan, draft))
+    straggler_check(repo, args.pr, target, args.replace)
+    fresh_refutations(run, plan)
+    doc = rmg.review_document(build_meta(repo, run, plan), draft, plan["dispatch_time"],  # type: ignore[arg-type]
+                              schema_ref=rmg.schema_ref_for(target, active()))
+    complete_adversarial(run, plan, doc)
+    problem, waiver = apply_phase4(repo, run, args.pr, doc, args.waive_head_ancestry)
+    phase4 = [problem] if problem else []
+    try:
+        problems = commit_review(repo, target, doc)
+    except CaptureError as exc:
+        raise CaptureError(exc.problems + phase4) from exc
+    plan.update(build_head=git_out(repo, "rev-parse", "HEAD").strip(), review_path=_rel(repo, target),
+                phase4_waiver=waiver)
+    if not problems + phase4:
+        plan["phase"] = "consolidate"
+    _write_json(run / "plan.json", plan)
+    print("\n".join([f"wrote {_rel(repo, target)}", f"verdict: {doc['verdict']}", _counts(doc),
+                     *refuted_lines(doc)]))
+    if waiver:
+        print("note: Phase 4 head-ancestry STOP waived (--waive-head-ancestry; remote PR head lags local "
+              "HEAD, merge base intact); recorded as phase4_waiver in plan.json")
+    if problems + phase4:
+        raise CaptureError(problems + phase4)
+    return 0
+
+
+# --- bubble -------------------------------------------------------------------------------------------------
+
+
+def with_bubble(doc: Mapping[str, object], bubble: rm.FixBubble) -> Dict[str, object]:
+    """``doc`` with ``bubble`` in ``bubbles`` and ``bubble_up`` (replacing older entries), verdict redone.
+
+    An id whose latest resolution is ``NOT_RESOLVED`` (a refutation overruled to the waves) also gains a
+    ``BUBBLED`` resolution (evidence: the bubble's reason), so it settles through the bubble.
+    """
+    out = json.loads(json.dumps(doc))
+    resolutions = out.get("post_review_resolutions") or []
+    entry = rmg.reopened_bubble_entry(resolutions, bubble.id, date.today().isoformat(), bubble.reason)
+    if entry is not None:
+        out["post_review_resolutions"] = [*resolutions, entry]
+    out["bubbles"] = _union([*out.get("bubbles", []), bubble.id])
+    entry = bubble.model_dump(mode="json")
+    out["bubble_up"] = [b for b in out.get("bubble_up", []) if b["id"] != bubble.id] + [entry]
+    out["verdict"] = rmg.compute_verdict(out["issues"], out.get("post_review_resolutions") or [],
+                                         out["bubbles"], out["bubble_up"])
+    return out
+
+
+def _cmd_bubble(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``bubble``: one issue handed to the developer; the verdict is recomputed."""
+    run, plan = load_plan(repo, args.pr)
+    path, doc = load_review(repo, plan)
+    require_phase4(doc)
+    if args.id not in {str(i["id"]) for i in all_issues(doc)}:
+        raise CaptureError([f"{args.id}: no such issue in {_rel(repo, path)}"])
+    if args.id in ra.refuted_now(doc):
+        raise CaptureError([ra.refuted_problem(args.id, _rel(repo, path))])
+    if args.id in closed_ids(doc):
+        raise CaptureError([f"{args.id}: already closed (latest resolution RESOLVED or CLOSED_NO_ACTION); "
+                            f"bubble refused, {_rel(repo, path)} unchanged"])
+    bubble = rm.FixBubble(id=args.id, classification=args.classification, reason=args.reason)
+    doc = with_bubble(doc, bubble)
+    problems = commit_review(repo, path, doc)
+    print(f"bubbled {bubble.id} ({bubble.classification.value}) | verdict: {doc['verdict']}")
+    if problems:
+        raise CaptureError(problems)
+    save_plan(run, plan, "fix-plan")
+    return 0
+
+
+# --- waves --------------------------------------------------------------------------------------------------
+
+
+def pending_lines(pending: Sequence[Tuple[str, rm.FixBubble]]) -> List[str]:
+    """``pending fixer bubbles`` heading, then one ``<id> (<classification>) from <fixer>: <reason>`` line
+    per bubble; ``pending fixer bubbles: none`` without any."""
+    if not pending:
+        return ["pending fixer bubbles: none"]
+    return ["pending fixer bubbles (audit each, then surface it to the developer before closeout):",
+            *(f"  {b.id} ({b.classification.value}) from {fixer}: {b.reason}" for fixer, b in pending)]
+
+
+def _selected(issues: Sequence[Dict[str, object]], ids: str,
+              refuted: Sequence[str] = ()) -> List[Dict[str, object]]:
+    """The issues ``--ids`` names; an unknown id, or one whose latest resolution is ``REFUTED``
+    (``refuted``), raises."""
+    wanted = [i.strip() for i in ids.split(",") if i.strip()]
+    unknown = [i for i in wanted if i not in {str(x["id"]) for x in issues}]
+    if unknown:
+        raise CaptureError([f"--ids names unknown issue(s): {', '.join(unknown)}"])
+    closed = [ra.refuted_problem(i) for i in wanted if i in refuted]
+    if closed:
+        raise CaptureError(closed)
+    return [i for i in issues if i["id"] in wanted]
+
+
+def counted_bubbles(reports: Sequence[rm.FixReport], parts: Mapping[str, Mapping[str, object]]) -> Set[str]:
+    """Ids bubbled by a planned fixer whose parts assign it that id (the rule closeout applies); a bubble
+    closeout rejects (unplanned fixer, unassigned id) leaves its issue to re-plan."""
+    return {b.id for r in reports for b in r.bubbled if b.id in parts.get(r.fixer, {})}
+
+
+def _follow_up(open_issues: Sequence[Dict[str, object]], run: Path,
+               checked: Optional[Tuple[Set[str], Set[str]]]) -> Tuple[List[Dict[str, object]], List[str]]:
+    """(issues to plan, done ids): fully covered ids and ids a planned, assigned fixer bubbled are done; a
+    partially fixed split issue is narrowed to its uncovered parts. With ``checked`` (changed, created; set
+    once a closeout has run) only entries closeout accepts cover anything, so an id whose entries it
+    rejected is re-planned."""
+    reports = rm.load_fix_reports(run / "fixes")
+    changed, created = checked if checked else (None, None)
+    parts = fixer_parts(run)
+    remaining = rmg.remaining_parts(open_issues, parts, reports, fixer_files=fixer_files(run),
+                                    changed=changed, created=created)
+    done = {i for i, missing in remaining.items() if not missing} | counted_bubbles(reports, parts)
+    planned = [rmg.only_files(i, remaining[str(i["id"])]) if remaining.get(str(i["id"])) else i
+               for i in open_issues]
+    return planned, sorted(done)
+
+
+def closeout_checked(repo: Path, plan: Mapping[str, object],
+                     run: Path) -> Optional[Tuple[Set[str], Set[str]]]:
+    """(changed, created) since ``build_head`` once a closeout ran (``CLOSEOUT_MARK`` exists), else None."""
+    if not (run / CLOSEOUT_MARK).is_file() or not plan.get("build_head"):
+        return None
+    return changed_paths(repo, str(plan["build_head"]))
+
+
+def wave_inputs(doc: Mapping[str, object], run: Path, ids: Optional[str],
+                checked: Optional[Tuple[Set[str], Set[str]]] = None,
+                ) -> Tuple[List[Dict[str, object]], List[str], List[str]]:
+    """(issues, held, done) for ``plan_waves``; ``ids`` selects exactly those, nothing held or done.
+
+    ``checked`` (see ``closeout_checked``) makes only closeout-accepted fix entries count as done.
+    """
+    issues = all_issues(doc)
+    if ids:
+        return _selected(issues, ids, ra.refuted_now(doc)), [], []
+    closed = closed_ids(doc)
+    held = [str(b) for b in doc.get("bubbles") or []]  # type: ignore[union-attr]
+    planned, done = _follow_up([i for i in issues if i["id"] not in closed], run, checked)
+    return planned, held, done
+
+
+def _registry_rows(repo: Path) -> List[Dict[str, object]]:
+    """Entries (objects with a ``file``) of the configured ``tests.registry``; empty without one."""
+    rel = active().tests.registry
+    path = repo / rel if rel else None
+    if path is None or not path.is_file():
+        return []
+    tests = _read_json(path).get("tests") or []
+    return [e for e in tests if isinstance(e, dict) and "file" in e]  # type: ignore[union-attr]
+
+
+def registry_entries(repo: Path) -> List[Tuple[str, Tuple[str, ...]]]:
+    """(test file, test_target_paths) for every entry of the configured ``tests.registry``; empty without
+    one."""
+    props = ((e, e.get("properties") or {}) for e in _registry_rows(repo))
+    return [(str(e["file"]), tuple(p.get("test_target_paths") or ()))  # type: ignore[union-attr]
+            for e, p in props]
+
+
+def timing_file(name: str) -> str:
+    """A timing row's ``file`` as a registry path: forward slashes, no ``::`` test id, no leading ``./``."""
+    path = name.replace("\\", "/").split("::", 1)[0]
+    while path.startswith("./"):
+        path = path[2:]
+    return path
+
+
+def file_seconds(repo: Path) -> Dict[str, float]:
+    """Seconds per test file summed over the ``tests`` rows (``file``, numeric ``duration``) of the
+    configured ``tests.timings`` report, keyed by ``timing_file``; empty when there is none or it cannot
+    be read."""
+    rel = active().tests.timings
+    try:
+        rows = _read_json(repo / rel).get("tests") if rel else None
+    except CaptureError:
+        return {}
+    seconds: Dict[str, float] = {}
+    for row in rows if isinstance(rows, list) else ():
+        duration = row.get("duration") if isinstance(row, dict) else None
+        if isinstance(row, dict) and isinstance(row.get("file"), str) and \
+                isinstance(duration, (int, float)) and not isinstance(duration, bool):
+            key = timing_file(row["file"])
+            seconds[key] = seconds.get(key, 0.0) + float(duration)
+    return seconds
+
+
+def flag_set(entry: Mapping[str, object], dotted: str) -> bool:
+    """True when the value at the dotted path ``dotted`` of a registry entry is ``true``."""
+    value: object = entry
+    for key in dotted.split("."):
+        value = value.get(key) if isinstance(value, Mapping) else None
+    return value is True
+
+
+def defer_reasons(repo: Path) -> Dict[str, str]:
+    """Registry test files fixers must not run, each with its reason: summed ``tests.timings`` seconds over
+    ``tests.fixer_test_seconds``, else the ``tests.defer_flags`` paths that are true."""
+    tests = active().tests
+    ceiling = tests.fixer_test_seconds
+    seconds = file_seconds(repo) if ceiling is not None else {}
+    reasons: Dict[str, str] = {}
+    for entry in _registry_rows(repo):
+        test, flags = str(entry["file"]), [f for f in tests.defer_flags if flag_set(entry, f)]
+        if ceiling is not None and seconds.get(test, 0.0) > ceiling:
+            reasons[test] = f"measured {seconds[test]:g} s > {ceiling:g} s"
+        elif flags:
+            reasons[test] = ", ".join(flags)
+    return reasons
+
+
+def serial_locks(repo: Path, deferred: Mapping[str, str]) -> Dict[str, Tuple[str, ...]]:
+    """Registry test file -> the ``tests.serial_flags`` paths that are ``true`` in its entry; a deferred test
+    never runs in a fixer wave, so it holds no lock."""
+    flags = active().tests.serial_flags
+    held = {str(e["file"]): tuple(f for f in flags if flag_set(e, f)) for e in _registry_rows(repo)}
+    return {test: locks for test, locks in held.items() if locks and test not in deferred}
+
+
+def ceiling_line(repo: Path) -> Optional[str]:
+    """A notice when ``tests.fixer_test_seconds`` is set but ``tests.timings`` yields no durations, so
+    deferral falls back to ``tests.defer_flags`` alone; None otherwise."""
+    tests = active().tests
+    if tests.fixer_test_seconds is None or file_seconds(repo):
+        return None
+    return (f"deferral: tests.timings {tests.timings or '(unset)'} missing or unusable; "
+            "runtime ceiling inactive (flags only)")
+
+
+def tests_for(path: str, entries: Sequence[Tuple[str, Tuple[str, ...]]]) -> List[str]:
+    """Registry test files that are ``path`` itself or whose targets name ``path`` or a folder holding it."""
+    return [f for f, targets in entries
+            if f == path or any(path == t or path.startswith(t.rstrip("/") + "/") for t in targets)]
+
+
+def issue_files(issue: Mapping[str, object]) -> List[str]:
+    """Full file list of a schema issue, primary file first."""
+    return _union([str(issue["file"]), *(issue.get("files") or [])])  # type: ignore[misc]
+
+
+def part_lines(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
+    """The own-part line and, when other fixers own the rest of the issue, the other-parts line; tracking
+    files (``review.tracking_paths``) are named apart, since the main session edits them during or after
+    the waves."""
+    patterns = active().review.tracking_paths
+    rest = [f for f in issue_files(issue) if f not in part]
+    tracked = [f for f in rest if rwv.is_tracking(f, patterns)]
+    others = [f for f in rest if f not in tracked]
+    lines = [f"Your part: {', '.join(part)}"]
+    lines += [f"Other parts: {', '.join(others)} (another fixer)"] if others else []
+    note = f"Tracking files: {', '.join(tracked)} (main session, during or after the waves; do not edit)"
+    return lines + ([note] if tracked else [])
+
+
+def _issue_block(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
+    """One issue's section in a fixer brief; ``part`` is the files the fixer owns for it."""
+    also = issue_files(issue)[1:]
+    where = str(issue["file"]) + (f" (lines {issue['lines']})" if issue.get("lines") else "")
+    where += f"; also {', '.join(also)}" if also else ""
+    tier = _TIER[str(issue["id"])[0]]
+    lines = [f"### {issue['id']} ({tier}, {issue.get('fix_kind', 'judgment')}) - {issue['name']}", "",
+             f"Files: {where}", *part_lines(issue, part), "", str(issue["summary"]), "",
+             "Fix options (any one resolves it; pick the safest, most mechanical; a repair before a revert):"]
+    return lines + [f"- {option}" for option in issue["fix"]] + [""]  # type: ignore[union-attr]
+
+
+NO_RUNNABLE_TESTS = "No runnable test in the file set: record without a test run."
+
+
+def pytest_command(repo: str, tests: Sequence[str]) -> str:
+    """One pytest run over the repo-relative ``tests`` through the plugin's ``hpy`` launcher; each absolute
+    test path is shell-quoted, so a checkout path with spaces stays one argument."""
+    paths = " ".join(shlex.quote(f"{repo}/{t}") for t in tests)
+    return f"{hpy_command()} -m pytest {paths} -q -p no:cacheprovider"
+
+
+def _tests_block(ctx: BriefContext, files: Sequence[str], entries: Sequence[Tuple[str, Tuple[str, ...]]],
+                 deferred: Mapping[str, str]) -> List[str]:
+    """Registry tests of the file set: one pytest command over every non-deferred test (each once, first-seen
+    order), or a no-run note when none is left, then a per-file mapping; deferred tests stay listed per file
+    with their reason."""
+    per_file = [(path, tests_for(path, entries)) for path in files]
+    runnable = list(dict.fromkeys(t for _, tests in per_file for t in tests if t not in deferred))
+    lines = ["## Files and tests", ""]
+    if runnable:
+        lines += ["Run once after the last edit (every non-deferred test of the file set, each once):", "",
+                  f"- `{pytest_command(ctx.repo, runnable)}`", "",
+                  "Per file (after a red, rerun the command above over only the failing test files):", ""]
+    else:
+        lines += [NO_RUNNABLE_TESTS, "", "Per file:", ""]
+    for path, tests in per_file:
+        mine = [t for t in tests if t not in deferred]
+        lines.append(f"- {path}: " + (", ".join(mine) if mine else
+                                      "no runnable test" if tests else "no registered test"))
+        lines += [f"  - deferred, do not run: `{t}` ({deferred[t]})" for t in tests if t in deferred]
+    return lines
+
+
+def _fixer_rules() -> List[str]:
+    """Fixer operating rules: the three bubble questions, the repair-before-revert guard and the
+    prose-only-fix bubble."""
+    rules = ["Fix only the issues above, in the order given; Read a file before editing it.",
+             "Stay inside the file set above (the issues' files, the registered tests that target them and "
+             "the existing paths a fix option names); new files are allowed. For an issue with other parts, "
+             "edit only the files of your part plus the set's tests and named paths; another fixer owns the "
+             "rest. When a fix needs an edit outside the file set, leave it and bubble the id "
+             "`out_of_scope`.",
+             "When the brief lists a batched test command, run it once after the last edit, before "
+             "recording; when it lists none, record without a test run. On a red, rerun that command with "
+             "its path list cut down to the failing test files (same prefix and flags, absolute paths kept) "
+             "while fixing, then the full command once more. A collection error such as `import file "
+             "mismatch` (two test files sharing a basename) is not caused by the edit: run the colliding "
+             "files as separate commands of the same form before treating it as a red. When a test goes red "
+             "because of an edit and cannot be fixed inside the file set, undo that edit and bubble the id "
+             "`fixer_failed`, naming the test in the reason. Never run a test marked deferred: it is too "
+             "slow for a fix wave, and closeout lists it for one run after the waves.",
+             "Bubble an issue only when one of these answers yes, or under the revert and commit-text "
+             "rules below; otherwise pick the safest option and fix it:",
+             "Never revert or delete code the change under review added unless the issue names one of these "
+             f"defects in that code and the removal resolves it: {REMOVAL_DEFECTS}. Any other ground for a "
+             "removal, a commit message or PR description that omits the change included, does not count. "
+             "When the options hold a revert and a repair, apply the repair. When the only option is the "
+             "removal, bubble the id `architectural_ambiguity` and edit nothing for it.",
+             "An issue whose only fix changes a commit message or the PR description edits no file: bubble "
+             "it `out_of_scope`, naming that text in the reason.",
+             "No git writes (no add, commit, stash, checkout, reset, restore).",
+             "Record each id with your part's files plus any new file you created and any test or named "
+             "path of the set you edited for it (the `Your part` line names the part); an issue is resolved "
+             "once every part's fixer has recorded it.",
+             "Record once with the heredoc below; reply with the block it prints, verbatim, and nothing "
+             "else.",
+             "A file of your split part that the fix cites but needs no edit goes in an entry's `no_change` "
+             "list, with the reason in `what`; list edited files under `files` only.",
+             "When the fix is already present (an earlier wave or the developer made it), edit nothing: "
+             "list the issue's own files (primary or also) in your part or file set that hold it under "
+             "`no_change`, limited to your part's files for a split issue, and write `already present` and "
+             "where in `what`; closeout resolves it once one of those files changed since the build (a split "
+             "issue still needs every part covered), unless another issue's accepted entry edited that file."]
+    questions = [f"  {n}. {q}" for n, q in enumerate(BUBBLE_QUESTIONS, start=1)]
+    questions.append("  When all three are no, bubble only net-new work beyond Phase 5 scope "
+                     "(`needs_follow_up`), or under the revert and commit-text rules below.")
+    return ["## Rules", ""] + [f"- {r}" for r in rules[:4]] + questions + [f"- {r}" for r in rules[4:]]
+
+
+def fixer_part(fixer: Mapping[str, object], issue: Mapping[str, object]) -> List[str]:
+    """Files ``fixer`` owns for ``issue``: its planned part, else the whole file list."""
+    parts = fixer.get("parts") or {}
+    return list(parts.get(str(issue["id"])) or issue_files(issue))  # type: ignore[union-attr]
+
+
+def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[str, Mapping[str, object]],
+                entries: Sequence[Tuple[str, Tuple[str, ...]]], deferred: Mapping[str, str]) -> str:
+    """The full fixer brief for one planned fixer; ``deferred`` maps the tests it must not run to reasons."""
+    agent, files = str(fixer["id"]), list(fixer["files"])  # type: ignore[call-overload]
+    lines = [f"# Fixer brief: {agent} - {target_label(ctx.pr)}", ""]
+    lines += [f"- {line}" for line in header_lines(agent, "fixer", ctx.run_id, ctx.pr)]
+    lines += ["", f"Repo `{ctx.repo}`, branch `{ctx.facts.head}`.", "", "## Issues (fix in this order)", ""]
+    for issue_id in fixer["issue_ids"]:  # type: ignore[union-attr]
+        issue = issues[str(issue_id)]
+        lines += _issue_block(issue, fixer_part(fixer, issue))
+    call = (f'record_fixes_draft({key_literal(ctx.pr)}, "{agent}", repo=Path(r"{ctx.repo}"), '
+            f'run_id="{ctx.run_id}")')
+    fixed = ('{"id": "M2", "what": "one line: what changed; cited files: why no edit", '
+             '"files": ["src/pkg/x.py"], "no_change": ["src/pkg/y.py"]},')
+    bubbled = '{"id": "I3", "classification": "architectural_ambiguity", "reason": "one line"},'
+    lists = (("FIXED", (fixed,)), ("BUBBLED", (bubbled,)))
+    lines += _tests_block(ctx, files, entries, deferred) + [""] + _fixer_rules()
+    lines += ["", "## Record (once)", "", *draft_json(ctx, agent, lists), "", "Then run this once:", "",
+              "```bash", record_heredoc(ctx, call), "```", "", TOO_LONG_RULE]
+    return "\n".join(lines) + "\n"
+
+
+def wave_context(repo: Path, plan: Mapping[str, object]) -> BriefContext:
+    """A brief context rebuilt from ``plan.json`` (facts carry only what fixer briefs read)."""
+    meta = plan["meta"]
+    facts = PrFacts(parse_key(plan["pr"]), str(meta["pr_title"]), str(meta["branch"]),  # type: ignore[index]
+                    str(meta["base_branch"]), str(meta["head_sha"]), str(meta["base_sha"]),  # type: ignore[index]
+                    "", (), ())
+    return BriefContext(repo.as_posix(), _LIB.as_posix(), parse_key(plan["pr"]),
+                        str(plan["run_id"]), facts, bool(plan["tree_at_head"]), {}, ())
+
+
+def wave_rows(ctx: BriefContext, run: Path, waves: Sequence[Sequence[Mapping[str, object]]]) -> List[str]:
+    """Printed rows: a heading per wave, then one dispatch row per fixer."""
+    lines: List[str] = []
+    for fixers in waves:
+        number = str(fixers[0]["id"]).split("_", 1)[0][1:]
+        when = "dispatch after the previous wave returns" if lines else "dispatch every row in one message"
+        lines.append(f"wave {number}: {when} (subagent_type={FIXER_AGENT})")
+        lines += [dispatch_row(FIXER_AGENT, str(f["model"]), str(f["id"]), "fixer", ctx.run_id, ctx.pr,
+                               run / "fix_briefs" / f"{f['id']}.md") + "\n" for f in fixers]
+    return lines
+
+
+def _cmd_waves(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``waves``: plan fixers, write their briefs, print the dispatch rows and the held ids."""
+    run, plan = load_plan(repo, args.pr)
+    _, doc = load_review(repo, plan)
+    require_phase4(doc)
+    checked = None if args.ids else closeout_checked(repo, plan, run)
+    issues, held, done = wave_inputs(doc, run, args.ids, checked)
+    store_path = run / "waves.json"
+    store = _read_json(store_path) if store_path.is_file() else {"waves": []}
+    entries, deferred = registry_entries(repo), run_deferrals(repo, run)
+    waves = widened_waves(repo, issues, held, done, entries, len(store["waves"]) + 1,  # type: ignore[arg-type]
+                          serial_locks(repo, deferred))
+    store["waves"] = list(store["waves"]) + waves  # type: ignore[call-overload]
+    store["deferred"] = deferred
+    _write_json(store_path, store)
+    ctx, by_id = wave_context(repo, plan), {str(i["id"]): i for i in all_issues(doc)}
+    for fixer in (f for wave in waves for f in wave):
+        brief = fixer_brief(ctx, fixer, by_id, entries, deferred)
+        _write_text(run / "fix_briefs" / f"{fixer['id']}.md", brief)
+    count = sum(len(w) for w in waves)
+    print(f"waves [done] | {len(waves)} wave(s), {count} fixer(s) | run {plan['run_id']}")
+    print("\n".join(wave_rows(ctx, run, waves) or ["nothing to plan"]))
+    shown = [h for h in held if h in {str(i["id"]) for i in issues}]
+    print(f"held: {', '.join(shown) if shown else 'none'}")
+    patterns = active().review.tracking_paths
+    tracking = tracking_lines(rwv.tracking_rows(issues, held, done, patterns),
+                              rwv.mixed_tracking_rows(issues, held, done, patterns))
+    if tracking:
+        print("\n".join(tracking))
+    notice = ceiling_line(repo)
+    if notice:
+        print(notice)
+    print("\n".join(pending_lines(pending_bubbles(doc, run))))
+    save_plan(run, plan, "fix")
+    return 0
+
+
+def _named_rows(rows: Sequence[Tuple[str, Sequence[str]]]) -> str:
+    """``id (file, file); id (file)`` for tracking report rows."""
+    return "; ".join(f"{issue_id} ({', '.join(files)})" for issue_id, files in rows)
+
+
+def tracking_lines(rows: Sequence[Tuple[str, Sequence[str]]],
+                   mixed: Sequence[Tuple[str, Sequence[str]]] = ()) -> List[str]:
+    """The ``tracking:`` report of issues left to the main session and the ``tracking (after its fixer):``
+    report of mixed issues' tracking files; empty when there are none."""
+    lines: List[str] = []
+    if rows:
+        ids = ", ".join(issue_id for issue_id, _ in rows)
+        lines += [f"tracking: {_named_rows(rows)}",
+                  "next: edit the tracking files in the main session (no fixer owns them), then "
+                  f"closeout --resolved for {ids}"]
+    if mixed:
+        lines += [f"tracking (after its fixer): {_named_rows(mixed)}",
+                  "next: after each id's fixer wave returns, edit these tracking files in the main session; "
+                  "the fixer's entry resolves the id, so no closeout --resolved"]
+    return lines
+
+
+def saved_deferrals(run: Path) -> Dict[str, str]:
+    """The deferred tests and reasons earlier ``waves`` runs gave fixers (``waves.json`` ``deferred``);
+    empty without one."""
+    path = run / "waves.json"
+    saved = _read_json(path).get("deferred") if path.is_file() else None
+    return {str(k): str(v) for k, v in saved.items()} if isinstance(saved, dict) else {}
+
+
+def run_deferrals(repo: Path, run: Path) -> Dict[str, str]:
+    """``defer_reasons`` now, plus every test an earlier wave of the run deferred (its saved reason wins),
+    so a replaced timing report never un-defers a test a fixer was told to skip."""
+    return {**defer_reasons(repo), **saved_deferrals(run)}
+
+
+def widened_waves(repo: Path, issues: Sequence[Dict[str, object]], held: Sequence[str], done: Sequence[str],
+                  entries: Sequence[Tuple[str, Tuple[str, ...]]], start: int,
+                  locks: Optional[Mapping[str, Sequence[str]]] = None) -> List[List[Dict[str, object]]]:
+    """``plan_waves`` with each fixer's file set widened by the registry tests targeting its files and the
+    paths its fix options name that exist in ``repo``, tracking paths left out (``review.tracking_paths``)
+    and ``locks`` (see ``serial_locks``) keeping units whose tests hold the same serial flag in one fixer
+    or in different waves."""
+    existing = {p for i in issues for p in rwv.fix_paths(i) if (repo / p).is_file()}
+    return rwv.plan_waves(issues, held, done, start_wave=start, registry=dict(entries), existing=existing,
+                          tracking=active().review.tracking_paths, test_locks=locks)
+
+
+def _cmd_bubbles(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``bubbles`` (read-only): print the fixer bubbles not yet in the review."""
+    run, plan = load_plan(repo, args.pr)
+    _, doc = load_review(repo, plan)
+    require_phase4(doc)
+    print("\n".join(pending_lines(pending_bubbles(doc, run))))
+    return 0
+
+
+def require_phase4(doc: Mapping[str, object], action: str = "planning fixes") -> None:
+    """Raise while the review's Phase 4 first run has not succeeded (``pre_fix_time`` still pending);
+    ``action`` names the refused step in the problem line."""
+    log = doc.get("verification_log") or {}
+    if log.get("pre_fix_time") == rmg.PENDING:  # type: ignore[union-attr]
+        raise CaptureError([f"Phase 4 first run has not succeeded (pre_fix_time pending); settle it and "
+                            f"rerun build --replace before {action}"])
+
+
+# --- closeout -----------------------------------------------------------------------------------------------
+
+
+def changed_paths(repo: Path, base: str) -> Tuple[Set[str], Set[str]]:
+    """(changed, created) since ``base``: tracked diffs to the working tree plus untracked files; a rename
+    reads as the old path changed and the new path created."""
+    def listed(*argv: str) -> Set[str]:
+        return {p for p in git_out(repo, *argv).split("\0") if p}
+
+    untracked = listed("ls-files", "--others", "--exclude-standard", "-z")
+    changed = listed("diff", "--no-renames", "--name-only", "-z", base) | untracked
+    return changed, listed("diff", "--no-renames", "--name-only", "--diff-filter=A", "-z", base) | untracked
+
+
+def parse_closed(values: Sequence[str], flag: str = "--closed", label: str = "rationale") -> Dict[str, str]:
+    """``ID=<label>`` pairs given to ``flag``; a malformed value raises."""
+    out: Dict[str, str] = {}
+    for value in values:
+        issue_id, sep, text = value.partition("=")
+        if not sep or not issue_id.strip() or not text.strip():
+            raise CaptureError([f"{flag} {value!r} must be ID={label}"])
+        out[issue_id.strip()] = text.strip()
+    return out
+
+
+def planned_fixers(run: Path) -> List[Dict[str, object]]:
+    """Every fixer record of every wave in the run's ``waves.json``; empty without one."""
+    path = run / "waves.json"
+    waves = _read_json(path).get("waves", []) if path.is_file() else []
+    return [f for wave in waves for f in wave]  # type: ignore[union-attr]
+
+
+def fixer_files(run: Path) -> Dict[str, List[str]]:
+    """Planned file set per fixer id across every wave of the run."""
+    return {str(f["id"]): list(f["files"]) for f in planned_fixers(run)}  # type: ignore[call-overload]
+
+
+def _parts_of(fixer: Mapping[str, object]) -> Dict[str, List[str]]:
+    """A fixer's planned parts; a fixer planned without parts owns its whole file set for each issue id."""
+    parts = fixer.get("parts")
+    if parts is None:
+        files = list(fixer["files"])  # type: ignore[call-overload]
+        return {str(i): list(files) for i in fixer["issue_ids"]}  # type: ignore[union-attr]
+    return {str(i): list(files) for i, files in parts.items()}  # type: ignore[union-attr]
+
+
+def fixer_parts(run: Path) -> Dict[str, Dict[str, List[str]]]:
+    """Planned parts (issue id -> owned files) per fixer id across every wave of the run."""
+    return {str(f["id"]): _parts_of(f) for f in planned_fixers(run)}
+
+
+def _cmd_closeout(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``closeout``: resolve validated fixes, close named ids, commit, print the Phase 5 line."""
+    run, plan = load_plan(repo, args.pr)
+    path, doc = load_review(repo, plan)
+    require_phase4(doc, "closing out")
+    if not plan.get("build_head"):
+        raise CaptureError(["no build_head recorded; run build first"])
+    refused = closeout_refusals(doc, args, _rel(repo, path))
+    if refused:
+        raise CaptureError(refused)
+    head = git_out(repo, "rev-parse", "--short", "HEAD").strip()
+    paths = changed_paths(repo, str(plan["build_head"]))
+    doc, problems = closeout_review(run, paths, head, doc, args)
+    try:
+        deferred = deferred_lines(repo, run_deferrals(repo, run), set().union(*paths))
+        problems += commit_review(repo, path, doc)
+    except CaptureError as exc:
+        raise CaptureError(exc.problems + problems) from exc
+    _write_json(run / CLOSEOUT_MARK, {"head": head, "problems": problems})
+    save_plan(run, plan, "fix" if problems or rmg.undispositioned_ids(doc) else "done")
+    hints = rmg.resolvable_hints(doc, problems, paths[0])
+    print("\n".join([phase5_line(doc, problems), *hints, *deferred]))
+    if problems:
+        raise CaptureError(problems)
+    return 0
+
+
+def closeout_refusals(doc: Mapping[str, object], args: argparse.Namespace, review: str) -> List[str]:
+    """One ``refuted_problem`` per ``--resolved``, ``--deferred`` or ``--closed`` id whose latest status is
+    ``REFUTED``: closeout would otherwise skip the deferred or closed decision without a problem line."""
+    named = {**parse_closed(args.closed), **parse_closed(args.deferred, "--deferred", "decision; tracker"),
+             **parse_closed(args.resolved, "--resolved", "what")}
+    refuted = set(ra.refuted_now(doc))
+    return [ra.refuted_problem(i, review) for i in named if i in refuted]
+
+
+def closeout_review(run: Path, paths: Tuple[Set[str], Set[str]], head: str, doc: Mapping[str, object],
+                    args: argparse.Namespace) -> Tuple[Dict[str, object], List[str]]:
+    """``apply_closeout`` over the run's fixer reports and the ``--closed`` / ``--deferred`` /
+    ``--resolved`` flags, against ``paths`` (``changed_paths`` since ``build_head``), plus
+    ``unrecorded_problems``."""
+    changed, created = paths
+    deferred = parse_closed(args.deferred, "--deferred", "decision; tracker")
+    resolved = parse_closed(args.resolved, "--resolved", "what")
+    fixes = rm.load_fix_reports(run / "fixes")
+    out, problems = rmg.apply_closeout(doc, fixes, fixer_files(run), changed, created, head,
+                                       date.today().isoformat(), parse_closed(args.closed),
+                                       parts=fixer_parts(run), deferred=deferred, resolved=resolved)
+    return out, problems + unrecorded_problems(planned_fixers(run), fixes, out)
+
+
+def unrecorded_problems(fixers: Sequence[Mapping[str, object]], fixes: Sequence[rm.FixReport],
+                        doc: Mapping[str, object]) -> List[str]:
+    """One problem per planned fixer without a fix report, and per id a reporting fixer was assigned but
+    never recorded (no fixed entry, no bubble); only ids still undispositioned in ``doc`` count, so a fixer
+    whose ids a later wave, ``--closed`` or ``bubble`` settled raises nothing. A per-id problem leads with
+    the id (``resolvable_hints`` reads it there); the no-report problem covers several ids, leads with the
+    fixer id and gets no ``hint:`` line, since re-dispatching the row is its route."""
+    open_ids = set(rmg.undispositioned_ids(doc))
+    reported = {r.fixer for r in fixes}
+    recorded = {e.id for r in fixes for e in (*r.fixed, *r.bubbled)}
+    problems: List[str] = []
+    for fixer in fixers:
+        ids = [i for i in _parts_of(fixer) if i in open_ids]
+        if ids and str(fixer["id"]) not in reported:
+            problems.append(f"{fixer['id']}: no fix report; re-dispatch its row")
+        elif ids:
+            problems += [f"{i}: planned for {fixer['id']} but not recorded; rerun waves"
+                         for i in ids if i not in recorded]
+    return problems
+
+
+def deferred_lines(repo: Path, reasons: Mapping[str, str], paths: Iterable[str]) -> List[str]:
+    """The deferred registry tests (``reasons``: test file to reason) that ``paths`` (every path changed
+    since ``build_head``: commits, working tree, untracked) reach, each with its reason, and one command
+    running them all; empty when none is reached."""
+    entries = registry_entries(repo)
+    tests = sorted({t for p in paths for t in tests_for(p, entries) if t in reasons})
+    if not tests:
+        return []
+    lines = [f"deferred tests: {len(tests)} file(s) the changes since build_head reach; "
+             "run them before commit:"]
+    lines += [f"  - {t} ({reasons[t]})" for t in tests]
+    return lines + [f"  {pytest_command(repo.as_posix(), tests)}"]
+
+
+def phase5_line(doc: Mapping[str, object], problems: Sequence[str]) -> str:
+    """The canonical Phase 5 done line, or a blocked line when closeout left problems. Refuted ids are
+    counted apart from resolved ones (``, K refuted`` only when K > 0), as the READY verdict counts them."""
+    if problems:
+        return (f"Phase 5 [blocked] | {len(problems)} problems | verdict: {doc['verdict']} | "
+                f"next: settle problems, rerun closeout")
+    refuted = set(ra.refuted_now(doc))
+    resolved = f"{len(closed_ids(doc) - refuted)} issues resolved"
+    resolved += f", {len(refuted)} refuted" if refuted else ""
+    return f"Phase 5 [done] | {resolved} | verdict: {doc['verdict']} | next: stop"
+
+
+# --- block --------------------------------------------------------------------------------------------------
+
+
+def refutation_lines(report: rm.RefutationReport, output: str) -> List[str]:
+    """A findings refuter's block, then ``[<finding key>] <verdict>: <evidence>`` per entry."""
+    return [rm.refutation_block(report, output),
+            *(f"[{r.key}] {r.verdict.value}: {r.evidence or '-'}" for r in report.refutations)]
+
+
+def _cmd_block(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``block``: reprint a recorded reviewer, code refuter, findings refuter or fixer block."""
+    run = rm.run_dir(args.pr, repo)
+    review, fixes = run / "findings" / f"{args.agent}.json", run / "fixes" / f"{args.agent}.json"
+    refuted = run / "refutations" / f"{args.agent[len(rm.FINDINGS_REFUTER_PREFIX):]}.json"
+    if args.agent.startswith(rm.FINDINGS_REFUTER_PREFIX) and refuted.is_file():
+        print("\n".join(refutation_lines(rm.load_refutations(refuted), _rel(repo, refuted))))
+    elif review.is_file():
+        print(rm.reviewer_block(rm.load_report(review), _rel(repo, review)))
+    elif fixes.is_file():
+        report = rm.FixReport.model_validate_json(fixes.read_text(encoding="utf-8"))
+        print(rm.fixer_block(report, _rel(repo, fixes)))
+    else:
+        raise CaptureError([f"no report recorded for {args.agent} in {_rel(repo, run)}"])
+    return 0
+
+
+# --- refuter init -------------------------------------------------------------------------------------------
+
+
+def refute_target(plan: Mapping[str, object], agent: str) -> str:
+    """The target slot of the findings refuter ``agent`` in ``plan["adversarial"]``; raise for any other
+    id."""
+    slots = (plan.get("adversarial") or {}).get("refute") or []  # type: ignore[union-attr]
+    target = next((str(s["target"]) for s in slots if s["id"] == agent), None)
+    if target is None:
+        raise CaptureError([f"--agent {agent} is not a findings refuter of this run (plan.json adversarial "
+                            f"refute slots); init serves only adv_refute_<target> agents of an -a capture"])
+    return target
+
+
+def finding_lines(report: rm.ReviewerReport) -> List[str]:
+    """``[<finding_key>] <severity> <name> <file>:<lines>`` per distinct finding key, each with its
+    summary, other files and attack (a code refuter's finding) indented below."""
+    lines: List[str] = []
+    for key, finding in dict.fromkeys((rm.finding_key(f), f) for f in report.findings):
+        where = f"{finding.file}:{finding.lines}" if finding.lines else finding.file
+        lines += [f"[{key}] {finding.severity.value} {finding.name} {where}",
+                  f"    summary: {finding.summary}"]
+        lines += [f"    also: {', '.join(finding.also)}"] if finding.also else []
+        attack = getattr(finding, "attack", None)
+        lines += [f"    attack: {attack}"] if attack else []
+    return lines
+
+
+def _cmd_init(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``init``: a findings refuter's first step; print its target's findings by key, or record an
+    empty report for a target without findings."""
+    run, plan = load_plan(repo, args.pr)
+    if args.run_id != run.name:
+        raise CaptureError([f"run {args.run_id} is not the current run ({run.name}): a later capture "
+                            f"replaced it; stop and record nothing"])
+    target = refute_target(plan, args.agent)
+    try:
+        report = rm._target_report(args.pr, target, repo, args.run_id)
+    except ValueError as exc:
+        raise CaptureError([f"{exc}; rerun {args.agent} once it has"]) from exc
+    if not report.findings:
+        rm.record_refutations(args.pr, args.agent, target, [], repo=repo, run_id=args.run_id)
+        print("no findings: done")
+        return 0
+    keys = len({rm.finding_key(f) for f in report.findings})
+    print(f"init [done] | {args.agent} | target {target} | {keys} finding key(s) | run {args.run_id}")
+    print("\n".join(finding_lines(report)))
+    print(f"record one entry per key above, each exactly once (full report: findings/{target}.json)")
+    return 0
+
+
+# --- developer overrule: refute and unrefute ----------------------------------------------------------------
+
+
+def overrule_issue(repo: Path, path: Path, doc: Mapping[str, object], issue_id: str) -> Dict[str, object]:
+    """The built review's issue ``issue_id``; raise naming the id when there is none."""
+    try:
+        return review_edit.issue_info(doc, issue_id)
+    except ValueError as exc:
+        raise CaptureError([f"{issue_id}: no such issue in {_rel(repo, path)}"]) from exc
+
+
+def overrule_line(action: str, issue: Mapping[str, object], doc: Mapping[str, object]) -> str:
+    """``<action> <id> (<tier>) <name> <file>:<lines> | verdict: <verdict>``."""
+    issue_id = str(issue["id"])
+    where = f"{issue['file']}:{issue['lines']}" if issue.get("lines") else str(issue["file"])
+    return f"{action} {issue_id} ({rmg._tier(issue_id)}) {issue['name']} {where} | verdict: {doc['verdict']}"
+
+
+def _overrule_target(repo: Path, args: argparse.Namespace, action: str
+                     ) -> Tuple[Path, Dict[str, object], Path, Dict[str, object], Dict[str, object]]:
+    """(run, plan, review path, review, issue) of a ``refute`` / ``unrefute`` of ``args.id``."""
+    run, plan = load_plan(repo, args.pr)
+    path, doc = load_review(repo, plan)
+    require_phase4(doc, action)
+    return run, plan, path, doc, overrule_issue(repo, path, doc, args.id)
+
+
+def fixer_bubbled_problem(issue_id: str, shown: str) -> str:
+    """The refusal of ``refute`` for an id a planned fixer of the run bubbled: waves count that bubble as done
+    and closeout replays it, so a later ``unrefute --fix`` would turn back into a bubble."""
+    return (f"{issue_id}: a planned fixer of this run bubbled it; refute refused (waves and closeout replay "
+            f"that bubble); settle it with bubble or closeout --closed {issue_id}=\"rationale\"; "
+            f"{shown} unchanged")
+
+
+def _cmd_refute(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``refute``: close one built-review issue as ``REFUTED`` (a developer overrule). The phase stays, so
+    plan.json is never written, a hook problem included. An id a planned fixer of the run bubbled is refused
+    (``fixer_bubbled_problem``), so a later ``unrefute --fix`` keeps the id open."""
+    run, _, path, doc, issue = _overrule_target(repo, args, "refuting")
+    if args.id in ra.refuted_now(doc):
+        raise CaptureError([ra.refuted_problem(args.id, _rel(repo, path))])
+    if args.id in counted_bubbles(rm.load_fix_reports(run / "fixes"), fixer_parts(run)):
+        raise CaptureError([fixer_bubbled_problem(args.id, _rel(repo, path))])
+    try:
+        out = review_edit.apply_refute(doc, args.id, args.evidence, date.today().isoformat())
+    except ValueError as exc:
+        raise CaptureError([f"{exc}; {_rel(repo, path)} unchanged"]) from exc
+    out = ra.with_overrule(out, refuted=[args.id])
+    problems = commit_review(repo, path, out)
+    print(overrule_line("refuted", issue, out))
+    if problems:
+        raise CaptureError(problems)
+    return 0
+
+
+def unrefute_mode(args: argparse.Namespace) -> str:
+    """``bubble`` or ``fix``; raise when the flags do not fit the mode."""
+    if args.bubble and not (args.classification and args.reason):
+        raise CaptureError(["unrefute --bubble needs --classification and --reason"])
+    if args.fix and args.classification:
+        raise CaptureError(["unrefute --fix takes no --classification (only --bubble does)"])
+    return "bubble" if args.bubble else "fix"
+
+
+def unrefuted_review(doc: Mapping[str, object], args: argparse.Namespace, mode: str,
+                     shown: str) -> Dict[str, object]:
+    """``doc`` with the refutation of ``args.id`` overruled: ``NOT_RESOLVED`` (``fix``), or ``BUBBLED`` and
+    the id bubbled through ``with_bubble`` (``bubble``); a refusal names ``shown`` (the review) unchanged."""
+    reason = args.reason or review_edit.UNREFUTE_FIX_EVIDENCE
+    bubble = rm.FixBubble(id=args.id, classification=args.classification, reason=reason) \
+        if mode == "bubble" else None
+    try:
+        out = review_edit.apply_unrefute(doc, args.id, mode, reason, date.today().isoformat())
+    except ValueError as exc:
+        raise CaptureError([f"{exc}; {shown} unchanged"]) from exc
+    return ra.with_overrule(with_bubble(out, bubble) if bubble else out, unrefuted=[args.id])
+
+
+def _cmd_unrefute(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``unrefute``: reopen a ``REFUTED`` issue for the waves (``--fix``; ``done`` moves to ``fix``) or
+    bubble it (``--bubble``; phase ``fix-plan``, as ``bubble``); the draft forgets the refutation. The review
+    is written before the hook runs, so a hook problem still saves the new phase, then raises."""
+    mode = unrefute_mode(args)
+    run, plan, path, doc, issue = _overrule_target(repo, args, "unrefuting")
+    out = unrefuted_review(doc, args, mode, _rel(repo, path))
+    problems = commit_review(repo, path, out)
+    clear_draft_refuted(run, args.id)
+    phase = str(plan.get("phase") or "")
+    save_plan(run, plan, "fix-plan" if mode == "bubble" else ("fix" if phase == "done" else phase))
+    print(overrule_line(f"unrefuted ({mode})", issue, out))
+    if problems:
+        raise CaptureError(problems)
+    return 0
+
+
+# --- config -------------------------------------------------------------------------------------------------
+
+
+def config_data() -> Dict[str, object]:
+    """The activated harness configuration as JSON-ready data (paths as strings, plugins as objects)."""
+    data = json.loads(json.dumps(asdict(active()), default=str))
+    data["plugins"] = {name: json.loads(text) for name, text in active().plugins}
+    return data
+
+
+def config_value(data: Mapping[str, object], key: str) -> str:
+    """Dotted ``key`` of ``data`` as one line: empty for null, a string as-is, anything else as JSON."""
+    value: object = data
+    for part in key.split("."):
+        if not isinstance(value, Mapping) or part not in value:
+            raise CaptureError([f"config: unknown key {key!r}"])
+        value = value[part]
+    if value is None:
+        return ""
+    return value if isinstance(value, str) else json.dumps(value)
+
+
+def _cmd_config(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``config``: print the merged configuration as JSON, or one line per ``--get`` key.
+
+    A query that prints ``exclusions`` seeds the default exclusions file first, so the printed path exists.
+    """
+    if not args.get or "exclusions" in args.get:
+        ensure_default_exclusions(active())
+    data = config_data()
+    lines = [config_value(data, key) for key in args.get]
+    print("\n".join(lines) if args.get else json.dumps(data, indent=1))
+    return 0
+
+
+# --- cli ----------------------------------------------------------------------------------------------------
+
+
+_KEY_HELP = "PR number, or local-<label> for a local review."
+
+
+def run_key(value: str) -> RunKey:
+    """``--pr`` argument type: a PR number or a ``local-<label>`` key (``parse_key``).
+
+    A ``ValueError`` from ``parse_key`` becomes an ``ArgumentTypeError``, which argparse prints as is.
+    """
+    try:
+        return parse_key(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _pr(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """Add the required ``--pr`` option (a PR number or a local key)."""
+    parser.add_argument("--pr", type=run_key, required=True, help=_KEY_HELP)
+    return parser
+
+
+def _add_capture_command(sub: argparse._SubParsersAction) -> None:
+    """Add ``capture``: a PR by number, or a local commit range (``--range``) with no gh call."""
+    cap = sub.add_parser("capture", help="Phase 1 checks, slot plan, briefs and dispatch rows.")
+    cap.add_argument("--pr", type=run_key, default=None,
+                     help=f"{_KEY_HELP} Required without --range; with it, default local-<branch label>.")
+    cap.add_argument("--range", metavar="BASE..HEAD", help="Review a local commit range; no gh call.")
+    cap.add_argument("--title", help="Review title of a --range run (default: the head branch name).")
+    cap.add_argument("--plan", metavar="PATH",
+                     help="Plan or spec the change implements; named in every brief.")
+    cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
+    cap.add_argument("--allow-closed", action="store_true", help="Replay a closed or merged PR.")
+    cap.add_argument("--roast", choices=("yes", "no", "roll"), default="roll", help="Roast slot (roll).")
+    cap.add_argument("-a", "--adversarial", action="store_true",
+                     help="Add code and findings refuters; print one Workflow row instead of Agent rows.")
+
+
+def _op(kind: str) -> Callable[[str], Tuple[str, str]]:
+    """Argument type tagging an amend operation with its kind, so order is kept across flags."""
+    return lambda value: (kind, value)
+
+
+def _add_review_commands(sub: argparse._SubParsersAction) -> None:
+    """Add the Phase 1-3 subcommands: capture, block, merge, amend, build."""
+    _add_capture_command(sub)
+    _pr(sub.add_parser("block", help="Reprint an agent's block.")).add_argument("--agent", required=True)
+    merge = _pr(sub.add_parser("merge", help="Merge reports into draft.json."))
+    merge.add_argument("--force", action="store_true", help="Replace a draft that carries amend operations.")
+    amend = _pr(sub.add_parser("amend", help="Regrade or merge draft issues."))
+    amend.add_argument("--regrade", dest="ops", action="append", type=_op("regrade"),
+                       help="ID=severity, or ID=mechanical|judgment to set the fix kind in place.")
+    amend.add_argument("--merge", dest="ops", action="append", type=_op("merge"), help="KEEP+DROP[+DROP].")
+    build = _pr(sub.add_parser("build", help="Write the review JSON."))
+    build.add_argument("--replace", action="store_true", help="Overwrite this PR's existing review file.")
+    build.add_argument("--waive-head-ancestry", action="store_true",
+                       help="Accept a Phase 4 run whose only STOP is a head-ancestry desync (base intact).")
+    _add_fold_command(sub)
+
+
+def _add_fold_command(sub: argparse._SubParsersAction) -> None:
+    """Add ``fold``: an outside review recorded as a findings source (appended once the review is built)."""
+    fold = _pr(sub.add_parser("fold", help="Fold an outside review into the run (before or after build)."))
+    fold.add_argument("--source", required=True, help="snake_case source id (names findings/<id>.json).")
+    fold.add_argument("--kind", required=True, choices=FOLD_KINDS, help="Where the review came from.")
+    given = fold.add_mutually_exclusive_group(required=True)
+    given.add_argument("--from-gh-review", metavar="URL",
+                       help="A GitHub PR review URL (#pullrequestreview-N).")
+    given.add_argument("--findings", metavar="FILE", help="JSON findings list or object; - reads stdin.")
+    fold.add_argument("--severity", choices=[s.value for s in rm.Severity], default="minor",
+                      help="Severity of each GitHub comment, or of a --findings entry without one (minor); "
+                           "final after build, where amend does not run.")
+
+
+def _add_fix_commands(sub: argparse._SubParsersAction) -> None:
+    """Add the Phase 5 subcommands: bubble, waves, closeout."""
+    bubble = _pr(sub.add_parser("bubble", help="Bubble one issue."))
+    bubble.add_argument("id", help="Issue id (C1, I3, M2).")
+    bubble.add_argument("--classification", required=True, choices=[c.value for c in rm.BubbleClass])
+    bubble.add_argument("--reason", required=True, help="One line, at most 200 characters.")
+    waves = _pr(sub.add_parser("waves", help="Plan fix waves."))
+    waves.add_argument("--ids", help="Plan exactly these ids (I3,M2).")
+    _pr(sub.add_parser("bubbles", help="Print fixer bubbles not yet in the review (read-only)."))
+    close = _pr(sub.add_parser("closeout", help="Apply fixer reports and close Phase 5."))
+    close.add_argument("--closed", action="append", default=[], help="ID=rationale (repeatable).")
+    close.add_argument("--deferred", action="append", default=[],
+                       help="ID=decision; tracker: a developer-confirmed defer (repeatable).")
+    close.add_argument("--resolved", action="append", default=[],
+                       help="ID=what: a fix in the tree no accepted fixer entry records (developer-directed "
+                            "work or a rejected fixer edit) (repeatable).")
+
+
+def _add_adversarial_commands(sub: argparse._SubParsersAction) -> None:
+    """Add the refuter ``init`` and the developer overrules ``refute`` and ``unrefute``."""
+    init = _pr(sub.add_parser("init", help="A findings refuter's first step: print its target's findings."))
+    init.add_argument("--agent", required=True, help="adv_refute_<target>.")
+    init.add_argument("--run-id", required=True, help="The run id the refuter's brief names.")
+    refute = _pr(sub.add_parser("refute", help="Close one built-review issue as REFUTED."))
+    refute.add_argument("id", help="Issue id (C1, I3, M2).")
+    refute.add_argument("--evidence", required=True, help="The path:line opened and what it showed.")
+    unrefute = _pr(sub.add_parser("unrefute", help="Overrule a REFUTED issue: bubble it or reopen it."))
+    unrefute.add_argument("id", help="Issue id (C1, I3, M2).")
+    mode = unrefute.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--bubble", action="store_true", help="Append BUBBLED and bubble the id.")
+    mode.add_argument("--fix", action="store_true", help="Append NOT_RESOLVED; the next waves plan it.")
+    unrefute.add_argument("--classification", choices=[c.value for c in rm.BubbleClass],
+                          help="Bubble classification (--bubble only).")
+    unrefute.add_argument("--reason", help="One line (required with --bubble; --fix default: "
+                                           f"{review_edit.UNREFUTE_FIX_EVIDENCE}).")
+
+
+class _Parser(argparse.ArgumentParser):
+    """Argument parser whose errors raise ``CaptureError`` (exit 1, ``problem:`` lines) instead of exit 2.
+
+    Subparsers inherit the class, so a subcommand's argument error reports the same way.
+    """
+
+    def error(self, message: str) -> NoReturn:  # type: ignore[override]
+        """Raise the argument error as a ``CaptureError`` naming the parser and the fix."""
+        raise CaptureError([f"{self.prog}: {message} (malformed command: correct the arguments and rerun)"])
+
+
+def _parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser."""
+    parser = _Parser(prog="pr_review.py", description=__doc__.splitlines()[0])
+    parser.add_argument("--repo", type=Path,
+                        help="Project root (default: the git top level of the working directory).")
+    sub = parser.add_subparsers(dest="command", required=True)
+    _add_review_commands(sub)
+    _add_fix_commands(sub)
+    _add_adversarial_commands(sub)
+    conf = sub.add_parser("config", help="Print the project's merged harness configuration (JSON).")
+    conf.add_argument("--get", action="append", default=[], metavar="KEY",
+                      help="Print only this dotted key, one line each (repeatable; null prints empty).")
+    return parser
+
+
+_COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
+    "capture": _cmd_capture, "block": _cmd_block, "fold": _cmd_fold, "merge": _cmd_merge, "amend": _cmd_amend,
+    "build": _cmd_build, "bubble": _cmd_bubble, "waves": _cmd_waves, "bubbles": _cmd_bubbles,
+    "closeout": _cmd_closeout, "config": _cmd_config, "init": _cmd_init, "refute": _cmd_refute,
+    "unrefute": _cmd_unrefute,
+}
+
+
+def _utf8_streams() -> None:
+    """Reconfigure stdout and stderr to UTF-8 where the stream supports it."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
+def activate_project(repo: Optional[Path]) -> Path:
+    """The project root ``repo`` (else the working directory) belongs to, with its config activated; an
+    explicit ``repo`` outside any git checkout is its own root."""
+    given = Path(repo).resolve() if repo else None
+    root = project_root(given)
+    if given is not None and not given.is_relative_to(root):
+        root = given
+    cfg: HarnessConfig = activate(load_config(root))
+    return cfg.project_root
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """CLI entry point; return 0 on success, 1 with ``problem:`` lines on any failure (argument errors
+    too)."""
+    _utf8_streams()
+    try:
+        args = _parser().parse_args(argv)
+        return _COMMANDS[args.command](activate_project(args.repo), args)
+    except CaptureError as exc:
+        problems = exc.problems
+    except (ValueError, FileNotFoundError) as exc:
+        problems = [line for line in str(exc).splitlines() if line.strip()]
+    sys.stderr.write("\n".join(f"problem: {line}" for line in problems) + "\n")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,32 @@
+{
+  "plan_id": "1018",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "0d23e869f743d07656f0bb05aa0889d2f4453994"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_config_attach.py::test_attach_auto_resolve_defaults_to_empty",
+        "tests/lib/test_config_attach.py::test_attach_auto_resolve_loads_rules_in_order",
+        "tests/lib/test_config_attach.py::test_invalid_rules_raise_naming_the_field[unknown-side]",
+        "tests/lib/test_config_attach.py::test_invalid_rules_raise_naming_the_field[missing-side]",
+        "tests/lib/test_config_attach.py::test_invalid_rules_raise_without_jsonschema[unknown-side]",
+        "tests/lib/test_config_attach.py::test_invalid_rules_raise_without_jsonschema[missing-side]",
+        "tests/lib/test_config_attach.py::test_an_empty_glob_raises_without_jsonschema",
+        "tests/lib/test_config_attach.py::test_the_readme_key_table_names_the_key"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_config_attach.py::test_attach_auto_resolve_defaults_to_empty tests/lib/test_config_attach.py::test_attach_auto_resolve_loads_rules_in_order tests/lib/test_config_attach.py::test_invalid_rules_raise_naming_the_field[unknown-side] tests/lib/test_config_attach.py::test_invalid_rules_raise_naming_the_field[missing-side] tests/lib/test_config_attach.py::test_invalid_rules_raise_without_jsonschema[unknown-side] tests/lib/test_config_attach.py::test_invalid_rules_raise_without_jsonschema[missing-side] tests/lib/test_config_attach.py::test_an_empty_glob_raises_without_jsonschema tests/lib/test_config_attach.py::test_the_readme_key_table_names_the_key"
+    }
+  },
+  "evidence": "staged tree 0d23e86: 8 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-13",
+  "seal": "aa83fb126477891455a2296c6fee01461278b8b15115b0f7c4448ee65523e3b4"
+}

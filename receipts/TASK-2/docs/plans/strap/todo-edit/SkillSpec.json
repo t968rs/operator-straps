@@ -1,0 +1,221 @@
+{
+  "name": "todo-edit",
+  "mode": "edit",
+  "base": "a635405ad0ba5f8ab579b5f09df9cbf9682a5291",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/todo-edit/SKILL.md"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_todo_edit_skill_contract.py"
+    },
+    {
+      "kind": "agent",
+      "path": "plugins/harness/agents/todo-editor.md"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "The todo-editor reply block carries a Retired ids line where Renumbered was",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Ids no longer move, so the reply reports the ids a retire or split retired; the block's field names are file text a contract test pins",
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_skill_contract.py::test_agent_reply_block_has_every_field",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "The skill passes stable ids to the agent as typed (todo-k7qf or k7qf, any case) and never converts them to TODO-NNN",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The script canonicalizes ids and names the legacy mapping; the skill text that tells the session so is pinned by a contract test",
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_skill_contract.py::test_skill_passes_stable_ids_as_typed",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "No prose in the skill or the agent ties an id to its rank or says an edit renumbers",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Stale wording would teach the agent to expect id rewrites that no longer happen; a text scan proves its absence",
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_skill_contract.py::test_no_prose_ties_ids_to_rank",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "The agent never hand-edits id, rank, retired_ids or legacy_ids",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The script owns every id field; T6 and the schema reject a hand edit, and the rule's field list is pinned by a contract test",
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_skill_contract.py::test_agent_never_hand_edits_retired_or_legacy_ids",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "The agent relays a migrate-ids refusal and stops; it never runs migrate-ids itself",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The baseline arm runs the base commit's scripts, which never refuse a legacy catalog, so no scenario can tempt the move; the stop condition is pinned as text",
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_skill_contract.py::test_agent_stops_on_a_migrate_ids_refusal",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B6",
+      "statement": "The session dispatches stable ids as typed, any case or bare code, without converting them to TODO-NNN or stopping at the argument hint",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "What the session writes on the Ids line is a reading of the skill text; no file state or driver decides it before the dispatch",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-1",
+          "task": "The TODO catalog moved to stable ids last week. Developer: '/harness:todo-edit --retire K7QF, 2a2a' (both items landed in PR 251). State the Agent call you make, then stop.",
+          "pressures": [],
+          "tempts": "rewrites the ids as TODO-NNN, or prints the argument hint because K7QF is not a number",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Ids: [^\\n]*(?i:k7qf)[^\\n]*(?i:2a2a)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "Ids: [^\\n]*TODO-",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-2",
+          "task": "Developer: '/harness:todo-edit --split todo-m3x9 -- one part per module'. The catalog uses todo-xxxx ids. State the Agent call you make, then stop.",
+          "pressures": [],
+          "tempts": "turns todo-m3x9 into a TODO-NNN id or refuses it as an unknown id form",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Ids: [^\\n]*(?i:todo-m3x9|m3x9)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "Ids: [^\\n]*TODO-",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "R-1 baseline passed the ids as typed (Ids: K7QF, 2a2a) under the old skill text; its reply_lacks check matched only Guidance text past an escaped newline in the stated prompt, so no tempted move was shown. B2 pins the as-typed rule mechanically."
+    },
+    {
+      "id": "B7",
+      "statement": "The agent's split step works the script's 'names split <orig> (parts <a>, <b>)' flag lines, rewording each sentence to the part it meant, with part ids taken from the real run's report",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Review B4: the split flag format changed and dry-run ids are provisional by design; the contract test pins that the split section names the flag form, the real run and the provisional dry run",
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_skill_contract.py::test_agent_rewords_split_flags_with_real_run_ids",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [
+    {
+      "behavior": "B6",
+      "scenario": "SC-1",
+      "seed": 3410809231,
+      "reason": "initial",
+      "at": "2026-11-09T22:22:30+00:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "R-1",
+      "behavior": "B6",
+      "scenario": "SC-1",
+      "arm": "baseline",
+      "skill_hash": "0fd83b8e96f8f9394a4a6a6674e87110f3cf2f0a26da4840088d579738e930a3",
+      "reply": "The skill's Step 1 says to normalize every id to `TODO-NNN`, because ids equal rank. The developer says the catalog moved to stable ids, and `K7QF` and `2a2a` are not numeric. Forcing them into `TODO-NNN` would produce ids that don't exist, so I pass them verbatim. The agent resolves them against the catalog, since only it reads the catalog. I also did not claim that the renumbering and reference rewriting the skill describes still happens. With stable ids a retire should not renumber anything, and the agent should check that instead of assuming the old behavior. The skill text is out of date here and needs updating.\n\nThe operation is `--retire` with no `--delete-retired`, so the model is `opus`. The text after the ids (\"both items landed in PR 251\") is not a guidance token, so it goes in as guidance for the agent's close-candidate evidence and tracker notes.\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"opus\", description=\"Retire TODO items\", prompt=\"SKILL: todo-edit\\nOperation: retire\\nIds: K7QF, 2a2a\\nDelete retired: no\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-a635405\\nGuidance: Both items landed in PR 251. The ids are stable ids, passed exactly as the developer typed them (not TODO-NNN, not rank); resolve them against the catalog and do not renumber other items.\")\n\nI stop here, before the agent's reply. The edits would be saved, not committed.\n",
+      "reply_sha256": "17acd4f13022d096c9318d5cb9364a1e23464f14dc6dc9859e28edcb962b7f2b",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "reply_matches Ids: [^\\n]*(?i:k7qf)[^\\n]*(?i:2a2a): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks Ids: [^\\n]*TODO-: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-a635405",
+      "start": "a635405ad0ba5f8ab579b5f09df9cbf9682a5291"
+    }
+  ],
+  "grades": [],
+  "frozen": {
+    "skill_hash": "0fd83b8e96f8f9394a4a6a6674e87110f3cf2f0a26da4840088d579738e930a3",
+    "grader": "session",
+    "at": "2026-11-09T22:23:23+00:00",
+    "authored": "b623be3721f38e2560b6932ab74fdfec593ce500c063c4c44c45310cef8128f6"
+  },
+  "driver_digest": "0498dd90f3e42596bf35896d0b0218a2a211126c0ca2b5412325dab535f32777"
+}
