@@ -94,7 +94,7 @@
     {
       "id": "TASK-2",
       "title": "plan.py archive: fold a plan's driver tags into archive/<stem>/r1 and delete them",
-      "action": "New plugins/harness/lib/harness_lib/plan_archive.py (module docstring, functions under 50 lines) and an archive subcommand in plugins/harness/scripts/plan.py. driver_tags(repo, stem): {name: peeled object} of every base/, freeze/, lock/ and receipt/ tag under <stem>/ (archive/ tags never). The fold: a receipt/<stem>/<ITEM>-tree[.n] tag puts its tree at receipts/<ITEM>[.n]; a receipt -commit[.n] tag puts the commit's tree at receipts/<ITEM>[.n] (receipts/<ITEM>-commit[.n] when a -tree tag already took that name) and the commit among the parents; freeze/ and lock/ <stem>/r1.<k>-tree put the tree at freezes/r1.<k>; their -commit[.n] tags and every base tag (r1 and r1-<m>) add the commit to the parents. Re-archive (D1): when fg.archive_tips(repo, stem) is not empty, the new name is fg.archive_tag(stem, 1, m) with m one past the highest existing (the plain name counts as 1) and the last tip is the first parent. Message: 'Archive of <stem>: every receipt, freeze, base and relink object', a blank line, then one '<tag name> <sha40>' line per folded tag sorted by name (plus 'previous: <archive tag> <sha40>' on a re-archive). Build with fg.mktree (receipts and freezes subtrees, then the root holding whichever are non-empty) and fg.commit_tree inside plan_lock's identity fallback (rename plan_lock._tagger to tagger, its uses at :230 and :263 follow; S3). Before any tag is created, verify through the module attributes fg.reaches (each folded commit) and fg.tree_held (each folded tree) with the new commit as the only tip; each miss is a problem '<name> (<sha7>) is not reachable from the archive; nothing tagged or deleted' and the command refuses (PlanError). Then preflight and create the archive tag (pk.preflight, fg.ensure_tag, annotated, message '<stem>: archive of round 1'), then fg.delete_tags on the folded names. Output: 'archive [done] | plan <id> | <archive tag> -> <sha7> | folded <n> tag(s)', 'tag: <archive tag> -> <sha7>', 'push: git push origin <archive tag>', 'deleted: <folded names sorted, space-joined>', and with --remote 'remote: git push origin --delete <folded names but receipt/ ones, sorted>' (no line when none is left). No driver tags: problem 'plan <id> has no driver tags to archive'. The command runs no reconcile. plan.py: cmd_archive, an archive parser in _lock_parsers (help: fold the plan's driver tags into one archive tag, on the developer's explicit ask; --remote: also print the remote delete line), COMMANDS entry, and an archive PLAN [--remote] section in the module docstring that also states the check change of TASK-3. Copy the planned test file to its repo path first.",
+      "action": "New plugins/harness/lib/harness_lib/plan_archive.py (module docstring, functions under 50 lines) and an archive subcommand in plugins/harness/scripts/plan.py. driver_tags(repo, stem): {name: peeled object} of every tag under <stem>/ whose first segment is base, receipt or a freeze_ledger.EntryKind value (freeze, lock, unlock, arm, reopen, relink), archive/ tags never: relink, arm and unlock entries carry <kind>/<stem>/r1.<k>-commit tags (plan_lock._entry_stem), and they fold like the rest. The fold: a receipt/<stem>/<ITEM>-tree[.n] tag puts its tree at receipts/<ITEM>[.n]; a receipt -commit[.n] tag puts the commit's tree at receipts/<ITEM>[.n] (receipts/<ITEM>-commit[.n] when a -tree tag already took that name) and the commit among the parents; freeze/ and lock/ <stem>/r1.<k>-tree put the tree at freezes/r1.<k>; every <kind>/<stem>/r1.<k>-commit[.n] tag of any entry kind and every base tag (r1 and r1-<m>) add the commit to the parents. Re-archive (D1): when fg.archive_tips(repo, stem) is not empty, the new name is fg.archive_tag(stem, 1, m) with m one past the highest existing (the plain name counts as 1) and the last tip is the first parent. Message: 'Archive of <stem>: every base, receipt and ledger entry object', a blank line, then one '<tag name> <sha40>' line per folded tag sorted by name (plus 'previous: <archive tag> <sha40>' on a re-archive). Build with fg.mktree (receipts and freezes subtrees, then the root holding whichever are non-empty) and fg.commit_tree inside plan_lock's identity fallback (rename plan_lock._tagger to tagger, its uses at :230 and :263 follow; S3). Before any tag is created, verify through the module attributes fg.reaches (each folded commit) and fg.tree_held (each folded tree) with the new commit as the only tip; each miss is a problem '<name> (<sha7>) is not reachable from the archive; nothing tagged or deleted' and the command refuses (PlanError). Then preflight and create the archive tag (pk.preflight, fg.ensure_tag, annotated, message '<stem>: archive of round 1'), then fg.delete_tags on the folded names. Output: 'archive [done] | plan <id> | <archive tag> -> <sha7> | folded <n> tag(s)', 'tag: <archive tag> -> <sha7>', 'push: git push origin <archive tag>', 'deleted: <folded names sorted, space-joined>', and with --remote 'remote: git push origin --delete <folded names but receipt/ ones, sorted>' (no line when none is left). No driver tags: problem 'plan <id> has no driver tags to archive'. The command runs no reconcile. plan.py: cmd_archive, an archive parser in _lock_parsers (help: fold the plan's driver tags into one archive tag, on the developer's explicit ask; --remote: also print the remote delete line), COMMANDS entry, and an archive PLAN [--remote] section in the module docstring that also states the check change of TASK-3. Copy the planned test file to its repo path first.",
       "files": [
         "plugins/harness/lib/harness_lib/plan_archive.py",
         "plugins/harness/scripts/plan.py",
@@ -152,6 +152,14 @@
         {
           "at": "plugins/harness/lib/harness_lib/freeze_git.py:161",
           "expect": "def ensure_tag(repo: PathLike, name: str, target: str, message: str) -> Optional[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:167-168",
+          "expect": "return f\"{entry.kind.value}/{stem}/r{entry.round}.{entry.seq}\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/freeze_ledger.py:31-37",
+          "expect": "relink = \"relink\""
         }
       ],
       "commands": [
@@ -174,6 +182,10 @@
           "red": "AssertionError"
         },
         {
+          "node": "tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind",
+          "red": "AssertionError"
+        },
+        {
           "node": "tests/scripts/test_plan_archive.py::test_archive_refuses_when_an_object_is_unreachable",
           "red": "AssertionError"
         }
@@ -182,9 +194,10 @@
     {
       "id": "TASK-3",
       "title": "Reconcile and check count an archived plan's objects as tagged",
-      "action": "In plugins/harness/lib/harness_lib/plan_lock.py, with fg.archive_tips(repo, stem) read once per call: reconcile returns ([], []) when the stem has an archive (so no PLAN command creates a -commit tag for an archived plan; commit_tags still creates the tags it is given); _base_lines prints off-history only when the base is off HEAD's history and no archive reaches it (fg.reaches), and untagged only when no base tag peels to it and no archive reaches it; _entry_lines prints a tree line only when no tree tag holds the entry's tree and no archive tree holds it (fg.tree_held), and no commit line at all for an archived plan (its adder sits on HEAD's history, and the archive keeps the entry commit it folded). An object outside every archive warns as before. Update the module docstring and the check_lines docstring. Copy the planned test file to its repo path first.",
+      "action": "In plugins/harness/lib/harness_lib/plan_lock.py, with tips = fg.archive_tips(repo, stem) and folded = fg.archived_names(repo, tips) read once per call (archived_names, new in plugins/harness/lib/harness_lib/freeze_git.py: the set of tag names the '<name> <sha40>' lines of the tips' commit messages list; empty for no tips): reconcile drops each row whose entry has a '<entry stem>-commit' or '-commit.<n>' name in folded, so an entry an archive folded gets no new -commit tag, even after a rebase moved the commit that added its file, while an entry written after the archive (a refreeze, relink, arm or unlock) is tagged as before and folds into r1-<m> (D1); base_held is also True when an archive reaches the base (fg.reaches), so a refreeze after the archive tags no base; _base_lines prints off-history only when the base is off HEAD's history and no archive reaches it, and untagged only when no base tag peels to it and no archive reaches it; _entry_lines prints a tree line only when no tree tag holds the entry's tree and no archive tree holds it (fg.tree_held), and the commit line only when the entry has no -commit name in folded (the archive keeps that entry's commit as a parent). An object outside every archive warns as before. Update the module docstrings of both files and the check_lines docstring. Copy the planned test file to its repo path first.",
       "files": [
         "plugins/harness/lib/harness_lib/plan_lock.py",
+        "plugins/harness/lib/harness_lib/freeze_git.py",
         "tests/scripts/test_plan_archive_check.py"
       ],
       "dependencies": [
@@ -225,6 +238,18 @@
         {
           "at": "plugins/harness/scripts/plan.py:983",
           "expect": "*pk.reconcile_lines(repo, plan_file, plan)]))"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:182-187",
+          "expect": "def base_held(repo: Path, stem: str, base: str) -> bool:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:321",
+          "expect": "pending = Pending(stem, earlier, seq, base_tags(stem, plan.base_commit, repo))"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:592",
+          "expect": "tagged = git(repo, \"tag\", \"--list\", f\"{_entry_stem(stem, entry)}-commit*\").stdout.split()"
         }
       ],
       "commands": [
@@ -243,6 +268,10 @@
           "red": "AssertionError"
         },
         {
+          "node": "tests/scripts/test_plan_archive_check.py::test_an_entry_written_after_the_archive_is_tagged_and_folds_again",
+          "red": "AssertionError"
+        },
+        {
           "node": "tests/scripts/test_plan_archive_check.py::test_a_tree_outside_the_archive_still_warns",
           "red": "AssertionError"
         }
@@ -251,7 +280,7 @@
     {
       "id": "TASK-4",
       "title": "Docs: archive step, tag row and actor wording (issues 284 and 283); harness 0.75.0",
-      "action": "plugins/harness/skills/write-plan/SKILL.md: an **Archive.** paragraph after **Relink.**: PLAN archive <id> [--remote] runs only on the developer's explicit ask, at merge time; it folds the plan's base, freeze, lock and receipt tags into one annotated tag archive/<stem>/r1 over a plumbing commit (receipts/ and freezes/ subtrees, the base, entry and receipt commits as parents, a message mapping each folded name to its object), verifies every object is reachable before tagging, deletes the folded local tags, prints one push: line for the archive and, with --remote, a remote: line for the developer; a later run folds new tags into archive/<stem>/r1-<m>; afterwards reconcile tags nothing for the plan and check counts an object the archive holds as tagged in its untagged: and off-history: lines. Add a | `archive/<stem>/r1`, `archive/<stem>/r1-<m>` | row to the tag table, name archive in Related's plan_lock line, and reword SKILL.md:153-155 so the actor is the agent: 'so once the developer has committed the freeze, the agent runs `PLAN check <id>`: it creates the `-commit` tag and prints its `push:` line for the developer to run.' plugins/harness/skills/write-plan/README.md: an Archive row after Relink in the command table and the archive in the merge steps. plugins/harness/schemas/PLANS_PIP_Template.md: the Merge/Integration steps each start with (developer) or (agent), and gain '(agent) plan.py archive {PLAN_ID}, on the developer's explicit ask, after the merge' (the developer runs the push: line it prints). plugins/harness/schemas/README.md: one sentence in the Tags paragraph on archive/<stem>/r1 (plans only). README.md (root): the write-plan row names archive. plugins/harness/.claude-plugin/plugin.json: 0.74.0 -> 0.75.0. docs/RELEASES/v1.0.0.md: harness row Now 0.75.0, and a line after the Fix(write-plan) decision-id line: Feat(write-plan): plan.py archive folds a finished plan's driver tags into one archive tag (issue 284), plus Fix(write-plan): skill and PIP template name the actor of each post-freeze and merge step (issue 283). Copy the planned test file to its repo path first.",
+      "action": "plugins/harness/skills/write-plan/SKILL.md: an **Archive.** paragraph after **Relink.**: PLAN archive <id> [--remote] runs only on the developer's explicit ask, at merge time; it folds the plan's base, receipt and ledger entry tags (freeze, lock, arm, unlock, relink) into one annotated tag archive/<stem>/r1 over a plumbing commit (receipts/ and freezes/ subtrees, the base, entry and receipt commits as parents, a message mapping each folded name to its object), verifies every object is reachable before tagging, deletes the folded local tags, prints one push: line for the archive and, with --remote, a remote: line for the developer; a later run folds new tags into archive/<stem>/r1-<m>; afterwards no command re-tags an entry the archive folded or a base it reaches, check counts an object the archive holds as tagged in its untagged: and off-history: lines, and an entry written later is tagged as before until the next archive folds it. Add a | `archive/<stem>/r1`, `archive/<stem>/r1-<m>` | row to the tag table, name archive in Related's plan_lock line, and reword SKILL.md:153-155 so the actor is the agent: 'so once the developer has committed the freeze, the agent runs `PLAN check <id>`: it creates the `-commit` tag and prints its `push:` line for the developer to run.' plugins/harness/skills/write-plan/README.md: an Archive row after Relink in the command table and the archive in the merge steps. plugins/harness/schemas/PLANS_PIP_Template.md: the Merge/Integration steps each start with (developer) or (agent), and gain '(agent) plan.py archive {PLAN_ID}, on the developer's explicit ask, after the merge' (the developer runs the push: line it prints). plugins/harness/schemas/README.md: one sentence in the Tags paragraph on archive/<stem>/r1 (plans only). README.md (root): the write-plan row names archive. plugins/harness/.claude-plugin/plugin.json: 0.74.0 -> 0.75.0. docs/RELEASES/v1.0.0.md: harness row Now 0.75.0, and a line after the Fix(write-plan) decision-id line: Feat(write-plan): plan.py archive folds a finished plan's driver tags into one archive tag (issue 284), plus Fix(write-plan): skill and PIP template name the actor of each post-freeze and merge step (issue 283). Copy the planned test file to its repo path first.",
       "files": [
         "plugins/harness/skills/write-plan/SKILL.md",
         "plugins/harness/skills/write-plan/README.md",
@@ -459,8 +488,8 @@
   "values": [
     {
       "name": "folded driver tag kinds",
-      "value": "base, freeze, lock, receipt",
-      "source": "plugins/harness/lib/harness_lib/plan_lock.py:10-13 and plugins/harness/lib/harness_lib/freeze_git.py:108-120 (relink tags are base/<stem>/r1-<m>, not a fifth kind)"
+      "value": "base, receipt, and every ledger entry kind: freeze, lock, unlock, arm, reopen, relink",
+      "source": "plugins/harness/lib/harness_lib/plan_lock.py:167-168 (_entry_stem: <kind>/<stem>/r1.<k>, -commit tagged for every non-history entry) and plugins/harness/lib/harness_lib/freeze_ledger.py:31-37 (EntryKind)"
     },
     {
       "name": "plan round",
