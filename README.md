@@ -411,10 +411,12 @@ TODO sync needs only `todo.folder`. Once set, the catalog is `<folder>/RepoToDo.
 `lease release` rewrite it after their catalog writes; a bare `add --spec`, `retire`, `split`, `refresh` or
 `migrate-ids` leaves the page as it was until the next render. Rule T2 flags a stale page only when
 `todo.top_n` or the top-N ids, ranks, statuses or titles changed; other edits (the Summary counts, scores and the other columns, the
-folded prose) show after the next render with no finding. The page holds a summary of the catalog (item count,
-counts by status and kind, trackers and close candidates), then the top-N table (rank, item, status, kind,
-blast radius, LoE, score, GitHub issues), with each item's summary, proposed change, open decision and ranking
-reason folded under its title. Open it from disk in a browser: it polls the `todo_live.js` stamp beside it and
+folded prose, the remaining-items table) show after the next render with no finding. The page holds a summary
+of the catalog (item count, counts by status and kind, trackers and close candidates), then the top-N table
+(rank, id, item, status, kind, blast radius, LoE, score, GitHub issues), with each item's summary, proposed
+change, open decision and ranking reason folded under its title, and below it every remaining item in rank
+order, in a second table with the same columns, folded closed. Open it from disk in a browser: it polls the
+`todo_live.js` stamp beside it and
 reloads itself after the next render.
 Dated `TODO_Snapshot_<YYYY_MMDD>.md` files from earlier releases are no longer written or read.
 
