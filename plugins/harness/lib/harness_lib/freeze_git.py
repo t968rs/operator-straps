@@ -13,8 +13,11 @@ The archive half (``archive/<stem>/r<N>[-<m>]``): ``archive_tag`` names the tag.
 of named subtrees from ``git mktree -z``. ``commit_tree`` writes a commit over a tree with every distinct
 parent, in first-seen order; its message is fed as bytes (``_run_bytes``) because Windows text-mode stdin
 would turn the LF line endings into CRLF, which ``git commit-tree`` stores unchanged. ``archive_tips``
-lists the commits the archive tags of one stem peel to; ``reaches`` and ``tree_held`` answer whether those
-tips keep a commit or a tree reachable. ``delete_tags`` removes the named local tags that still exist.
+lists the commits the archive tags of one stem peel to (empty, never raising, when git cannot list them);
+``reaches`` and ``tree_held`` answer whether those tips keep a commit or a tree reachable, and
+``held_trees`` gives the subtree set once for a caller that tests many trees. ``archived_names`` collects
+the folded tag names the tips' commit messages list, so a caller can tell a tag an archive folded from
+one never made. ``delete_tags`` removes the named local tags that still exist.
 """
 from __future__ import annotations
 
@@ -24,7 +27,7 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 # Written by strap's scenario-tree builder at the root of each throwaway worktree (plan 1015 STRAP item:
 # ``build_tree (scenario trees) writes freeze_git.SCENARIO_MARKER``); drivers skip tagging and reconcile
@@ -321,8 +324,15 @@ def _archive_order(stem: str, name: str) -> Optional[Tuple[int, int]]:
 
 
 def archive_tips(repo: PathLike, stem: str) -> List[str]:
-    """The commits the ``archive/<stem>/r<N>[-<m>]`` tags peel to, by round then m (plain name first)."""
-    ranked = sorted((order, name) for name in _tag_names(repo) if (order := _archive_order(stem, name)))
+    """The commits the ``archive/<stem>/r<N>[-<m>]`` tags peel to, by round then m (plain name first).
+
+    Never raises: empty when git cannot list the tags (a folder outside git, a broken repository).
+    """
+    listed = _run(repo, "tag", "--list", f"archive/{stem}/*")
+    if listed.returncode != 0:
+        return []
+    ranked = sorted((order, name) for name in listed.stdout.splitlines()
+                    if (order := _archive_order(stem, name)))
     tips = []
     for _, name in ranked:
         tip = _resolve(repo, f"refs/tags/{name}^{{commit}}")
@@ -332,26 +342,54 @@ def archive_tips(repo: PathLike, stem: str) -> List[str]:
 
 
 def reaches(repo: PathLike, tips: Sequence[str], obj: str) -> bool:
-    """True when ``obj`` is a commit equal to, or an ancestor of, any of ``tips``."""
+    """True when ``obj`` is a commit equal to, or an ancestor of, any of ``tips``; False for no tips."""
+    if not tips:
+        return False
     commit = _resolve(repo, f"{obj}^{{commit}}")
     if commit is None:
         return False
     return any(_run(repo, "merge-base", "--is-ancestor", commit, tip).returncode == 0 for tip in tips)
 
 
-def tree_held(repo: PathLike, tips: Sequence[str], tree: str) -> bool:
-    """True when ``tree`` (a full sha) is a subtree listed by ``git ls-tree -r -d -z`` of any of ``tips``.
+def held_trees(repo: PathLike, tips: Sequence[str]) -> Set[str]:
+    """Every subtree sha listed by ``git ls-tree -r -d -z`` of any of ``tips``, one git call per tip.
 
     Only subtrees are listed, so a tip's own root tree is not counted. A tip git cannot list is skipped.
     """
+    held: Set[str] = set()
     for tip in tips:
         done = _run(repo, "ls-tree", "-r", "-d", "-z", tip)
         if done.returncode != 0:
             continue
         for entry in _nul_list(done.stdout):
-            if entry.split("\t", 1)[0].split()[2:3] == [tree]:
-                return True
-    return False
+            held.update(entry.split("\t", 1)[0].split()[2:3])
+    return held
+
+
+def tree_held(repo: PathLike, tips: Sequence[str], tree: str) -> bool:
+    """True when ``tree`` (a full sha) is in ``held_trees`` of ``tips``."""
+    return tree in held_trees(repo, tips)
+
+
+_FOLDED_LINE = re.compile(r"^(\S+) [0-9a-f]{40}(?:[0-9a-f]{24})?$")
+
+
+def archived_names(repo: PathLike, tips: Sequence[str]) -> Set[str]:
+    """The tag names the ``<name> <sha40>`` lines of the commit messages of ``tips`` list; empty for no tips.
+
+    A ``previous: <archive tag> <sha>`` line has two tokens before the sha, so it never matches and the
+    earlier archive is not taken for a folded tag. A tip whose message git cannot read is skipped.
+    """
+    names: Set[str] = set()
+    for tip in tips:
+        done = _run(repo, "log", "-1", "--format=%B", tip)
+        if done.returncode != 0:
+            continue
+        for line in done.stdout.splitlines():
+            match = _FOLDED_LINE.match(line.strip())
+            if match:
+                names.add(match.group(1))
+    return names
 
 
 def delete_tags(repo: PathLike, names: Sequence[str]) -> None:
