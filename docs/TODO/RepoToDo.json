@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 70,
-    "needs_decision": 41,
+    "items": 71,
+    "needs_decision": 42,
     "trackers": 0,
     "close_candidates": 32,
     "by_status": {
-      "NEEDS_DECISION": 41,
+      "NEEDS_DECISION": 42,
       "OPEN": 29
     },
     "by_impact": {
-      "dev_velocity": 38,
+      "dev_velocity": 39,
       "docs_tooling": 21,
       "maintainability": 2,
       "runtime_failure": 6,
@@ -76,11 +76,11 @@
       "XS": 4,
       "S": 22,
       "M": 31,
-      "L": 12,
+      "L": 13,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 62,
+      "gh_issue": 63,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -3085,8 +3085,85 @@
       "why_ranked": "Severity 2 regenerate-to-read friction, dev_velocity impact, L size."
     },
     {
-      "id": "todo-zj3h",
+      "id": "todo-tq3u",
       "rank": 51,
+      "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "How should `plan.py renumber` treat the old id's freeze ledger and driver tags: keep them as orphaned history (the manual fresh-ledger route), fold them through `plan.py archive` before the move, or carry them over to the new stem (new ledger entries and retagged base/freeze/receipt refs)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#298",
+          "url": "https://github.com/t968rs/operator-straps/issues/298"
+        }
+      ],
+      "gh_issues": [
+        298
+      ],
+      "related_gh_issues": [
+        284,
+        265
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Per the session: found while renaming plan 1021 to 2021 for PR #297 (branch 2162-skill-tag-archive, review issue I1). Checked: the write-plan strap fixture docs/plans/strap/write-plan/fixtures/plan-1021/docs/plans/1021_strap_round_reopen_ActionPlan.json is on main, and plugins/harness/lib/harness_lib/plan_doc.py:83-90 (find_plan) refuses a folder with two plans of one id (\"2 plans 1021\"); that the B11 green R-14 hit it is per the session (unverified). plugins/harness/skills/write-plan/SKILL.md:119-122 says a plan id that collides with one on the base branch moves the newer plan to the next free id, but plugins/harness/scripts/plan.py:1069-1115 registers only new, check, render, red, freeze, lanes, record, verify, lock, unlock, relink and archive: no renumber. The id is built into: the plan file name and plan_id, the PIP name (plan_doc.py:62-76), the docs/plans/<id>/ folder (receipts, DesignEvolution.json whose plan_id is pinned at plugins/harness/lib/harness_lib/evolution_models.py:136, live.js, planned tests), the ledger stem plan/<id>-<slug> (plugins/harness/lib/harness_lib/freeze_ledger.py:99-100) and its write-once entries under docs/plans/freezes/ (plugins/harness/hooks/guard_locked.py:7-9 denies every write there), the driver tags matched by plugins/harness/lib/harness_lib/plan_lock.py:46, and the item seals, which hash the plan id (plugins/harness/lib/harness_lib/plan_models.py:348-360, checked at plugins/harness/lib/harness_lib/plan_receipts.py:118 and :161 and plugins/harness/lib/harness_lib/plan_record.py:101). Per the session, the developer took a manual fresh-ledger route here: git mv to the new id, hand-set plan_id, the ledger stem and the DesignEvolution plan_id, freeze again, re-record every item, leave the old ledger and tags orphaned. Related, separate: plan_doc.next_plan_id (plan_doc.py:51-55, fed by plan.py:296) takes seen ids from plan_lock._branch_ids (plan_lock.py:759-767), a non-recursive ls-tree of the plans folder, so strap fixture plans under docs/plans/strap/*/fixtures/ are never counted. Catalog items on the same files: todo-4zhu (#284, plan.py archive, which the old-tag choice may reuse), todo-w3ck (#265, driver tags), todo-v55s (#178, strap scenario trees).",
+      "proposed_change": "Add `plan.py renumber <plan> --to <id>` (default: the next free id). It refuses a Locked or armed plan and a target id already taken (on any branch, tag or strap fixture); moves the plan JSON, PIPs and docs/plans/<id>/ folder; rewrites plan_id in the plan and DesignEvolution.json and the documentation path; reseals every recorded item under the new id (or resets it to be recorded again, if a reseal without fresh evidence is not acceptable); starts the new ledger stem with a first freeze; and handles the old ledger and tags per the decision (keep, fold with `plan.py archive`, or carry over). Print each step as a line the developer can review, and leave the commit to the developer. Update write-plan SKILL.md:119-122 to name the command. Separately, count strap fixture plan ids in next_plan_id so the collision stops recurring.",
+      "files": [
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/lib/harness_lib/plan_doc.py",
+        "plugins/harness/lib/harness_lib/freeze_ledger.py",
+        "plugins/harness/lib/harness_lib/plan_lock.py",
+        "plugins/harness/lib/harness_lib/plan_archive.py",
+        "plugins/harness/lib/harness_lib/plan_receipts.py",
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "tests/scripts/test_plan_driver.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "A new driver command that touches the plan files, the freeze ledger, the item seals and the driver tags; existing commands keep their behavior.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_doc.py",
+          "plugins/harness/lib/harness_lib/freeze_ledger.py",
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "plugins/harness/lib/harness_lib/plan_archive.py",
+          "plugins/harness/lib/harness_lib/plan_receipts.py",
+          "plugins/harness/lib/harness_lib/plan_record.py",
+          "plugins/harness/hooks/guard_locked.py",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "tests/scripts/test_plan_driver.py",
+          "tests/scripts/test_plan_archive.py",
+          "tests/scripts/test_plan_lock.py",
+          "tests/scripts/test_plan_receipts_freeze.py"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "File and folder moves, plan and evolution id rewrites, resealing or re-recording, a new ledger stem, the old-tag policy and its tests across git-backed fixtures."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing driver step that write-plan already requires (a manual route exists), dev_velocity impact, L size."
+    },
+    {
+      "id": "todo-zj3h",
+      "rank": 52,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -3148,7 +3225,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 52,
+      "rank": 53,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3207,7 +3284,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 53,
+      "rank": 54,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3268,7 +3345,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 54,
+      "rank": 55,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3326,7 +3403,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 55,
+      "rank": 56,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3384,7 +3461,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 56,
+      "rank": 57,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -3437,7 +3514,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 57,
+      "rank": 58,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -3491,7 +3568,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 58,
+      "rank": 59,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3547,7 +3624,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 59,
+      "rank": 60,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -3607,7 +3684,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 60,
+      "rank": 61,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3662,7 +3739,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 61,
+      "rank": 62,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3713,7 +3790,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 62,
+      "rank": 63,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3770,7 +3847,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 63,
+      "rank": 64,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3823,7 +3900,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 64,
+      "rank": 65,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3878,7 +3955,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 65,
+      "rank": 66,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3936,7 +4013,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 66,
+      "rank": 67,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -3991,7 +4068,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 67,
+      "rank": 68,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4054,7 +4131,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 68,
+      "rank": 69,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -4109,7 +4186,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 69,
+      "rank": 70,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4160,7 +4237,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 70,
+      "rank": 71,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
