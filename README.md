@@ -409,8 +409,8 @@ TODO sync needs only `todo.folder`. Once set, the catalog is `<folder>/RepoToDo.
 
 `todo_sync.py render` rewrites the snapshot page on demand, and `init`, `add --inbox` (the inbox drain) and
 `lease release` rewrite it after their catalog writes; a bare `add --spec`, `retire`, `split`, `refresh` or
-`migrate-ids` leaves the page as it was until the next render. Rule T2 flags a stale page only when the top-N
-ids, ranks, statuses or titles changed; other edits (the Summary counts, scores and the other columns, the
+`migrate-ids` leaves the page as it was until the next render. Rule T2 flags a stale page only when
+`todo.top_n` or the top-N ids, ranks, statuses or titles changed; other edits (the Summary counts, scores and the other columns, the
 folded prose) show after the next render with no finding. The page holds a summary of the catalog (item count,
 counts by status and kind, trackers and close candidates), then the top-N table (rank, item, status, kind,
 blast radius, LoE, score, GitHub issues), with each item's summary, proposed change, open decision and ranking
@@ -452,8 +452,8 @@ finding that names `migrate-ids`, plus any duplicate-id findings.
 
 `todo_sync.py init` creates a project's first catalog: with `todo.folder` set, it makes the folder, an empty
 schema-valid catalog at `todo.catalog` (default `RepoToDo.json`; default ranking tables, no items, current commit
-recorded) and the snapshot page with its `todo_live.js` stamp; it prints a `created <path>` line for the catalog
-and one for the page. It refuses to overwrite a catalog, needs a git commit and does not edit
+recorded) and, when `todo.snapshots.dir` is set, the snapshot page with its `todo_live.js` stamp; it prints a
+`created <path>` line for the catalog and one for the page (the stamp is not listed). It refuses to overwrite a catalog, needs a git commit and does not edit
 `harness.json`.
 
 `todo_sync.py untracked` lists the open GitHub issues no record covers (an item's `gh_issues` or `gh_issue`

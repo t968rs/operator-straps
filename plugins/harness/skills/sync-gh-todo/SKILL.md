@@ -39,7 +39,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.
 
 `init` writes an empty catalog and, when `todo.snapshots.dir` is set, the snapshot page and its `todo_live.js`
 stamp, and prints a `created <path>` line for the catalog and one for the page (the stamp is not listed). It
-never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands. Any other
+never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands. The
+exception is a `problem:` line ending `was created, finish with todo_sync.py render`: the catalog landed and
+only the page failed, so relay it, then rerun the untracked command and continue. Any other
 `problem:` line from the untracked command (no `todo.folder` in `.claude/harness.json`, a catalog still holding
 `TODO-NNN` ids, which names `todo_sync.py migrate-ids`, `gh` missing or failing) ends the run: relay it.
 
