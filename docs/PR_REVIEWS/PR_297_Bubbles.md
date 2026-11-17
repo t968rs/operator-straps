@@ -9,9 +9,9 @@
 
 | ID | Class | Status | Decision | Tracked in |
 |----|-------|--------|----------|------------|
-| I1 | architectural_ambiguity | Open | - | - |
-| I4 | architectural_ambiguity | Open | - | - |
-| M1 | needs_follow_up | Open | - | - |
+| I1 | architectural_ambiguity | Decided | RESOLVED 2026-11-16: 68c3c07 (working-tree snapshot; developer commits) - developer decision: the newer plan moved; plan 1021 renumbered to 2021 with a fresh ledger (first freeze r1.1 at base 36c328e, all six items re-recorded, DesignEvolution EX3); the 1021 ledger entries and tags stay as history; plan.py renumber filed as issue 298 (outside fixer waves) | 36c328e |
+| I4 | architectural_ambiguity | Decided | RESOLVED 2026-11-16: 68c3c07 (working-tree snapshot; developer commits) - developer chose (a): _base_lines prints off-history: from _on_head alone, untagged: still skips a base an archive reaches; docstrings, plan.py archive help and write-plan SKILL.md updated; TASK-3 node renamed test_a_rewritten_base_the_archive_reaches_still_cues_relink (DesignEvolution EX1) (outside fixer waves) | - |
+| M1 | needs_follow_up | Decided | RESOLVED 2026-11-16: 68c3c07 (working-tree snapshot; developer commits) - developer OK: plan 2021 records branch 2162-skill-tag-archive and branch_lineage main-->2162-skill-tag-archive; STR-2 runs greens of B9 and B11 with B10 noted as dropped (DesignEvolution EX2) (outside fixer waves) | - |
 
 ## Entries
 
@@ -38,7 +38,7 @@
     - (e) Renumber the fixture plan to an id outside the live sequence (for example 9021: file name, plan_id and the scenario task texts) through a write-plan strap round, then re-run the B11 greens on the new fixture. -> same end state as (a).
     - (f) Make the scenario-tree builder remove each real docs/plans/<id>_* file whose id a fixture plan reuses, so a fixture plan's id is always unique inside its tree. -> general form of (d): no fixture id can collide in any tree.
 - **Recommendation:** Move the branch plan, the newer one, since the write-plan rule keeps a plan already on the base branch in place; pair it with (b) later so a new plan never takes a fixture id again.
-- **Decision:** open
+- **Decision:** RESOLVED, 2026-11-16. 68c3c07 (working-tree snapshot; developer commits) - developer decision: the newer plan moved; plan 1021 renumbered to 2021 with a fresh ledger (first freeze r1.1 at base 36c328e, all six items re-recorded, DesignEvolution EX3); the 1021 ledger entries and tags stay as history; plan.py renumber filed as issue 298 (outside fixer waves)
 
 ### I4. An archive hides the `off-history:` relink cue
 
@@ -59,7 +59,7 @@
 - **Expected behavior per fix:**
     - (a) Compute `off-history:` from `_on_head` alone (`lines = [] if _on_head(repo, base) else [...]`), keep `kept` only in the `untagged:` condition, and update the `_base_lines`, `check_lines` and module docstrings and plan.py:145-148 to say only `untagged:` is suppressed. -> check prints `off-history: <sha7> (base r1)` for any base off HEAD's history whether or not an archive reaches it, while an archive still silences `untagged:` for the base. The test at tests/scripts/test_plan_archive_check.py:56-67 (and its frozen copy under docs/plans/1021) would then see an off-history: line and fail its `loud(...) == []` assertion, so it and the plan 1021 TASK-3 statement would need changing too.
 - **Recommendation:** Apply (a). `off-history:` and `untagged:` answer different questions: an archive answers "is it tagged", not "is it on HEAD". The reversal needs a design change to the plan (DesignEvolution entry, `plan_api.write`, refreeze) and an edit to the frozen TASK-3 test.
-- **Decision:** open
+- **Decision:** RESOLVED, 2026-11-16. 68c3c07 (working-tree snapshot; developer commits) - developer chose (a): _base_lines prints off-history: from _on_head alone, untagged: still skips a base an archive reaches; docstrings, plan.py archive help and write-plan SKILL.md updated; TASK-3 node renamed test_a_rewritten_base_the_archive_reaches_still_cues_relink (DesignEvolution EX1) (outside fixer waves)
 
 ### M1. Plan 1021 records branch 1162-plan-skill-tag-archive; the PR head branch is 2162-skill-tag-archive
 
@@ -83,4 +83,4 @@
     - (d) Record both corrections as a DesignEvolution change (evolution_api.add) citing STR-2 and the branch rename, so the frozen plan stays untouched. -> the plan text is unchanged; the catalog records both corrections.
     - (e) Or rename the branch to match the plan before merge. -> the branch is 1162-plan-skill-tag-archive again; STR-2 still names B10.
 - **Recommendation:** Apply (a), and drop B10 from the STR-2 action in the same write and refreeze, with a DesignEvolution entry recording both changes.
-- **Decision:** open
+- **Decision:** RESOLVED, 2026-11-16. 68c3c07 (working-tree snapshot; developer commits) - developer OK: plan 2021 records branch 2162-skill-tag-archive and branch_lineage main-->2162-skill-tag-archive; STR-2 runs greens of B9 and B11 with B10 noted as dropped (DesignEvolution EX2) (outside fixer waves)

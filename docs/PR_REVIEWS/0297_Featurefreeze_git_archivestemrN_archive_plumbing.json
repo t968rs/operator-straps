@@ -8,7 +8,7 @@
   "base_sha": "36c328ebc8c1e5eb54afaee3a6736b95b2cd3940",
   "head_sha": "e8c749f0ac2bb08c73c2d01c63c3c244cab3da14",
   "review_date": "2026-11-16",
-  "verdict": "NOT READY TO MERGE - important: I1, I4",
+  "verdict": "READY TO MERGE - 23 of 23 findings resolved, 0 bubbled",
   "stats": {
     "additions": 2560,
     "deletions": 52,
@@ -39,11 +39,7 @@
     "docs/_scratch/pr_review/0297/pr297_20261117T044227Z/findings/adv_code_runtime.json",
     "docs/_scratch/pr_review/0297/pr297_20261117T044227Z/findings/adv_code_tests.json"
   ],
-  "bubbles": [
-    "I1",
-    "I4",
-    "M1"
-  ],
+  "bubbles": [],
   "strengths": [
     "Every test runs real git in a throwaway make_project repository; there are no mock-chain wiring tests, and the single stub (fg.reaches) is fault injection judged on observable outcomes (exit code, problem lines, untouched tags, no archive tag).",
     "test_archive_folds_every_driver_tag_into_one checks the archive commit itself (parents, freezes/ and receipts/ subtrees, message lines against the peeled tag objects), not just the printed summary.",
@@ -707,6 +703,24 @@
       "status": "RESOLVED",
       "date": "2026-11-16",
       "evidence": "e8c749f (working-tree snapshot; developer commits) - new tests/lib/test_plan_lock_tagger.py: with identity variables removed and an isolated global config, tagger around fg.commit_tree yields author and committer plan <plan@localhost> and restores the environment; a configured identity is left alone (outside fixer waves)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "68c3c07 (working-tree snapshot; developer commits) - developer decision: the newer plan moved; plan 1021 renumbered to 2021 with a fresh ledger (first freeze r1.1 at base 36c328e, all six items re-recorded, DesignEvolution EX3); the 1021 ledger entries and tags stay as history; plan.py renumber filed as issue 298 (outside fixer waves)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "68c3c07 (working-tree snapshot; developer commits) - developer chose (a): _base_lines prints off-history: from _on_head alone, untagged: still skips a base an archive reaches; docstrings, plan.py archive help and write-plan SKILL.md updated; TASK-3 node renamed test_a_rewritten_base_the_archive_reaches_still_cues_relink (DesignEvolution EX1) (outside fixer waves)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "68c3c07 (working-tree snapshot; developer commits) - developer OK: plan 2021 records branch 2162-skill-tag-archive and branch_lineage main-->2162-skill-tag-archive; STR-2 runs greens of B9 and B11 with B10 noted as dropped (DesignEvolution EX2) (outside fixer waves)"
     }
   ]
 }
