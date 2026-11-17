@@ -436,9 +436,12 @@ is for a person: the script never rewrites prose.
 `todo_sync.py split ID --spec PATH` replaces one item with the parts in a spec file (field overrides over a copy
 of the item). Every part gets a new id, the original joins `retired_ids`, and `split_ids` records the original
 with its parts; `todo_sync.py refresh` rescores and re-sorts after hand edits and leaves every id as it is.
-`/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t | --refresh` runs any of the
-three through the `todo-editor` agent, which also writes the split parts, close-candidate evidence and the prose
-that named a retired or split id. A retirement also updates implementation status in the affected stubs and
+`/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t[, m3x9] | --update todo-sp7t --
+<what to change> | --refresh` runs any of these through the `todo-editor` agent, which also writes the split parts,
+close-candidate evidence and the prose that named a retired or split id. Several split ids dispatch one agent each
+in one message: they draft their specs at once and apply one at a time under the catalog lease. `--update`
+dispatches one agent per id; each queues its field updates with `todo_sync.py inbox put --update`, and the skill
+drains them once with `todo_sync.py add --inbox`. A retirement also updates implementation status in the affected stubs and
 research entries; the reply names each stub's new state, the research entries now fully resolved and the issues
 that can close. With `--delete-retired`, the agent also sets an entry to `FULLY_IMPLEMENTED` and deletes its stub,
 but only after checking every deliverable in it; a stub with an unproven deliverable is kept and listed.
@@ -476,8 +479,9 @@ found`, then `untracked` again) and hands the issues to the `todo-editor` agent.
 queues it with `inbox put`; the skill then runs `add --inbox`, which adds the queued items in one catalog write,
 then renders and checks. A `gh_issue` source needs no `_IMPL_TODO.md` stub. Every catalog write holds a lock;
 the `todo-editor` agent's adds queue through the inbox (`inbox put`, drained by `add --inbox` or the `todo-watch`
-mod), and its retire, split and refresh hold a lease from `lease acquire` to `lease release`, so no other write
-lands between their commands.
+mod), as do its field updates (`inbox put --update`); its retire and refresh hold a lease from `lease acquire`
+to `lease release`, and a split from its dry run (`lease acquire --wait 300`) to `lease release`, so no other
+write lands between their commands.
 
 ```text
 /harness:sync-gh-todo
