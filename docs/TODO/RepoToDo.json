@@ -56,31 +56,31 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 71,
-    "needs_decision": 42,
+    "items": 78,
+    "needs_decision": 48,
     "trackers": 0,
     "close_candidates": 33,
     "by_status": {
-      "NEEDS_DECISION": 42,
-      "OPEN": 29
+      "NEEDS_DECISION": 48,
+      "OPEN": 30
     },
     "by_impact": {
-      "dev_velocity": 40,
-      "docs_tooling": 21,
+      "dev_velocity": 44,
+      "docs_tooling": 24,
       "maintainability": 2,
       "runtime_failure": 6,
       "data_correctness": 1,
       "silent_wrong_output": 1
     },
     "by_loe": {
-      "XS": 4,
-      "S": 22,
-      "M": 31,
+      "XS": 5,
+      "S": 26,
+      "M": 33,
       "L": 13,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 63,
+      "gh_issue": 70,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -909,8 +909,125 @@
       "why_ranked": "Severity 2 (debt with a concrete cost: lock is refused and check reports stale until the refreeze), dev_velocity impact, size S."
     },
     {
-      "id": "todo-9yns",
+      "id": "todo-v62t",
       "rank": 15,
+      "title": "Slash command that prints the stored bookmark notes without a model turn",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Which mechanism shows the notes without waiting on the model: a prompt.submit handler in the session-bookmark mod that answers a /bookmarks prompt itself (whether a mod can reply and drop the prompt is unverified), a skill whose body injects the add_note.py list output at load (no skill in plugins/ does this today, and whether it skips the model turn is unverified), or something else?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#305",
+          "url": "https://github.com/t968rs/operator-straps/issues/305"
+        }
+      ],
+      "gh_issues": [
+        305
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for a slash command that shows the current bookmark notes, what add-bookmark --list prints, without waiting on an agent or model turn. Checked: --list today runs through the add-bookmark skill, so the model runs the script and relays its output (plugins/harness/skills/add-bookmark/SKILL.md:38-41, :68-72); the script's list subcommand is plugins/harness/skills/add-bookmark/commands/add_note.py:99-101 (parser at :120). The session-bookmark mod registers only its compaction bookmark (plugins/session-bookmark/hooks/register.ts) and reads the same notes file (plugins/session-bookmark/hooks/notes.ts). Other mods hook prompt.submit (plugins/git-status/hooks/status.ts:438, plugins/todo-watch/hooks/checks.ts:665), and a git-status test drops a prompt with drop: 'held' (plugins/git-status/hooks/status.test.ts:98), but whether a mod can print text to the developer and end the turn without the model is unverified. No skill under plugins/ uses shell injection in its body. Related: todo-545g (remove or edit a single note).",
+      "proposed_change": "Per the decision: either add a prompt.submit handler to session-bookmark that matches a /bookmarks (or similar) prompt, reads the notes through notes.ts and shows them without passing the prompt on, with a mod test; or add a list-only skill that injects the add_note.py list output and tells the model to relay it verbatim. Document the command in the add-bookmark SKILL.md and the session-bookmark README.",
+      "files": [
+        "plugins/session-bookmark/hooks/register.ts",
+        "plugins/session-bookmark/hooks/notes.ts",
+        "plugins/session-bookmark/README.md",
+        "plugins/harness/skills/add-bookmark/SKILL.md",
+        "plugins/harness/skills/add-bookmark/commands/add_note.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A read-only view of the notes file; the file format and the existing add, list and clear subcommands are unchanged.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One handler or one small skill plus a test, once the mechanism is chosen; finding out whether a mod can answer a prompt may add a spike."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing workflow aid (every list costs a model turn), dev_velocity impact, S size."
+    },
+    {
+      "id": "todo-67gw",
+      "rank": 16,
+      "title": "plan.py relink writes the base and tag without checking anchors and sweeps at the new base",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#313",
+          "url": "https://github.com/t968rs/operator-straps/issues/313"
+        }
+      ],
+      "gh_issues": [
+        313
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "plugins/harness/lib/harness_lib/plan_lock.py:593-606: `relink` resolves the target (`relink_target`, :539-555), then re-points `plan.base_commit`, saves, writes the `relink` ledger entry and tags `base/<stem>/r1-<m>` with no anchor or sweep check at the new base. plugins/harness/scripts/plan.py:357 (`claims_rev`) reads a plan's anchors and sweeps at `base_commit` once any item is done, so a relink to a base lacking that work leaves a plan whose `plan.py check` fails. Per the session, observed 2026-11-17 on plan 2023 (Parallel TODO Editing Remix): base c072dfc was the 'Merge PR #306' commit inside PR #304's branch; #304 squash-merged to main as 458bef9 (bundling #302, #306, #312), so no main commit carries the base tree and patch-id matching has no counterpart. `relink 2023 --to 88f36f1` (458bef9^) succeeded and tagged base/plan/2023-parallel-todo-editing-remix/r1-2, then `check 2023` failed with 19 anchor problems (plugins/harness/scripts/todo_sync.md absent at 88f36f1, plugins/harness/.claude-plugin/plugin.json at 0.76.0, todo_sync.py lines shifted). With c072dfc restored, check passes with only the warning `off-history: c072dfc (base r1)`. The developer undid the relink by hand (plan JSON and PIP checkout, untracked relink entry deleted, r1-2 tag deleted locally and on origin). The in-session account is unverified here: the plan 2023 files were not read. plugins/harness/scripts/plan.py:456-467 (`base_claim_problems`) already runs `pc.anchor_problems` and `pc.sweep_problems` at a base for freeze, so the check exists and is not applied to relink. plugins/harness/skills/write-plan/SKILL.md:186-191 (Relink paragraph) says nothing about a base squashed inside another PR, which has no counterpart on main, where the `off-history:` warning is the correct end state.",
+      "proposed_change": "In `cmd_relink` (plugins/harness/scripts/plan.py:1037) or `plan_lock.relink`, after `relink_target` resolves the new base and before `plan.base_commit` is saved, the ledger entry written or the tag made, run the anchor and sweep check at the candidate base (the `base_claim_problems` shape at plan.py:456-467, applied to a copy of the plan with `base_commit` set to the candidate, and run whenever `claims_rev` would read at the base, i.e. any item is done). On any problem raise `pd.PlanError` with `problem:` lines prefixed `at base <sha7>:` so nothing is written. Add a test for a relink refused for a candidate base missing an anchored file, with the plan JSON, ledger and tags unchanged. Extend the write-plan SKILL.md Relink paragraph (and README row if it fits) to say relink refuses a base whose anchors or sweeps fail, and that a base squashed inside another PR has no counterpart on main, so the `off-history:` warning is the correct end state and no relink should be attempted. Alternative to weigh: a `--force` escape; not recommended, since a failing check after relink is the defect.",
+      "code_snippet": "plugins/harness/lib/harness_lib/plan_lock.py:593\n    new, match = relink_target(repo, old, to)\n    stem = stem_of(plan_file, plan)\n    ...\n    preflight(repo, tags)\n    plan.base_commit = new\n    save(plan_file, plan)",
+      "files": [
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/lib/harness_lib/plan_lock.py",
+        "plugins/harness/skills/write-plan/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One driver command and its library function; relink runs only on the developer's request, and the added check only refuses.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py:cmd_relink",
+          "plugins/harness/lib/harness_lib/plan_lock.py:relink",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Reuse the existing base_claim_problems check ahead of the writes, add one refusal test and one SKILL.md paragraph edit."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (missing guard on an optional, developer-run command; the damage is undone by hand), impact dev_velocity (planning tooling), size S (reuse an existing check plus a test and a doc paragraph)."
+    },
+    {
+      "id": "todo-9yns",
+      "rank": 17,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -971,7 +1088,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 16,
+      "rank": 18,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1031,7 +1148,7 @@
     },
     {
       "id": "todo-jrz2",
-      "rank": 17,
+      "rank": 19,
       "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1093,7 +1210,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 18,
+      "rank": 20,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1154,7 +1271,7 @@
     },
     {
       "id": "todo-2r6p",
-      "rank": 19,
+      "rank": 21,
       "title": "Narrow the PostToolUse Write|Edit|Bash hook that launches validate_pr_json_schema.py",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1213,7 +1330,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 20,
+      "rank": 22,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1272,7 +1389,7 @@
     },
     {
       "id": "todo-k69m",
-      "rank": 21,
+      "rank": 23,
       "title": "Working refs in the banner: show the TODO ids and GitHub issues being worked on (`Working: todo-cvm4 (283)`)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1339,7 +1456,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 22,
+      "rank": 24,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1396,7 +1513,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 23,
+      "rank": 25,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -1456,7 +1573,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 24,
+      "rank": 26,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1515,7 +1632,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 25,
+      "rank": 27,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1574,7 +1691,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 26,
+      "rank": 28,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1636,7 +1753,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 27,
+      "rank": 29,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1695,7 +1812,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 28,
+      "rank": 30,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1759,7 +1876,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 29,
+      "rank": 31,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -1818,7 +1935,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 30,
+      "rank": 32,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1879,7 +1996,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 31,
+      "rank": 33,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1941,7 +2058,7 @@
     },
     {
       "id": "todo-w3ck",
-      "rank": 32,
+      "rank": 34,
       "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1997,7 +2114,7 @@
     },
     {
       "id": "todo-v8mh",
-      "rank": 33,
+      "rank": 35,
       "title": "session-bookmark: a branch-scoped note goes stale silently after the branch changes",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2065,7 +2182,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 34,
+      "rank": 36,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2124,7 +2241,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 35,
+      "rank": 37,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2181,8 +2298,73 @@
       "why_ranked": "Severity 2 misread actor wording plus long command forms, dev_velocity impact, M size."
     },
     {
+      "id": "todo-e2jv",
+      "rank": 38,
+      "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "The stamp-only churn the issue shows is gone since 458bef9 (PR #306, unchanged-page skip). Is that enough to close #303, or should the page become a static shell (changed only by page code or formatting) that reads the catalog rows from a gitignored data sidecar, or should consuming projects simply gitignore TODO_Snapshot.html and todo_live.js as this repository does (.gitignore last lines)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#303",
+          "url": "https://github.com/t968rs/operator-straps/issues/303"
+        }
+      ],
+      "gh_issues": [
+        303
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue (from a consuming project that tracks the page) wants a refresh to change only gitignored data, and the tracked HTML and JS to change only on code or formatting changes; its example is a commit touching only TODO_Snapshot.html and todo_live.js for a stamp refresh. Checked on main (458bef9, which squashes PR #306): render_snapshot keeps a page that rendering again with its own date reproduces, and rewrites todo_live.js only when its text differs (plugins/harness/lib/harness_lib/todo_sync/__init__.py:187-222, _kept_page at :260), and the run is recorded in the gitignored <state_dir>/todo-sync/render.json (:183-184), so a render with nothing new writes neither tracked file. Left: the page embeds the catalog rows (SnapshotPage(catalog=..., top=..., rest=...) at __init__.py:239-241) and its stamp is the sha256 of the page body (plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py:277-280), so any catalog change that alters what the page draws (a rescore, a retire, a new item) still rewrites both tracked files. A bare refresh does not render at all (snapshot_html.py:4-6); the render runs from lease release, add --inbox, init and render. In this repository both files are gitignored (.gitignore: docs/TODO/Snapshots/TODO_Snapshot*, docs/TODO/Snapshots/todo_live.js), so the churn only reaches consuming projects that track them.",
+      "proposed_change": "Per the decision: (a) close #303 as covered by 458bef9 / PR #306; or (b) split the page into a static shell (CSS, loader, theme, chrome) and a gitignored data sidecar (for example todo_data.js setting window.TODO_DATA, loaded like todo_live.js), so a render rewrites only the sidecar unless page code changed; rule T2, which reads the page's line-1 header, would then read the sidecar instead, and the loader draws the tables client-side; or (c) document in the todo_sync usage page and the README that consuming projects gitignore the page and its stamp file, and have init add the lines.",
+      "code_snippet": "plugins/harness/lib/harness_lib/todo_sync/__init__.py:212\n    if kept is None:\n        write_atomic(path, text)\n        wrote.append(PAGE_NAME)\n    if _read_text(live_path) != live:\n        write_atomic(live_path, live)\n        wrote.append(LIVE_NAME)",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+        "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+        "plugins/harness/pages/components/todo.js",
+        "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+        "plugins/harness/scripts/todo_sync.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Option (b) changes what the page carries and where rule T2 reads its header, across the renderer, the loader and the snapshot tests; options (a) and (c) touch no code.",
+        "consumers": [
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "plugins/harness/lib/harness_lib/todo_sync/locking.py",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py",
+          "tests/scripts/test_todo_sync_render_page.py",
+          "tests/lib/test_todo_snapshot_html.py"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Option (b) moves the table drawing into the loader and the T2 header into a sidecar, with tests; (a) and (c) are XS."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt with a concrete cost (tracked page churn on every catalog change in projects that track it), dev_velocity impact, M size."
+    },
+    {
       "id": "todo-zes6",
-      "rank": 36,
+      "rank": 39,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "kind": "feature",
       "status": "OPEN",
@@ -2241,7 +2423,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 37,
+      "rank": 40,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2296,7 +2478,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 38,
+      "rank": 41,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -2357,7 +2539,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 39,
+      "rank": 42,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "kind": "bug",
       "status": "OPEN",
@@ -2407,7 +2589,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 40,
+      "rank": 43,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2455,7 +2637,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 41,
+      "rank": 44,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2530,7 +2712,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 42,
+      "rank": 45,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2588,7 +2770,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 43,
+      "rank": 46,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -2644,7 +2826,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 44,
+      "rank": 47,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2707,7 +2889,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 45,
+      "rank": 48,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -2767,7 +2949,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 46,
+      "rank": 49,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2828,7 +3010,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 47,
+      "rank": 50,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2895,7 +3077,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 48,
+      "rank": 51,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2971,7 +3153,7 @@
     },
     {
       "id": "todo-4zhu",
-      "rank": 49,
+      "rank": 52,
       "title": "plan.py archive: fold a finished plan's driver tags into one archive tag",
       "kind": "feature",
       "status": "OPEN",
@@ -3030,7 +3212,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 50,
+      "rank": 53,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3090,7 +3272,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 51,
+      "rank": 54,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3167,7 +3349,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 52,
+      "rank": 55,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -3229,7 +3411,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 53,
+      "rank": 56,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3288,7 +3470,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 54,
+      "rank": 57,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3349,7 +3531,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 55,
+      "rank": 58,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3407,7 +3589,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 56,
+      "rank": 59,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3465,7 +3647,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 57,
+      "rank": 60,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -3518,7 +3700,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 58,
+      "rank": 61,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -3572,7 +3754,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 59,
+      "rank": 62,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3627,8 +3809,62 @@
       "why_ranked": "Severity 1 since the requested format already landed in PR #240, docs_tooling impact, XS size."
     },
     {
+      "id": "todo-stw6",
+      "rank": 63,
+      "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
+      "kind": "docs",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Does the flood icon ship inside the harness plugin (as a vendored asset with its license and a PROVENANCE entry) or live only in the consuming project that wants it, set through the #311 key, given that plugins stay generic? And which license applies: the issue says MIT, but the weather-icons project may license its icon files differently from its code (unverified)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#310",
+          "url": "https://github.com/t968rs/operator-straps/issues/310"
+        }
+      ],
+      "gh_issues": [
+        310
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue names the icon wanted, https://github.com/erikflowers/weather-icons/blob/master/svg/wi-flood.svg, to be credited under the MIT license. #311 says the icon is for one consuming project, which puts it at odds with the repo rule that nothing under plugins/ is specific to a consuming project (CLAUDE.md, Rules for changes). Unverified: the icon's license (the issue says MIT; the upstream README may license icons under a different license than its code), and the SVG's contents. docs/PROVENANCE.md maps imported files to their source, so a vendored copy needs an entry there. Related: #308 (favicon support) and #311 (the config key).",
+      "proposed_change": "Check the upstream license for the svg/ files. If the icon ships in the plugin: copy wi-flood.svg under plugins/harness/pages (for example pages/icons/), add the upstream license text beside it and a docs/PROVENANCE.md entry naming the source and commit. Otherwise: record the credit in the consuming project and point the #311 key at its copy there.",
+      "files": [
+        "docs/PROVENANCE.md",
+        "plugins/harness/pages"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One asset file plus its credit; nothing reads it until #308 or #311 lands.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "XS",
+        "reasoning": "A license check, one file copy and a provenance line."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 1,
+          "blast_factor": 1.0,
+          "cost": 1.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 cosmetic asset with a license duty, docs_tooling impact, XS size."
+    },
+    {
       "id": "todo-e8y9",
-      "rank": 60,
+      "rank": 64,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -3688,7 +3924,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 61,
+      "rank": 65,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3742,8 +3978,63 @@
       "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
     },
     {
+      "id": "todo-n9ht",
+      "rank": 66,
+      "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "How does a PowerShell profile find the installed plugin and its interpreter: a .ps1 under plugins/harness/scripts that resolves the plugin root at load from Claude Code's installed-plugins record (location and shape unverified), a harness skill that writes or refreshes a profile snippet with the current root (stale after each plugin update), or wrappers that call a Claude-independent entry point? And which commands get a function first?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#307",
+          "url": "https://github.com/t968rs/operator-straps/issues/307"
+        }
+      ],
+      "gh_issues": [
+        307
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for one script of PowerShell functions (example: plan check -> python <plugin>/scripts/plan.py check) under plugins/harness/scripts, and raises two research items: how to call plugin scripts from outside Claude Code, and how to load the functions into PATH or the PowerShell profile. Checked: plugins/harness/scripts holds no .ps1 today; every script runs through the sh launcher hpy, which picks $HARNESS_PY, $CLAUDE_PLUGIN_OPTION_PYTHON, then python or py -3 (plugins/harness/scripts/hpy:4-8, pick() at :31-40); skills reach scripts through ${CLAUDE_PLUGIN_ROOT}, which a plain PowerShell session does not have; and an installed plugin's root is a versioned cache directory (plugins/harness/lib/harness_lib/project.py:3), so a hard-coded path breaks on each update. The repo rule that nothing under plugins/ names a machine path (tests/contract/test_no_repo_literals.py) rules out the issue's literal C:\\path\\to\\operator-straps form. Whether Claude Code records installed plugin paths in a file a script can read is unverified.",
+      "proposed_change": "Settle the root-resolution question, then add plugins/harness/scripts/harness_shortcuts.ps1 with one function per chosen driver (plan, todo_sync, pr_review, ...) taking a ValidateSet subcommand and passing the rest through, resolving the plugin root and interpreter at load (the same candidate order as hpy) and failing with a clear message when they cannot be found. Document the one-line dot-source for $PROFILE in the harness README, and add a test that the functions name only scripts that exist.",
+      "files": [
+        "plugins/harness/scripts/hpy",
+        "plugins/harness/lib/harness_lib/project.py",
+        "README.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new opt-in file loaded by the developer's profile; no existing script, skill or hook changes.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "The root and interpreter resolution needs research and a Windows check; the wrappers themselves are small."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.5,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.5,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 convenience feature, dev_velocity impact, M size."
+    },
+    {
       "id": "todo-hnp3",
-      "rank": 62,
+      "rank": 67,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3794,7 +4085,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 63,
+      "rank": 68,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3851,7 +4142,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 64,
+      "rank": 69,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3904,7 +4195,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 65,
+      "rank": 70,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3958,8 +4249,69 @@
       "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
     },
     {
+      "id": "todo-y9er",
+      "rank": 71,
+      "title": "Browser tab icon (favicon) for the harness HTML pages",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "The pages promise to load nothing and carry no <link> element; may a favicon be a <link rel=\"icon\"> with an inline data: URI (base64, so no http:// namespace literal appears), relaxing the test that bans the substring <link, and which default icon do pages get when no project icon is configured (#311)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#308",
+          "url": "https://github.com/t968rs/operator-straps/issues/308"
+        }
+      ],
+      "gh_issues": [
+        308
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue body is general guidance on favicons (a <link rel=\"icon\"> in <head>, or an inline SVG data URI) and in-page icons. Checked: neither page sets an icon; the TODO snapshot page writes its <head> at plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py:271-272 and the plan page at plugins/harness/lib/harness_lib/plan_render_html.py:227-228, and both share chrome through plugins/harness/lib/harness_lib/page_chrome.py (theme_script, corner). Both module docstrings promise no <link>, @import, url() or remote script (snapshot_html.py:16-17, plan_render_html.py:4-5), and tests/lib/test_todo_snapshot_html.py:352 asserts the page holds none of <link, http://, https://, @import, url( outside <a href>: a favicon <link> fails it, and an SVG data URI with its xmlns=\"http://www.w3.org/2000/svg\" fails the http:// check unless base64-encoded. Related: #310 (the icon wanted) and #311 (a config key for it).",
+      "proposed_change": "Add a favicon() helper to page_chrome.py returning <link rel=\"icon\" href=\"data:image/svg+xml;base64,...\"> built from an SVG under plugins/harness/pages (or the configured icon, #311), emit it in both pages' <head>, and narrow the no-network test to allow exactly one data: icon link while still banning remote addresses. Cover the plan page in tests/lib/test_plan_render_html.py.",
+      "code_snippet": "tests/lib/test_todo_snapshot_html.py:351\n    loads = re.sub(r'<a [^>]*href=\"https://[^\"]*\"', \"\", text)\n    for needle in (\"<link\", \"http://\", \"https://\", \"@import\", \"url(\"):\n        assert needle not in loads",
+      "files": [
+        "plugins/harness/lib/harness_lib/page_chrome.py",
+        "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+        "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "tests/lib/test_todo_snapshot_html.py",
+        "tests/lib/test_plan_render_html.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One shared helper emitted in two page heads; every page's stamp changes once, so each tracked page rewrites once.",
+        "consumers": [
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A helper, two call sites and a narrowed test assertion."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 cosmetic page chrome, docs_tooling impact, S size."
+    },
+    {
       "id": "todo-8thf",
-      "rank": 66,
+      "rank": 72,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -4017,7 +4369,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 67,
+      "rank": 73,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4071,8 +4423,68 @@
       "why_ranked": "Severity 1 duplication hygiene across six test modules, maintainability impact, M size."
     },
     {
+      "id": "todo-jt35",
+      "rank": 74,
+      "title": "Config key for a per-project browser icon on the harness HTML pages",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "What is the key's name and shape: the issue's repo-browser-icon (harness keys are snake_case, for example a new pages.icon or a top-level repo_browser_icon), a project-relative path to an SVG or PNG, an https URL (which the pages' no-remote-load rule forbids), or inline SVG text; and what applies when it is null (no icon, or a plugin default from #308)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#311",
+          "url": "https://github.com/t968rs/operator-straps/issues/311"
+        }
+      ],
+      "gh_issues": [
+        311
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for a configurable icon reference, with the flood icon (#310) as one consuming project's value. Checked: plugins/harness/config/defaults.json has no pages or icon key today (top-level sections include todo, artifacts, review). Per CLAUDE.md (Rules for changes), a new key touches four places together: plugins/harness/config/defaults.json, config/harness.schema.json, the dataclass and builder in plugins/harness/lib/harness_lib/config.py, and the README key table; no mod reads it, so no hooks/config.ts mirror. The project-specific value belongs in that project's .claude/harness.json, never in the plugin. The pages inline every asset and load nothing (plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py:14-17), so the renderer must read the icon file at render time and inline it as a data: URI, which needs the favicon support of #308.",
+      "proposed_change": "Add the key (for example pages.icon: a project-relative path, default null) in the four places, read it in page_chrome.py at render time, base64-encode it into the favicon link from #308, and fail the render with a clear message when the configured file is missing or not SVG or PNG. Test with make_project: a configured icon appears inlined in both the snapshot and plan pages, a null key emits the default (or none).",
+      "files": [
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "plugins/harness/lib/harness_lib/page_chrome.py",
+        "README.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "A new config key across the four config places and both HTML page renderers.",
+        "consumers": [
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A nullable path key in four places, one reader and tests, once #308's favicon helper exists."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.3873,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 0.3873,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 page chrome configuration, docs_tooling impact, S size."
+    },
+    {
       "id": "todo-c7s9",
-      "rank": 68,
+      "rank": 75,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4135,7 +4547,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 69,
+      "rank": 76,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -4190,7 +4602,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 70,
+      "rank": 77,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4241,7 +4653,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 71,
+      "rank": 78,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
