@@ -37,7 +37,8 @@ above:
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" init
 ```
 
-`init` writes an empty catalog and the first snapshot and prints one `created <path>` line per file. It
+`init` writes an empty catalog, the snapshot page and its `todo_live.js` stamp, and prints a `created <path>`
+line for the catalog and one for the page (the stamp is not listed). It
 never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands. Any other
 `problem:` line from the untracked command (no `todo.folder` in `.claude/harness.json`, a catalog still holding
 `TODO-NNN` ids, which names `todo_sync.py migrate-ids`, `gh` missing or failing) ends the run: relay it.

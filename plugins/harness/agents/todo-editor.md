@@ -243,7 +243,7 @@ Runs for retire, split and refresh, which hold a lease.
 1. `TS check --format markdown`. A finding your edits caused (T1 schema, T3-T10): fix and rerun, except a T9
    counts finding, which is left for step 2 because its recount clears it. Findings that predate the run, and
    rules outside the catalog (P, S, G), go in the reply as they are.
-2. `TS lease release <token>`, before the reply. It recounts the catalog, renders the dated snapshot, runs the
+2. `TS lease release <token>`, before the reply. It recounts the catalog, renders the snapshot page, runs the
    check and frees the lease, then prints `lease released; counts updated|unchanged`, `rendered <path>` (only
    when `todo.snapshots.dir` is set) and `check drift=<d>`; take the `Check` drift from that line. A release that
    exits 2 has already freed the lease (only a wrong token keeps it): relay its `problem:` line under `Open` and
