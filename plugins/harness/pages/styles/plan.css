@@ -13,10 +13,10 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 .options.unchosen { color: var(--muted); }
 .why { margin: .25rem 0 0; }
 .status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
-  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
 .mark.chosen { font-weight: 700; color: var(--ok); }
 .mark.open { font-weight: 700; color: var(--bad); }
-.mark.unchosen { color: var(--muted); }
+.mark.unchosen { color: var(--chip); }
 .status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
 .status[data-status="IN_PROGRESS"] { color: var(--run); }
 .status[data-status="BLOCKED"] { color: var(--bad); }

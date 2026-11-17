@@ -100,9 +100,9 @@ def test_the_theme_defines_accent_colors_for_both_schemes() -> None:
         assert name in css[:start] and name in dark
 
 
-def test_headings_and_code_take_the_accent_colors() -> None:
+def test_headings_and_code_take_their_theme_colors() -> None:
     css = shared_style()
-    assert re.search(r"h2[^{}]*\{[^}]*(?:^|[{;\s])color:\s*var\(--accent\)", css)
+    assert re.search(r"h2[^{}]*\{[^}]*(?:^|[{;\s])color:\s*var\(--heading\)", css)
     assert re.search(r"(^|[}\s])code[^{}]*\{[^}]*(?:^|[{;\s])color:\s*var\(--code-fg\)", css)
 
 
@@ -128,6 +128,6 @@ def test_a_marker_is_a_pill_like_the_status_badge() -> None:
 def test_the_chosen_marker_is_bold_green_and_the_open_marker_bold_red() -> None:
     css = style()
     chosen, opened = rule(css, ".mark.chosen"), rule(css, ".mark.open")
-    assert "var(--muted)" in rule(css, ".mark.unchosen")
+    assert "var(--chip)" in rule(css, ".mark.unchosen")
     assert "var(--ok)" in chosen and re.search(r"font-weight:\s*(700|bold)", chosen)
     assert "var(--bad)" in opened and re.search(r"font-weight:\s*(700|bold)", opened)

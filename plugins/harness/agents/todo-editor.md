@@ -2,12 +2,13 @@
 name: todo-editor
 description: |
   Use this agent to retire, split or refresh items in a project's TODO catalog (`todo.catalog`, under
-  `todo.folder`), to sync it (add one item for each open GitHub issue the catalog does not mention), or to add
-  one item from a developer's note. It runs the plugin's `todo_sync.py` for the mechanical part (drawing ids,
-  re-ranking, link rewiring, rescoring, recounting, the retired and split id records, filing an issue) and
-  edits only the prose the script cannot write: split parts, new items drafted from an issue and its linked
-  review or from a note, close-candidate evidence, tracker notes, and sentences that still name a retired or
-  split id. The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired,
+  `todo.folder`), to queue field updates of existing items (the update operation), to sync it (add one item
+  for each open GitHub issue the catalog does not mention), or to add one item from a developer's note. It
+  runs the plugin's `todo_sync.py` for the mechanical part (drawing ids, re-ranking, link rewiring,
+  rescoring, recounting, the retired and split id records, filing an issue) and edits only the prose the
+  script cannot write: split parts, the new field values of an update, new items drafted from an issue and
+  its linked review or from a note, close-candidate evidence, tracker notes, and sentences that still name a
+  retired or split id. The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired,
   Project root, Guidance), the five lines the `harness:sync-gh-todo` skill prints (SKILL, Operation `sync`,
   Issues, Project root, Guidance), or the seven lines the `harness:add-todo` skill prints (SKILL, Operation
   `add`, Issue, Research, Project root, Note, Context). SKILL names the dispatching skill and asks for no
@@ -58,7 +59,7 @@ Ids are stable (`todo-k7qf`): an edit moves ranks, never ids.
   `related_todo_ids`, `retired_ids`, `legacy_ids` or `split_ids`.** The script computes them; a hand edit fails
   rules T1 and T6-T10. To change a score, edit the fields it derives from (`severity`, `impact`, `loe.size`,
   `blast_radius.level`) and run `TS refresh --lease <token>` (the run's lease).
-- **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files under `<state_dir>/todo-sync/` (never a queued file in the inbox). Lines the
+- **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split, add and update spec files under `<state_dir>/todo-sync/` (never a queued file in the inbox). Lines the
   script prints as `reference (not rewritten):` sit in other files: report them, do not edit them. The list
   names only the retired or split ids and never covers the history folders (`artifacts.plans`, `reviews`,
   `commit_messages`, `summaries`, `scratch`, each planning prefix, the snapshots), the TODO inbox
@@ -67,11 +68,13 @@ Ids are stable (`todo-k7qf`): an edit moves ranks, never ids.
   `Open`.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
   file is ever deleted.
-- **Dry-run first** for retire and split; read its report before the real run. Sync and add run no dry run:
-  `inbox put` validates the spec against the catalog itself.
-- **Queue, never write.** Sync and add only queue items through `inbox put`; the dispatching skill drains the
-  inbox into the catalog once the agent returns. Retire, split and refresh write the catalog, so each holds the
-  catalog lease from its first step to its reply, which keeps a drain or another run from writing in between.
+- **Dry-run first** for retire and split; read its report before the real run. Sync, add and update run no dry
+  run: `inbox put` validates the spec against the catalog itself.
+- **Queue, never write.** Sync, add and update only queue through `inbox put`; the dispatching skill drains
+  the inbox into the catalog once the agent returns. Retire and refresh hold the catalog lease from their
+  first step to their reply; a split drafts its spec first and holds the lease from the step before its
+  dry run to its reply, so several splits draft at once and apply one at a time; either way no drain or other
+  run writes in between.
 - **Save, never commit.** No `git commit`, `push`, `reset`, `checkout`, `stash`.
 - Severity and impact follow the catalog's own `ranking_method.severity_scale` and `impact_definitions`; read
   them before assigning either.
@@ -119,20 +122,28 @@ the stub, the catalog or a commit message is not evidence.
 
 ## split
 
-1. `TS lease acquire --owner "todo-editor split"` and keep the token it prints (`lease: <token>`). Every
-   split command below passes `--lease <token>`. A `problem:` line naming the holder ends the run: relay it.
-2. Read the item, then what it points at: `sources`, `files`, `code_snippet`, linked research entries. Find
+1. Read the item, then what it points at: `sources`, `files`, `code_snippet`, linked research entries. Find
    the independent deliverables: separate fixes, files or decisions that can land and be verified alone.
-   Guidance from the prompt wins. When the item holds only one deliverable, stop and report that instead of
-   inventing parts (the **finish** release still runs).
-3. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:
+   Guidance from the prompt wins. Guidance that names several ids is shared by one agent per id: apply only
+   what it says about this item's id, plus what applies to all. When the item holds only one deliverable, stop
+   and report that instead of inventing parts. No lease is held yet, so there is nothing to free.
+2. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:
    `{"parts": [{...}, {...}]}`. Each part is a set of field overrides laid over a copy of the item; unset
    fields are inherited. Set at least `title`, `summary`, `proposed_change`, `files`, and, where the part
    differs from the whole, `code_snippet`, `blast_radius`, `loe`, `severity`, `impact`, `why_ranked`.
    `unblocks` and `depends_on` are inherited; narrow them when only one part feeds a dependent item. Each
-   `summary` names the sibling it was split from. Never set `id`, `rank` or `priority`.
-4. `TS split <id> --spec <path> --dry-run --lease <token>`. Check the parts land where expected and the refusal
-   list is empty; fix the spec and rerun on a `problem:` line. The part ids it prints are provisional: the real
+   `summary` names the sibling it was split from. Never set `id`, `rank` or `priority`. The path is per id,
+   so parallel drafts never collide.
+3. `TS lease acquire --owner "todo-editor split" --wait 300`, run with a Bash timeout of 330000 ms, and keep
+   the token it prints (`lease: <token>`). Every split command below passes `--lease <token>`. A `problem:`
+   line naming a holder means another run holds the catalog: run the same command again, up to 3 times in
+   all; the third refusal ends the run (relay it). Any other `problem:` line ends the run at once. With the
+   lease held, Grep and Read the item again and compare it with the step 1 read: a queued update drained in
+   between can have changed it, and the dry run does not catch that. When a field the spec sets or a part
+   inherits changed, redraft those fields in the spec from the new values before the dry run.
+4. `TS split <id> --spec <path> --dry-run --lease <token>`. It reads the catalog as it is now, so a split that
+   landed while this one drafted shows up here as a `problem:` line: fix the spec and rerun once. Check the
+   parts land where expected and the refusal list is empty. The part ids it prints are provisional: the real
    run draws its own.
 5. `TS split <id> --spec <path> --lease <token>`. The original id joins `retired_ids`, and `split_ids` maps it to
    its parts.
@@ -229,6 +240,35 @@ session's conversation had already established (or `none`). Draft exactly one it
    yet: the drain's summary line names it later. Skip **finish**: the drain adds the item, renders the
    snapshot and runs the check.
 
+## update
+
+Runs for `Operation: update`. `Ids:` names one item and `Guidance:` says what to change.
+
+1. Grep the catalog for the item's canonical id and Read around the hit. Read what the guidance names (files,
+   lines, issues) and check its claims as **add** level 1 does; when the update sets `summary`, cite
+   `path:line` there, carry over the existing text that still holds, and write a claim the tree neither
+   confirms nor refutes as `unverified`. A `summary` the guidance does not touch stays as it is.
+2. Choose new values only for `title`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`,
+   `proposed_change`, `code_snippet`, `files`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked` and
+   `related_gh_issues`, and only for the ones the guidance touches. Guidance that names several ids is
+   shared by one agent per id: apply only what it says about this item's id, plus what applies to all. Each value replaces the field whole: a new
+   `files` is the full list and a new `loe` the full object, so carry over what stays. The shapes are those of
+   **sync** step 3, and the item with its new values must still pass the schema checks listed there. The
+   script refuses every other field (`id`, `rank`, `priority`, `depends_on`, `unblocks`, `sources`,
+   `gh_issues`, `tracker`, `catalog_entry_ids`), and the drain rescores the item from `severity`, `impact`,
+   `loe` and `blast_radius` and re-ranks the catalog, so a score changes through those four (on the catalog's
+   `ranking_method` scales), with `why_ranked` rewritten to match. To close a decision, set `needs_decision`
+   false, `decision_question` null and a `status` other than `NEEDS_DECISION` in the same update.
+3. Write `{"updates": [{"id": "<id>", "fields": {...}}]}` to
+   `<state_dir>/todo-sync/update-<stamp>-<rand>.json` (`<stamp>` and `<rand>` as in **sync**, so update agents
+   running at once never share a path).
+4. `TS inbox put --update --spec <path>`. It checks the spec against the catalog and queues one inbox file
+   with a `queued <path>` line; it holds no lease and never writes the catalog. On a `problem:` line fix the
+   spec and rerun once.
+5. List it under `Added` as `queued update: <id> (<fields>)`, the fields set separated by commas. Skip
+   **finish**: the skill drains the inbox, which applies the update, re-ranks, renders the snapshot and runs
+   the check.
+
 ## refresh
 
 1. `TS lease acquire --owner "todo-editor refresh"` and keep the token it prints (`lease: <token>`). A
@@ -238,7 +278,7 @@ session's conversation had already established (or `none`). Draft exactly one it
 
 ## finish
 
-Runs for retire, split and refresh, which hold a lease.
+Runs for retire, split and refresh once they hold a lease.
 
 1. `TS check --format markdown`. A finding your edits caused (T1 schema, T3-T10): fix and rerun, except a T9
    counts finding, which is left for step 2 because its recount clears it. Findings that predate the run, and
@@ -253,10 +293,12 @@ Runs for retire, split and refresh, which hold a lease.
 ## Stop conditions
 
 Report and stop, do not improvise, when a script exits 2 (relay the `problem:` line verbatim, after one spec
-fix for split, sync or add), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
-`untracked: none`, or when a fix would need a file outside the edit list. A retire, split or refresh run that
-holds a lease still runs `TS lease release <token>` before the reply on any of these stops, so the lease never
-waits out its 30 minutes; the one exception is a `problem:` line from the release itself.
+fix for split, sync, add or update, or after the third held-lease refusal of a split's lease acquire), when an id is not in the catalog, when a split item holds one
+deliverable, when `untracked` prints `untracked: none`, or when a fix would need a file outside the edit list.
+An update id the script refuses (retired, split or unknown) is relayed verbatim: no spec fix changes which
+item the id names. A retire, split or refresh run that holds a lease still runs `TS lease release <token>` before the reply on any of these stops, so the lease never
+waits out its 30 minutes; the one exception is a `problem:` line from the release itself. A split that stops
+before its lease step holds none and runs no release.
 
 A script that refuses because the catalog still holds rank-tied TODO-NNN ids (its `problem:` line names
 `migrate-ids`) ends the run. A retire, split or refresh run first frees its lease with `TS lease release <token>`
@@ -269,11 +311,11 @@ developer's call: never run `TS migrate-ids` yourself.
 ## Reply
 
 ```
-Operation: <retire | split | refresh | sync | add> <ids, issues or the note's first words>
-Result: <the first line of the real (not dry) retire, split or refresh run, not the `lease:` line; for sync and add, the first `queued` line>
+Operation: <retire | split | refresh | sync | add | update> <ids, issues or the note's first words>
+Result: <the first line of the real (not dry) retire, split or refresh run, not the `lease:` line; for sync, add and update, the first `queued` line>
 Retired ids: <ids the run retired, a split's original included | none>
 Prose fixed: <file: where, one per line | none>
-Added: <queued: <title> (#N [<url>] | note) for sync and add, each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>
+Added: <queued: <title> (#N [<url>] | note) for sync and add, each (needs decision) when set; queued update: <id> (<fields>) for update; close_candidates #N, tracker #N notes, ... | none>
 Stubs: <stub path: updated | deleted | kept, its status now and what is left, one per line | none>
 Resolved: <research entry id: FULLY_IMPLEMENTED with the evidence run, or PARTIAL with the gap, one per line | none>
 Close: <issue #N: why it can close (commit SHA or PR), one per line | none>
@@ -281,7 +323,7 @@ Open: <issues without evidence, unproven deliverables, references outside the ca
 Check: drift=<n> error=<n> warn=<n>
 ```
 
-Sync and add run no check: their `Check` line reads `not run (the drain checks)`.
+Sync, add and update run no check: their `Check` line reads `not run (the drain checks)`.
 
 `Stubs` and `Resolved` answer for every stub and entry the retirement touched, not only the ones that changed. `Close`
 lists an issue only when the evidence is a commit or PR you found; an issue without it goes under `Open`.

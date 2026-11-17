@@ -1,5 +1,8 @@
 """``todo_sync.py render`` writes one snapshot page, ``TODO_Snapshot.html``, and its ``todo_live.js`` stamp.
 
+A render that would draw the same page leaves both files as they are, date included, and records the run in
+the runtime-state ``<state_dir>/todo-sync/render.json`` alone.
+
 Each case runs the driver as a subprocess against a ``make_project`` tree built from
 ``tests/lib/_todo_helpers.py``; every snapshot the helpers seed is dropped first, so the page under test is
 the one render writes.
@@ -12,7 +15,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
@@ -25,6 +28,7 @@ SCRIPT = PLUGIN_ROOT / "scripts" / "todo_sync.py"
 PAGE = "TODO_Snapshot.html"
 LIVE = "todo_live.js"
 REPORT_REL = Path(".claude") / "state" / "harness" / "todo-sync" / "report.json"
+RECORD_REL = REPORT_REL.parent / "render.json"
 BETA_STUB = "docs/RESEARCH/Beta/_IMPL_TODO.md"
 WALK_ROOTS = ()  # walks only the make_project snapshot folder
 
@@ -74,12 +78,94 @@ def test_render_writes_the_page_and_its_stamp_and_t2_is_clean(make_project) -> N
     assert _run(["check", "--rules", "T2"], root).returncode == 0 and _findings(root) == []
 
 
-def test_a_second_render_rewrites_the_one_page(make_project) -> None:
-    root = _render(make_project, _files())
+def _snap(root: Path) -> Dict[str, Tuple[bytes, int]]:
+    """Bytes and mtime of each file in the snapshot folder."""
+    return {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in (root / SNAP_DIR).iterdir()}
+
+
+def _record(root: Path) -> Dict[str, Any]:
+    return json.loads((root / RECORD_REL).read_text(encoding="utf-8"))
+
+
+def _rerender(root: Path) -> None:
     done = _run(["render", "--date", "2026-10-22"], root)
     assert done.returncode == 0, done.stderr
-    assert sorted(p.name for p in (root / SNAP_DIR).iterdir()) == [PAGE, LIVE]
-    assert "rendered=2026-10-22" in (root / SNAP_DIR / PAGE).read_text(encoding="utf-8").splitlines()[0]
+    assert Path(done.stdout.strip()) == root / SNAP_DIR / PAGE
+
+
+def test_a_render_that_changes_nothing_leaves_the_page_and_its_stamp(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    _rerender(root)
+    assert _snap(root) == before and sorted(before) == [PAGE, LIVE]
+    record = _record(root)
+    assert (record["run_date"], record["page_date"], record["wrote"]) == ("2026-10-22", "2026-10-21", [])
+    assert record["page"] == f"{SNAP_DIR}/{PAGE}" and record["stamp"] == page_stamp(before[PAGE][0].decode())
+
+
+def test_a_catalog_change_rewrites_the_page_and_its_stamp_with_the_new_date(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    catalog = json.loads((root / CATALOG_REL).read_text(encoding="utf-8"))
+    catalog["items"][0]["title"] = "Parser drops the first row"
+    (root / CATALOG_REL).write_text(json.dumps(catalog, indent=2), encoding="utf-8")
+    _rerender(root)
+    page = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8")
+    assert page.splitlines()[0].endswith(" rendered=2026-10-22 -->") and "Parser drops the first row" in page
+    assert (root / SNAP_DIR / LIVE).read_bytes() != before[LIVE][0]
+    assert _record(root)["wrote"] == [PAGE, LIVE]
+
+
+def test_a_hand_edited_page_is_rendered_again(make_project) -> None:
+    root = _render(make_project, _files())
+    page = root / SNAP_DIR / PAGE
+    page.write_text(page.read_text(encoding="utf-8") + "<!-- hand edit -->\n", encoding="utf-8")
+    _rerender(root)
+    text = page.read_text(encoding="utf-8")
+    assert "hand edit" not in text and text.splitlines()[0].endswith(" rendered=2026-10-22 -->")
+    assert _record(root)["wrote"] == [PAGE, LIVE]
+
+
+def test_a_configuration_change_rewrites_the_page_and_its_stamp_with_the_new_date(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    body = config({"folder": TODO_DIR, "top_n": 1})
+    (root / ".claude" / "harness.json").write_text(json.dumps(body, indent=2), encoding="utf-8")
+    _rerender(root)
+    first = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8").splitlines()[0]
+    assert " top=1 " in first and first.endswith(" rendered=2026-10-22 -->")
+    assert (root / SNAP_DIR / LIVE).read_bytes() != before[LIVE][0]
+    assert _record(root)["wrote"] == [PAGE, LIVE]
+
+
+def test_a_missing_stamp_file_comes_back_without_touching_the_page(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    (root / SNAP_DIR / LIVE).unlink()
+    _rerender(root)
+    after = _snap(root)
+    assert after[PAGE] == before[PAGE] and after[LIVE][0] == before[LIVE][0]
+    assert _record(root)["wrote"] == [LIVE]
+
+
+def test_a_crlf_checkout_of_the_page_is_kept(make_project) -> None:
+    root = _render(make_project, _files())
+    page = root / SNAP_DIR / PAGE
+    page.write_bytes(page.read_bytes().replace(b"\n", b"\r\n"))
+    before = _snap(root)
+    _rerender(root)
+    assert _snap(root) == before
+    assert _record(root)["wrote"] == []
+
+
+def test_a_title_holding_a_carriage_return_keeps_the_page(make_project) -> None:
+    files = _files()
+    files[CATALOG_REL]["items"][0]["title"] = "Parser drops\r\nthe last row"
+    root = _render(make_project, files)
+    before = _snap(root)
+    _rerender(root)
+    assert _snap(root) == before
+    assert _record(root)["wrote"] == []
 
 
 def test_rows_link_their_stubs_by_position(make_project) -> None:
@@ -89,10 +175,31 @@ def test_rows_link_their_stubs_by_position(make_project) -> None:
     items[1]["sources"].append({"type": "impl_stub", "ref": BETA_STUB, "item": "Beta part"})
     items[2].update(id=ID2, sources=[{"type": "impl_stub", "ref": BETA_STUB, "item": "Beta"}])
     rows = _rows(_render(make_project, files))
-    assert f'<a class="id" href="../../Alpha/_IMPL_TODO.md">{ID2}</a>' in rows[1]
-    assert 'href="../../Beta/_IMPL_TODO.md"' in rows[1]
-    assert f'<a class="id" href="../../Beta/_IMPL_TODO.md">{ID2}</a>' in rows[2]
-    assert '<a class="id"' not in rows[0]
+    assert '<a class="stub" href="../../Alpha/_IMPL_TODO.md">1</a>' in rows[1]
+    assert '<a class="stub" href="../../Beta/_IMPL_TODO.md">2</a>' in rows[1]
+    assert '<a class="stub" href="../../Beta/_IMPL_TODO.md">1</a>' in rows[2]
+    assert '<a class="stub"' not in rows[0]
+    assert f'<td class="c-id"><span class="id">{ID2}</span></td>' in rows[2]
+
+
+def test_items_past_top_n_go_to_the_folded_rest_table(make_project) -> None:
+    files = _files()
+    files[BETA_STUB] = stub_text("beta-cache")
+    items = files[CATALOG_REL]["items"]
+    items[2].update(id=ID2, sources=[{"type": "impl_stub", "ref": BETA_STUB, "item": "Beta"}])
+    items.reverse()  # catalog order opposite to rank order: the driver must sort before the cut
+    root = _render(make_project, files, config({"folder": TODO_DIR, "top_n": 1}))
+    page = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8")
+    top, rest = page.split('<details id="rest">', 1)
+    assert len(re.findall(r'<tr class="row"', top)) == 1 and "<h2>Top 1</h2>" in top
+    assert re.findall(r'data-rank="(\d+)"', top) == ["1"]
+    assert re.findall(r'data-rank="(\d+)"', rest) == ["2", "3"]
+    assert "<h2>Remaining 2 items</h2>" in rest
+    rows = re.findall(r'<tr class="row".*?</tr>', rest, re.S)
+    assert len(rows) == 2 and '<a class="stub" href="../../Beta/_IMPL_TODO.md">1</a>' in rows[1]
+    assert f'<td class="c-id"><span class="id">{ID2}</span></td>' in rows[1]
+    assert page.splitlines()[0].startswith(f"<!-- todo-snapshot source={CATALOG_REL} top=1 ")
+    assert _run(["check", "--rules", "T2"], root).returncode == 0 and _findings(root) == []
 
 
 def test_gh_and_tracker_cells(make_project) -> None:
@@ -115,12 +222,37 @@ def test_render_tolerates_malformed_link_fields(make_project) -> None:
     items[1]["id"] = [ID2]
     rows = _rows(_render(make_project, files))
     assert len(rows) == 3 and ID1 in rows[0]
-    assert '<a class="id"' not in rows[1]
+    assert '<a class="stub"' not in rows[1]
+
+
+def _title(root: Path) -> str:
+    text = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8")
+    return re.search(r"<title>(.*?)</title>", text).group(1)
+
+
+def test_the_title_opens_with_the_gh_repo_name(make_project) -> None:
+    root = _render(make_project, _files(), config({"folder": TODO_DIR, "gh": {"repo": "o/widgets"}}))
+    assert _title(root) == "widgets | TODO Snapshot (2026-10-21)"
+
+
+def test_without_a_gh_repo_or_remote_the_title_opens_with_the_checkout_folder(make_project) -> None:
+    root = _render(make_project, _files())
+    assert _title(root) == f"{root.resolve().name} | TODO Snapshot (2026-10-21)"
+
+
+def test_without_a_gh_repo_the_title_opens_with_the_origin_name(make_project) -> None:
+    root = make_project(config(), files=_files())
+    added = subprocess.run(["git", "-C", str(root), "remote", "add", "origin",
+                            "git@github.com:o/gadgets.git"], capture_output=True, text=True)
+    assert added.returncode == 0, added.stderr
+    done = _run(["render", "--date", "2026-10-21"], root)
+    assert done.returncode == 0, done.stderr
+    assert _title(root) == "gadgets | TODO Snapshot (2026-10-21)"
 
 
 def test_render_with_null_stub_name(make_project) -> None:
     root = _render(make_project, _files(), config({"folder": TODO_DIR, "stub_name": None}))
-    assert f'<a class="id" href="../../Alpha/_IMPL_TODO.md">{ID2}</a>' in _rows(root)[1]
+    assert '<a class="stub" href="../../Alpha/_IMPL_TODO.md">1</a>' in _rows(root)[1]
 
 
 def test_the_name_pattern_no_longer_gates_render(make_project) -> None:

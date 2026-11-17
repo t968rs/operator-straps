@@ -192,12 +192,12 @@ _TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {
 }
 
 
-def _check_types(n: int, spec: Dict[str, Any]) -> None:
-    """Refuse a spec value of the wrong base shape with a plain message; ``_check_item`` then holds the built
-    item to the catalog schema."""
+def _check_types(n: int, spec: Dict[str, Any], label: str = "item") -> None:
+    """Refuse a spec value of the wrong base shape with a plain message naming ``<label> <n>``;
+    ``_check_item`` then holds the built item to the catalog schema."""
     for key, (valid, wanted) in _TYPE_RULES.items():
         if key in spec and not valid(spec[key]):
-            raise TodoSyncError(f"item {n}: {key} must be {wanted}")
+            raise TodoSyncError(f"{label} {n}: {key} must be {wanted}")
 
 
 @functools.lru_cache(maxsize=1)
@@ -209,14 +209,15 @@ def _item_validator() -> Any:
         {"$schema": schema["$schema"], "$defs": schema["$defs"], "$ref": "#/$defs/item"})
 
 
-def _check_item(n: int, item: Dict[str, Any]) -> None:
+def _check_item(n: int, item: Dict[str, Any], label: str = "item") -> None:
     """Refuse a built item the catalog schema rejects (enums, patterns, unique lists, the needs_decision
-    rules), before it is scored or written; the computed fields get valid placeholders first."""
+    rules), before it is scored or written, naming ``<label> <n>``; the computed fields get valid
+    placeholders first."""
     probe = {**item, "id": _PROBE_ID, "rank": 1, "priority": _PLACEHOLDER_PRIORITY}
     errors = sorted(_item_validator().iter_errors(probe), key=lambda e: [str(p) for p in e.absolute_path])
     if errors:
         where = "/".join(str(p) for p in errors[0].absolute_path) or "item"
-        raise TodoSyncError(f"item {n}: {where}: {errors[0].message[:200]}")
+        raise TodoSyncError(f"{label} {n}: {where}: {errors[0].message[:200]}")
 
 
 def _check_spec(n: int, spec: Any, known: Set[int], listed: Set[int]) -> None:
@@ -451,10 +452,14 @@ class ReshapeResult:
     pending: Tuple[str, ...] = ()
 
 
+#: What a refusal calls a spec file, by the key of its list.
+_SPEC_NAMES = {"parts": "split spec", "items": "add spec", "updates": "update spec"}
+
+
 def read_spec(path: Path, key: str = "parts") -> List[Any]:
     """The ``key`` list of a spec file: ``{"parts": [{...}, {...}]}`` for a split, ``{"items": [...]}`` for
-    an add."""
-    what = "split spec" if key == "parts" else "add spec"
+    an add, ``{"updates": [...]}`` for an update."""
+    what = _SPEC_NAMES.get(key, "add spec")
     try:
         doc = json.loads(path.read_bytes().decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:

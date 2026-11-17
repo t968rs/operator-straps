@@ -54,14 +54,17 @@ def guard(cfg: HarnessConfig, owner: str, lease: Optional[str] = None) -> Iterat
         raise TodoSyncError(str(exc)) from exc
 
 
-def acquire(cfg: HarnessConfig, owner: str) -> str:
+def acquire(cfg: HarnessConfig, owner: str, wait: Optional[float] = None) -> str:
     """Take a lease on the catalog for ``owner``; its token.
+
+    A held lease or write lock is waited on for up to ``wait`` seconds (``catalog_lock.WAIT_SECONDS`` when
+    ``wait`` is None).
 
     Raises:
         TodoSyncError: a lease or write lock is held past the wait.
     """
     try:
-        return catalog_lock.acquire_lease(lock_path(cfg), owner)
+        return catalog_lock.acquire_lease(lock_path(cfg), owner, wait)
     except catalog_lock.LockError as exc:
         raise TodoSyncError(str(exc)) from exc
 

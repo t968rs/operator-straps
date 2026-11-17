@@ -1,0 +1,329 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 306,
+  "pr_title": "Feature(todo_sync): `render_snapshot` unchanged-page skip",
+  "branch": "3166-todo-sync-refresh",
+  "base_branch": "1166-todo-snapshot-table-format",
+  "base_sha": "16b0ebae8f07e39e1d422bc22a930da65ea882d5",
+  "head_sha": "2902a966ae4bab8df00ded184f73604c49f9ebb4",
+  "review_date": "2026-11-17",
+  "verdict": "READY TO MERGE - 8 of 8 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 160,
+    "deletions": 40,
+    "files_changed": 8,
+    "source": {
+      "additions": 159,
+      "deletions": 40,
+      "files_changed": 7
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "adv_code (opus)",
+    "session_crlf_regression (adhoc)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0306/pr306_20261117T190130Z/findings/tests.json",
+    "docs/_scratch/pr_review/0306/pr306_20261117T190130Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0306/pr306_20261117T190130Z/findings/docs.json",
+    "docs/_scratch/pr_review/0306/pr306_20261117T190130Z/findings/overall.json",
+    "docs/_scratch/pr_review/0306/pr306_20261117T190130Z/findings/adv_code.json",
+    "docs/_scratch/pr_review/0306/pr306_20261117T190130Z/findings/session_crlf_regression.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "_snap compares bytes and st_mtime_ns of every file in the snapshot folder, so the unchanged-render case catches an identical-bytes rewrite as well as a content change, and sorted(before) == [PAGE, LIVE] keeps render.json out of the snapshot folder.",
+    "RECORD_REL spells the record path out from the report path instead of calling render_record_path, so a move of the record fails the subprocess tests independently of the library.",
+    "The write-order test wraps the real write_atomic as a spy rather than stubbing it, so the files really land and the second render exercises the real _kept_date comparison.",
+    "The missing-stamp case asserts the page's bytes and mtime are untouched while the stamp file comes back byte-identical and the record says wrote == [LIVE], pinning the per-file decision.",
+    "The no-stamp refusal now also asserts no render record is written, extending 'nothing written' to the new file.",
+    "The new iterdir walk in _snap stays covered by the existing WALK_ROOTS = () marker, whose comment still describes it.",
+    "_page_builder reads the catalog and resolves stub links once, then closes over them, so the reproduce check and the final render share one catalog read.",
+    "The kept-page test compares the full rerendered text against the file, so any catalog, configuration, asset or page-code change (including ones T2 cannot see) forces a rewrite with the new date.",
+    "The stamp is validated before any write, and the page is still written before todo_live.js, preserving the open-page reload ordering contract.",
+    "The render record carries only project-relative paths (posix of todo.snapshots.dir) and lives beside the report under state_dir via render_record_path, which is exported in __all__.",
+    "README, todo_sync.md and the release note all describe the same new rule in one consistent wording (kept page, stamp written only when it differs, render.json record), and that rule matches `render_snapshot`, `_kept_date` and the record fields.",
+    "The `--date` row in todo_sync.md now says a kept page keeps its own date, matching `rendered = kept or date.isoformat()`, a detail that is easy to miss.",
+    "The release note mentions that a missing `todo_live.js` is recreated, matching the `_read_text(live_path) != live` guard (a missing file reads as None).",
+    "The unchanged-page check compares against a page rendered with the page's own header date, so the page, the stamp and T2's header stay consistent and only real content drift rewrites the tracked pair.",
+    "`_read_text` reads in universal-newline mode, so a page that a `core.autocrlf` checkout turns into CRLF still counts as unchanged and is not rewritten on every run.",
+    "`_page_builder` reads the catalog and resolves stub links once and closes over them, so the two builds (old date, new date) share one input snapshot.",
+    "The no-stamp refusal still runs before any write, and the test now also checks that `render.json` is not written on that path.",
+    "The subprocess tests check mtimes along with bytes (`_snap`), which proves no write happened rather than just equal content. They also cover catalog change, hand edit and a missing stamp file.",
+    "The write-order test uses a pass-through spy over the real `write_atomic`, so it stays behavioral and pins the page -> stamp -> record order and the record-only second run.",
+    "The render record holds only a project-relative page path and stays under `state_dir`, so the tracked tree carries no local paths.",
+    "The kept-page test rebuilds the page with its own header date and compares the whole text, so a change to the catalog, config or page code (assets, stamp script) forces a rewrite with no list of inputs to keep in sync.",
+    "The stamp file is compared and rewritten on its own, so a deleted or stale `todo_live.js` comes back without touching the page; `test_a_missing_stamp_file_comes_back_without_touching_the_page` pins this.",
+    "The no-stamp refusal still writes nothing, now including the render record, because the record is written last.",
+    "The tests check byte-and-mtime snapshots of the folder, so a no-op render that still rewrote the files would fail them."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "CRLF checkout of the page is never kept after the newline='' read",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "tests/scripts/test_todo_sync_render_page.py"
+        ],
+        "lines": "187,228-246",
+        "reviewer": "session_crlf_regression",
+        "fix_kind": "judgment",
+        "summary": "The M2 fix makes _read_text read with newline='' (no translation). A consuming project that commits TODO_Snapshot.html and checks it out on Windows with core.autocrlf=true (the developer's setup: autocrlf true, text=auto) gets the page on disk with CRLF line ends, while build() returns LF text. _kept_page then compares LF against CRLF, never matches, and every render rewrites the page with a new date and a new stamp: the churn issue 303 exists to stop, on the platform that reported it. The earlier universal-newline read handled this case; the CR-in-catalog-text case M2 raised needs the comparison to translate both sides the same way, not to stop translating the file.",
+        "fix": [
+          "Keep _read_text on universal newlines (Path.read_text) and compare the built page under the same translation: in _kept_page, compare old with the built text after replacing CRLF and lone CR with LF (one small helper), and return the built text (not old) with the date so render_snapshot stamps exactly what build produced. Add a test in tests/scripts/test_todo_sync_render_page.py that renders, rewrites the page on disk with CRLF line ends (bytes, not text mode), renders again with a later --date and asserts the page bytes and todo_live.js are unchanged and render.json wrote == []. Keep a test where a catalog title holds a CR (JSON \\r\\n escape) and a second render leaves the page as it is."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Opening sentences still say render always rewrites the page",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/scripts/todo_sync.md",
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "412-413,420-423",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:412-413 still says `todo_sync.py render` \"rewrites the snapshot page on demand\" and that `init`, `add --inbox` and `lease release` \"rewrite it\", and README.md:420 says an open page \"reloads itself after the next render\". The new sentence at README.md:421-423, like `render_snapshot` (plugins/harness/lib/harness_lib/todo_sync/__init__.py, `_kept_date` and the `if kept is None` / `_read_text(live_path) != live` guards), says a render that would draw the same page writes neither file, so `todo_live.js` keeps its stamp and an open page does not reload. plugins/harness/scripts/todo_sync.md:80 has the same problem: it opens the `render` section with \"Rewrites the one snapshot page\", and lines 82-84 then contradict it. The new behavior is added on top of text that still states the old rule.\n\nAlso (docs): README.md:422 calls `<state_dir>/todo-sync/render.json` \"git-ignored\" and bases its promise on that: \"only a catalog, configuration or page code change shows in `git status`\". The harness writes no ignore rule for `state_dir`. No module under plugins/harness touches `.gitignore` for it, and README.md:167-168 tells the consumer to \"gitignore that folder like the other runtime state\". `render_snapshot` rewrites render.json on every run with a fresh `written_at`, so a project that has not ignored `state_dir` sees a change in `git status` on every render, including the unchanged-page case this PR targets.\n\nAlso (docs): README.md:421-422, docs/RELEASES/v1.0.0.md:224 and the `render_snapshot` docstring say only \"a catalog, configuration or page code change\" rewrites the page. `_page_builder` also renders `_stub_links(cfg, ranked)`, which walks the research tree and the stub files on disk (`item_stubs` keeps only stubs that exist). It also uses `repo_name(cfg)`, the main worktree's folder name. Adding or deleting an `_IMPL_TODO.md` stub, or editing the research catalog, therefore changes the page while the catalog stays the same, and a reader of the docs would not expect that page diff in `git status`.\n\nAlso (overall): README.md:421-422, the `render_snapshot` docstring (`__init__.py:175`) and the release note (`v1.0.0.md:320-321`) say that only a catalog, configuration or page code change rewrites the page. `_page_builder` also resolves stub links through `_stub_links` -> `item_stubs`, which reads the research catalog and checks stub files on disk (`stub_links.py:55,70,74,81`). So adding or removing an `_IMPL_TODO.md` stub, or editing a research entry's `stub_path`, also rewrites the page, and that change also shows in `git status`. A hand-edited or deleted page is rewritten too. The docstring's \"rewrites them, dated `date`\" is also imprecise: a missing stamp file alone is written back with the kept page's date, not `date`.",
+        "fix": [
+          "README.md:412-413: change \"rewrites the snapshot page on demand\" to \"brings the snapshot page up to date on demand\" and \"rewrite it after their catalog writes\" to \"render it after their catalog writes\"; README.md:420: change \"reloads itself after the next render\" to \"reloads itself after the next render that changes it\"; todo_sync.md:80: change \"Rewrites the one snapshot page\" to \"Brings the one snapshot page ... up to date\".",
+          "README.md:422-423: replace \"each run is recorded in the git-ignored `<state_dir>/todo-sync/render.json`\" with \"each run is recorded in `<state_dir>/todo-sync/render.json` (runtime state; gitignore `state_dir`)\".",
+          "README.md:421-422 and docs/RELEASES/v1.0.0.md:224: change \"catalog, configuration or page code change\" to \"catalog, stub or research catalog, configuration or page code change\".",
+          "Reword both places as \"only a change to what the page shows (catalog items, stub links, configuration or page code)\".",
+          "Reword the three places to say \"only a change to what the page draws (the TODO catalog, the research catalog or its stub files, configuration, or page code), or a hand-edited or missing page, rewrites it\". In the docstring, also note that a stamp file written alone carries the kept page's date."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Kept-page comparison reads with newline translation the writer does not apply",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "plugins/harness/lib/harness_lib/todo_sync/report.py"
+        ],
+        "lines": "184-186,226-230,233-239",
+        "reviewer": "runtime, overall, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "write_atomic writes the page with newline=\"\\n\" (report.py:111), so a carriage return inside catalog text (a title or summary holding a JSON \"\\r\\n\" escape; html.escape keeps it) lands on disk raw. _read_text uses Path.read_text, which applies universal newlines and turns that \"\\r\" into \"\\n\", so _kept_date's build(header.rendered) != old comparison never matches for such a catalog. The page is then rewritten and redated on every render, silently losing the unchanged-page skip the docstring promises (no data loss; it falls back to the old always-write behavior).\n\nAlso (runtime): When the page on disk is reproduced, _kept_date already computed build(header.rendered) and proved it equal to the file text, yet render_snapshot calls build(rendered) again at line 186 with the same date. Each build runs render_page, which renders the document twice (empty stamp, then stamped) and re-reads the three inlined assets, so the common no-change path (the one this PR optimizes for) does four full document renders instead of two.\n\nAlso (overall): When `_kept_date` returns a date, it has already built the page for that date and found it equal to the on-disk text. `render_snapshot` then calls `build(rendered)` again (`__init__.py:186`) and gets the same string. Each `render_page` runs `_document` twice and reads four plugin assets, so the common no-change path renders the full page four times where two would do. This runs on every `render`, `add --inbox` and `lease release`.\n\nAlso (adv_code): `_read_text` reads the old page with `Path.read_text`, which turns `\\r\\n` and a lone `\\r` into `\\n`. `write_atomic` writes with `newline=\"\\n\"` and leaves a `\\r` in the text unchanged. `inline`/`_e` pass a `\\r` from a catalog string (title, summary, proposed_change, decision_question, why_ranked) through to the page. So `build(header.rendered) != old` always holds for such a catalog. Every render rewrites the page and stamp with the new date, which is the churn this PR exists to stop.\n\nAttack: Seed a catalog whose first item has `\"title\": \"Parser\\r\\ndrops rows\"` (a JSON-escaped CR LF). Run `todo_sync.py render --date 2026-10-21`, then `todo_sync.py render --date 2026-10-22`. The page header now reads `rendered=2026-10-22`, its mtime and `todo_live.js` changed, and `render.json` shows `wrote == [\"TODO_Snapshot.html\", \"todo_live.js\"]`. With the same setup as `test_a_render_that_changes_nothing_leaves_the_page_and_its_stamp`, that test fails. A direct probe (`docs/_scratch/pr_review/0306/pr306_20261117T190130Z/probes/cr_probe.py`) confirms the mechanism: `inline(\"Parser\\r\\ndrops rows\")` keeps the CR, and after `write_atomic(p, cell)`, `_read_text(p) == cell` is False.",
+        "fix": [
+          "Read without newline translation in _read_text: `with path.open(encoding=\"utf-8\", newline=\"\") as fh: return fh.read()` (or `path.read_bytes().decode(\"utf-8\")`), matching write_atomic's newline=\"\\n\" output byte for byte.",
+          "Have _kept_date return the date and the reproduced text (e.g. Optional[Tuple[str, str]]), and reuse that text in render_snapshot instead of calling build a second time; only call build(date.isoformat()) when nothing was kept.",
+          "Have `_kept_date` return the matched text along with the date (for example `Optional[Tuple[str, str]]`). In `render_snapshot`, use `text = old` when kept and `text = build(date.isoformat())` otherwise.",
+          "Read the page and stamp without newline translation: in `_read_text` use `with open(path, encoding=\"utf-8\", newline=\"\") as fh: return fh.read()` (or `path.read_bytes().decode(\"utf-8\")`), so the comparison sees the bytes `write_atomic` wrote."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Docstrings say an unchanged page writes neither file; the stamp file is still rewritten when it differs",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "6",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "snapshot_html.py:6 says \"A render that would draw the same page writes neither file\", and __init__.py:175 says \"only a catalog, configuration or page code change rewrites them\". The code at __init__.py:195-197 rewrites todo_live.js whenever its text differs from the expected stamp script, independent of whether the page was kept: a deleted or hand-edited todo_live.js is rewritten (dated with the kept page date) with no catalog, configuration or page code change. The first sentence of the render_snapshot docstring (line 174, \"the stamp file is written only when its text differs\") states the real rule; the two summaries overstate it.",
+        "fix": [
+          "Reword snapshot_html.py:6 to \"A render that would draw the same page keeps the page and rewrites todo_live.js only when it is missing or differs.\"",
+          "Reword __init__.py:175 to say a catalog, configuration or page code change rewrites the page (dated ``date``), and a missing or differing stamp file is restored on its own."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Hard-to-parse sentence and an overstated \"every run\" in the render section",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "lines": "82-84",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/todo_sync.md:82: \"A page that rendering again with its own date reproduces is kept\" is a garden-path sentence: the reader has to backtrack to see that \"rendering again with its own date\" is the subject of \"reproduces\". Line 84 says \"Every run writes `<state_dir>/todo-sync/render.json`\", but `render_snapshot` writes the record only after the page and stamp steps succeed. A run refused for a missing `todo.snapshots.dir`, an unreadable catalog or a page without a stamp raises `TodoSyncError` first and writes no record.",
+        "fix": [
+          "todo_sync.md:82-84: \"When the page on disk is exactly what a render with its own date would produce, it is kept, date included, and the stamp is written only when its text differs, so a render that would draw the same page writes neither file. Every successful run writes `<state_dir>/todo-sync/render.json` (run date, page date, stamp, files written).\""
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Driver docstring and --date help still promise the date the page shows",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "13-17,192",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The PR changes `--date` semantics: a kept page keeps its own render date and ignores `--date` (`__init__.py:184-185`). `todo_sync.md:89` was updated, but the driver itself was not: its module docstring (`todo_sync.py:16-17`) still says \"`--date` sets the render date the page shows\" and the argparse help (`todo_sync.py:192`) still reads \"Snapshot date (default: today).\" A user running `render --date 2026-12-01` on an unchanged catalog gets a page that still shows the old date, which contradicts `--help`.",
+        "fix": [
+          "In `plugins/harness/scripts/todo_sync.py`, change the docstring at lines 16-17 to say `--date` sets the render date a rewritten page shows and that a kept page keeps its own. Change the help at line 192 to `\"Render date of a rewritten page (default: today); a kept page keeps its own.\"` so it matches `todo_sync.md:89`."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Wiring test name no longer describes what it pins",
+        "file": "tests/lib/test_todo_snapshot_wiring.py",
+        "lines": "73-87",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_render_writes_the_page_before_its_stamp now also asserts the render record as the third write, the second render (DAY + 1) that writes render.json alone, and the record's location beside the report. The module docstring (lines 9-11) lists these as separate pins, while the test name still states only the page-before-stamp order.",
+        "fix": [
+          "Rename it to test_render_write_order_and_the_unchanged_second_render (or similar).",
+          "Split lines 84-87 into a second test, e.g. test_a_second_render_writes_the_record_alone."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Configuration-change rewrite path has no test",
+        "file": "tests/scripts/test_todo_sync_render_page.py",
+        "files": [
+          "tests/scripts/test_todo_sync_render_page.py",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "106-125",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "render_snapshot's docstring (plugins/harness/lib/harness_lib/todo_sync/__init__.py:173-175) says a catalog, configuration or page code change rewrites the page with the new date. The new cases cover a catalog edit (test_a_catalog_change_rewrites_the_page_and_its_stamp_with_the_new_date), a hand edit and a missing stamp file, but no case changes the configuration (for example todo.top_n or todo.gh.repo, which change the page's header or title) between renders. A _kept_date regression that compared only the rows hash would pass every new test.\n\nAlso (tests): test_a_hand_edited_page_is_rendered_again checks only the page text. After the re-render the page is dated 2026-10-22, so todo_live.js must change too; a regression that rewrote the page but kept the stale stamp (or recorded the wrong 'wrote' list) would pass this case. The sibling catalog-change case already asserts both.",
+        "fix": [
+          "Add a case that renders with config(), rewrites the project's .claude/harness.json with config({\"folder\": TODO_DIR, \"top_n\": 1}) (or a gh.repo), reruns _rerender, and asserts the first line ends with ' rendered=2026-10-22 -->' and _record(root)[\"wrote\"] == [PAGE, LIVE].",
+          "Append `assert _record(root)[\"wrote\"] == [PAGE, LIVE]` to the case, which also pins that the stamp file followed the new date."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 306 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"1166-todo-snapshot-table-format\",\"commits_count\":3,\"first_sha\":\"200668cef5a8e2a78f3489e5b5656e1642b77854\",\"headRefName\":\"3166-todo-sync-refresh\",\"headRefOid\":\"2902a966ae4bab8df00ded184f73604c49f9ebb4\",\"last_sha\":\"2902a966ae4bab8df00ded184f73604c49f9ebb4\",\"mergeCommit\":null,\"number\":306,\"state\":\"OPEN\",\"title\":\"Feature(todo_sync): `render_snapshot` unchanged-page skip\",\"url\":\"https://github.com/t968rs/operator-straps/pull/306\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_overall",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (14 checked, 0 refuted, 1 code findings)",
+        "counts": {
+          "findings_checked": 14,
+          "findings_refuted": 0,
+          "findings_upheld": 14,
+          "code_findings": 1
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "3166-todo-sync-refresh",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "3166-todo-sync-refresh",
+        "head_ref_name": "3166-todo-sync-refresh",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "200668cef5a8e2a78f3489e5b5656e1642b77854",
+        "head_sha": "2902a966ae4bab8df00ded184f73604c49f9ebb4",
+        "base_ancestor_command": "git merge-base --is-ancestor 200668cef5a8e2a78f3489e5b5656e1642b77854 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 2902a966ae4bab8df00ded184f73604c49f9ebb4 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "1166-todo-snapshot-table-format",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - README render paragraph now says render brings the page up to date, open page reloads after a render that changes it, only a change to what the page draws (TODO catalog, research catalog or its stub files, configuration, page code) or a hand-edited/missing page rewrites it, and render.json is runtime state to gitignore (no 'git-ignored' claim); release note and render_snapshot docstring reworded the same way, docstring also notes a stamp written alone carries the kept page's date; todo_sync.md render section opens with 'Brings the one snapshot page up to date' instead of 'Rewrites'; the kept-page and stamp rule now follows it. Other M1 parts (README.md, v1.0.0.md, __init__.py) are owned by another fixer."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - _read_text reads with newline='' so the kept-page comparison matches write_atomic byte for byte (a CR in catalog text no longer defeats the skip); _kept_date became _kept_page returning (date, text) and render_snapshot reuses that text, calling build only when nothing was kept; report.py: write_atomic already writes newline='\\n', no edit needed"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - render_snapshot docstring now says only a page-content change or a hand-edited/missing page rewrites the page, and a missing or differing stamp file is restored on its own; snapshot_html.py:6 reworded: a render that would draw the same page keeps the page and rewrites todo_live.js only when it is missing or differs (replaces 'writes neither file'); __init__.py:175 is the other part's file and was not edited by this fixer"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - added test_a_configuration_change_rewrites_the_page_and_its_stamp_with_the_new_date (top_n=1 rewrite of harness.json, asserts top=1 header, new date, changed stamp, wrote == [PAGE, LIVE]); hand-edited page case now asserts wrote == [PAGE, LIVE]; render_snapshot docstring cited, edited under M1/M3"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - todo_sync.md render section: rewrote the garden-path sentence as 'When the page on disk is exactly what a render with its own date would produce, it is kept...' and changed 'Every run writes' to 'Every successful run writes'."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - todo_sync.py: module docstring render entry now says --date sets the render date a rewritten page shows and a kept page keeps its own; render --date help reads 'Render date of a rewritten page (default: today); a kept page keeps its own.'"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - Renamed test_render_writes_the_page_before_its_stamp to test_render_write_order_and_the_unchanged_second_render so the name covers the write order, the second render that writes render.json alone, and the record location"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2902a96 (working-tree snapshot; developer commits) - _read_text back on universal newlines (Path.read_text); _kept_page compares the built page through a new _universal_newlines helper (CRLF and lone CR to LF) and returns the built text so the stamp matches build output; added tests for a CRLF checkout of the page (bytes rewrite, later --date, page and todo_live.js unchanged, wrote == []) and a catalog title holding a CR that a second render keeps"
+    }
+  ]
+}

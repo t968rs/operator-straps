@@ -1,0 +1,803 @@
+{
+  "plan_id": "2023",
+  "plan_created": "2026-11-17",
+  "source_document": "https://github.com/t968rs/operator-straps/issues/309",
+  "documentation": "docs/plans/2023_Parallel_TODO_Editing_Remix_PIP.html",
+  "branch": "4166-todo-sync-parallel-followup",
+  "base_branch": "1166-todo-snapshot-table-format",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "lease acquire --wait SECONDS",
+      "action": "Copy the planned test file from docs/plans/2023/tests/tests/scripts/test_todo_sync_lease_wait.py to tests/scripts/test_todo_sync_lease_wait.py first. In locking.py change acquire to `acquire(cfg: HarnessConfig, owner: str, wait: Optional[float] = None) -> str` and pass `wait` on: `catalog_lock.acquire_lease(lock_path(cfg), owner, wait)`; its docstring says it waits up to `wait` seconds for a held lease or write lock (catalog_lock.WAIT_SECONDS when None). `leased` keeps calling `acquire(cfg, owner)`. In todo_sync.py add a module-level argparse type `_seconds(text: str) -> float` (float(text); a non-number or a negative value raises argparse.ArgumentTypeError('must be a number of seconds, 0 or more'), so argparse reports `argument --wait: ...`). In `_leases` add `acq.add_argument(\"--wait\", type=_seconds, metavar=\"SECONDS\", help=\"Wait up to SECONDS for a held lease or write lock before refusing (default: 10).\")` after --owner; `_lease`'s acquire branch calls `locking.acquire(cfg, args.owner, args.wait)`. Module docstring: the entry reads ``lease acquire --owner TEXT [--wait SECONDS]`` and adds that --wait sets how long a held lease or write lock is waited on before the refusal (default 10 seconds; a todo-editor split passes 300). todo_sync.md: in `lease acquire` add the row `| `--wait SECONDS` | Wait up to SECONDS for a held lease or write lock before refusing (default 10). A todo-editor split passes 300. |` after --owner, and in Locking add that `lease acquire --wait SECONDS` waits that long instead of 10 seconds. Optional/Union typing, no first or second person, line length 110.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/locking.py",
+        "plugins/harness/scripts/todo_sync.py",
+        "plugins/harness/scripts/todo_sync.md"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/locking.py:57",
+          "expect": "def acquire(cfg: HarnessConfig, owner: str) -> str:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/locking.py:64",
+          "expect": "return catalog_lock.acquire_lease(lock_path(cfg), owner)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/locking.py:103",
+          "expect": "token = acquire(cfg, owner)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/catalog_lock.py:372",
+          "expect": "def acquire_lease(path: PathLike, owner: str, wait: Optional[float] = None) -> str:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/catalog_lock.py:39",
+          "expect": "WAIT_SECONDS = 10.0"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:228-229",
+          "expect": "acq.add_argument(\"--owner\", required=True, help=\"Who holds the lease, named in every refusal.\")"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:358",
+          "expect": "print(f\"lease: {locking.acquire(cfg, args.owner)}\")"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:85",
+          "expect": "``lease acquire --owner TEXT``"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.md:192",
+          "expect": "| `--owner TEXT` | Required. Who holds the lease; named in every refusal. |"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.md:57",
+          "expect": "A lock another owner holds is waited on for 10 seconds"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/todo_sync/locking.py plugins/harness/scripts/todo_sync.py tests/scripts/test_todo_sync_lease_wait.py",
+          "expect": "All checks passed!"
+        },
+        {
+          "run": "python -m pytest tests/scripts/test_todo_sync_usage_doc.py tests/scripts/test_todo_sync_catalog_lock_cli.py tests/lib/test_catalog_lock.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_acquire_waits_past_the_default_for_a_lease_freed_meanwhile",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_acquire_refuses_once_its_own_wait_runs_out",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_lease_acquire_takes_a_wait_in_seconds",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_defaults_to_the_lock_wait",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[-1]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[soon]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_lease_wait.py::test_the_driver_waits_for_the_held_lease",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Split drafts its spec before it takes the lease",
+      "action": "Copy docs/plans/2023/tests/tests/skills/test_todo_editor_split_lease_contract.py to tests/skills/test_todo_editor_split_lease_contract.py first. In todo-editor.md renumber the split section: 1. read the item and what it points at, find the independent deliverables (old step 2); a one-deliverable item stops and reports that, and no lease is held yet, so no release runs (drop '(the **finish** release still runs)'). 2. write the spec to `<state_dir>/todo-sync/split-<id>.json` (old step 3, unchanged; the path is per id, so parallel drafts never collide). 3. `TS lease acquire --owner \"todo-editor split\" --wait 300`, run with a Bash timeout of 330000 ms; keep the token; every split command below passes `--lease <token>`. A `problem:` line naming a holder means another run holds the catalog: run the same command again, up to 3 times in all; the third refusal ends the run (relay it); any other `problem:` line ends the run at once. 4. the dry run (old step 4), adding that it reads the catalog as it is now, so a split that landed while this one drafted shows up here as a `problem:` line: fix the spec and rerun once. 5-7: old steps 5-7. Rules, 'Queue, never write': keep the sync/add sentence; replace the lease sentence with: Retire and refresh hold the catalog lease from their first step to their reply; a split drafts its spec first and holds the lease from the step before its dry run to its reply, so several splits draft at once and apply one at a time; either way no drain or other run writes in between. finish: 'Runs for retire, split and refresh once they hold a lease.' Stop conditions: add that a split stopping before its lease step holds none and runs no release. In tests/skills/test_todo_inbox_prose_contract.py change only the module docstring sentence 'Retire, split and refresh runs hold a lease from start to reply.' to 'Retire and refresh runs hold a lease from start to reply, a split from its dry run to its reply.'",
+      "files": [
+        "plugins/harness/agents/todo-editor.md",
+        "tests/skills/test_todo_inbox_prose_contract.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/agents/todo-editor.md:73-74",
+          "expect": "Retire, split and refresh write the catalog, so each holds the catalog lease from its first step to its reply"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:122",
+          "expect": "1. `TS lease acquire --owner \"todo-editor split\"`"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:126-127",
+          "expect": "When the item holds only one deliverable, stop and report that instead of inventing parts (the **finish** release still runs)."
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:128",
+          "expect": "3. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:134",
+          "expect": "4. `TS split <id> --spec <path> --dry-run --lease <token>`."
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:241",
+          "expect": "Runs for retire, split and refresh, which hold a lease."
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:257-258",
+          "expect": "A retire, split or refresh run that holds a lease still runs `TS lease release <token>` before the reply"
+        },
+        {
+          "at": "tests/skills/test_todo_inbox_prose_contract.py:4-5",
+          "expect": "Retire, split and refresh runs hold a lease from start to reply."
+        },
+        {
+          "at": "tests/skills/test_todo_inbox_prose_contract.py:72-76",
+          "expect": "assert \"TS lease acquire --owner\" in section"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_todo_inbox_prose_contract.py tests/skills/test_todo_edit_skill_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_editor_split_lease_contract.py::test_split_writes_its_spec_before_it_takes_the_lease",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_editor_split_lease_contract.py::test_split_takes_the_lease_right_before_its_dry_run",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_editor_split_lease_contract.py::test_split_waits_for_a_lease_another_run_holds",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_editor_split_lease_contract.py::test_a_one_deliverable_split_stops_without_a_release",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_editor_split_lease_contract.py::test_the_rules_say_when_a_split_holds_the_lease",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "Field updates: validate, queue and drain",
+      "action": "Copy docs/plans/2023/tests/tests/lib/test_todo_sync_updates.py to tests/lib/test_todo_sync_updates.py first. reshape.py: `_check_types(n, spec, label: str = \"item\")` and `_check_item(n, item, label: str = \"item\")` put `label` where they now say `item` in their messages (callers unchanged); read_spec names the spec from {\"parts\": \"split spec\", \"items\": \"add spec\", \"updates\": \"update spec\"}. New updates.py (module docstring; functions under 50 lines): `UPDATE_FIELDS` = the ADD_REQUIRED + ADD_OPTIONAL keys less ISSUE_KEYS, in that order; frozen dataclass `Updated(catalog, updated, rescored, reranked)` where `updated` is a tuple of (id, fields tuple), one entry per item in first-update order, its fields merged in first-set order; `merge_updated(pairs)` does that merge and the drain reuses it. `apply_updates(catalog, entries) -> Updated` works on a deep copy: todo_ids.require_stable(catalog, \"update\"); an empty list raises 'update needs at least one update in the spec'; per entry n (from 1): not a dict -> 'update n is not an object'; no non-empty string `id` -> 'update n names no id'; `fields` missing, not a dict or empty -> 'update n sets no field'; a key outside UPDATE_FIELDS -> 'update n sets <key>; an update never sets it'; reshape._check_types(n, fields, \"update\"); the id through todo_ids.resolve_ids (a retired, split or unknown id raises its message, prefixed 'update n: '); an (id, field) an earlier entry of the same list set -> 'update n sets <id> <field> again; one spec sets a field once'; then the item takes a deep copy of each value and reshape._check_item(n, item, \"update\") runs; finally reshape._rerank(data) and the Updated. inbox.py: `_write_items(cfg, items, key: str = \"items\")` writes `{key: [item]}`; new `put_updates(cfg, spec) -> PutResult`: read_spec(spec, \"updates\"), load_catalog(cfg, \"update\"), apply_updates (RankingError becomes TodoSyncError; nothing written on any refusal), then _write_items(cfg, entries, \"updates\"). The drain reads each claimed file as updates when its object holds an \"updates\" list, else as add items as now; an update file runs apply_updates on the working catalog, a (id, field) an earlier file of the same drain set is appended once to `overwritten`, and any TodoSyncError, RankingError or ValueError rejects the file as an add file is rejected. Keep _absorb under 50 lines (a per-file helper). DrainResult gains `updated` and `overwritten` (both default ()), after `drift`; drain passes them by keyword. A drain where only updates landed still writes, renders and checks. The failure text after a landing names what landed: 'inbox: added ..., then:' or 'inbox: updated ..., then:' or both joined by '; '. drain_lines: nothing landed and nothing refused -> 'inbox: empty'; nothing landed -> 'inbox: rejected K (<names>)' as now; else 'inbox: ' + '; '.join of, in order, 'added N item(s): <id> (#N|note), ...', 'updated M item(s): <id> (<f1>, <f2>), ...', 'overwrote <id> <field>, ...', 'rejected K (<names>)', then 'check drift=D' (the formats[] example). Update the inbox.py module docstring: the inbox also holds field updates, one per file, applied by the same drain.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/updates.py",
+        "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "plugins/harness/lib/harness_lib/todo_sync/reshape.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:108-111",
+          "expect": "ADD_REQUIRED = (\"title\", \"kind\", \"summary\", \"proposed_change\", \"blast_radius\", \"loe\", \"impact\", \"severity\","
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:113",
+          "expect": "ISSUE_KEYS = (\"issue\", \"url\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:195-200",
+          "expect": "raise TodoSyncError(f\"item {n}: {key} must be {wanted}\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:212-219",
+          "expect": "raise TodoSyncError(f\"item {n}: {where}: {errors[0].message[:200]}\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:233",
+          "expect": "_check_types(n, spec)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:242",
+          "expect": "_check_item(n, item)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:416",
+          "expect": "def _rerank(data: Dict[str, Any], fresh: Container[str] = ())"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:457",
+          "expect": "what = \"split spec\" if key == \"parts\" else \"add spec\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/ids.py:154-157",
+          "expect": "return \"note\", f\"{code} was retired\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/ids.py:176",
+          "expect": "def resolve_ids(catalog: Dict[str, Any], raws: Iterable[str]) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:94",
+          "expect": "def _write_items(cfg: HarnessConfig, items: Sequence[Any]) -> Tuple[Path, ...]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:110",
+          "expect": "json.dumps({\"items\": [item]}, indent=2, ensure_ascii=False)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:193",
+          "expect": "out = add_items(working, read_spec(claim[1], \"items\"), day, rng)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:53-55",
+          "expect": "drift: Optional[int] = None"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:341",
+          "expect": "raise TodoSyncError(f\"inbox: added {_added_text(added)}, then: {exc}\") from exc"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:343",
+          "expect": "return DrainResult(added if accepted else (), refused, drift)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:358",
+          "expect": "line = f\"inbox: added {len(result.added)} item(s): {_added_text(result.added)}\""
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:329",
+          "expect": "print(\"\\n\".join(inbox.drain_lines(inbox.drain(cfg))))"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/todo_sync/updates.py plugins/harness/lib/harness_lib/todo_sync/inbox.py plugins/harness/lib/harness_lib/todo_sync/reshape.py tests/lib/test_todo_sync_updates.py",
+          "expect": "All checks passed!"
+        },
+        {
+          "run": "python -m pytest tests/lib/test_todo_sync_inbox.py tests/lib/test_todo_sync_add.py tests/lib/test_todo_sync_reshape.py tests/lib/test_todo_sync_add_note.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_update_fields_are_the_add_fields_without_the_issue",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_apply_updates_sets_the_fields_and_reranks",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_an_update_leaves_every_other_field",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_an_id_is_read_in_any_case_and_without_its_prefix",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[rank]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[catalog_entry_ids]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_a_retired_or_split_id_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[severity]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[no-id]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_one_spec_sets_a_field_once",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_an_empty_spec_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_put_updates_queues_one_file_per_update_and_leaves_the_catalog",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_put_updates_writes_nothing_on_a_refusal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_drain_applies_adds_and_updates_in_one_write",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_a_later_update_of_one_field_wins_and_is_named",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_updates_of_one_item_from_two_files_merge_their_fields",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_of_a_retired_id",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_that_sets_a_computed_field",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_drain_lines_name_the_updates_and_the_overwrites",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_updates.py::test_drain_lines_of_adds_alone_are_unchanged",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "inbox put --update in the driver and its usage document",
+      "action": "Copy docs/plans/2023/tests/tests/scripts/test_todo_sync_update_cli.py to tests/scripts/test_todo_sync_update_cli.py first. todo_sync.py `_adders`: on `put` add `--update` (store_true, help 'Queue field updates of existing items: the spec is {\"updates\": [{\"id\": ..., \"fields\": {...}}]}.'). `_inbox`: with args.update, a --file-issue raises TodoSyncError('inbox put --update takes no --file-issue (an update files no issue)'), else `inbox.put_updates(cfg, args.spec)`; either way print one `queued <repo-relative path>` line per file as now. Module docstring: the entry reads ``inbox put --spec PATH [--file-issue | --update]`` and says --update queues field updates of existing items (each field one an add spec may carry other than issue and url; each id a live item, a retired or split id refused; one spec sets a field of an item once; the whole spec checked against the catalog first, then one inbox file per update); the ``add`` entry's --inbox sentence says queued updates are applied with the queued items in name order, then the catalog is re-ranked, a later queued update of a field an earlier one set wins and the line names it, and gives the line as `inbox: [added N item(s): ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=D`. Update the first paragraph's list to name field updates. todo_sync.md: Who runs what, `inbox put` row: the todo-editor for add and sync runs, and with --update for update runs (any agent may queue updates); `add --inbox` row: '/harness:add-todo, /harness:sync-gh-todo and /harness:todo-edit --update after their agents return, and the todo-watch mod'; `add` table, --inbox row: names the applied updates and the line above; `inbox put` section: a paragraph on --update and a `| `--update` | ... |` row.",
+      "files": [
+        "plugins/harness/scripts/todo_sync.py",
+        "plugins/harness/scripts/todo_sync.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:218-219",
+          "expect": "put.add_argument(\"--spec\", type=Path, required=True, help='JSON file: {\"items\": [{...}, {...}]}.')"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:220-221",
+          "expect": "put.add_argument(\"--file-issue\", action=\"store_true\","
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:333-335",
+          "expect": "result = inbox.put(cfg, args.spec, args.file_issue)"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:80",
+          "expect": "``inbox put --spec PATH [--file-issue]``"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:76",
+          "expect": "``inbox: added N item(s): <id> (#N|note), ...[; rejected K (<files>)]; check drift=D`` line"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.md:47",
+          "expect": "| `add --inbox` | `/harness:add-todo` and `/harness:sync-gh-todo` after their agent returns, and the `todo-watch` mod. |"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.md:48",
+          "expect": "| `inbox put` | The `harness:todo-editor` agent, for `add` and `sync` runs. |"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.md:168",
+          "expect": "| `--inbox` | Add every queued inbox file in one catalog write, oldest first."
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.md:173",
+          "expect": "### `inbox put`"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/inbox.ts:112",
+          "expect": "const argv = [r.python, r.script, 'add', '--inbox', '--project', r.project]"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/scripts/todo_sync.py tests/scripts/test_todo_sync_update_cli.py",
+          "expect": "All checks passed!"
+        },
+        {
+          "run": "python -m pytest tests/scripts/test_todo_sync_usage_doc.py tests/scripts/test_todo_sync_catalog_lock_cli.py tests/scripts/test_todo_sync.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_todo_sync_update_cli.py::test_inbox_put_takes_an_update_flag",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_update_cli.py::test_put_update_queues_and_add_inbox_applies",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_update_cli.py::test_parallel_queued_updates_land_in_one_drain_with_drift_0",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_a_computed_field",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_file_issue",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "todo-edit: parallel splits and the update operation",
+      "action": "Copy docs/plans/2023/tests/tests/skills/test_todo_edit_parallel_contract.py to tests/skills/test_todo_edit_parallel_contract.py first. todo-edit SKILL.md: argument-hint \"--retire ID[, ID ...] [--delete-retired] | --split ID[, ID ...] | --update ID[, ID ...] | --refresh  [-- <guidance>]\"; description adds queuing field updates of items (trigger 'update todo-m3x9'). Step 1 table: `--split` one or more (`--split todo-m3x9, k7qf -- one part per module`, opus); new row `--update` one or more, guidance required (`--update todo-m3x9 -- severity 4: the parser drops rows`, opus). Stop conditions: drop '`--split` names more than one id'; add '`--update` with no guidance' and '`--update` names none' to the hint cases. Step 2: `--retire` and `--refresh` make one Agent call as now; `--split` and `--update` make one `Agent` call per id, all in one message, each prompt naming its one id on the `Ids:` line (splits then draft at once and take the catalog lease one at a time; updates only queue). The prompt block keeps its six lines with `Operation: <retire | split | refresh | update>`. New Step 3, for --update only: once every agent has returned, drain once with a fenced line `sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py\" add --inbox` run from the project root, reading its line as add-todo Step 4 does (`inbox: updated ...`, `; rejected ...` naming files kept as `.rejected.json` beside a `.reason.txt`, `inbox: empty` when nothing waited or the todo-watch mod drained first, a lock held by `todo_sync.py add --inbox` meaning the mod is draining). Old Step 3 becomes Step 4: relay every agent's reply, one per id, then the drain line. todo-editor.md: frontmatter description adds queuing field updates of existing items and the update operation; Rules 'Edit only' adds update spec files; 'Queue, never write' covers sync, add and update; new `## update` section after `## add`: Runs for `Operation: update`, `Ids:` one item, `Guidance:` what to change. 1. Grep and Read the item; read what the guidance names, checking claims as add level 1 does. 2. Choose new values only for `title`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`, `proposed_change`, `code_snippet`, `files`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`, `related_gh_issues`; each value replaces the field whole; the script refuses every other field (`id`, `rank`, `priority`, `depends_on`, `unblocks`, `sources`, `gh_issues`, `tracker`, `catalog_entry_ids`), and the drain rescores from severity, impact, loe and blast_radius. 3. Write `{\"updates\": [{\"id\": \"<id>\", \"fields\": {...}}]}` to `<state_dir>/todo-sync/update-<stamp>-<rand>.json` (stamp and rand as in sync). 4. `TS inbox put --update --spec <path>`: no lease, no catalog write; on a `problem:` line fix the spec and rerun once. 5. List it under `Added` as `queued update: <id> (<fields>)`; skip finish: the skill drains. Reply block keeps its ten field names: Operation adds `update`; Result for sync, add and update is the first queued line; Added names `queued update: <id> (<fields>)` for update; 'Sync, add and update run no check'. Stop conditions: an update id the script refuses (retired, split, unknown) is relayed verbatim.",
+      "files": [
+        "plugins/harness/skills/todo-edit/SKILL.md",
+        "plugins/harness/agents/todo-editor.md"
+      ],
+      "dependencies": [
+        "TASK-2",
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/todo-edit/SKILL.md:4",
+          "expect": "argument-hint: \"--retire ID[, ID ...] [--delete-retired] | --split ID | --refresh  [-- <guidance>]\""
+        },
+        {
+          "at": "plugins/harness/skills/todo-edit/SKILL.md:24",
+          "expect": "| `--split` | exactly one | `--split todo-m3x9 -- one part per module` | `opus` |"
+        },
+        {
+          "at": "plugins/harness/skills/todo-edit/SKILL.md:34-36",
+          "expect": "When the operation is missing or unknown, `--split` names more than one id"
+        },
+        {
+          "at": "plugins/harness/skills/todo-edit/SKILL.md:43",
+          "expect": "One `Agent` call: `subagent_type=\"harness:todo-editor\"`, the model from the table"
+        },
+        {
+          "at": "plugins/harness/skills/todo-edit/SKILL.md:48",
+          "expect": "Operation: <retire | split | refresh>"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:10-14",
+          "expect": "The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired, Project root, Guidance)"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:61",
+          "expect": "the split and add spec files under `<state_dir>/todo-sync/`"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:272",
+          "expect": "Operation: <retire | split | refresh | sync | add>"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:276",
+          "expect": "Added: <queued: <title> (#N [<url>] | note) for sync and add"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:284",
+          "expect": "Sync and add run no check: their `Check` line reads `not run (the drain checks)`."
+        },
+        {
+          "at": "tests/contract/test_dispatch_skill_headers.py:79",
+          "expect": "assert _prompt_block(\"todo-edit\")[1].startswith(\"Operation: \")"
+        },
+        {
+          "at": "tests/skills/test_todo_edit_skill_contract.py:21-22",
+          "expect": "_REPLY_FIELDS = (\"Operation\", \"Result\", \"Retired ids\", \"Prose fixed\", \"Added\", \"Stubs\", \"Resolved\", \"Close\","
+        },
+        {
+          "at": "plugins/harness/skills/add-todo/SKILL.md:77",
+          "expect": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py\" add --inbox"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_todo_inbox_prose_contract.py tests/skills/test_todo_edit_skill_contract.py tests/skills/test_todo_editor_split_lease_contract.py tests/contract/test_dispatch_skill_headers.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_argument_hint_takes_several_split_ids_and_an_update",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_update_without_guidance_stops_at_the_hint",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_split_and_update_dispatch_one_agent_per_id_in_one_message",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_the_skill_drains_the_inbox_once_after_the_update_agents",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_queues_updates_and_holds_no_lease",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_names_the_fields_an_update_may_set",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_reports_queued_updates_under_added",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "README, release notes and the harness version",
+      "action": "README.md: the todo-edit line reads `/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t[, m3x9] | --update todo-sp7t -- <what to change> | --refresh` and the paragraph adds: several split ids dispatch one agent each in one message, drafting at once and applying one at a time under the lease; --update dispatches one agent per id that queues field updates with `todo_sync.py inbox put --update`, and the skill drains them once with `add --inbox`. The lease sentence (line 478-480) says retire and refresh hold a lease from `lease acquire` to `lease release`, a split from its dry run (`lease acquire --wait 300`), and update runs queue like adds. plugin.json: harness version 0.77.0 -> 0.78.0. docs/RELEASES/v1.0.0.md: the harness row reads `| harness | 0.65.1 | 0.78.0 |`; append bullets: Feat(todo-sync) `lease acquire --wait SECONDS`, and a todo-editor split drafts its spec before it takes the lease, so parallel splits draft at once and apply one at a time; Feat(todo-sync) `inbox put --update` queues field updates of existing items (the add-spec fields less issue and url; a retired, split or unknown id and any other field refused) and `add --inbox` applies them with queued adds in one write, naming a later update that overwrote an earlier one's field; Feat(harness) `/harness:todo-edit --split` takes several ids and `--update ID[, ID ...] -- <guidance>` dispatches one todo-editor per id.",
+      "files": [
+        "README.md",
+        "docs/RELEASES/v1.0.0.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "dependencies": [
+        "TASK-5"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "README.md:439",
+          "expect": "`/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t | --refresh`"
+        },
+        {
+          "at": "README.md:478-480",
+          "expect": "its retire, split and refresh hold a lease from `lease acquire` to `lease release`"
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.77.0\","
+        },
+        {
+          "at": "docs/RELEASES/v1.0.0.md:28",
+          "expect": "| harness | 0.65.1 | 0.77.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "git grep -n -F -e \"--update todo-sp7t\" -- README.md",
+          "expect": "README.md:"
+        },
+        {
+          "run": "git grep -n -F -e \"\\\"version\\\": \\\"0.78.0\\\"\" -- plugins/harness/.claude-plugin/plugin.json",
+          "expect": "plugin.json:3:"
+        },
+        {
+          "run": "git grep -n -F -e \"| harness | 0.65.1 | 0.78.0 |\" -- docs/RELEASES/v1.0.0.md",
+          "expect": "v1.0.0.md:28:"
+        }
+      ]
+    }
+  ],
+  "base_commit": "c072dfc56a717190dae26e34f817e2f88f8da454",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How does a split that finds the catalog lease held wait for it, once the lease moves to just before its dry run (catalog_lock waits 10 s by default)?",
+      "options": [
+        {
+          "id": "D1A",
+          "summary": "lease acquire --wait SECONDS in the driver; the split passes --wait 300 and reruns acquire up to 3 times in all on a held-lease refusal; the default stays 10 s"
+        },
+        {
+          "id": "D1B",
+          "summary": "No driver change; the agent prose loops on the 10 s acquire"
+        },
+        {
+          "id": "D1C",
+          "summary": "acquire waits until the 30-minute lease staleness"
+        }
+      ],
+      "chosen": "D1A",
+      "rationale": "Developer choice 2026-11-17. The project rule puts settings a driver can act on in the driver, not in prose; 300 s plus the run fits one Bash call under its 600 s cap."
+    },
+    {
+      "id": "D2",
+      "question": "Where do queued field updates live and what drains them?",
+      "options": [
+        {
+          "id": "D2A",
+          "summary": "The same todo-inbox folder and name scheme, files holding {\"updates\": [...]}; add --inbox drains adds and updates oldest first in one write; the todo-watch mod is unchanged"
+        },
+        {
+          "id": "D2B",
+          "summary": "A sibling update --inbox drain with its own folder or name prefix; the mod gains a second drain call"
+        }
+      ],
+      "chosen": "D2A",
+      "rationale": "Developer choice 2026-11-17. One drain keeps one catalog write and one summary line; the mod drains by running add --inbox and passes its inbox: line through unparsed."
+    },
+    {
+      "id": "D3",
+      "question": "Which item fields may a queued update set?",
+      "options": [
+        {
+          "id": "D3A",
+          "summary": "Exactly the fields an add spec may carry, less issue and url"
+        },
+        {
+          "id": "D3B",
+          "summary": "The D3A fields plus catalog_entry_ids"
+        }
+      ],
+      "chosen": "D3A",
+      "rationale": "Developer choice 2026-11-17. The add spec list is already validated (types and the item schema); links, sources, issues, tracker and computed fields stay with the script."
+    },
+    {
+      "id": "D4",
+      "question": "What skill surface comes with the driver changes?",
+      "options": [
+        {
+          "id": "D4A",
+          "summary": "todo-edit --split takes several ids and --update ID[, ID ...] -- <guidance> is new; either dispatches one todo-editor per id in one message; --update drains once"
+        },
+        {
+          "id": "D4B",
+          "summary": "Multi-id --split only; updates are queued by any agent with inbox put --update, documented only"
+        },
+        {
+          "id": "D4C",
+          "summary": "Driver and agent prose only"
+        }
+      ],
+      "chosen": "D4A",
+      "rationale": "Developer choice 2026-11-17. Issue 309 acceptance dispatches three splits in one message; the update operation gives research findings a queued route into the catalog."
+    }
+  ],
+  "values": [
+    {
+      "name": "write lock default wait",
+      "value": "10.0 seconds",
+      "source": "plugins/harness/lib/harness_lib/catalog_lock.py:39"
+    },
+    {
+      "name": "split lease wait",
+      "value": "300 seconds (--wait 300)",
+      "source": "Bash tool foreground timeout cap of 600000 ms; the wait plus the run fits one call",
+      "assumes": [
+        "D1A"
+      ]
+    },
+    {
+      "name": "split lease acquire tries",
+      "value": "3 in all",
+      "source": "issue 309 Recommendation 1",
+      "assumes": [
+        "D1A"
+      ]
+    },
+    {
+      "name": "split acquire Bash timeout",
+      "value": "330000 ms",
+      "source": "300 s wait plus 30 s for the run",
+      "assumes": [
+        "D1A"
+      ]
+    },
+    {
+      "name": "update fields",
+      "value": "title, kind, summary, proposed_change, blast_radius, loe, impact, severity, why_ranked, needs_decision, decision_question, status, files, related_gh_issues, code_snippet",
+      "source": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:108-111",
+      "assumes": [
+        "D3A"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "inbox drain line (todo-watch takes the stdout line starting 'inbox: ')",
+      "example": "inbox: added 1 item(s): todo-k7qf (#9); updated 1 item(s): todo-c4ch (summary, severity); overwrote todo-c4ch summary; rejected 1 (x.json); check drift=0",
+      "source": {
+        "at": "plugins/todo-watch/hooks/inbox.ts:52",
+        "expect": "find(l => l.startsWith(INBOX_PREFIX))"
+      }
+    },
+    {
+      "name": "queued update file (one update per file, as an add file holds one item)",
+      "example": "{\"updates\": [{\"id\": \"todo-c4ch\", \"fields\": {\"summary\": \"Narrowed to one file.\"}}]}",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:110",
+        "expect": "json.dumps({\"items\": [item]}, indent=2, ensure_ascii=False)"
+      }
+    },
+    {
+      "name": "queued inbox file name (update files keep it, so the mod's queued test still holds)",
+      "example": "20261117T101500123456Z-00-a1b2c3.json",
+      "source": {
+        "at": "plugins/todo-watch/hooks/inbox.ts:73-74",
+        "expect": "name.endsWith('.json') && !name.startsWith('.') && !name.endsWith(REJECTED_SUFFIX)"
+      }
+    },
+    {
+      "name": "lease acquire line, read by the todo-editor for its token",
+      "example": "lease: 3f9c0a1b2c3d4e5f",
+      "source": {
+        "at": "plugins/harness/scripts/todo_sync.py:358",
+        "expect": "print(f\"lease: {locking.acquire(cfg, args.owner)}\")"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "inbox put",
+      "hits": {
+        "README.md": "keep: describes add and sync queueing; the todo-edit paragraph changes in TASK-6",
+        "docs/RELEASES/v1.0.0.md": "change: a release bullet for inbox put --update (TASK-6)",
+        "plugins/harness/agents/todo-editor.md": "change: the update operation queues with inbox put --update (TASK-5)",
+        "plugins/harness/config/harness.schema.json": "keep: the --file-issue repo description",
+        "plugins/harness/scripts/todo_sync.md": "change: inbox put --update documented (TASK-4)",
+        "plugins/harness/scripts/todo_sync.py": "change: the --update option and its docstring (TASK-4)",
+        "plugins/harness/skills/add-todo/SKILL.md": "keep: add runs queue items as before",
+        "plugins/harness/skills/sync-gh-todo/SKILL.md": "keep: sync runs queue items as before",
+        "plugins/todo-watch/README.md": "keep: the mod still runs add --inbox, which now applies queued updates too (D2A); no mod change",
+        "tests/scripts/test_todo_sync_usage_doc.py": "keep: reads the parser",
+        "tests/skills/test_sync_gh_todo_skill_contract.py": "keep: sync prose guard",
+        "tests/skills/test_todo_inbox_prose_contract.py": "keep: add and sync prose guard"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "lease acquire",
+      "hits": {
+        "README.md": "change: a split holds the lease from its dry run (TASK-6)",
+        "docs/RELEASES/v1.0.0.md": "keep: the earlier lease bullet stays; a new bullet is added (TASK-6)",
+        "plugins/harness/agents/todo-editor.md": "change: split takes the lease after drafting, with --wait 300 (TASK-2)",
+        "plugins/harness/scripts/todo_sync.md": "change: the --wait row (TASK-1)",
+        "plugins/harness/scripts/todo_sync.py": "change: --wait option and docstring (TASK-1)",
+        "tests/skills/test_todo_inbox_prose_contract.py": "change: the docstring names when a split holds the lease (TASK-2)"
+      }
+    },
+    {
+      "id": "S3",
+      "pattern": "split (ID|todo-[a-z0-9]{4})",
+      "hits": {
+        "README.md": "change: the todo-edit line takes several split ids and --update (TASK-6)",
+        "plugins/harness/agents/todo-editor.md": "keep: the one-id split example in the frontmatter still holds",
+        "plugins/harness/scripts/todo_sync.md": "keep: the driver's split takes one id",
+        "plugins/harness/scripts/todo_sync.py": "keep: the driver's split takes one id",
+        "plugins/harness/skills/todo-edit/SKILL.md": "change: --split ID[, ID ...] and --update (TASK-5)",
+        "tests/lib/test_catalog_lock.py": "keep: a lock owner string in a test"
+      }
+    }
+  ],
+  "ledger": "plan/2023-parallel-todo-editing-remix"
+}

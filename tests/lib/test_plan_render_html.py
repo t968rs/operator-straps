@@ -1,6 +1,7 @@
 """The HTML PIP and its ``live.js`` sidecar.
 
-The page is rendered from the plan at freeze and is self-contained: inline CSS and JS, no network address.
+The page is rendered from the plan at freeze and is self-contained: inline CSS and JS, no network address
+outside a link target.
 It loads ``<plan_id>/live.js`` (``window.PLAN_LIVE``: the receipts and the DesignEvolution) and reloads it on a
 timer with a cache-busting query; without the sidecar it shows every item PENDING and names ``plan.py render``,
 which also refreshes a sidecar left stale by a pull. A plan frozen with receipts, or never frozen and bound for
@@ -9,6 +10,7 @@ sidecar only for a frozen receipts plan.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -49,7 +51,8 @@ def page() -> str:
 def test_the_page_is_self_contained() -> None:
     text = page()
     assert text.startswith("<!DOCTYPE html>")
-    assert "http://" not in text and "https://" not in text
+    loads = re.sub(r'<a [^>]*href="https://[^"]*"', "", text)
+    assert "http://" not in loads and "https://" not in loads, "a network address outside a link target"
     assert "<style>" in text and "<script>" in text
 
 

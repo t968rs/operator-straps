@@ -1,10 +1,13 @@
 """The HTML PIP of a receipts plan: one self-contained page that redraws itself from a ``live.js`` sidecar.
 
 The page carries the frozen plan (header, status, decisions, values, formats, sweeps, items) as escaped
-HTML with inline CSS and JS and no network address, so it opens from disk. The CSS and the loader script
+HTML with inline CSS and JS, so it opens from disk: it loads nothing from the network (no ``<link>``,
+``@import``, ``url()`` or remote script), and its one https address is a link target, the brand in the
+upper-right corner. The CSS and the loader script
 are asset files under ``PAGES`` (``pages/styles/shared.css``, ``pages/styles/plan.css``,
-``pages/components/plan.js`` in the plugin root), read when a page renders: the CSS is always inlined, the
-loader script only on a plan frozen with receipts. Its script adds
+``pages/components/plan.js`` in the plugin root), read when a page renders: the CSS and the theme toggle
+(``pages/components/theme.js``, in ``<head>``) are always inlined, the loader script only on a plan frozen
+with receipts. Its script adds
 ``<script src="<plan_id>/live.js?t=<ms>">`` and re-adds it every ``RELOAD_MS`` with a fresh ``t``; the
 sidecar sets ``window.PLAN_LIVE`` (receipts, the DesignEvolution catalog, the build time). Each load redraws
 only the live parts: every item's status (drawn into both its heading badge and its Status-block badge)
@@ -29,11 +32,10 @@ from harness_lib.plan_doc import pip_html_path, pip_path
 from harness_lib.plan_enums import ItemStatus, OutcomeKind, RecordScheme
 from harness_lib.plan_models import (ActionItem, ActionPlan, Blocked, Closed, Completed, Decision,
                                      DecisionOption, Started)
+from harness_lib.page_chrome import PAGES, corner, theme_script
 from harness_lib.plan_render import _NAME, _expand_base, render_pip
-from harness_lib.project import plugin_root
 
 RELOAD_MS = 3000
-PAGES = plugin_root() / "pages"
 _PENDING = ItemStatus.PENDING.value
 # Outcome kind -> the item status it implies, read from the outcome models so the page cannot drift.
 _KIND_STATUS: Dict[str, str] = {
@@ -224,7 +226,8 @@ def render_pip_html(plan: ActionPlan, plan_name: str) -> str:
     script = [_script(plan)] if plan_receipts.uses_receipts(plan) else []
     return "\n".join(["<!DOCTYPE html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',
                       f"<title>{_e(_title(plan, plan_name))}</title>", f"<style>\n{_style()}</style>",
-                      "</head>", "<body>", *body, *script, "</body>", "</html>"]) + "\n"
+                      theme_script(), "</head>", "<body>", corner(), *body, *script, "</body>",
+                      "</html>"]) + "\n"
 
 
 def _keeps_markdown(plan_file: Path, plan: ActionPlan) -> bool:

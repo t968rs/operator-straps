@@ -135,10 +135,15 @@ def rows_sha256(items: List[Dict[str, Any]], top_n: int) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def ranked_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Every item by rank; an item without an int rank sorts last, keeping catalog order among them."""
+    ranked = [i for i in items if isinstance(i, dict)]
+    return sorted(ranked, key=lambda i: i.get("rank") if isinstance(i.get("rank"), int) else 1 << 30)
+
+
 def top_items(items: List[Dict[str, Any]], top_n: int) -> List[Dict[str, Any]]:
     """The first ``top_n`` items by rank."""
-    ranked = [i for i in items if isinstance(i, dict)]
-    return sorted(ranked, key=lambda i: i.get("rank") if isinstance(i.get("rank"), int) else 1 << 30)[:top_n]
+    return ranked_items(items)[:top_n]
 
 
 def parse_header(first_line: str) -> Optional[SnapshotHeader]:

@@ -1,9 +1,10 @@
-"""TODO snapshot page: ``snapshot_html.render_page`` draws the catalog's top-N table as one themed HTML page.
+"""TODO snapshot page: ``snapshot_html.render_page`` draws the catalog as one themed HTML page.
 
-The page opens with the T2 header line, carries a Summary block of catalog counts above the table, keeps the
-Rank / Item / Status / Kind / Blast / LoE / Score / GH columns, folds each item's prose into a ``<details>``
-in its Item cell, and inlines the shared theme, its own CSS and a loader that reloads the page when the
-``todo_live.js`` stamp beside it changes.
+The page opens with the T2 header line, carries a Summary block of catalog counts above the top-N table and,
+folded closed below it, a table of the remaining items; both keep the
+Rank / Id / Item / Status / Kind / Blast / LoE / Score / GH columns, fold each item's prose into a
+``<details>`` in its Item cell, and inlines the shared theme, its own CSS and a loader that reloads the page
+when the ``todo_live.js`` stamp beside it changes.
 """
 from __future__ import annotations
 
@@ -75,16 +76,29 @@ def _items() -> List[Dict[str, Any]]:
 
 
 def _page(items: Sequence[Dict[str, Any]], links: Sequence[Sequence[str]] = (), gh_repo: Optional[str] = None,
-          top_n: int = 10, **catalog_extra: Any) -> str:
+          top_n: int = 10, repo: Optional[str] = None, rest: Sequence[Dict[str, Any]] = (),
+          rest_links: Sequence[Sequence[str]] = (), **catalog_extra: Any) -> str:
     catalog = {"items": list(items), "trackers": [], "close_candidates": [], **catalog_extra}
     page = sh.SnapshotPage(header=snapshot_header(SOURCE, top_n, SHA, DAY), catalog=catalog,
                            top=list(items)[:top_n], top_n=top_n, rendered=DAY, source=SOURCE, links=links,
-                           gh_repo=gh_repo)
+                           gh_repo=gh_repo, repo=repo, rest=rest, rest_links=rest_links)
     return sh.render_page(page)
+
+
+def _two(top_n: int = 1, **kwargs: Any) -> str:
+    """The three helper items split after ``top_n``: the rest goes to the second table."""
+    items = _items()
+    return _page(items, top_n=top_n, rest=items[top_n:], **kwargs)
 
 
 def _rows(text: str) -> List[str]:
     return re.findall(r'<tr class="row".*?</tr>', text, re.S)
+
+
+def _table_html(text: str, cls: str) -> str:
+    """The ``<table class="items <cls>">`` element of the page, or empty when it has none."""
+    found = re.search(rf'<table class="items {cls}">.*?</table>', text, re.S)
+    return found.group(0) if found else ""
 
 
 def _text(fragment: str) -> str:
@@ -107,16 +121,98 @@ def test_first_line_is_the_t2_header_then_the_doctype() -> None:
     assert lines[1] == "<!DOCTYPE html>"
 
 
-def test_title_names_top_n_and_the_render_date() -> None:
+def test_title_and_heading_name_the_snapshot_without_a_row_count() -> None:
     text = _page(_items())
-    assert f"<title>TODO Snapshot: Top 10 ({DAY})</title>" in text
-    assert "<h1>TODO Snapshot: Top 10</h1>" in text
-    assert DAY in _text(text.split("<h1>", 1)[1].split("<table", 1)[0])
+    assert f"<title>TODO Snapshot ({DAY})</title>" in text
+    assert "<h1>TODO Snapshot</h1>" in text
+
+
+def test_the_render_date_sits_right_under_the_heading() -> None:
+    after = _page(_items()).split("</h1>", 1)[1].lstrip()
+    assert after.startswith(f'<p class="rendered">Rendered {DAY}</p>')
+
+
+def test_the_render_info_is_its_own_block_under_a_small_heading() -> None:
+    text = _page(_items())
+    block = re.search(r'<section id="render-info">(.*?)</section>', text, re.S)
+    assert block, "no render-info section"
+    assert block.group(1).startswith("<h5>Render info</h5>")
+    info = _text(block.group(1))
+    assert SOURCE in info and "todo_live.js" in info and "overwritten" in info and DAY not in info
+    assert text.index('class="rendered"') < text.index('id="render-info"') < text.index('id="summary"')
+
+
+def test_the_render_info_puts_writers_and_non_writers_on_their_own_lines() -> None:
+    block = re.search(r'<section id="render-info">(.*?)</section>', _page(_items()), re.S).group(1)
+    lines = [_text(p) for p in re.findall(r"<p[^>]*>(.*?)</p>", block, re.S)]
+    assert ";" not in "".join(lines)
+    writes = [ln for ln in lines if ln.startswith("Rewritten by")]
+    keeps = [ln for ln in lines if ln.startswith("Not rewritten by")]
+    assert len(writes) == 1 and "todo_sync.py render" in writes[0] and "add --inbox" in writes[0]
+    assert len(keeps) == 1 and "add --spec" in keeps[0] and "migrate-ids" in keeps[0]
+
+
+def test_the_render_info_links_the_script_usage_from_its_name() -> None:
+    block = re.search(r'<section id="render-info">(.*?)</section>', _page(_items()), re.S).group(1)
+    link = f'<a href="{sh.USAGE}"><code>todo_sync.py</code></a>'
+    assert block.count(link) == 1
+    assert f"<p class=\"note\">Rewritten by {link} " in block
+
+
+def test_title_and_heading_open_with_the_repo_name() -> None:
+    text = _page(_items(), repo="widgets")
+    assert f"<title>widgets | TODO Snapshot ({DAY})</title>" in text
+    assert '<h1><span class="repo">widgets</span>TODO Snapshot</h1>' in text
+
+
+def test_the_header_block_rules() -> None:
+    css = (sh.PAGES / "styles" / "todo.css").read_text(encoding="utf-8")
+    assert re.search(r"h1 \.repo\s*\{[^}]*display: block", css), "repo name not on its own line"
+    assert re.search(r"\.rendered\s*\{[^}]*font-size", css)
+    assert re.search(r"#render-info h5\s*\{[^}]*font-size", css)
+
+
+def test_the_repo_name_is_escaped() -> None:
+    text = _page(_items(), repo="<w>")
+    assert "<title>&lt;w&gt; | " in text and '<span class="repo">&lt;w&gt;</span>' in text
 
 
 def test_the_table_keeps_its_columns() -> None:
     heads = re.findall(r"<th[^>]*>(.*?)</th>", _page(_items()))
-    assert heads == ["Rank", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH"]
+    assert heads == ["Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH"]
+
+
+def test_the_top_table_sits_under_its_own_heading() -> None:
+    assert '<h2>Top 3</h2>\n<table class="items top">' in _page(_items())
+    assert '<h2>Top 1</h2>\n<table class="items top">' in _two()
+
+
+def test_the_rest_table_draws_the_remaining_items_in_rank_order_folded_closed() -> None:
+    text = _two()
+    assert re.findall(r'data-rank="(\d+)"', _table_html(text, "top")) == ["1"]
+    rest = _table_html(text, "rest")
+    assert re.findall(r'data-rank="(\d+)"', rest) == ["2", "3"]
+    assert re.findall(r"<th[^>]*>(.*?)</th>", rest) == list(sh.COLUMNS)
+    assert ('<details id="rest"><summary><h2>Remaining 2 items</h2></summary>\n<table class="items rest">'
+            in text)
+    assert text.index('class="items top"') < text.index('id="rest"')
+
+
+def test_one_remaining_item_is_named_in_the_singular() -> None:
+    assert "<h2>Remaining 1 item</h2>" in _two(top_n=2)
+
+
+def test_rest_rows_link_their_stubs_by_position() -> None:
+    text = _two(links=[[ALPHA]], rest_links=[[], [BETA]])
+    rows = _rows(_table_html(text, "rest"))
+    assert '<a class="stub"' not in rows[0]
+    assert f'<a class="stub" href="{BETA}">1</a>' in rows[1]
+    assert f'<a class="stub" href="{ALPHA}">1</a>' in _table_html(text, "top")
+
+
+def test_no_remaining_items_draws_no_second_table() -> None:
+    text = _page(_items())
+    assert 'id="rest"' not in text and 'class="items rest"' not in text
 
 
 def test_one_row_per_top_item_in_rank_order() -> None:
@@ -129,10 +225,10 @@ def test_one_row_per_top_item_in_rank_order() -> None:
 def test_cells_carry_badges_sizes_and_score() -> None:
     [row] = _rows(_page([_item(IDS[0], 1, status="NEEDS_DECISION", kind="feature")]))
     cells = _cells(row)
-    assert len(cells) == 8
-    assert 'data-status="NEEDS_DECISION"' in cells[2] and _text(cells[2]) == "NEEDS_DECISION"
-    assert 'data-kind="feature"' in cells[3] and _text(cells[3]) == "feature"
-    assert [_text(c) for c in cells[4:7]] == ["S", "M", "2.76"]
+    assert len(cells) == 9
+    assert 'data-status="NEEDS_DECISION"' in cells[3] and _text(cells[3]) == "NEEDS_DECISION"
+    assert 'data-kind="feature"' in cells[4] and _text(cells[4]) == "feature"
+    assert [_text(c) for c in cells[5:8]] == ["S", "M", "2.76"]
 
 
 def test_text_is_escaped() -> None:
@@ -154,11 +250,22 @@ def test_code_spans_become_code_elements() -> None:
     assert "`load()`" not in row
 
 
-def test_stub_links_wrap_the_id_and_number_the_extras() -> None:
+def test_id_cell_holds_the_bare_id_for_copying() -> None:
     rows = _rows(_page(_items()[:2], links=[[ALPHA, BETA], []]))
-    assert f'<a class="id" href="{ALPHA}">{IDS[0]}</a>' in rows[0]
-    assert f'href="{BETA}"' in rows[0] and ">2</a>" in rows[0]
-    assert '<a class="id"' not in rows[1] and f'<span class="id">{IDS[1]}</span>' in rows[1]
+    assert len(rows) == 2
+    for row, ident in zip(rows, IDS):
+        assert re.search(r'<td class="c-id"><span class="id">([^<]*)</span></td>', row).group(1) == ident
+        assert "<a" not in _cells(row)[1]
+        assert ident not in _text(_cells(row)[2])
+
+
+def test_stub_links_follow_the_title_numbered_from_one() -> None:
+    rows = _rows(_page(_items()[:2], links=[[ALPHA, BETA], []]))
+    item_cell = _cells(rows[0])[2]
+    assert f'<a class="stub" href="{ALPHA}">1</a>' in item_cell
+    assert f'<a class="stub" href="{BETA}">2</a>' in item_cell
+    assert item_cell.index("Title 1") < item_cell.index(ALPHA)
+    assert '<a class="stub"' not in rows[1]
 
 
 def test_links_follow_row_position_not_id() -> None:
@@ -170,7 +277,7 @@ def test_links_follow_row_position_not_id() -> None:
 
 def _gh(item: Dict[str, Any], gh_repo: Optional[str] = None) -> str:
     [row] = _rows(_page([item], gh_repo=gh_repo))
-    return _cells(row)[7]
+    return _cells(row)[8]
 
 
 def test_gh_issue_links_to_its_source_url() -> None:
@@ -203,7 +310,7 @@ def test_details_carry_summary_proposal_decision_and_ranking() -> None:
     item = _item(IDS[0], 1, status="NEEDS_DECISION", summary="Summary text", proposed_change="Proposal text",
                  decision_question="Which one?", why_ranked="Ranked text")
     [row] = _rows(_page([item]))
-    item_cell = _cells(row)[1]
+    item_cell = _cells(row)[2]
     assert "<details" in item_cell and "<summary" in item_cell
     for text in ("Summary text", "Proposal text", "Which one?", "Ranked text"):
         assert text in item_cell
@@ -214,7 +321,7 @@ def test_malformed_fields_render_without_raising() -> None:
             "blast_radius": 5, "loe": None, "gh_issues": "x", "sources": 5, "summary": 5, "tracker": "t"}
     rows = _rows(_page([item], links=[[ALPHA]]))
     assert len(rows) == 1
-    assert '<a class="id"' not in rows[0] and f'href="{ALPHA}"' not in rows[0]
+    assert f'href="{ALPHA}">1</a>' in rows[0]
     assert '<span class="id">' in rows[0] and '<td class="c-rank">x</td>' in rows[0]
     assert "[&#x27;todo-k7qf&#x27;]" in rows[0]
 
@@ -241,8 +348,9 @@ def test_theme_and_loader_are_inlined_with_no_network_address() -> None:
     text = _page(_items())
     for folder, name in (("styles", "shared.css"), ("styles", "todo.css"), ("components", "todo.js")):
         assert (sh.PAGES / folder / name).read_text(encoding="utf-8").strip() in text
+    loads = re.sub(r'<a [^>]*href="https://[^"]*"', "", text)
     for needle in ("<link", "http://", "https://", "@import", "url("):
-        assert needle not in text
+        assert needle not in loads
     config = _script_config(text)
     assert config == {"src": f"{sh.LIVE_NAME}?t=", "reloadMs": sh.RELOAD_MS, "stamp": sh.page_stamp(text)}
 
@@ -303,3 +411,4 @@ def test_status_and_kind_badges_have_theme_rules() -> None:
     css = (sh.PAGES / "styles" / "todo.css").read_text(encoding="utf-8")
     assert '[data-status="NEEDS_DECISION"]' in css and '[data-status="OPEN"]' in css
     assert ".kind" in css and "details" in css
+    assert re.search(r"td\.c-id[^{]*\{[^}]*user-select: all", css)
