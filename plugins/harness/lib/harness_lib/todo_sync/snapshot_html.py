@@ -29,7 +29,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from harness_lib.page_chrome import corner, theme_script
+from harness_lib.page_chrome import HOME, corner, theme_script
 from harness_lib.project import plugin_root
 
 PAGE_NAME = "TODO_Snapshot.html"
@@ -37,7 +37,10 @@ LIVE_NAME = "todo_live.js"
 LIVE_HEAD = "window.TODO_LIVE = "
 RELOAD_MS = 3000
 PAGES = plugin_root() / "pages"
-COLUMNS = ("Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
+#: The GitHub copy of the driver's usage document; a link into the installed plugin would not resolve from a
+#: consuming project's page.
+USAGE = f"{HOME}/blob/main/plugins/harness/scripts/todo_sync.md"
+COLUMNS = ("Rank","Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
 _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
 _CONFIG = re.compile(r"<script>\nvar TODO_PAGE = (\{.*?\});")
 _STAMP = re.compile(r"[0-9a-f]{64}")
@@ -244,7 +247,7 @@ def _intro(page: SnapshotPage) -> List[str]:
             '<section id="render-info"><h5>Render info</h5>',
             f'<p class="note">Drawn from <code>{_e(page.source)}</code>. Edits to this file are '
             "overwritten.</p>",
-            f'<p class="note">Rewritten by <code>todo_sync.py</code> {writers}.</p>',
+            f'<p class="note">Rewritten by <a href="{USAGE}"><code>todo_sync.py</code></a> {writers}.</p>',
             f'<p class="note">Not rewritten by <code>todo_sync.py</code> {bare}: the page waits for the '
             "next render.</p>",
             f'<p class="note">An open page reloads itself when <code>{LIVE_NAME}</code> beside it '
