@@ -209,6 +209,31 @@ def test_check_reconciles_commit_tag_and_reports_drift(run: Run, project: Path) 
     assert f"lock/{STEM}/r1.{lock.seq}-" in drift[0], drift
 
 
+def test_freeze_leaves_ignored_bytecode_out_and_lock_and_check_ignore_it(run: Run, project: Path) -> None:
+    """Ignored bytecode under the plan's tests folder is not digested, so rewriting it neither refuses the
+    lock nor prints a ``drift:`` line; a non-bytecode ignored file there is still digested."""
+    from harness_lib import freeze_ledger as fl
+    fill(run, project, freeze=False)
+    tests = project / PLANS / "0001" / "tests"
+    (tests / ".gitignore").write_text("__pycache__/\n*.log\n", encoding="utf-8")
+    cache = tests / "tests" / "__pycache__" / "test_calc_sub.cpython-311.pyc"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_bytes(b"first")
+    (tests / "run.log").write_text("log\n", encoding="utf-8")
+    code, _, err = run("freeze", "1")
+    assert code == 0, err
+    (entry,) = entries(fl, project)
+    assert sorted(entry.ignored) == [f"{PLANS}/0001/tests/run.log"], entry.ignored
+    commit_all(project, "freeze plan 0001")
+    cache.write_bytes(b"second")
+    code, _, err = run("lock", "1")
+    assert code == 0, err
+    cache.write_bytes(b"third")
+    code, out, err = run("check", "1")
+    assert code == 0, err
+    assert not prefixed(out + err, "drift: "), out + err
+
+
 def test_legacy_plan_migrates_on_refreeze(run: Run, project: Path) -> None:
     from harness_lib import freeze_ledger as fl
     fill(run, project, freeze=False)

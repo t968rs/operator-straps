@@ -1,6 +1,6 @@
 ---
 name: write-plan
-description: Use when a spec or agreed design for multi-step work needs an implementation plan, before touching code, or when an existing plan's items need their status recorded with evidence. Triggers on "write a plan", "plan this", "write-plan", "record TASK-3".
+description: Use when a spec or agreed design for multi-step work needs an implementation plan, before touching code, when an existing plan's items need their status recorded with evidence, or when a merged plan's tags are archived. Triggers on "write a plan", "plan this", "write-plan", "record TASK-3", "archive plan 2021".
 argument-hint: "<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]"
 ---
 
@@ -140,21 +140,22 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    |---|---|
    | `base/<stem>/r1` | the base commit; `base/<stem>/r1-<m>` for the m-th base of the round (the original is m 1, so the first relink tags `r1-2`) |
    | `freeze/<stem>/r1.<k>-tree`, `lock/<stem>/r1.<k>-tree` | the tree of that entry |
-   | `freeze/<stem>/r1.<k>-commit`, `lock/<stem>/r1.<k>-commit` | the commit that added the entry file, once committed; `-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit |
+   | `<kind>/<stem>/r1.<k>-commit` (any entry kind: freeze, lock, arm, unlock, relink) | the commit that added the entry file, once committed; `-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit |
    | `receipt/<stem>/<ITEM>-commit` or `-tree` | the commit or index tree `record --sha` or `--staged` tested; `.2`, `.3` on a re-record |
+   | `archive/<stem>/r1`, `archive/<stem>/r1-<m>` | the plumbing commit `PLAN archive` builds over the folded tags' objects; `r1-<m>` for the m-th archive (the first is m 1) |
 
    A command prints its status line first, then one `tag: <name> -> <sha7>` line per tag it created, then one
    `push: git push origin <names>` line. The developer runs the push line; tree tags never travel with
    `push --follow-tags`. Receipt tags stay local, so no push line names them (a clone that needs them pushes
    `refs/tags/receipt/*` by hand). A tag name that already sits on another object refuses the command with a
-   `problem:` line before anything is written. Each `PLAN` command reconciles the ledger after its work, when it succeeds, by tagging the
+   `problem:` line before anything is written. Each `PLAN` command reconciles the ledger after its work, when it succeeds (`archive` before its fold), by tagging the
    commit that added each committed entry file, and `check` does too; both write refs, never files. A tag step
    that fails after the entry is written prints `warn:` and leaves the entry; the next command creates the tag.
    A freeze's push line never names its `-commit` tag, which exists only once the entry file is committed, so
-   after the developer commits the freeze run `PLAN check <id>`: it creates the `-commit` tag and prints its
-   `push:` line for the developer to run.
-   Nothing is tagged inside a strap scenario or red tree (marker file `.harness-scenario-tree`), and tagging
-   uses a fallback committer identity only when git has none configured. Driver tags sit on main-line
+   once the developer has committed the freeze, the agent runs `PLAN check <id>`: it creates the `-commit` tag
+   and prints its `push:` line for the developer to run.
+   Nothing is tagged inside a strap scenario or red tree (marker file `.harness-scenario-tree`), and tagging and the archive commit
+   use a fallback committer and author identity, each only when git has none configured. Driver tags sit on main-line
    commits, so a release version is read with `git describe --match 'v*'`.
 
    `check` warns with `untagged: <sha7> (<role>)` for a base, tree or commit no tag holds, and with
@@ -171,7 +172,9 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    `plan_api.write` and `freeze` refuse the plan. Receipts, `live.js` and the DesignEvolution catalog stay writable, so `record`, `verify`, `lanes`
    and `render` run as before. A plan frozen with the sealed scheme or none keeps its plan JSON open to the
    hook, since `record` still writes it there. `check` prints `drift: <path> differs from <tag>` for a Locked
-   file changed by any other writer.
+   file changed by any other writer; once an archive folded the lock tree tag, `<tag>` becomes the archive
+   path that holds the tree (`archive/<stem>/r1:freezes/r1.<k>`), or the ledger entry (`lock r1.<k>`) when no
+   archive tag holds it directly.
 
    **Unlock.** A design change to a Locked plan takes two steps, so an unlock always rests on the developer's
    permission. `PLAN unlock <id> --arm "<reason>"` runs only on the developer's explicit OK (given ahead of
@@ -186,6 +189,32 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    among HEAD's ancestors (or takes `--to`), re-points `base_commit`, appends a `relink` entry and tags the
    new base `base/<stem>/r1-<m>`; the old tags stay. The entry re-records the frozen or locked files with the
    plan JSON's new blob, so a relink leaves the plan Frozen or Locked and `check` reports no `drift:` for it.
+
+   **Archive.** `PLAN archive <id> [--remote]` runs only on the developer's explicit ask, after the PR
+   merges. It folds the plan's base, receipt and ledger entry tags (freeze, lock, arm, unlock, relink)
+   into one annotated tag, `archive/<stem>/r1`, over a plumbing commit: `receipts/` and `freezes/` subtrees
+   hold the tested trees and the entry trees, the base, entry and receipt commits are its parents, and the
+   message maps each folded tag name to its object. The ledger is reconciled first, so the commit that added a
+   committed entry is tagged and folds with the rest. Every object is verified reachable from the archive before
+   any tag is created, and a miss refuses the command with nothing tagged or deleted. It refuses inside a strap scenario or red tree, before any work. The folded local tags are
+   then deleted. The command prints its status line, a `tag:` line for the archive tag, one `push:` line for
+   it, and a `deleted:` line naming every folded tag; with `--remote` it also prints a `remote:` line that
+   deletes the folded tags (the local-only `receipt/` ones excepted) from the remote, for the developer to run.
+   The delete is local only: without the `remote:` line, the next `git fetch` or `git pull` restores every
+   pushed folded tag (base and entry commit tags peel to main-line commits, and entry tree tags to trees those commits hold, so tag auto-follow brings them back) and
+   a later archive folds them again. Run it as `PLAN archive <id> --remote` when those tags were pushed, and
+   have the developer run both the `push:` and the `remote:` lines. The `remote:` line leaves out the tags the
+   archive's own reconcile created; a folded tag the remote still lacks (one never pushed) makes that push fail,
+   so drop the names git reports as missing on the remote and rerun the line.
+   Pushing the archive tag sends the receipt trees and commits the archive holds, while no `receipt/` tag
+   travels. A later run folds the tags created since into `archive/<stem>/r1-<m>`, with the previous archive as
+   its first parent.
+
+   Afterwards no command re-tags an entry the archive folded or a base it reaches, and `check` prints no
+   `untagged:` line for an object an archive holds; a base off HEAD's history still prints `off-history:`,
+   the relink cue, whether an archive reaches it or not.
+   An entry written later (a refreeze, lock, relink, arm or unlock) is tagged as before, until the next
+   archive folds it.
 
    **What a record proves.** On a receipts plan, `record` seals each status it writes into the item's
    receipt: a sha256 over the receipt without its seal (outcome, date, evidence, and the deviations with the
@@ -306,8 +335,8 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
 - Changing an existing item's status by hand or through `write` (a new item is built PENDING): on a receipts
   plan the status lives in the item's receipt, which only `record` writes; on a plan frozen before receipts
   `record` owns the execution fields, and `write` refuses the change once the plan is frozen.
-- Running `PLAN lock` or `PLAN unlock --arm` on the session's own judgment: the first waits for the
-  developer's explicit ask, the second for the developer's explicit OK.
+- Running `PLAN lock`, `PLAN archive` or `PLAN unlock --arm` on the session's own judgment: the first two wait
+  for the developer's explicit ask, the third for the developer's explicit OK.
 - Writing to a Locked plan, its planned tests or a file under `freezes/` by any route (the hooks deny the
   file tools and the shell write shapes; `check` reports the drift of any other writer): the way in is
   `unlock`, and ledger files are written by the drivers alone.
@@ -323,7 +352,8 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
 - `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/receipt_models.py` and `evolution_models.py`: the receipt and the
   DesignEvolution models; `evolution_api.py` adds a change.
 - `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/plan_lock.py` and `freeze_ledger.py`: the ledger, the tags and the
-  lock, unlock and relink steps.
+  lock, unlock and relink steps, and the archive-aware check.
+- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/plan_archive.py`: the archive step (the fold, the reach check, the tag and the deletes).
 - `${CLAUDE_PLUGIN_ROOT}/schemas/ActionPlan.schema.json`: generated from the models.
 - `${CLAUDE_PLUGIN_ROOT}/schemas/FreezeLedgerEntry.schema.json`: the shape of a ledger entry file.
 - `harness:parallel2`: dispatches independent items in waves.

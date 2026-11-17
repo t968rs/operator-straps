@@ -207,15 +207,21 @@ Expected: All N tests pass.
 
 After all tasks complete and tests pass:
 
-1. Merge worktrees back to feature branch (or all serial changes committed)
-2. Push feature branch: `git push origin feature_branch`
-3. Open/update PR in GitHub
-4. Record each item in `<plans dir>/{PLAN_ID}_{Title}_ActionPlan.json` through `plan.py`, never by hand:
+1. (agent) Stage the worktrees' changes onto the feature branch
+2. (developer) Commit them (or the serial changes)
+3. (developer) Push feature branch: `git push origin feature_branch`
+4. (developer) Open/update PR in GitHub
+5. (agent) Record each item through `plan.py`, never by hand; each record writes `<plans dir>/{PLAN_ID}/receipts/<ITEM>.json`:
    - `plan.py record {PLAN_ID} <ITEM> --sha <commit>` or `--staged` (COMPLETE, sealed) or `--closed "<rationale>"`
      (CLOSED_NO_ACTION)
    - `plan.py verify {PLAN_ID}` before the merge: reruns the COMPLETE items' tests at HEAD, writes nothing
    - Add/update the relevant entry in `pr_attributes[]` through `plan_api.write`
    - `plan.py render {PLAN_ID}` to regenerate this PIP
+6. (developer) Commit the receipts (live.js stays untracked), push, and merge the PR
+7. (agent) `plan.py archive {PLAN_ID} --remote`, after the PR merges and on the developer's explicit ask; the
+   developer runs the `push:` line it prints and the `remote:` line, since without the remote delete the next
+   fetch or pull restores the pushed folded tags; when git reports a name as missing on the remote (a tag
+   never pushed), drop it from the `remote:` line and rerun it
 ```
 
 ---
