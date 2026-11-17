@@ -599,7 +599,7 @@ at the plugin folders of a checkout.
 | `plugins/harness/bin/`                              | shims on the Bash PATH while the plugin is enabled (`harness-skill-api`); LF endings, mode 100755                                |
 | `plugins/harness/skills/`, `agents/`                | skill and agent markdown; agents dispatch as `harness:<name>`                                                                    |
 | `plugins/harness/workflows/`                        | Workflow scripts (`adversarial-review.js`, the `pr-review -a` pipeline); every agent type, model and prompt comes from `args`    |
-| `plugins/harness/pages/`                            | page assets inlined by renderers: `styles/` (`shared.css` theme, `plan.css`) and `components/` (`plan.js` loader); read at render time, never written |
+| `plugins/harness/pages/`                            | page assets inlined by renderers: `styles/` (`shared.css` theme, `plan.css`, `todo.css`) and `components/` (`theme.js` toggle, `plan.js` and `todo.js` loaders); read at render time, never written |
 | `plugins/harness/{config,schemas,rules,reference}/` | defaults + config schema, review schemas, session rules, commit format                                                           |
 | `plugins/arc-straps/`                               | ArcGIS Pro toolbox skills (`arc-meta`, `arc-help-pages`) and the `plugins.arc-straps` defaults and schema; Python runs through `harness-skill-api` |
 | `plugins/<mod>/hooks/`                              | TypeScript mods, each with its own `*.test.ts`                                                                                   |
