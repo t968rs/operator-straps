@@ -8,7 +8,7 @@
   "base_sha": "26e2c29a183adcbdac808336aa1313c9e0391b0e",
   "head_sha": "f7079acb868e13b1a035213f76f07146b885aa3e",
   "review_date": "2026-11-17",
-  "verdict": "READY TO MERGE - 7 of 9 findings resolved, 2 bubbled",
+  "verdict": "READY TO MERGE - 8 of 9 findings resolved, 1 bubbled",
   "stats": {
     "additions": 1152,
     "deletions": 193,
@@ -36,7 +36,6 @@
     "docs/_scratch/pr_review/0316/pr316_20261117T230910Z/findings/adv_code.json"
   ],
   "bubbles": [
-    "M2",
     "M3"
   ],
   "strengths": [
@@ -350,6 +349,12 @@
       "status": "RESOLVED",
       "date": "2026-11-17",
       "evidence": "f7079ac (working-tree snapshot; developer commits) - tests/scripts/test_plan_relink_counterpart.py: the refusal assertions now bind the 'problem: no commit on HEAD's history matches base' line and assert the 'off-history: warning in check is then the end state' phrase on that line; the 'pass --to REF' negative check is kept"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "df0745b (developer-confirmed defer) - strap relink follow-up filed per D4A; #318, todo-5qsm"
     }
   ]
 }
