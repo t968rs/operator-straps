@@ -8,6 +8,13 @@ index, so the real index never moves. The name builders give the tag layout of t
 of another. ``ensure_tag`` and ``preflight`` refuse a name already on another object. ``reconcile`` tags
 the commit that added each committed ledger entry file and never raises. Every git call passes ``-C repo``
 and decodes output as UTF-8.
+
+The archive half (``archive/<stem>/r<N>[-<m>]``): ``archive_tag`` names the tag. ``mktree`` builds a tree
+of named subtrees from ``git mktree -z``. ``commit_tree`` writes a commit over a tree with every distinct
+parent, in first-seen order; its message is fed as bytes (``_run_bytes``) because Windows text-mode stdin
+would turn the LF line endings into CRLF, which ``git commit-tree`` stores unchanged. ``archive_tips``
+lists the commits the archive tags of one stem peel to; ``reaches`` and ``tree_held`` answer whether those
+tips keep a commit or a tree reachable. ``delete_tags`` removes the named local tags that still exist.
 """
 from __future__ import annotations
 
@@ -47,6 +54,19 @@ def _out(repo: PathLike, *args: str, env: Optional[Mapping[str, str]] = None,
     if done.returncode != 0:
         raise FreezeGitError(f"git {' '.join(args)} failed: {done.stderr.strip()}")
     return done.stdout
+
+
+def _run_bytes(repo: PathLike, *args: str, stdin: bytes = b"") -> subprocess.CompletedProcess:
+    """Run ``git -C repo <args>`` without raising; stdin given as bytes, stdout and stderr left as bytes."""
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, input=stdin)
+
+
+def _out_bytes(repo: PathLike, *args: str, stdin: bytes = b"") -> str:
+    """Stdout (UTF-8) of ``git -C repo <args>`` fed ``stdin`` bytes; ``FreezeGitError`` on a non-zero exit."""
+    done = _run_bytes(repo, *args, stdin=stdin)
+    if done.returncode != 0:
+        raise FreezeGitError(f"git {' '.join(args)} failed: {done.stderr.decode('utf-8', 'replace').strip()}")
+    return done.stdout.decode("utf-8", "replace")
 
 
 def _nul_list(text: str) -> List[str]:
@@ -118,6 +138,11 @@ def entry_tag(kind: str, stem: str, round: int, seq: int, part: str) -> str:
 def commit_tag(stem: str, n: int) -> str:
     """``<stem>-commit`` for the first commit tag of an entry stem, ``<stem>-commit.<n>`` after a rewrite."""
     return f"{stem}-commit" if n <= 1 else f"{stem}-commit.{n}"
+
+
+def archive_tag(stem: str, round: int, m: int = 1) -> str:
+    """``archive/<stem>/r<N>``, or ``archive/<stem>/r<N>-<m>`` for the m-th archive of a round (m from 2)."""
+    return f"archive/{stem}/r{round}" if m <= 1 else f"archive/{stem}/r{round}-{m}"
 
 
 def _tag_names(repo: PathLike) -> List[str]:
@@ -260,6 +285,83 @@ def patch_id_match(repo: PathLike, old: str) -> Optional[str]:
     except FreezeGitError:
         return None
     return matches[-1] if matches else None
+
+
+def _bad_entry_name(name: str) -> bool:
+    return name in ("", ".", "..") or "/" in name or "\0" in name
+
+
+def mktree(repo: PathLike, entries: Mapping[str, str]) -> str:
+    """Tree sha of the subtrees ``entries`` (``{name: tree sha}``, mode 040000); the empty tree for none.
+
+    ``git mktree -z`` reads NUL-joined entries sorted by name, fed as bytes so a name that holds a newline
+    stays exact. ``FreezeGitError`` before any git call for an empty name, ``.``, ``..`` or a name holding
+    ``/`` or NUL.
+    """
+    for name in entries:
+        if _bad_entry_name(name):
+            raise FreezeGitError(f"bad tree entry name {name!r}")
+    lines = [f"040000 tree {sha}\t{name}" for name, sha in sorted(entries.items())]
+    feed = b"".join(line.encode("utf-8") + b"\0" for line in lines)
+    return _out_bytes(repo, "mktree", "-z", stdin=feed).strip()
+
+
+def commit_tree(repo: PathLike, tree: str, parents: Sequence[str], message: str) -> str:
+    """Commit sha of a commit over ``tree`` with one ``-p`` per distinct parent, first-seen order."""
+    flags: List[str] = []
+    for parent in dict.fromkeys(parents):
+        flags += ["-p", parent]
+    return _out_bytes(repo, "commit-tree", tree, *flags, "-F", "-", stdin=message.encode("utf-8")).strip()
+
+
+def _archive_order(stem: str, name: str) -> Optional[Tuple[int, int]]:
+    """``(round, m)`` of an ``archive/<stem>/r<N>[-<m>]`` tag name; None for any other name."""
+    match = re.fullmatch(rf"archive/{re.escape(stem)}/r(\d+)(?:-(\d+))?", name)
+    return (int(match.group(1)), int(match.group(2) or 1)) if match else None
+
+
+def archive_tips(repo: PathLike, stem: str) -> List[str]:
+    """The commits the ``archive/<stem>/r<N>[-<m>]`` tags peel to, by round then m (plain name first)."""
+    ranked = sorted((order, name) for name in _tag_names(repo) if (order := _archive_order(stem, name)))
+    tips = []
+    for _, name in ranked:
+        tip = _resolve(repo, f"refs/tags/{name}^{{commit}}")
+        if tip is not None:
+            tips.append(tip)
+    return tips
+
+
+def reaches(repo: PathLike, tips: Sequence[str], obj: str) -> bool:
+    """True when ``obj`` is a commit equal to, or an ancestor of, any of ``tips``."""
+    commit = _resolve(repo, f"{obj}^{{commit}}")
+    if commit is None:
+        return False
+    return any(_run(repo, "merge-base", "--is-ancestor", commit, tip).returncode == 0 for tip in tips)
+
+
+def tree_held(repo: PathLike, tips: Sequence[str], tree: str) -> bool:
+    """True when ``tree`` (a full sha) is a subtree listed by ``git ls-tree -r -d -z`` of any of ``tips``.
+
+    Only subtrees are listed, so a tip's own root tree is not counted. A tip git cannot list is skipped.
+    """
+    for tip in tips:
+        done = _run(repo, "ls-tree", "-r", "-d", "-z", tip)
+        if done.returncode != 0:
+            continue
+        for entry in _nul_list(done.stdout):
+            if entry.split("\t", 1)[0].split()[2:3] == [tree]:
+                return True
+    return False
+
+
+def delete_tags(repo: PathLike, names: Sequence[str]) -> None:
+    """``git tag -d`` of the local tags ``names`` that exist; names already gone are skipped.
+
+    No git call when none remain, so a missing name never leaves a partial delete behind a failed call.
+    """
+    present = [name for name in names if _peeled(repo, name) is not None]
+    if present:
+        _out(repo, "tag", "-d", *present)
 
 
 def in_scenario_tree(root: PathLike) -> bool:
