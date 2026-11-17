@@ -6,8 +6,9 @@ written at ``PAGE_REL`` when a case needs one.
 The T2 cases overlap ``test_todo_sync_rules_todo.py`` on purpose: that file follows ``SNAP_REL`` from the
 helpers, while these spell the page name out in ``PAGE_REL``, so a rename of the page fails here even when
 the helper constant moves with it. The init case adds the ``todo_live.js`` stamp check that
-``test_todo_sync_scaffold.py`` lacks. The ``render_snapshot`` cases pin the write order (page, then stamp)
-and the refusal that writes nothing when the rendered page carries no stamp.
+``test_todo_sync_scaffold.py`` lacks. The ``render_snapshot`` cases pin the write order (page, then stamp,
+then the render record), the second render that writes the record alone, and the refusal that writes
+nothing when the rendered page carries no stamp.
 """
 from __future__ import annotations
 
@@ -79,7 +80,11 @@ def test_render_writes_the_page_before_its_stamp(make_project, monkeypatch) -> N
 
     monkeypatch.setattr(todo_sync, "write_atomic", record)
     todo_sync.render_snapshot(cfg, DAY)
-    assert written == ["TODO_Snapshot.html", "todo_live.js"]
+    assert written == ["TODO_Snapshot.html", "todo_live.js", "render.json"]
+    written.clear()
+    todo_sync.render_snapshot(cfg, DAY + dt.timedelta(days=1))
+    assert written == ["render.json"]
+    assert todo_sync.render_record_path(cfg).parent == todo_sync.report_path(cfg).parent
 
 
 def test_render_without_a_stamp_writes_nothing(make_project, monkeypatch) -> None:
@@ -89,3 +94,4 @@ def test_render_without_a_stamp_writes_nothing(make_project, monkeypatch) -> Non
         todo_sync.render_snapshot(cfg, DAY)
     folder = cfg.project_root / SNAP_DIR
     assert not (folder / "TODO_Snapshot.html").exists() and not (folder / "todo_live.js").exists()
+    assert not todo_sync.render_record_path(cfg).exists()
