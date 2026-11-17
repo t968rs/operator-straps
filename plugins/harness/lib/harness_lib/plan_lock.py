@@ -550,8 +550,10 @@ def relink_target(repo: Path, base: str, to: Optional[str]) -> Tuple[str, str]:
         return sha, "ref"
     found = fg.patch_id_match(repo, base)
     if found is None:
-        raise pd.PlanError([f"no commit on HEAD's history matches base {base[:12]} by patch-id; "
-                            "pass --to REF"])
+        raise pd.PlanError([f"no commit on HEAD's history matches base {base[:12]} by patch-id; a base "
+                            "squashed or merged away has no counterpart, and its off-history: warning in "
+                            "check is then the end state (--to only for a commit known to hold the base's "
+                            "code)"])
     return found, "patch-id"
 
 
@@ -579,11 +581,14 @@ def relinked_files(repo: Path, plan_file: Path, found: Sequence[LedgerEntry]) ->
 
 
 def relink(repo: Path, plan_file: Path, plan: pm.ActionPlan, to: Optional[str],
-           save: Callable[[Path, pm.ActionPlan], object]) -> Tuple[LedgerEntry, List[str]]:
+           save: Callable[[Path, pm.ActionPlan], object], *,
+           vet: Callable[[str], List[str]]) -> Tuple[LedgerEntry, List[str]]:
     """Re-point ``plan.base_commit``, ``save`` the plan, write ``relink`` and tag the new base.
 
-    The entry re-records the held files with the plan JSON's new blob, so the lock gate and ``drift:``
-    compare against the relinked plan rather than the one the freeze or lock saw.
+    ``vet`` checks the candidate base first and returns its problems; any problem raises ``PlanError``
+    before the plan JSON, the ledger or a tag is written. The entry re-records the held files with the
+    plan JSON's new blob, so the lock gate and ``drift:`` compare against the relinked plan rather than the
+    one the freeze or lock saw.
     """
     if plan.ledger is None and plan.frozen is not None:
         _require_ledger(plan, "relink")
@@ -591,6 +596,9 @@ def relink(repo: Path, plan_file: Path, plan: pm.ActionPlan, to: Optional[str],
     if not old:
         raise pd.PlanError([f"plan {plan.plan_id} has no base_commit to relink"])
     new, match = relink_target(repo, old, to)
+    problems = vet(new)
+    if problems:
+        raise pd.PlanError(problems)
     stem = stem_of(plan_file, plan)
     found = entries_of(plan_file, plan)
     relinks = [e for e in found if e.kind == EntryKind.relink]
