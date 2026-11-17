@@ -12,9 +12,10 @@ static ``ledger`` field (that stem) and ``load_plan`` fills ``frozen`` from the 
 is Frozen, Locked (``lock``), Locked and armed (``unlock --arm``) or Unlocked (``unlock``). Every
 tag-creating command preflights its tag names and refuses on a name already on another object before it
 writes anything; it prints ``tag: <name> -> <sha7>`` lines and one ``push: git push origin <tags>`` line
-after its status line (tags are local; the developer pushes). Every command that loads a plan reconciles
-its ledger after its own work, when that work succeeds (a refused command never reaches it): the commit
-that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a rewrite adds ``-commit.2``).
+after its status line (tags are local; the developer pushes). Every command that loads a plan, ``archive``
+excepted, reconciles its ledger after its own work, when that work succeeds (a refused command never
+reaches it): the commit that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a
+rewrite adds ``-commit.2``).
 Inside a strap scenario tree no tag is created and nothing is reconciled; ``archive`` refuses there.
 
 ``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``

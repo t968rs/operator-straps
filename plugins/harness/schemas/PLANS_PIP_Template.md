@@ -217,9 +217,10 @@ After all tasks complete and tests pass:
    - `plan.py verify {PLAN_ID}` before the merge: reruns the COMPLETE items' tests at HEAD, writes nothing
    - Add/update the relevant entry in `pr_attributes[]` through `plan_api.write`
    - `plan.py render {PLAN_ID}` to regenerate this PIP
-6. (developer) Commit the receipts and re-rendered PIP, push, and merge the PR
-7. (agent) `plan.py archive {PLAN_ID}`, after the PR merges and on the developer's explicit ask; the developer
-   runs the `push:` line it prints
+6. (developer) Commit the receipts (live.js stays untracked), push, and merge the PR
+7. (agent) `plan.py archive {PLAN_ID} --remote`, after the PR merges and on the developer's explicit ask; the
+   developer runs the `push:` line it prints and the `remote:` line, since without the remote delete the next
+   fetch or pull restores the pushed folded tags
 ```
 
 ---

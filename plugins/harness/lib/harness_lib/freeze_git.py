@@ -13,7 +13,8 @@ The archive half (``archive/<stem>/r<N>[-<m>]``): ``archive_tag`` names the tag.
 of named subtrees from ``git mktree -z``. ``commit_tree`` writes a commit over a tree with every distinct
 parent, in first-seen order; its message is fed as bytes (``_run_bytes``) because Windows text-mode stdin
 would turn the LF line endings into CRLF, which ``git commit-tree`` stores unchanged. ``archive_tips``
-lists the commits the archive tags of one stem peel to (empty, never raising, when git cannot list them);
+lists the commits the archive tags of one stem peel to, plus the earlier archive commits their
+``previous:`` chains keep reachable (empty, never raising, when git cannot list them);
 ``reaches`` and ``tree_held`` answer whether those tips keep a commit or a tree reachable, and
 ``held_trees`` gives the subtree set once for a caller that tests many trees. ``archived_names`` collects
 the folded tag names the tips' commit messages list, so a caller can tell a tag an archive folded from
@@ -27,7 +28,7 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 # Written by strap's scenario-tree builder at the root of each throwaway worktree (plan 1015 STRAP item:
 # ``build_tree (scenario trees) writes freeze_git.SCENARIO_MARKER``); drivers skip tagging and reconcile
@@ -152,10 +153,15 @@ def _tag_names(repo: PathLike) -> List[str]:
     return [line for line in _out(repo, "tag", "--list").splitlines() if line]
 
 
-def tag_seqs(repo: PathLike, stem: str, round: int) -> List[int]:
-    """The ``k`` values the existing ``<kind>/<stem>/r<N>.<k>-...`` tags of ``stem`` and ``round`` use."""
+def tag_seqs(repo: PathLike, stem: str, round: int, extra: Iterable[str] = ()) -> List[int]:
+    """The ``k`` values the existing ``<kind>/<stem>/r<N>.<k>-...`` tags of ``stem`` and ``round`` use.
+
+    ``extra`` names (an archive's folded tag names) are matched alongside the live tags, so a ``k`` an
+    archive folded stays taken after its tag is deleted.
+    """
     pattern = re.compile(rf"^[^/]+/{re.escape(stem)}/r{round}\.(\d+)-")
-    return sorted({int(match.group(1)) for name in _tag_names(repo) if (match := pattern.match(name))})
+    names = [*_tag_names(repo), *extra]
+    return sorted({int(match.group(1)) for name in names if (match := pattern.match(name))})
 
 
 def _peeled(repo: PathLike, name: str) -> Optional[str]:
@@ -323,9 +329,45 @@ def _archive_order(stem: str, name: str) -> Optional[Tuple[int, int]]:
     return (int(match.group(1)), int(match.group(2) or 1)) if match else None
 
 
+_PREVIOUS_LINE = re.compile(r"^previous: \S+ ([0-9a-f]{40}(?:[0-9a-f]{24})?)$")
+
+
+def _previous(repo: PathLike, commit: str) -> Optional[str]:
+    """The earlier archive commit ``commit`` chains to; None without one.
+
+    That is the sha of a ``previous: <archive tag> <sha>`` line of its message, followed only when it is
+    also the commit's first parent, so the chained commit is one the archive keeps reachable.
+    """
+    done = _run(repo, "log", "-1", "--format=%P%n%B", commit)
+    if done.returncode != 0:
+        return None
+    lines = done.stdout.splitlines()
+    parents = lines[0].split() if lines else []
+    for line in lines[1:]:
+        match = _PREVIOUS_LINE.match(line.strip())
+        if match and parents and match.group(1) == parents[0]:
+            return parents[0]
+    return None
+
+
+def _with_chain(repo: PathLike, tips: List[str]) -> List[str]:
+    """``tips`` followed by each earlier archive commit their ``previous:`` chains reach, each once."""
+    out = list(dict.fromkeys(tips))
+    seen = set(out)
+    for tip in list(out):
+        earlier = _previous(repo, tip)
+        while earlier is not None and earlier not in seen:
+            seen.add(earlier)
+            out.append(earlier)
+            earlier = _previous(repo, earlier)
+    return out
+
+
 def archive_tips(repo: PathLike, stem: str) -> List[str]:
     """The commits the ``archive/<stem>/r<N>[-<m>]`` tags peel to, by round then m (plain name first).
 
+    Each earlier archive commit a tip chains to through a ``previous:`` line that names its first parent
+    follows the tag tips, so an archive whose own tag is gone still counts while a later archive keeps it.
     Never raises: empty when git cannot list the tags (a folder outside git, a broken repository).
     """
     listed = _run(repo, "tag", "--list", f"archive/{stem}/*")
@@ -338,7 +380,7 @@ def archive_tips(repo: PathLike, stem: str) -> List[str]:
         tip = _resolve(repo, f"refs/tags/{name}^{{commit}}")
         if tip is not None:
             tips.append(tip)
-    return tips
+    return _with_chain(repo, tips)
 
 
 def reaches(repo: PathLike, tips: Sequence[str], obj: str) -> bool:

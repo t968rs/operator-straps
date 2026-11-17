@@ -135,19 +135,31 @@ def _require_ledger(plan: pm.ActionPlan, then: str) -> None:
 # --- trees and tags ---------------------------------------------------------------------------------------
 
 def freeze_set(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
-    """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/``."""
+    """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/``.
+
+    ``snapshot`` leaves interpreter bytecode under the tests folder out of the ignored set.
+    """
     tests = plan_file.parent / plan.plan_id / "tests"
     return [rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
 
 
+def _bytecode(path: str) -> bool:
+    """True for interpreter bytecode: a file inside a ``__pycache__`` folder or ending in ``.pyc``."""
+    return "__pycache__" in path.split("/") or path.endswith(".pyc")
+
+
 def snapshot(repo: Path, paths: Sequence[str]) -> Tuple[str, Dict[str, str], Dict[str, str]]:
-    """``(tree, files, ignored)``: the tree of the not-ignored files and the sha256 of the ignored ones."""
+    """``(tree, files, ignored)``: the tree of the not-ignored files and the sha256 of the ignored ones.
+
+    Ignored bytecode (``__pycache__``, ``*.pyc``) is left out: a rerun or another interpreter rewrites it,
+    so its digest would make ``check`` report a moved ignored file.
+    """
     try:
         tree, files = fg.build_tree(repo, paths)
         _, ignored = fg.members(repo, paths)
     except fg.FreezeGitError as exc:
         raise pd.PlanError([str(exc)]) from None
-    return tree, files, fg.ignored_digests(repo, ignored)
+    return tree, files, fg.ignored_digests(repo, [path for path in ignored if not _bytecode(path)])
 
 
 def worktree_blobs(repo: Path, paths: Sequence[str]) -> Dict[str, str]:
@@ -162,7 +174,9 @@ def worktree_blobs(repo: Path, paths: Sequence[str]) -> Dict[str, str]:
 
 
 def _seq(repo: Path, stem: str, found: Sequence[LedgerEntry]) -> int:
-    return fl.next_seq(found, ROUND, fg.tag_seqs(repo, stem, ROUND))
+    """One past the highest ``k`` of the ledger, the live entry tags and the names an archive folded."""
+    folded = fg.archived_names(repo, fg.archive_tips(repo, stem))
+    return fl.next_seq(found, ROUND, fg.tag_seqs(repo, stem, ROUND, folded))
 
 
 def tree_tag(stem: str, kind: str, seq: int) -> str:
@@ -177,7 +191,8 @@ def base_tags(stem: str, base: str, repo: Optional[Path] = None) -> Tags:
     """The round-1 base tag of ``stem`` on ``base``; empty without a base.
 
     With ``repo``, also empty when a ``base/<stem>/r1`` or relinked ``base/<stem>/r1-<m>`` tag already peels
-    to ``base``: after a relink the plain name stays on the old base and is never re-targeted.
+    to ``base``, or an archive of the stem reaches it: after a relink the plain name stays on the old base
+    and is never re-targeted.
     """
     if not base or (repo is not None and base_held(repo, stem, base)):
         return {}
@@ -354,7 +369,8 @@ def history(repo: Path, stem: str, plan: pm.ActionPlan, found: Sequence[LedgerEn
 def freeze_pending(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> Pending:
     """The freeze's stem, history entries, sequence and base tag, preflighted; nothing is written.
 
-    No base tag is requested when a round-1 base tag (a relinked one included) already holds the base.
+    No base tag is requested when a round-1 base tag (a relinked one included) already holds the base, or
+    an archive of the stem reaches it.
     """
     stem = stem_of(plan_file, plan)
     found = entries_of(plan_file, plan)
@@ -531,10 +547,11 @@ def relink_target(repo: Path, base: str, to: Optional[str]) -> Tuple[str, str]:
 
 
 def _base_ms(repo: Path, stem: str) -> List[int]:
-    """The ``m`` of each existing ``base/<stem>/r1[-<m>]`` tag (the plain one counts as 1)."""
+    """The ``m`` of each live or archive-folded ``base/<stem>/r1[-<m>]`` tag (the plain one counts as 1)."""
     prefix = fg.base_tag(stem, ROUND)
     pattern = re.compile(rf"^{re.escape(prefix)}(?:-(\d+))?$")
     names = git(repo, "tag", "--list", f"{prefix}*").stdout.split()
+    names += sorted(fg.archived_names(repo, fg.archive_tips(repo, stem)))
     return [int(match.group(1) or 1) for name in names if (match := pattern.match(name))]
 
 
@@ -644,24 +661,42 @@ def _entry_lines(repo: Path, plan_file: Path, stem: str, entry: LedgerEntry,
     return lines
 
 
-def _drift_lines(repo: Path, plan_file: Path, stem: str, found: Sequence[LedgerEntry]) -> List[str]:
-    """``drift: <path> differs from <tag>`` for each Locked file changed since the lock.
+def _lock_ref(repo: Path, stem: str, lock: LedgerEntry) -> str:
+    """The ref ``drift:`` cites for ``lock``'s tree: its tree tag while it exists, else the
+    ``archive/<stem>/r1[-<m>]:freezes/r1.<k>`` path of an archive tag that holds the tree, else the
+    ledger entry (``lock r1.<k>``)."""
+    tag = tree_tag(stem, EntryKind.lock.value, lock.seq)
+    if _peel(repo, tag) is not None:
+        return tag
+    path = f"freezes/r{ROUND}.{lock.seq}"
+    for name in sorted(git(repo, "tag", "--list", f"archive/{stem}/*").stdout.split()):
+        done = git(repo, "rev-parse", "--verify", "--quiet", f"refs/tags/{name}:{path}")
+        if lock.tree and done.returncode == 0 and done.stdout.strip() == lock.tree:
+            return f"{name}:{path}"
+    return f"{EntryKind.lock.value} r{ROUND}.{lock.seq}"
 
-    The plan JSON counts only under the receipts scheme: a sealed or unset-scheme plan's ``record`` still
-    writes it.
+
+def _drift_lines(repo: Path, plan_file: Path, stem: str, found: Sequence[LedgerEntry]) -> List[str]:
+    """``drift: <path> differs from <ref>`` for each Locked file changed since the lock.
+
+    ``<ref>`` is the lock tree tag, or after an archive deleted it, the archive path or ledger entry
+    ``_lock_ref`` names. The plan JSON counts only under the receipts scheme: a sealed or unset-scheme
+    plan's ``record`` still writes it.
     """
     lock = _last(found, EntryKind.lock)
     held = fl.held(found, EntryKind.lock)
     if fl.state(found) not in _LOCKED or lock is None or held is None:
         return []
-    tag = tree_tag(stem, EntryKind.lock.value, lock.seq)
     own = rel(repo, plan_file)
     files = {p: b for p, b in held.files.items() if p != own or lock.records == RecordScheme.receipts.value}
     work = worktree_blobs(repo, sorted(files))
     paths = [p for p, blob in sorted(files.items()) if work.get(p) != blob]
     current = fg.ignored_digests(repo, sorted(held.ignored))
     paths += [p for p, digest in sorted(held.ignored.items()) if p in current and current[p] != digest]
-    return [f"drift: {path} differs from {tag}" for path in paths]
+    if not paths:
+        return []
+    ref = _lock_ref(repo, stem, lock)
+    return [f"drift: {path} differs from {ref}" for path in paths]
 
 
 def check_lines(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
@@ -695,17 +730,24 @@ def check_lines(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
 def receipt_lines(repo: Path, plan_file: Path, plan: pm.ActionPlan, item_id: str,
                   prov: pm.Provenance) -> List[str]:
     """Tag the code a COMPLETE record tested, locally: ``receipt/<stem>/<ITEM>-commit`` or ``-tree``, a
-    re-record ``.2``, ``.3``. The ``tag:`` line only; no ``push:`` line ever names a receipt tag."""
+    re-record ``.2``, ``.3``. The ``tag:`` line only; no ``push:`` line ever names a receipt tag.
+
+    A receipt name an archive folded stays taken, so a re-record never reuses a name the archive message
+    maps to another object. A re-record after an archive is tagged even when the archive keeps the same code:
+    the next archive folds the new tag (r1-<m>), as decision D1 of plan 1021 requires."""
     if fg.in_scenario_tree(repo):
         return []
     by_commit = prov.source == RecordSource.commit and prov.commit
     part, target = ("commit", prov.commit) if by_commit else ("tree", prov.tree)
-    prefix = f"receipt/{stem_of(plan_file, plan)}/{item_id}-{part}"
+    stem = stem_of(plan_file, plan)
+    prefix = f"receipt/{stem}/{item_id}-{part}"
     pattern = re.compile(rf"^{re.escape(prefix)}(?:\.(\d+))?$")
     names = git(repo, "tag", "--list", f"{prefix}*").stdout.split()
     taken = {int(match.group(1) or 1): name for name in names if (match := pattern.match(name))}
     if any(_peel(repo, name) == target for name in taken.values()):
         return []
+    folded = fg.archived_names(repo, fg.archive_tips(repo, stem))
+    taken.update({int(match.group(1) or 1): name for name in folded if (match := pattern.match(name))})
     n = max(taken, default=0) + 1
     name = prefix if n == 1 else f"{prefix}.{n}"
     created, warns = _create(repo, {name: (str(target), f"{item_id}: the code its receipt tested")})
