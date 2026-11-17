@@ -418,6 +418,9 @@ of the catalog (item count, counts by status and kind, trackers and close candid
 (rank, id, item, status, kind, blast radius, LoE, score, GitHub issues), with each item's summary, proposed
 change, open decision and ranking reason folded under its title, and below it every remaining item in rank
 order, in a second table with the same columns, folded closed. Open it from disk in a browser: it polls the `todo_live.js` stamp beside it and reloads itself after the next render.
+A render that would draw the same page leaves the page and its stamp as they are, date included, so only a
+catalog, configuration or page code change shows in `git status`; each run is recorded in the git-ignored
+`<state_dir>/todo-sync/render.json` (run date, page date, stamp, files written).
 Dated `TODO_Snapshot_<YYYY_MMDD>.md` files from earlier releases are no longer written or read.
 
 Item ids are stable: a random code such as `todo-k7qf` (lowercase `todo-` plus four characters, at least one digit
