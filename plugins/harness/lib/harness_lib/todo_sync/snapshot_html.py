@@ -219,13 +219,15 @@ def _summary(catalog: Dict[str, Any]) -> str:
 def _intro(page: SnapshotPage) -> List[str]:
     writers = ", ".join(f"<code>{w}</code>" for w in ("render", "init", "add --inbox", "lease release"))
     bare = ", ".join(f"<code>{w}</code>" for w in ("add --spec", "retire", "split", "refresh", "migrate-ids"))
-    repo = f'<span class="repo">{_e(page.repo)}</span> ' if page.repo else ""
-    return [f"<h1>{repo}TODO Snapshot: Top {page.top_n}</h1>",
-            f'<p class="note">Rendered {_e(page.rendered)} from <code>{_e(page.source)}</code>. '
+    repo = f'<span class="repo">{_e(page.repo)}</span>' if page.repo else ""
+    return [f"<h1>{repo}TODO Snapshot</h1>",
+            f'<p class="rendered">Rendered {_e(page.rendered)}</p>',
+            '<section id="render-info"><h5>Render info</h5>',
+            f'<p class="note">Drawn from <code>{_e(page.source)}</code>. '
             f"<code>todo_sync.py</code> rewrites this page on {writers}; a bare {bare} leaves it as it was "
             "until the next render. Edits to this file are overwritten.</p>",
             f'<p class="note">An open page reloads itself when <code>{LIVE_NAME}</code> beside it '
-            "changes.</p>"]
+            "changes.</p></section>"]
 
 
 def _script(stamp: str) -> str:
@@ -237,7 +239,7 @@ def _script(stamp: str) -> str:
 def _document(page: SnapshotPage, stamp: str) -> str:
     body = [*_intro(page), _summary(page.catalog), *_table(page)]
     style = _asset("styles", "shared.css") + _asset("styles", "todo.css")
-    title = f"TODO Snapshot: Top {page.top_n} ({page.rendered})"
+    title = f"TODO Snapshot ({page.rendered})"
     if page.repo:
         title = f"{page.repo} | {title}"
     return "\n".join([page.header, "<!DOCTYPE html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',

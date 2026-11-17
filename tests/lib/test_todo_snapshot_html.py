@@ -107,17 +107,38 @@ def test_first_line_is_the_t2_header_then_the_doctype() -> None:
     assert lines[1] == "<!DOCTYPE html>"
 
 
-def test_title_names_top_n_and_the_render_date() -> None:
+def test_title_and_heading_name_the_snapshot_without_a_row_count() -> None:
     text = _page(_items())
-    assert f"<title>TODO Snapshot: Top 10 ({DAY})</title>" in text
-    assert "<h1>TODO Snapshot: Top 10</h1>" in text
-    assert DAY in _text(text.split("<h1>", 1)[1].split("<table", 1)[0])
+    assert f"<title>TODO Snapshot ({DAY})</title>" in text
+    assert "<h1>TODO Snapshot</h1>" in text
+
+
+def test_the_render_date_sits_right_under_the_heading() -> None:
+    after = _page(_items()).split("</h1>", 1)[1].lstrip()
+    assert after.startswith(f'<p class="rendered">Rendered {DAY}</p>')
+
+
+def test_the_render_info_is_its_own_block_under_a_small_heading() -> None:
+    text = _page(_items())
+    block = re.search(r'<section id="render-info">(.*?)</section>', text, re.S)
+    assert block, "no render-info section"
+    assert block.group(1).startswith("<h5>Render info</h5>")
+    info = _text(block.group(1))
+    assert SOURCE in info and "todo_live.js" in info and "overwritten" in info and DAY not in info
+    assert text.index('class="rendered"') < text.index('id="render-info"') < text.index('id="summary"')
 
 
 def test_title_and_heading_open_with_the_repo_name() -> None:
     text = _page(_items(), repo="widgets")
-    assert f"<title>widgets | TODO Snapshot: Top 10 ({DAY})</title>" in text
-    assert '<h1><span class="repo">widgets</span> TODO Snapshot: Top 10</h1>' in text
+    assert f"<title>widgets | TODO Snapshot ({DAY})</title>" in text
+    assert '<h1><span class="repo">widgets</span>TODO Snapshot</h1>' in text
+
+
+def test_the_header_block_rules() -> None:
+    css = (sh.PAGES / "styles" / "todo.css").read_text(encoding="utf-8")
+    assert re.search(r"h1 \.repo\s*\{[^}]*display: block", css), "repo name not on its own line"
+    assert re.search(r"\.rendered\s*\{[^}]*font-size", css)
+    assert re.search(r"#render-info h5\s*\{[^}]*font-size", css)
 
 
 def test_the_repo_name_is_escaped() -> None:

@@ -1,5 +1,11 @@
 body { max-width: 84rem; }
-h1 .repo { color: var(--code-fg); }
+h1 { margin-bottom: 0; }
+h1 .repo { display: block; color: var(--code-fg); }
+.rendered { margin: .1rem 0 1rem; font-size: 13px; color: var(--muted); }
+#render-info { margin: 1rem 0; }
+#render-info h5 { margin: 0 0 .2rem; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); }
+#render-info p { margin: .2rem 0; font-size: 13px; }
 table.top { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
 table.top th, table.top td { border: 1px solid var(--line); padding: .3em .55em; text-align: left;
   vertical-align: top; }
