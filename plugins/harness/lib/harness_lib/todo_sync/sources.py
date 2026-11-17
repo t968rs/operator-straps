@@ -1,5 +1,5 @@
 """Lazy loaders for everything the sync rules read: the TODO catalog, the research catalog and its stubs,
-plan pairs and snapshots.
+plan pairs and the snapshot page.
 
 Each input loads on first use and is cached for the run. A missing or unparseable file loads as a record
 with ``error`` set (never an exception), and the rules turn that into a finding or a skip reason.
@@ -11,11 +11,12 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from harness_lib.config import HarnessConfig
 from harness_lib.history import posix
 from harness_lib.todo_sync.pip_sections import PipDoc, parse_pip
+from harness_lib.todo_sync.snapshot_html import PAGE_NAME
 
 TERMINAL_RESEARCH = frozenset({"FULLY_IMPLEMENTED", "NOT_APPLICABLE"})
 PLAN_SUFFIX = "_ActionPlan.json"
@@ -86,7 +87,7 @@ class SnapshotHeader:
 
 @dataclass(frozen=True)
 class Snapshot:
-    """The newest snapshot file and its header (None when absent or unparseable)."""
+    """The snapshot page and its header (None when unparseable)."""
 
     rel: str
     header: Optional[SnapshotHeader]
@@ -247,21 +248,18 @@ class Sources:
         return PlanPair(prefix, plan, self.rel(pip_path), doc)
 
     def snapshot(self) -> Optional[Snapshot]:
-        """The newest snapshot in ``todo.snapshots.dir``, or None when there is none."""
+        """The snapshot page ``TODO_Snapshot.html`` in ``todo.snapshots.dir``, or None when it is absent.
+
+        Dated markdown snapshots that earlier releases wrote are never read.
+        """
         return self._memo("snapshot", self._load_snapshot)
 
+    def page_rel(self) -> str:
+        """The project-relative path of the snapshot page, present or not."""
+        return f"{posix(self.cfg.todo.snapshots.dir)}/{PAGE_NAME}"
+
     def _load_snapshot(self) -> Optional[Snapshot]:
-        folder = self.cfg.path(self.cfg.todo.snapshots.dir)
-        if not folder.is_dir():
+        path = self.cfg.path(self.cfg.todo.snapshots.dir) / PAGE_NAME
+        if not path.is_file():
             return None
-        pattern = re.compile(self.cfg.todo.snapshots.name_pattern)
-        found: List[Tuple[Tuple[str, int], Path]] = []
-        for path in folder.iterdir():
-            match = pattern.fullmatch(path.name)
-            if match and path.is_file():
-                date = (match.group("date") or "").replace("_", "")
-                found.append(((date, path.stat().st_mtime_ns), path))
-        if not found:
-            return None
-        newest = max(found, key=lambda pair: pair[0])[1]
-        return Snapshot(self.rel(newest), parse_header(_read_first_line(newest)))
+        return Snapshot(self.rel(path), parse_header(_read_first_line(path)))

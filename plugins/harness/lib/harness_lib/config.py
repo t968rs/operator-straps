@@ -117,7 +117,10 @@ class StrapConfig:
 
 @dataclass(frozen=True)
 class TodoSnapshots:
-    """Where dated TODO snapshots live and how a snapshot file name carries its date."""
+    """The folder render writes the ``TODO_Snapshot.html`` page and its ``todo_live.js`` stamp into.
+
+    ``name_pattern`` is legacy: validated for a ``date`` group at load and read by nothing else.
+    """
 
     dir: Optional[str]
     name_pattern: str

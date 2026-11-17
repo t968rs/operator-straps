@@ -36,6 +36,8 @@ LOOKUP: Mapping[FrozenSet[str], str] = MappingProxyType({
         "RepoToDo.json",
         "ResearchImplementationCatalog.json",
         "TODO_Snapshot_*.md",
+        "TODO_Snapshot.html",
+        "todo_live.js",
     }): "Chore(todo): refresh TODO catalog, research stubs and snapshot",
     frozenset({
         "docs/PR_REVIEWS/*.json",
