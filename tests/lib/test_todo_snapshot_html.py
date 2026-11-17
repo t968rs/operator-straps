@@ -272,8 +272,14 @@ def test_live_script_carries_the_stamp_and_date() -> None:
     assert json.loads(text[len(sh.LIVE_HEAD):-2]) == {"stamp": "a" * 64, "rendered": DAY}
 
 
+def _without_comments(js: str) -> str:
+    """``js`` with its ``//`` and ``/* */`` comments removed (todo.js holds no ``//`` inside a string)."""
+    return re.sub(r"/\*.*?\*/|//[^\n]*", "", js, flags=re.S)
+
+
 def test_the_loader_reloads_only_on_a_new_stamp() -> None:
-    loader = (sh.PAGES / "components" / "todo.js").read_text(encoding="utf-8")
+    """Source-level fallback for the node-run case: the checks read code only, never comments."""
+    loader = _without_comments((sh.PAGES / "components" / "todo.js").read_text(encoding="utf-8"))
     for needle in ("TODO_LIVE", "TODO_PAGE.stamp", "location.reload", "setInterval", "TODO_PAGE.src"):
         assert needle in loader
     assert LIVE_GUARD.search(loader), "reload is not guarded by a new, non-empty live stamp"

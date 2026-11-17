@@ -9,8 +9,10 @@ The entries use the plugin's default file names (``config/defaults.json``: the `
 and ``agent_usage_path``) and, for review artifacts, the default folders (``artifacts.reviews``,
 ``artifacts.summaries``). ``LOOKUP`` reads no config: it is a fixed, read-only table, so a built-in message
 never depends on which project is active, and a project that renames those files, or moves the review
-artifacts away from the defaults, gets no built-in message and drafts one as usual (an accepted limitation, not
-a drift bug).
+artifacts away from the defaults, gets no built-in message and drafts one as usual (an accepted limitation,
+not a drift bug). The snapshot page and its stamp (``TODO_Snapshot.html``, ``todo_live.js``) are not config
+values: they are the fixed ``PAGE_NAME`` and ``LIVE_NAME`` of ``harness_lib.todo_sync.snapshot_html``, which
+no project renames.
 
 A project adds its own sets with the ``canned_messages`` config key. ``get_canned_message`` takes them as
 ``extra`` and tries them, in order, before ``LOOKUP``, so a project set can replace a built-in message for the

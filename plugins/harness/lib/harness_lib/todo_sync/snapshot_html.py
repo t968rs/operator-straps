@@ -3,9 +3,9 @@
 ``render_snapshot`` writes the page as ``TODO_Snapshot.html`` in ``todo.snapshots.dir``, and
 ``todo_live.js`` beside it, from ``todo_sync.py render``, ``init``, ``add --inbox`` and ``lease release``; a
 bare ``add --spec``, ``retire``, ``split``, ``refresh`` or ``migrate-ids`` leaves the page for the next
-render. Rule T2 flags a stale page only when the top-N ids, ranks, statuses or titles changed; the Summary
-counts, the other cells and the folded prose can go stale with no finding. Line 1 of the page is the
-``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a Summary block of catalog counts and
+render. Rule T2 flags a stale page only when todo.top_n or the top-N ids, ranks, statuses or titles changed;
+the Summary counts, the other cells and the folded prose can go stale with no finding. Line 1 of the page is
+the ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a Summary block of catalog counts and
 the table (Rank, Item, Status, Kind, Blast, LoE, Score, GH), whose Item cell folds the item's prose into a
 ``<details>``. The CSS
 (``pages/styles/shared.css``, ``pages/styles/todo.css``) and the loader (``pages/components/todo.js``) are

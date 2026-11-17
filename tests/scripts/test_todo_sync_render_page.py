@@ -99,6 +99,13 @@ def test_gh_and_tracker_cells(make_project) -> None:
     rows = _rows(_render(make_project, _files()))
     assert '<a href="https://github.com/example/widgets/issues/11">#11</a>' in rows[0]
     assert "tracker #101" in rows[1]
+    assert "<a " not in rows[1].split("tracker", 1)[1]
+
+
+def test_configured_gh_repo_links_a_tracker_without_a_source_url(make_project) -> None:
+    body = config({"folder": TODO_DIR, "gh": {"repo": "o/r"}})
+    rows = _rows(_render(make_project, _files(), body))
+    assert '<a href="https://github.com/o/r/issues/101">#101</a>' in rows[1]
 
 
 def test_render_tolerates_malformed_link_fields(make_project) -> None:

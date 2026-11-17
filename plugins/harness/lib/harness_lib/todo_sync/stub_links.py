@@ -14,8 +14,8 @@ from typing import Any, Dict, Iterator, List, Optional
 
 from harness_lib.todo_sync.sources import Sources, posix
 
-_ENCODE = {"%": "%25", " ": "%20", "#": "%23", "(": "%28", ")": "%29", "<": "%3C", ">": "%3E", "?": "%3F",
-           "|": "%7C"}
+_ENCODE = {"%": "%25", " ": "%20", "#": "%23", "(": "%28", ")": "%29", ":": "%3A", "<": "%3C", ">": "%3E",
+           "?": "%3F", "|": "%7C"}
 
 
 def _norm(ref: Any) -> Optional[str]:
@@ -111,7 +111,8 @@ def link_target(stub_rel: str, from_dir_rel: str) -> str:
     """``stub_rel`` relative to ``from_dir_rel`` (POSIX) as an ``href`` value for the snapshot page.
 
     ``%``, ``#`` and ``?`` are percent-encoded so a path never turns into a bad escape, a fragment or a
-    query; space, parentheses, ``<>`` and ``|`` are encoded as well. Each character maps once, so an
+    query, and ``:`` so a first segment never reads as a URL scheme (a relative path needs no literal
+    colon); space, parentheses, ``<>`` and ``|`` are encoded as well. Each character maps once, so an
     existing ``%`` never double-encodes an escape this function adds.
     """
     rel = posixpath.relpath("/" + posix(stub_rel), "/" + posix(from_dir_rel))
