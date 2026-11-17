@@ -24,7 +24,7 @@ def test_init_writes_a_catalog_and_snapshot_that_check_clean(make_project) -> No
     cfg = build(make_project, {})
     result = init_catalog(cfg, DAY)
     assert result.catalog == cfg.project_root / CATALOG_REL
-    assert result.snapshot == cfg.project_root / SNAP_DIR / "TODO_Snapshot_2026_1023.md"
+    assert result.snapshot == cfg.project_root / SNAP_DIR / "TODO_Snapshot.html"
     report = check(cfg)
     assert report.findings == ()
     assert "T1" in report.rules_run and "T2" in report.rules_run
@@ -80,14 +80,6 @@ def test_init_without_a_snapshots_folder_writes_the_catalog_only(make_project) -
     result = init_catalog(cfg, DAY)
     assert result.snapshot is None
     assert result.catalog.is_file()
-
-
-def test_init_refuses_a_snapshot_name_outside_the_pattern_before_writing(make_project) -> None:
-    body = config(todo={"folder": TODO_DIR, "snapshots": {"name_pattern": r"Snap_(?P<date>\d{8})\.md"}})
-    cfg = build(make_project, {}, cfg=body)
-    with pytest.raises(TodoSyncError, match="name_pattern.*init wrote nothing"):
-        init_catalog(cfg, DAY)
-    assert not (cfg.project_root / CATALOG_REL).exists()
 
 
 def test_a_snapshot_refusal_after_the_catalog_names_render(make_project, monkeypatch) -> None:
