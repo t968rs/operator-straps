@@ -3,7 +3,8 @@
 Public API (the driver ``scripts/todo_sync.py``, the SessionStart hook and tests call these):
 
 - ``check(cfg, rules=None) -> Report``: run the rule catalog (or the selected ids).
-- ``render_snapshot(cfg, date) -> Path``: write the snapshot page T2 compares against, and its stamp.
+- ``render_snapshot(cfg, date) -> Path``: bring the snapshot page T2 compares against, and its stamp, up to
+  date, writing each only when its text changes; every run is recorded in ``render_record_path(cfg)``.
 - ``write_runner(cfg) -> Path``: write the runner pointer the todo-watch mod executes.
 
 Every path is project-relative through ``cfg``; nothing is written under the plugin root.
@@ -27,11 +28,12 @@ from harness_lib.todo_sync import rules_todo as rt
 from harness_lib.todo_sync.report import Finding, Report, snapshot_header, write_atomic, write_report
 from harness_lib.todo_sync.snapshot_html import (LIVE_NAME, PAGE_NAME, SnapshotPage, live_script, page_stamp,
                                                  render_page)
-from harness_lib.todo_sync.sources import JsonFile, Sources, posix, ranked_items, read_json, rows_sha256
+from harness_lib.todo_sync.sources import (JsonFile, Sources, parse_header, posix, ranked_items, read_json,
+                                           rows_sha256)
 from harness_lib.todo_sync.stub_links import item_stubs, link_target
 
-__all__ = ["RULES", "RULE_IDS", "Report", "TodoSyncError", "check", "render_snapshot", "report_path",
-           "runner_path", "write_report", "write_runner"]
+__all__ = ["RULES", "RULE_IDS", "Report", "TodoSyncError", "check", "render_record_path", "render_snapshot",
+           "report_path", "runner_path", "write_report", "write_runner"]
 
 RuleFn = Callable[[Sources], List[Finding]]
 
@@ -159,36 +161,82 @@ def repo_name(cfg: HarnessConfig) -> str:
     return main_worktree(cfg.project_root).name
 
 
-def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
-    """Write the snapshot page ``TODO_Snapshot.html`` into ``todo.snapshots.dir``, then its
-    ``todo_live.js`` stamp, and return the page's path.
+def render_record_path(cfg: HarnessConfig) -> Path:
+    """Render record location: ``<state_dir>/todo-sync/render.json``, beside the report."""
+    return cfg.path(cfg.state_dir) / "todo-sync" / "render.json"
 
-    The page goes first, so an open page that reads the new stamp reloads into the new page.
+
+def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
+    """Bring the snapshot page ``TODO_Snapshot.html`` in ``todo.snapshots.dir`` and its ``todo_live.js``
+    stamp up to date, record the run in ``render_record_path``, and return the page's path.
+
+    A page on disk that rendering again with its own date reproduces is kept, date included, and the stamp
+    file is written only when its text differs, so a render that would draw the same page leaves both files
+    as they are; only a catalog, configuration or page code change rewrites them, dated ``date``. The page
+    goes first, so an open page that reads a new stamp reloads into the new page.
     """
     todo = cfg.todo
     if not todo.catalog or not todo.snapshots.dir:
         raise TodoSyncError("render needs todo.folder and a non-null todo.snapshots.dir")
+    build = _page_builder(cfg)
+    folder = cfg.path(todo.snapshots.dir)
+    path, live_path = folder / PAGE_NAME, folder / LIVE_NAME
+    kept = _kept_date(path, build)
+    rendered = kept or date.isoformat()
+    text = build(rendered)
+    stamp = page_stamp(text)
+    if stamp is None:
+        raise TodoSyncError(f"{PAGE_NAME}: rendered page carries no readable stamp; nothing written")
+    live = live_script(stamp, rendered)
+    wrote: List[str] = []
+    if kept is None:
+        write_atomic(path, text)
+        wrote.append(PAGE_NAME)
+    if _read_text(live_path) != live:
+        write_atomic(live_path, live)
+        wrote.append(LIVE_NAME)
+    record = {"schema_version": 1, "run_date": date.isoformat(),
+              "page": f"{posix(todo.snapshots.dir)}/{PAGE_NAME}", "page_date": rendered, "stamp": stamp,
+              "wrote": wrote, "written_at": _utc_now()}
+    write_atomic(render_record_path(cfg), json.dumps(record, indent=2) + "\n")
+    return path
+
+
+def _page_builder(cfg: HarnessConfig) -> Callable[[str], str]:
+    """The page text for a render date; the catalog is read and its stub links resolved once."""
+    todo = cfg.todo
     catalog = read_json(cfg.project_root, todo.catalog)
     if not catalog.ok:
         raise TodoSyncError(f"{catalog.rel}: {catalog.error}")
     raw = catalog.data.get("items")
     items = [i for i in raw if isinstance(i, dict)] if isinstance(raw, list) else []
-    rendered = date.isoformat()
-    header = snapshot_header(posix(todo.catalog), todo.top_n, rows_sha256(items, todo.top_n), rendered)
+    source, cut, sha = posix(todo.catalog), todo.top_n, rows_sha256(items, todo.top_n)
     ranked = ranked_items(items)
     links = _stub_links(cfg, ranked)
-    cut = todo.top_n
-    page = SnapshotPage(header=header, catalog=catalog.data, top=ranked[:cut], top_n=cut, rendered=rendered,
-                        source=posix(todo.catalog), links=links[:cut], gh_repo=todo.gh_repo,
-                        repo=repo_name(cfg), rest=ranked[cut:], rest_links=links[cut:])
-    text = render_page(page)
-    stamp = page_stamp(text)
-    if stamp is None:
-        raise TodoSyncError(f"{PAGE_NAME}: rendered page carries no readable stamp; nothing written")
-    folder = cfg.path(todo.snapshots.dir)
-    path = write_atomic(folder / PAGE_NAME, text)
-    write_atomic(folder / LIVE_NAME, live_script(stamp, rendered))
-    return path
+    repo = repo_name(cfg)
+
+    def build(rendered: str) -> str:
+        return render_page(SnapshotPage(
+            header=snapshot_header(source, cut, sha, rendered), catalog=catalog.data, top=ranked[:cut],
+            top_n=cut, rendered=rendered, source=source, links=links[:cut], gh_repo=todo.gh_repo, repo=repo,
+            rest=ranked[cut:], rest_links=links[cut:]))
+    return build
+
+
+def _read_text(path: Path) -> Optional[str]:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _kept_date(path: Path, build: Callable[[str], str]) -> Optional[str]:
+    """The render date of the page at ``path`` when ``build`` with that date reproduces it, else None."""
+    old = _read_text(path)
+    header = parse_header(old.split("\n", 1)[0]) if old else None
+    if header is None or build(header.rendered) != old:
+        return None
+    return header.rendered
 
 
 def _stub_links(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> List[List[str]]:

@@ -3,15 +3,16 @@
 ``render_snapshot`` writes the page as ``TODO_Snapshot.html`` in ``todo.snapshots.dir``, and
 ``todo_live.js`` beside it, from ``todo_sync.py render``, ``init``, ``add --inbox`` and ``lease release``; a
 bare ``add --spec``, ``retire``, ``split``, ``refresh`` or ``migrate-ids`` leaves the page for the next
-render. Rule T2 flags a stale page only when todo.top_n or the top-N ids, ranks, statuses or titles changed;
-the Summary counts, the other cells, the folded prose and the remaining-items table can go stale with no
-finding. Line 1 of the page is the ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a
-Summary block of catalog counts, the top-N table and, folded closed below it, a second table of the remaining
-items in rank order. Both tables share the columns (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH):
-the Id cell holds the bare id for copying, and the Item cell links the item's stubs after its title and
-folds its prose into a ``<details>``. The CSS (``pages/styles/shared.css``, ``pages/styles/todo.css``), the
-theme toggle (``pages/components/theme.js``) and the loader (``pages/components/todo.js``) are read from
-the plugin root and inlined, so the page opens from disk with no network address.
+render. A render that would draw the same page writes neither file. Rule T2 flags a stale page only when
+todo.top_n or the top-N ids, ranks, statuses or titles changed; the Summary counts, the other cells, the
+folded prose and the remaining-items table can go stale with no finding. Line 1 of the page is the
+``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a Summary block of catalog counts, the
+top-N table and, folded closed below it, a second table of the remaining items in rank order. Both tables
+share the columns (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH): the Id cell holds the bare id for
+copying, and the Item cell links the item's stubs after its title and folds its prose into a
+``<details>``. The CSS (``pages/styles/shared.css``, ``pages/styles/todo.css``), the theme toggle
+(``pages/components/theme.js``) and the loader (``pages/components/todo.js``) are read from the plugin root
+and inlined, so the page opens from disk with no network address.
 
 The page carries a stamp, the sha256 of the page rendered with an empty stamp, and ``todo_live.js`` sets
 ``window.TODO_LIVE`` to that stamp and the render date. The loader re-adds the sidecar every ``RELOAD_MS``
