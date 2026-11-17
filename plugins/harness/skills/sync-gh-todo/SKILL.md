@@ -75,12 +75,12 @@ with a `; rejected M (<files>)` part when the catalog refused some queued files;
 when it refused all of them; or `inbox: empty`. The same drain applies field updates other runs queued
 (`inbox put --update`), so the line can also carry an `updated M item(s): <id> (<fields>), ...` part (or open
 with `inbox: updated` when only updates landed) and an `overwrote <id> <field>` part when two queued updates set
-the same field. A refused file stays in the inbox as `<name>.rejected.json`
+the same field and both land in the same drain. A refused file stays in the inbox as `<name>.rejected.json`
 beside a `<name>.reason.txt` naming why: report its item as not added. `inbox: empty` means nothing was waiting:
 either the agent queued nothing (its reply says why), or the todo-watch mod already drained the inbox and its
 summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain.
-A `problem:` line opening `inbox: added` or `inbox: updated` means those changes landed and only the follow-up
-(render, check or inbox file cleanup) failed: report them as applied. A lock refusal naming the holder
+When it reads `problem: inbox: added <ids>; updated <ids>, then: <reason>` (either part alone when only one kind
+landed), those changes landed and only the render, check or inbox file cleanup failed: report them as applied. A lock refusal naming the holder
 `todo_sync.py add --inbox` means the todo-watch mod is still draining and its summary line arrives as context.
 Any other `problem:` line leaves the queued items in the inbox.
 

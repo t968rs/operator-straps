@@ -1,7 +1,7 @@
 ---
 name: todo-edit
 description: Use when asked to edit the project's TODO catalog structurally - retire finished items, split items into parts, queue field updates of items, or refresh scores and ranks after hand edits. Triggers on "todo-edit", "retire todo-k7qf", "split todo-m3x9", "update todo-m3x9", "refresh the TODO ranking", "re-rank the TODO catalog". Hands the operation to the harness:todo-editor agent, which runs todo_sync.py and fixes the prose the script cannot.
-argument-hint: "--retire ID[, ID ...] [--delete-retired] | --split ID[, ID ...] | --update ID[, ID ...] | --refresh  [-- <guidance>]"
+argument-hint: "--retire ID[, ID ...] [--delete-retired] | --split ID[, ID ...] | --update ID[, ID ...] -- <what to change> | --refresh  [-- <guidance>]"
 ---
 
 # todo-edit: retire, split, update or refresh TODO catalog items
@@ -49,8 +49,8 @@ id on the `Ids:` line and carrying the same guidance. Before dispatching per id,
 form (lower-case, without a trailing `,` or `;`, `todo-` added when missing) repeats an earlier one, and name
 the dropped duplicates in the Step 4 report. When the guidance names several ids, each agent applies only what
 it says about its own id, plus what applies to all. The splits then draft their parts at once and take the
-catalog lease one at a time to apply them; the updates only queue, so none waits on another. The prompt is
-this block with the placeholders filled:
+catalog lease one at a time to apply them; the updates only queue, so none waits on another.
+The prompt is this block with the placeholders filled:
 
 ```
 SKILL: todo-edit
@@ -70,8 +70,10 @@ returned, apply whatever the inbox holds, once:
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" add --inbox
 ```
 
-Run it from the project root. It prints one line: `inbox: [added N item(s): <id> (#N|note), ...; ]updated M
-item(s): <id> (<fields>), ...; [overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=<d>`. The
+Run it from the project root. It prints one line: `inbox: [added N item(s): <id> (#N|note), ...; ][updated M
+item(s): <id> (<fields>), ...; ][overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=<d>`. A line with
+no `updated` part means no queued update landed: an update missing from it was either refused (named in `rejected`,
+its file kept as `.rejected.json`) or already drained earlier by the todo-watch mod. The
 `added` part leads when other queued items landed with the updates; the `overwrote` part appears when two
 queued updates set the same field and both land in the same drain (the later one wins); the `rejected` part
 appears when the catalog refused some queued files. The line reads `inbox: rejected K (<files>)` when it
@@ -86,12 +88,14 @@ draining the updates and its summary line arrives as context. Otherwise the queu
 
 ## Step 4: report
 
-Relay every agent's reply as it stands (one per id for split and update), then the Step 3 line for an update. The edits are saved,
+Relay every agent's reply as it stands (one per id for split and update), then the Step 3 line for an update, and the ids Step 2 dropped as duplicates. The edits are saved,
 not committed; the developer reviews the diff and commits. For a retirement the reply answers three questions:
 the new state of each touched stub (`Stubs`), the research entries now fully resolved (`Resolved`), and the
 GitHub issues that can be closed, each with its reason (`Close`). When a reply lists open items (a missing
 close-candidate evidence, a reference outside the catalog, a stub kept for lack of proof, a failed check),
-name them first. The script's reference list names only the
+name them first. A split reply that ends on the third held-lease refusal did not split its id (each split
+waits up to 15 minutes in all for the lease): name those ids first too and say to rerun `--split` for them.
+The script's reference list names only the
 retired or split ids and leaves out the history folders (`artifacts.plans`, `reviews`, `commit_messages`,
 `summaries`, `scratch`, each planning prefix, the snapshots, the TODO inbox (`<scratch_folder>/todo-inbox`) and
 `state_dir`), in-progress plans included: an id in a record stays as written, but a live plan naming a retired id

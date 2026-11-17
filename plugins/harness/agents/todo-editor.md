@@ -124,8 +124,9 @@ the stub, the catalog or a commit message is not evidence.
 
 1. Read the item, then what it points at: `sources`, `files`, `code_snippet`, linked research entries. Find
    the independent deliverables: separate fixes, files or decisions that can land and be verified alone.
-   Guidance from the prompt wins. When the item holds only one deliverable, stop and report that instead of
-   inventing parts. No lease is held yet, so there is nothing to free.
+   Guidance from the prompt wins. Guidance that names several ids is shared by one agent per id: apply only
+   what it says about this item's id, plus what applies to all. When the item holds only one deliverable, stop
+   and report that instead of inventing parts. No lease is held yet, so there is nothing to free.
 2. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:
    `{"parts": [{...}, {...}]}`. Each part is a set of field overrides laid over a copy of the item; unset
    fields are inherited. Set at least `title`, `summary`, `proposed_change`, `files`, and, where the part
