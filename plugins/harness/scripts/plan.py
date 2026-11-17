@@ -15,7 +15,7 @@ writes anything; it prints ``tag: <name> -> <sha7>`` lines and one ``push: git p
 after its status line (tags are local; the developer pushes). Every command that loads a plan reconciles
 its ledger after its own work, when that work succeeds (a refused command never reaches it): the commit
 that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a rewrite adds ``-commit.2``).
-Inside a strap scenario tree no tag is created and nothing is reconciled.
+Inside a strap scenario tree no tag is created and nothing is reconciled; ``archive`` refuses there.
 
 ``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``
     Write an empty plan with the next plan id, the spec path and the base commit (the merge base of the base
@@ -134,6 +134,20 @@ Inside a strap scenario tree no tag is created and nothing is reconciled.
     through the model, a ``relink`` entry written and the new base tagged ``base/<stem>/r1-<m>``; old tags
     stay. The freeze digest reads a relinked base as the freeze's.
 
+``archive PLAN [--remote]``
+    Run only on the developer's explicit ask (``harness_lib.plan_archive``). Fold every driver tag of the
+    plan (``base``, ``receipt`` and each ledger entry kind's tags under ``<kind>/<stem>/``) into one commit
+    built with git plumbing: its tree holds ``receipts/<ITEM>[.n]`` and ``freezes/r1.<k>``, its parents are
+    every base, entry ``-commit`` and receipt commit, and its message lists each folded ``<tag> <sha40>``.
+    Every folded object must be reachable from that commit before anything is tagged; a miss refuses. Tag
+    it ``archive/<stem>/r1`` (``r1-<m>`` when an archive exists, the previous archive its first parent; no
+    tag moves), delete the folded local tags and print ``tag:``, ``push:`` (the archive alone) and
+    ``deleted:`` lines; ``--remote`` adds ``remote: git push origin --delete <folded tags but receipt
+    ones>``. A plan without driver tags is refused. Runs no reconcile. Once archived, ``check`` and the
+    reconcile count the archive's objects as tagged: an entry the archive folded gets no new ``-commit``
+    tag, and ``untagged:``, ``off-history:`` and tree lines skip an object an archive reaches or holds;
+    an entry written after the archive is tagged as before and folds into the next ``r1-<m>``.
+
 ``verify PLAN [--staged]``
     Run every COMPLETE item's test nodes on one throwaway detached worktree at HEAD (``--staged``: at a
     dangling commit of the index), one pytest run per item, and print ``<ITEM> pass`` or
@@ -159,6 +173,7 @@ directory) names a directory inside the project. Usage::
     plan.py [--repo DIR] lock PLAN
     plan.py [--repo DIR] unlock PLAN [--arm REASON]
     plan.py [--repo DIR] relink PLAN [--to REF]
+    plan.py [--repo DIR] archive PLAN [--remote]
 """
 from __future__ import annotations
 
@@ -185,6 +200,7 @@ from pydantic import ValidationError  # noqa: E402
 from harness_lib import evolution_doc as ed  # noqa: E402
 from harness_lib import parallel_lanes as pl  # noqa: E402
 from harness_lib import plan_checks as pc  # noqa: E402
+from harness_lib import plan_archive as pa  # noqa: E402
 from harness_lib import plan_doc as pd  # noqa: E402
 from harness_lib import plan_lanes as plx  # noqa: E402
 from harness_lib import plan_live  # noqa: E402
@@ -1021,6 +1037,13 @@ def cmd_relink(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_archive(repo: Path, args: argparse.Namespace) -> int:
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    print("\n".join(pa.archive(repo, plan_file, plan, args.remote)))
+    return 0
+
+
 # --- command line -----------------------------------------------------------------------------------------
 
 def _record_parser(sub: Any) -> None:
@@ -1078,12 +1101,16 @@ def _lock_parsers(sub: Any) -> None:
     relink = sub.add_parser("relink", help="Re-point a base_commit a rebase left off HEAD's history.")
     relink.add_argument("plan", help="Plan id or plan file.")
     relink.add_argument("--to", metavar="REF", help="The new base (default: the patch-id match on HEAD).")
+    archive = sub.add_parser("archive", help="Fold the plan's driver tags into one archive tag, on the "
+                                              "developer's explicit ask.")
+    archive.add_argument("plan", help="Plan id or plan file.")
+    archive.add_argument("--remote", action="store_true", help="Also print the remote delete line.")
 
 
 COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "render": cmd_render, "red": cmd_red, "freeze": cmd_freeze,
     "lanes": cmd_lanes, "record": cmd_record, "verify": cmd_verify, "lock": cmd_lock, "unlock": cmd_unlock,
-    "relink": cmd_relink,
+    "relink": cmd_relink, "archive": cmd_archive,
 }
 
 
