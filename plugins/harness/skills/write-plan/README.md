@@ -43,6 +43,7 @@ new --> write (models) --> check --> red --> decisions settled --> freeze
 | Lock | `PLAN lock <id>` (on the developer's ask, after the freeze commit) | a `lock` ledger entry and its tree tag |
 | Unlock | `PLAN unlock <id> --arm "<reason>"`, then `PLAN unlock <id>` | an `arm` entry, then an `unlock` entry |
 | Relink | `PLAN relink <id> [--to REF]` | the plan's `base_commit`, a `relink` entry and a `base/<stem>/r1-<m>` tag |
+| Archive | `PLAN archive <id> [--remote]` (on the developer's explicit ask, after the PR merges) | one `archive/<stem>/r1` (or `r1-<m>`) tag over a commit holding the folded objects; the folded local tags are deleted |
 | Record | `PLAN record <id> <ITEM> --sha <rev>` or `--staged` | one receipt file per item, `live.js` |
 | Other states | `--start`, `--blocked "<reason>"`, `--closed "<rationale>"` | a receipt |
 | Render | `PLAN render <id>` | `live.js` (and the page if it is missing) |
@@ -127,13 +128,18 @@ A commit sequence that keeps the history readable:
    not one of the item's files, so it never blocks the record).
 5. **Design change**: the DesignEvolution entry goes in with the work that needed it.
 6. **Before the merge**: `PLAN check <id>` and `PLAN verify <id>`.
+7. **After the PR merges**: on the developer's explicit ask, `PLAN archive <id> [--remote]` folds the plan's
+   base, receipt and ledger entry tags into one `archive/<stem>/r1` tag and deletes the folded local tags; the
+   developer runs the `push:` line it prints and, with `--remote`, the `remote:` line that deletes the folded
+   tags from the remote.
 
 **Tags.** The drivers create the plan's tags themselves (annotated, local), in the same command:
 `base/<stem>/r1` on the base commit (`r1-<m>` for a relinked base), `freeze/` and `lock/<stem>/r1.<k>-tree` on
 each entry's tree, `-commit` on the commit that added an entry file once it is committed, and
-`receipt/<stem>/<ITEM>-commit` or `-tree` on what `record` tested. A command prints one
-`tag: <name> -> <sha7>` line per tag it created and then one `push: git push origin <names>` line; run that
-line to share them, since tree tags never travel with `push --follow-tags`. Receipt tags stay local and no
+`receipt/<stem>/<ITEM>-commit` or `-tree` on what `record` tested; after the PR merges, `PLAN archive` folds
+them all into one `archive/<stem>/r1` tag. A command prints one
+`tag: <name> -> <sha7>` line per tag it created and then one `push: git push origin <names>` line, which the
+developer runs to share them, since tree tags never travel with `push --follow-tags`. Receipt tags stay local and no
 push line names them. A tag name already on another object refuses the command before anything is written.
 `--sha` still takes any revision, and a tag passed there (`--sha v1.4.0`) is kept in the receipt next to the
 full SHA. Driver tags sit on main-line commits, so a release version is read with `git describe --match 'v*'`.
