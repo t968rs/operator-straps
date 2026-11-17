@@ -1,0 +1,19 @@
+{
+  "plan_id": "1021",
+  "item": "STR-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "7bca05854d658ba636b57a5f4bbbc701fda4ac71"
+    }
+  },
+  "evidence": "staged tree 7bca058",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "e9c97fd80041c64bf08ed4587596a475de8d0ecb5060f8f54b02104f6e34fde6"
+}

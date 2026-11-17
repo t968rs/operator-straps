@@ -1,0 +1,30 @@
+{
+  "plan_id": "1021",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "4ea7c453c7084b9825e74ad2c8f796264d6b6bc2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_freeze_git_archive.py::test_archive_tag_names",
+        "tests/lib/test_freeze_git_archive.py::test_mktree_feeds_bytes_and_keeps_names_exact",
+        "tests/lib/test_freeze_git_archive.py::test_mktree_of_nothing_is_the_empty_tree",
+        "tests/lib/test_freeze_git_archive.py::test_commit_tree_takes_each_parent_once_in_order",
+        "tests/lib/test_freeze_git_archive.py::test_archive_tips_reaches_and_tree_held",
+        "tests/lib/test_freeze_git_archive.py::test_delete_tags_removes_only_the_named"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_freeze_git_archive.py::test_archive_tag_names tests/lib/test_freeze_git_archive.py::test_mktree_feeds_bytes_and_keeps_names_exact tests/lib/test_freeze_git_archive.py::test_mktree_of_nothing_is_the_empty_tree tests/lib/test_freeze_git_archive.py::test_commit_tree_takes_each_parent_once_in_order tests/lib/test_freeze_git_archive.py::test_archive_tips_reaches_and_tree_held tests/lib/test_freeze_git_archive.py::test_delete_tags_removes_only_the_named"
+    }
+  },
+  "evidence": "staged tree 4ea7c45: 6 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "c9ea09dd3aeab37299d810f23986d8c3a7f40393d805278989f397cde955fe36"
+}

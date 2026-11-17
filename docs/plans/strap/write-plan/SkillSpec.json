@@ -1,7 +1,7 @@
 {
   "name": "write-plan",
   "mode": "edit",
-  "base": "9368d9ebcfef34c977ecdfee030bafafc0d8db75",
+  "base": "e533c01495f10abea00371da9ff6a20e75deaa2a",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -1027,13 +1027,29 @@
         "B8",
         "B9"
       ]
+    },
+    {
+      "base": "9368d9ebcfef34c977ecdfee030bafafc0d8db75",
+      "frozen": {
+        "skill_hash": "490d15f70289287cf41984fadbbb16a3e04bc745856d43231d93ac676743d32a",
+        "grader": "session",
+        "at": "2026-11-12T00:32:47+00:00",
+        "authored": "c498ac8232179c1c837de0cdc433f94213091f37ac10a5f5c3f450308899ee20"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B11"
+      ]
     }
   ],
-  "frozen": {
-    "skill_hash": "490d15f70289287cf41984fadbbb16a3e04bc745856d43231d93ac676743d32a",
-    "grader": "session",
-    "at": "2026-11-12T00:32:47+00:00",
-    "authored": "c498ac8232179c1c837de0cdc433f94213091f37ac10a5f5c3f450308899ee20"
-  },
-  "driver_digest": "42a9955cbac36baf7356a43eb2b3bfa0cc147dc1e2aec7437fa4213a7f76c688"
+  "frozen": null,
+  "driver_digest": "f83bae1fda8976566bea063f7f18a10e73bf3cbc5ac67f45fa65d400121b4bf5"
 }
