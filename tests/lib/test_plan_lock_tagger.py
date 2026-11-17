@@ -1,4 +1,4 @@
-"""``harness_lib.plan_lock.tagger`` supplies an author identity when git has none (plan 1021).
+"""``harness_lib.plan_lock.tagger`` supplies an author identity when git has none (plan 2021).
 
 ``git commit-tree`` (the archive commit) needs an author as well as a committer, so with no identity in
 the environment or in any config, ``tagger`` sets ``FALLBACK_TAGGER`` and ``FALLBACK_AUTHOR`` for its block

@@ -1,4 +1,4 @@
-"""``harness_lib.freeze_git`` archive plumbing (plan 1021, TASK-1; issue 284).
+"""``harness_lib.freeze_git`` archive plumbing (plan 2021, TASK-1; issue 284).
 
 ``archive_tag`` names ``archive/<stem>/r<N>`` and ``archive/<stem>/r<N>-<m>``. ``mktree`` builds a tree of
 named subtrees and feeds ``git mktree -z`` bytes, so no entry name gains a ``\\r`` on Windows.

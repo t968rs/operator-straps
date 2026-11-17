@@ -1,10 +1,11 @@
-"""Plan 1021 TASK-3: an archived plan's objects count as tagged (issue 284, driver changes 2 and 3).
+"""Plan 2021 TASK-3: an archived plan's objects count as tagged (issue 284, driver changes 2 and 3).
 
 Once ``archive/<stem>/r1`` exists, reconcile creates no ``-commit`` tag for an entry whose ``-commit`` tag
 an archive folded (``check`` and every other ``PLAN`` command), a refreeze tags no base an archive reaches,
 and ``check`` prints no ``untagged:`` line for a base the archive reaches, a tree an archive tree holds or
-the commit of a folded entry, and no ``off-history:`` line for a base the archive reaches. An entry written
-after the archive is tagged as before and folds into ``r1-2``; an object outside every archive still warns.
+the commit of a folded entry. A base off HEAD's history still prints ``off-history:``, archived or not: it
+is the relink cue. An entry written after the archive is tagged as before and folds into ``r1-2``; an
+object outside every archive still warns.
 
 The driver runs in-process through ``main`` with ``--repo``.
 """
@@ -53,7 +54,7 @@ def test_commands_after_archive_tag_nothing_and_warn_nothing(driver, run: Run, p
     assert stem_tags(project) == [ARCHIVE]
 
 
-def test_a_rewritten_base_the_archive_reaches_is_quiet(driver, run: Run, project: Path) -> None:
+def test_a_rewritten_base_the_archive_reaches_still_cues_relink(driver, run: Run, project: Path) -> None:
     old = advance_main(project)
     finished(run, project)
     code, _, err = run("archive", "1")
@@ -63,7 +64,7 @@ def test_a_rewritten_base_the_archive_reaches_is_quiet(driver, run: Run, project
     assert old not in git(project, "rev-list", "HEAD").splitlines()
     code, out, err = run("check", "1")
     assert code == 0, err
-    assert loud(out + err) == [], out + err
+    assert loud(out + err) == [f"off-history: {old[:7]} (base r1)"], out + err
     assert stem_tags(project) == [ARCHIVE]
 
 

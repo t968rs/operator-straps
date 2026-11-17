@@ -1,4 +1,4 @@
-"""The write-plan skill and its docs state ``plan.py archive`` (plan 1021, TASK-4; issues 284 and 283).
+"""The write-plan skill and its docs state ``plan.py archive`` (plan 2021, TASK-4; issues 284 and 283).
 
 The SKILL.md has an **Archive.** step (developer's explicit ask, ``--remote``, the ``r1-<m>`` re-archive)
 and an ``archive/<stem>/r1`` row in its tag table; the freeze ``-commit`` sentence names the agent as the one
