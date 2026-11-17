@@ -170,7 +170,7 @@
         "catalog": {"$ref": "#/$defs/relPath", "description": "Ranked TODO catalog JSON (TodoCatalog shape), relative to folder."},
         "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft), relative to folder; the default name is used when the file exists, else (or when null) the harness catalogs/TodoCatalog.schema.json. A name set here must exist."},
         "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\x5c]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
-        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot."},
+        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot's top table; the snapshot folds the remaining items into a second table."},
         "snapshots": {
           "type": "object",
           "additionalProperties": false,

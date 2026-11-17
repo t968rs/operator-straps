@@ -6,13 +6,14 @@ h1 .repo { display: block; color: var(--code-fg); }
 #render-info h5 { margin: 0 0 .2rem; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
   color: var(--muted); }
 #render-info p { margin: .2rem 0; font-size: 13px; }
-table.top { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
-table.top th, table.top td { border: 1px solid var(--line); padding: .3em .55em; text-align: left;
+table.items { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
+table.items th, table.items td { border: 1px solid var(--line); padding: .3em .55em; text-align: left;
   vertical-align: top; }
-table.top th { position: sticky; top: 0; background: var(--bg); color: var(--heading);
+table.items th { position: sticky; top: 0; background: var(--bg); color: var(--heading);
   border-bottom: 2px solid var(--accent); }
-table.top tr.row:nth-child(odd) { background: var(--code); }
-table.top tr.row:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
+table.items tr.row:nth-child(odd) { background: var(--code); }
+table.items tr.row:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
+details#rest > summary h2 { display: inline; }
 td.c-rank, td.c-score { text-align: right; font-variant-numeric: tabular-nums; }
 td.c-size, td.c-status, td.c-kind { text-align: center; white-space: nowrap; }
 td.c-gh { white-space: nowrap; }

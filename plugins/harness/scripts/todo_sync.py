@@ -12,8 +12,9 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     the whole project's.
 ``render [--date YYYY-MM-DD]``
     Rewrite the one snapshot page ``<todo.snapshots.dir>/TODO_Snapshot.html`` (T2 header line, catalog
-    summary, top-N table) and its ``todo_live.js`` stamp, which an open page polls to reload itself, and
-    print the page's path. ``--date`` sets the render date the page shows.
+    summary, top-N table, the remaining items folded in a second table) and its ``todo_live.js`` stamp,
+    which an open page polls to reload itself, and print the page's path. ``--date`` sets the render date
+    the page shows.
 ``runner``
     Write ``<state_dir>/todo-sync/runner.json`` (interpreter, this script, project, report) and print its
     path.
