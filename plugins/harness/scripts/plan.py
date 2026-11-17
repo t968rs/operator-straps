@@ -133,7 +133,8 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     Run on the developer's request after a rebase: a ``base_commit`` off HEAD's history is matched to its
     rewritten counterpart by ``git patch-id`` among HEAD's ancestors (or taken from ``--to``), re-pointed
     through the model, a ``relink`` entry written and the new base tagged ``base/<stem>/r1-<m>``; old tags
-    stay. The freeze digest reads a relinked base as the freeze's.
+    stay. The freeze digest reads a relinked base as the freeze's. The candidate base must hold the plan's
+    anchors and sweeps, else ``relink`` refuses with ``at base <sha7>:`` problem lines and writes nothing.
 
 ``archive PLAN [--remote]``
     Run only on the developer's explicit ask (``harness_lib.plan_archive``). Fold every driver tag of the
@@ -465,6 +466,19 @@ def base_claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     found = (pc.anchor_problems(plan, repo, base)
              + pc.sweep_problems(plan, repo, history_paths(active()), base))
     return [f"at base {base[:7]}: {p}" for p in found]
+
+
+def relink_claim_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, candidate: str) -> List[str]:
+    """Anchors and sweeps that fail at ``candidate``, the base a ``relink`` would write (D1A).
+
+    Runs whether or not an item is done: ``check`` reads the claims at the base once one is, and a freeze
+    before that point requires them there. The item statuses come from the record book's view, since a
+    receipts plan keeps them in its receipts.
+    """
+    view = book_of(plan_file, plan).view()
+    found = (pc.anchor_problems(view, repo, candidate)
+             + pc.sweep_problems(view, repo, history_paths(active()), candidate))
+    return [f"at base {candidate[:7]}: {p}" for p in found]
 
 
 def receipt_split(book: prt.ReceiptBook, refreeze: bool) -> Tuple[List[str], List[str]]:
@@ -1037,7 +1051,8 @@ def cmd_unlock(repo: Path, args: argparse.Namespace) -> int:
 def cmd_relink(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
-    entry, lines = pk.relink(repo, plan_file, plan, args.to, save)
+    entry, lines = pk.relink(repo, plan_file, plan, args.to, save,
+                             vet=lambda sha: relink_claim_problems(repo, plan_file, plan, sha))
     print("\n".join([f"relink [done] | plan {plan.plan_id} | base {(entry.old_base or '')[:7]} -> "
                      f"{(entry.new_base or '')[:7]} ({entry.match})", *lines]))
     return 0
@@ -1106,7 +1121,10 @@ def _lock_parsers(sub: Any) -> None:
                         help="Arm the unlock (only on the developer's explicit OK); the plan stays Locked.")
     relink = sub.add_parser("relink", help="Re-point a base_commit a rebase left off HEAD's history.")
     relink.add_argument("plan", help="Plan id or plan file.")
-    relink.add_argument("--to", metavar="REF", help="The new base (default: the patch-id match on HEAD).")
+    relink.add_argument("--to", metavar="REF",
+                        help="The new base (default: the patch-id match on HEAD); it must hold the plan's "
+                             "anchors and sweeps, else relink refuses with at-base problems and writes "
+                             "nothing.")
     archive = sub.add_parser("archive", help="Fold the plan's driver tags into one archive tag, on the "
                                               "developer's explicit ask.")
     archive.add_argument("plan", help="Plan id or plan file.")

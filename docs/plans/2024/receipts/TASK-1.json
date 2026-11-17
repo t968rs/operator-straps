@@ -1,0 +1,27 @@
+{
+  "plan_id": "2024",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "e67df8c58639bbbbc6633c8d23ce7c642030cf9e"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_once_an_item_is_done",
+        "tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_before_any_item_is_done",
+        "tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_where_a_sweep_classification_goes_stale"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_once_an_item_is_done tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_before_any_item_is_done tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_where_a_sweep_classification_goes_stale"
+    }
+  },
+  "evidence": "staged tree e67df8c: 3 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "a452c58ac76455e5696de6ab9ac040b68c80caddb0dad0a985afb2a95585cc85"
+}

@@ -66,7 +66,7 @@ its planned tests and the ledger; `record`, `verify`, `lanes` and `render` run a
 takes `PLAN unlock <id> --arm "<reason>"` (on the developer's OK), then `PLAN unlock <id>`, then
 `plan_api.write`, `freeze --refreeze` and, once that is committed, `lock` again. After a rebase or squash moves
 the base off HEAD's history (`check` prints `off-history:`), `PLAN relink <id>` re-points `base_commit` on the
-developer's request and leaves the plan Frozen or Locked.
+developer's request and leaves the plan Frozen or Locked; it refuses a base where the plan's anchors or sweeps fail, and a base squashed inside another pull request, which has no counterpart, stays off-history.
 
 **After the freeze the plan JSON changes only through a refreeze.** Plans frozen from this version use the **receipts** scheme:
 

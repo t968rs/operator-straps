@@ -184,11 +184,16 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    committed the refreeze. Ledger files under `freezes/` stay denied throughout; after `unlock` the guard releases the plan JSON and its planned tests, and the plan JSON still changes only through `plan_api.write`.
 
    **Relink.** After the developer rebases or squashes, a plan base that left HEAD's history shows as
-   `off-history:` in `check`. That is the cue to offer a relink, which runs on the developer's request:
-   `PLAN relink <id> [--to REF]`. It matches `base_commit` to its rewritten counterpart by `git patch-id`
-   among HEAD's ancestors (or takes `--to`), re-points `base_commit`, appends a `relink` entry and tags the
-   new base `base/<stem>/r1-<m>`; the old tags stay. The entry re-records the frozen or locked files with the
-   plan JSON's new blob, so a relink leaves the plan Frozen or Locked and `check` reports no `drift:` for it.
+   `off-history:` in `check`. When a counterpart exists, that is the cue to offer a relink, which runs on the
+   developer's request: `PLAN relink <id> [--to REF]`. It matches `base_commit` to its rewritten counterpart by
+   `git patch-id` among HEAD's ancestors (or takes `--to`). Before it writes anything, the relink runs the plan's
+   anchors and sweeps at that candidate base (the claims `check` reads there once an item is done, and that a
+   freeze requires there before one is), and refuses with `at base <sha7>:` problem lines when any fails, writing
+   nothing. Otherwise it re-points `base_commit`, appends a `relink` entry and tags the new base
+   `base/<stem>/r1-<m>`; the old tags stay. The entry re-records the frozen or locked files with the plan JSON's
+   new blob, so a relink leaves the plan Frozen or Locked and `check` reports no `drift:` for it. A base squashed
+   inside another pull request (or a merge commit) has no counterpart on HEAD's history; relink refuses it, and
+   the `off-history:` warning is then the correct end state, so no `--to` is guessed.
 
    **Archive.** `PLAN archive <id> [--remote]` runs only on the developer's explicit ask, after the PR
    merges. It folds the plan's base, receipt and ledger entry tags (freeze, lock, arm, unlock, relink)
