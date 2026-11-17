@@ -630,7 +630,7 @@ def _base_lines(repo: Path, plan: pm.ActionPlan, stem: str, scenario: bool,
         return []
     role = f"base r{ROUND}"
     kept = fg.reaches(repo, tips, base)
-    lines = [] if _on_head(repo, base) else [f"off-history: {base[:7]} ({role})"]
+    lines = [] if kept or _on_head(repo, base) else [f"off-history: {base[:7]} ({role})"]
     names = git(repo, "tag", "--list", f"{fg.base_tag(stem, ROUND)}*").stdout.split()
     if not scenario and not kept and not any(_peel(repo, name) == base for name in names):
         lines.append(f"untagged: {base[:7]} ({role})")
