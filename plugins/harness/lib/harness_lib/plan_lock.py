@@ -16,9 +16,8 @@ reconcile makes no ``-commit`` tag for an entry the archive folded, a refreeze t
 reaches, and ``check`` prints no ``untagged:`` line for a base it reaches, a tree it holds or the commit of
 a folded entry; ``off-history:`` still warns for a base off HEAD's history, since an archive answers
 whether an object is tagged, not whether it is on HEAD. An entry written after the archive is tagged as
-before. Nothing
-here reads the config: callers pass the plan file, whose folder holds the ledger.
-This module never saves a plan except in ``write_freeze``; ``plan.py`` does the rest.
+before. Nothing here reads the config: callers pass the plan file, whose folder holds the ledger. This
+module never saves a plan except in ``write_freeze``; ``plan.py`` does the rest.
 """
 from __future__ import annotations
 
@@ -139,7 +138,8 @@ def _require_ledger(plan: pm.ActionPlan, then: str) -> None:
 def freeze_set(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
     """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/``.
 
-    ``snapshot`` leaves interpreter bytecode under the tests folder out of the ignored set.
+    ``snapshot`` leaves interpreter bytecode under the tests folder out of the ignored set, and the lock gate
+    and ``check``'s drift lines skip the bytecode digests an older entry still holds (``kept_ignored``).
     """
     tests = plan_file.parent / plan.plan_id / "tests"
     return [rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
@@ -148,6 +148,12 @@ def freeze_set(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
 def _bytecode(path: str) -> bool:
     """True for interpreter bytecode: a file inside a ``__pycache__`` folder or ending in ``.pyc``."""
     return "__pycache__" in path.split("/") or path.endswith(".pyc")
+
+
+def kept_ignored(ignored: Dict[str, str]) -> Dict[str, str]:
+    """``ignored`` without bytecode paths, so an entry written before ``snapshot`` dropped them compares
+    only the ignored files a current freeze records."""
+    return {path: digest for path, digest in ignored.items() if not _bytecode(path)}
 
 
 def snapshot(repo: Path, paths: Sequence[str]) -> Tuple[str, Dict[str, str], Dict[str, str]]:
@@ -433,9 +439,10 @@ def _file_problems(repo: Path, last: LedgerEntry) -> List[str]:
             problems.append(f"{path}: not committed at HEAD as frozen; commit the freeze first")
         elif work.get(path) != blob:
             problems.append(f"{path}: the working tree differs from the freeze")
-    current = fg.ignored_digests(repo, sorted(last.ignored))
+    ignored = kept_ignored(last.ignored)
+    current = fg.ignored_digests(repo, sorted(ignored))
     problems += [f"{path}: ignored file differs from the freeze" for path, digest in
-                 sorted(last.ignored.items()) if current.get(path) != digest]
+                 sorted(ignored.items()) if current.get(path) != digest]
     return problems
 
 
@@ -693,8 +700,9 @@ def _drift_lines(repo: Path, plan_file: Path, stem: str, found: Sequence[LedgerE
     files = {p: b for p, b in held.files.items() if p != own or lock.records == RecordScheme.receipts.value}
     work = worktree_blobs(repo, sorted(files))
     paths = [p for p, blob in sorted(files.items()) if work.get(p) != blob]
-    current = fg.ignored_digests(repo, sorted(held.ignored))
-    paths += [p for p, digest in sorted(held.ignored.items()) if p in current and current[p] != digest]
+    ignored = kept_ignored(held.ignored)
+    current = fg.ignored_digests(repo, sorted(ignored))
+    paths += [p for p, digest in sorted(ignored.items()) if p in current and current[p] != digest]
     if not paths:
         return []
     ref = _lock_ref(repo, stem, lock)

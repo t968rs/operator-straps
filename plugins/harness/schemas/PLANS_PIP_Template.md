@@ -220,7 +220,8 @@ After all tasks complete and tests pass:
 6. (developer) Commit the receipts (live.js stays untracked), push, and merge the PR
 7. (agent) `plan.py archive {PLAN_ID} --remote`, after the PR merges and on the developer's explicit ask; the
    developer runs the `push:` line it prints and the `remote:` line, since without the remote delete the next
-   fetch or pull restores the pushed folded tags
+   fetch or pull restores the pushed folded tags; when git reports a name as missing on the remote (a tag
+   never pushed), drop it from the `remote:` line and rerun it
 ```
 
 ---

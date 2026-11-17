@@ -15,8 +15,9 @@ parent, in first-seen order; its message is fed as bytes (``_run_bytes``) becaus
 would turn the LF line endings into CRLF, which ``git commit-tree`` stores unchanged. ``archive_tips``
 lists the commits the archive tags of one stem peel to, plus the earlier archive commits their
 ``previous:`` chains keep reachable (empty, never raising, when git cannot list them);
-``reaches`` and ``tree_held`` answer whether those tips keep a commit or a tree reachable, and
-``held_trees`` gives the subtree set once for a caller that tests many trees. ``archived_names`` collects
+``reaches`` answers whether those tips keep a commit reachable. ``held_trees`` gives the subtree set of the
+tips, read once, so a caller that tests many trees (``plan_archive``) checks membership in it;
+``tree_held`` is its one-tree form. ``archived_names`` collects
 the folded tag names the tips' commit messages list, so a caller can tell a tag an archive folded from
 one never made. ``delete_tags`` removes the named local tags that still exist.
 """
