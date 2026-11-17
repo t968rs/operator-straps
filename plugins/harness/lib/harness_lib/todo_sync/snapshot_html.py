@@ -1,16 +1,17 @@
-"""The TODO snapshot page: one self-contained HTML page of the catalog's top-N table.
+"""The TODO snapshot page: one self-contained HTML page of the catalog's items, top N first.
 
 ``render_snapshot`` writes the page as ``TODO_Snapshot.html`` in ``todo.snapshots.dir``, and
 ``todo_live.js`` beside it, from ``todo_sync.py render``, ``init``, ``add --inbox`` and ``lease release``; a
 bare ``add --spec``, ``retire``, ``split``, ``refresh`` or ``migrate-ids`` leaves the page for the next
 render. Rule T2 flags a stale page only when todo.top_n or the top-N ids, ranks, statuses or titles changed;
-the Summary counts, the other cells and the folded prose can go stale with no finding. Line 1 of the page is
-the ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a Summary block of catalog counts and
-the table (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH): the Id cell holds the bare id for copying,
-and the Item cell links the item's stubs after its title and folds its prose into a ``<details>``. The CSS
-(``pages/styles/shared.css``, ``pages/styles/todo.css``), the theme toggle (``pages/components/theme.js``)
-and the loader (``pages/components/todo.js``) are read from the plugin root and inlined, so the page opens
-from disk with no network address.
+the Summary counts, the other cells, the folded prose and the remaining-items table can go stale with no
+finding. Line 1 of the page is the ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a
+Summary block of catalog counts, the top-N table and, folded closed below it, a second table of the remaining
+items in rank order. Both tables share the columns (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH):
+the Id cell holds the bare id for copying, and the Item cell links the item's stubs after its title and
+folds its prose into a ``<details>``. The CSS (``pages/styles/shared.css``, ``pages/styles/todo.css``), the
+theme toggle (``pages/components/theme.js``) and the loader (``pages/components/todo.js``) are read from
+the plugin root and inlined, so the page opens from disk with no network address.
 
 The page carries a stamp, the sha256 of the page rendered with an empty stamp, and ``todo_live.js`` sets
 ``window.TODO_LIVE`` to that stamp and the render date. The loader re-adds the sidecar every ``RELOAD_MS``
@@ -27,7 +28,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from harness_lib.page_chrome import corner, theme_script
+from harness_lib.page_chrome import HOME, corner, theme_script
 from harness_lib.project import plugin_root
 
 PAGE_NAME = "TODO_Snapshot.html"
@@ -35,7 +36,10 @@ LIVE_NAME = "todo_live.js"
 LIVE_HEAD = "window.TODO_LIVE = "
 RELOAD_MS = 3000
 PAGES = plugin_root() / "pages"
-COLUMNS = ("Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
+#: The GitHub copy of the driver's usage document; a link into the installed plugin would not resolve from a
+#: consuming project's page.
+USAGE = f"{HOME}/blob/main/plugins/harness/scripts/todo_sync.md"
+COLUMNS = ("Rank", "Id","Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
 _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
 _CONFIG = re.compile(r"<script>\nvar TODO_PAGE = (\{.*?\});")
 _STAMP = re.compile(r"[0-9a-f]{64}")
@@ -48,10 +52,12 @@ _PROSE: Tuple[Tuple[str, Optional[str]], ...] = (
 
 @dataclass(frozen=True)
 class SnapshotPage:
-    """What one page draws: the T2 header line, the catalog, its top rows and their stub link targets.
+    """What one page draws: the T2 header line, the catalog, its top rows, the remaining rows and their stub
+    link targets.
 
-    ``links[k]`` holds the stub link targets of ``top[k]`` (by position, so rows sharing an id never share
-    links); ``gh_repo`` (``owner/name``) builds an issue link when the item names no issue URL; ``repo``,
+    ``links[k]`` holds the stub link targets of ``top[k]`` and ``rest_links[k]`` those of ``rest[k]`` (by
+    position, so rows sharing an id never share links); ``rest`` is drawn as a second, folded table when it
+    has rows. ``gh_repo`` (``owner/name``) builds an issue link when the item names no issue URL; ``repo``,
     the repository name, opens the title and the heading when set.
     """
 
@@ -64,6 +70,8 @@ class SnapshotPage:
     links: Sequence[Sequence[str]] = ()
     gh_repo: Optional[str] = None
     repo: Optional[str] = None
+    rest: Sequence[Dict[str, Any]] = ()
+    rest_links: Sequence[Sequence[str]] = ()
 
 
 def _e(value: Any) -> str:
@@ -182,14 +190,29 @@ def _row(item: Dict[str, Any], targets: Sequence[str], repo: Optional[str]) -> s
     return f'<tr class="row" data-rank="{rank}">{"".join(cells)}</tr>'
 
 
-def _table(page: SnapshotPage) -> List[str]:
-    """The top-N table, or a note when the catalog has no items."""
-    if not page.top:
-        return ['<p class="note">No items in the catalog.</p>']
-    links = list(page.links)
+def _table(cls: str, items: Sequence[Dict[str, Any]], links: Sequence[Sequence[str]],
+           repo: Optional[str]) -> List[str]:
+    """One ``<table class="items <cls>">`` of ``items``, row ``k`` linking the stubs of ``links[k]``."""
+    links = list(links)
     head = "".join(f"<th>{name}</th>" for name in COLUMNS)
-    rows = [_row(item, links[k] if k < len(links) else (), page.gh_repo) for k, item in enumerate(page.top)]
-    return ['<table class="top">', f'<tr class="head">{head}</tr>', *rows, "</table>"]
+    rows = [_row(item, links[k] if k < len(links) else (), repo) for k, item in enumerate(items)]
+    return [f'<table class="items {cls}">', f'<tr class="head">{head}</tr>', *rows, "</table>"]
+
+
+def _tables(page: SnapshotPage) -> List[str]:
+    """The top table under its heading when it has rows, then the remaining items folded closed below it; a
+    note when neither list has rows."""
+    if not page.top and not page.rest:
+        return ['<p class="note">No items in the catalog.</p>']
+    out: List[str] = []
+    if page.top:
+        out += [f"<h2>Top {len(page.top)}</h2>", *_table("top", page.top, page.links, page.gh_repo)]
+    if page.rest:
+        count = len(page.rest)
+        label = f"Remaining {count} item{'' if count == 1 else 's'}"
+        out += [f'<details id="rest"><summary><h2>{label}</h2></summary>',
+                *_table("rest", page.rest, page.rest_links, page.gh_repo), "</details>"]
+    return out
 
 
 def _counted(values: Iterable[Any], kind: str) -> str:
@@ -223,9 +246,11 @@ def _intro(page: SnapshotPage) -> List[str]:
     return [f"<h1>{repo}TODO Snapshot</h1>",
             f'<p class="rendered">Rendered {_e(page.rendered)}</p>',
             '<section id="render-info"><h5>Render info</h5>',
-            f'<p class="note">Drawn from <code>{_e(page.source)}</code>. '
-            f"<code>todo_sync.py</code> rewrites this page on {writers}; a bare {bare} leaves it as it was "
-            "until the next render. Edits to this file are overwritten.</p>",
+            f'<p class="note">Drawn from <code>{_e(page.source)}</code>. Edits to this file are '
+            "overwritten.</p>",
+            f'<p class="note">Rewritten by <a href="{USAGE}"><code>todo_sync.py</code></a> {writers}.</p>',
+            f'<p class="note">Not rewritten by <code>todo_sync.py</code> {bare}: the page waits for the '
+            "next render.</p>",
             f'<p class="note">An open page reloads itself when <code>{LIVE_NAME}</code> beside it '
             "changes.</p></section>"]
 
@@ -237,7 +262,7 @@ def _script(stamp: str) -> str:
 
 
 def _document(page: SnapshotPage, stamp: str) -> str:
-    body = [*_intro(page), _summary(page.catalog), *_table(page)]
+    body = [*_intro(page), _summary(page.catalog), *_tables(page)]
     style = _asset("styles", "shared.css") + _asset("styles", "todo.css")
     title = f"TODO Snapshot ({page.rendered})"
     if page.repo:

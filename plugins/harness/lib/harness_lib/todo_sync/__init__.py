@@ -27,7 +27,7 @@ from harness_lib.todo_sync import rules_todo as rt
 from harness_lib.todo_sync.report import Finding, Report, snapshot_header, write_atomic, write_report
 from harness_lib.todo_sync.snapshot_html import (LIVE_NAME, PAGE_NAME, SnapshotPage, live_script, page_stamp,
                                                  render_page)
-from harness_lib.todo_sync.sources import JsonFile, Sources, posix, read_json, rows_sha256, top_items
+from harness_lib.todo_sync.sources import JsonFile, Sources, posix, ranked_items, read_json, rows_sha256
 from harness_lib.todo_sync.stub_links import item_stubs, link_target
 
 __all__ = ["RULES", "RULE_IDS", "Report", "TodoSyncError", "check", "render_snapshot", "report_path",
@@ -175,10 +175,12 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     items = [i for i in raw if isinstance(i, dict)] if isinstance(raw, list) else []
     rendered = date.isoformat()
     header = snapshot_header(posix(todo.catalog), todo.top_n, rows_sha256(items, todo.top_n), rendered)
-    top = top_items(items, todo.top_n)
-    page = SnapshotPage(header=header, catalog=catalog.data, top=top, top_n=todo.top_n, rendered=rendered,
-                        source=posix(todo.catalog), links=_stub_links(cfg, top), gh_repo=todo.gh_repo,
-                        repo=repo_name(cfg))
+    ranked = ranked_items(items)
+    links = _stub_links(cfg, ranked)
+    cut = todo.top_n
+    page = SnapshotPage(header=header, catalog=catalog.data, top=ranked[:cut], top_n=cut, rendered=rendered,
+                        source=posix(todo.catalog), links=links[:cut], gh_repo=todo.gh_repo,
+                        repo=repo_name(cfg), rest=ranked[cut:], rest_links=links[cut:])
     text = render_page(page)
     stamp = page_stamp(text)
     if stamp is None:
@@ -189,12 +191,12 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     return path
 
 
-def _stub_links(cfg: HarnessConfig, top: List[Dict[str, Any]]) -> List[List[str]]:
-    """Stub link targets per row of ``top`` (relative to ``todo.snapshots.dir``); a row whose id is not a
-    string gets none."""
+def _stub_links(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> List[List[str]]:
+    """Stub link targets per item of ``rows`` (relative to ``todo.snapshots.dir``), from one ``Sources`` so
+    the research tree is walked once; an item whose id is not a string gets none."""
     src = Sources(cfg)
     return [[link_target(s, cfg.todo.snapshots.dir) for s in item_stubs(src, item)]
-            if isinstance(item.get("id"), str) else [] for item in top]
+            if isinstance(item.get("id"), str) else [] for item in rows]
 
 
 def write_runner(cfg: HarnessConfig) -> Path:

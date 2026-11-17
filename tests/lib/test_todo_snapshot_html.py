@@ -1,7 +1,8 @@
-"""TODO snapshot page: ``snapshot_html.render_page`` draws the catalog's top-N table as one themed HTML page.
+"""TODO snapshot page: ``snapshot_html.render_page`` draws the catalog as one themed HTML page.
 
-The page opens with the T2 header line, carries a Summary block of catalog counts above the table, keeps the
-Rank / Id / Item / Status / Kind / Blast / LoE / Score / GH columns, folds each item's prose into a
+The page opens with the T2 header line, carries a Summary block of catalog counts above the top-N table and,
+folded closed below it, a table of the remaining items; both keep the
+Rank / Id / Item / Status / Kind / Blast / LoE / Score / GH columns, fold each item's prose into a
 ``<details>`` in its Item cell, and inlines the shared theme, its own CSS and a loader that reloads the page
 when the ``todo_live.js`` stamp beside it changes.
 """
@@ -75,16 +76,29 @@ def _items() -> List[Dict[str, Any]]:
 
 
 def _page(items: Sequence[Dict[str, Any]], links: Sequence[Sequence[str]] = (), gh_repo: Optional[str] = None,
-          top_n: int = 10, repo: Optional[str] = None, **catalog_extra: Any) -> str:
+          top_n: int = 10, repo: Optional[str] = None, rest: Sequence[Dict[str, Any]] = (),
+          rest_links: Sequence[Sequence[str]] = (), **catalog_extra: Any) -> str:
     catalog = {"items": list(items), "trackers": [], "close_candidates": [], **catalog_extra}
     page = sh.SnapshotPage(header=snapshot_header(SOURCE, top_n, SHA, DAY), catalog=catalog,
                            top=list(items)[:top_n], top_n=top_n, rendered=DAY, source=SOURCE, links=links,
-                           gh_repo=gh_repo, repo=repo)
+                           gh_repo=gh_repo, repo=repo, rest=rest, rest_links=rest_links)
     return sh.render_page(page)
+
+
+def _two(top_n: int = 1, **kwargs: Any) -> str:
+    """The three helper items split after ``top_n``: the rest goes to the second table."""
+    items = _items()
+    return _page(items, top_n=top_n, rest=items[top_n:], **kwargs)
 
 
 def _rows(text: str) -> List[str]:
     return re.findall(r'<tr class="row".*?</tr>', text, re.S)
+
+
+def _table_html(text: str, cls: str) -> str:
+    """The ``<table class="items <cls>">`` element of the page, or empty when it has none."""
+    found = re.search(rf'<table class="items {cls}">.*?</table>', text, re.S)
+    return found.group(0) if found else ""
 
 
 def _text(fragment: str) -> str:
@@ -128,6 +142,23 @@ def test_the_render_info_is_its_own_block_under_a_small_heading() -> None:
     assert text.index('class="rendered"') < text.index('id="render-info"') < text.index('id="summary"')
 
 
+def test_the_render_info_puts_writers_and_non_writers_on_their_own_lines() -> None:
+    block = re.search(r'<section id="render-info">(.*?)</section>', _page(_items()), re.S).group(1)
+    lines = [_text(p) for p in re.findall(r"<p[^>]*>(.*?)</p>", block, re.S)]
+    assert ";" not in "".join(lines)
+    writes = [ln for ln in lines if ln.startswith("Rewritten by")]
+    keeps = [ln for ln in lines if ln.startswith("Not rewritten by")]
+    assert len(writes) == 1 and "todo_sync.py render" in writes[0] and "add --inbox" in writes[0]
+    assert len(keeps) == 1 and "add --spec" in keeps[0] and "migrate-ids" in keeps[0]
+
+
+def test_the_render_info_links_the_script_usage_from_its_name() -> None:
+    block = re.search(r'<section id="render-info">(.*?)</section>', _page(_items()), re.S).group(1)
+    link = f'<a href="{sh.USAGE}"><code>todo_sync.py</code></a>'
+    assert block.count(link) == 1
+    assert f"<p class=\"note\">Rewritten by {link} " in block
+
+
 def test_title_and_heading_open_with_the_repo_name() -> None:
     text = _page(_items(), repo="widgets")
     assert f"<title>widgets | TODO Snapshot ({DAY})</title>" in text
@@ -149,6 +180,39 @@ def test_the_repo_name_is_escaped() -> None:
 def test_the_table_keeps_its_columns() -> None:
     heads = re.findall(r"<th[^>]*>(.*?)</th>", _page(_items()))
     assert heads == ["Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH"]
+
+
+def test_the_top_table_sits_under_its_own_heading() -> None:
+    assert '<h2>Top 3</h2>\n<table class="items top">' in _page(_items())
+    assert '<h2>Top 1</h2>\n<table class="items top">' in _two()
+
+
+def test_the_rest_table_draws_the_remaining_items_in_rank_order_folded_closed() -> None:
+    text = _two()
+    assert re.findall(r'data-rank="(\d+)"', _table_html(text, "top")) == ["1"]
+    rest = _table_html(text, "rest")
+    assert re.findall(r'data-rank="(\d+)"', rest) == ["2", "3"]
+    assert re.findall(r"<th[^>]*>(.*?)</th>", rest) == list(sh.COLUMNS)
+    assert ('<details id="rest"><summary><h2>Remaining 2 items</h2></summary>\n<table class="items rest">'
+            in text)
+    assert text.index('class="items top"') < text.index('id="rest"')
+
+
+def test_one_remaining_item_is_named_in_the_singular() -> None:
+    assert "<h2>Remaining 1 item</h2>" in _two(top_n=2)
+
+
+def test_rest_rows_link_their_stubs_by_position() -> None:
+    text = _two(links=[[ALPHA]], rest_links=[[], [BETA]])
+    rows = _rows(_table_html(text, "rest"))
+    assert '<a class="stub"' not in rows[0]
+    assert f'<a class="stub" href="{BETA}">1</a>' in rows[1]
+    assert f'<a class="stub" href="{ALPHA}">1</a>' in _table_html(text, "top")
+
+
+def test_no_remaining_items_draws_no_second_table() -> None:
+    text = _page(_items())
+    assert 'id="rest"' not in text and 'class="items rest"' not in text
 
 
 def test_one_row_per_top_item_in_rank_order() -> None:
