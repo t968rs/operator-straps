@@ -70,7 +70,7 @@ def test_init_writes_the_page_and_its_stamp(make_project) -> None:
     assert (cfg.project_root / SNAP_DIR / "todo_live.js").is_file()
 
 
-def test_render_writes_the_page_before_its_stamp(make_project, monkeypatch) -> None:
+def test_render_write_order_and_the_unchanged_second_render(make_project, monkeypatch) -> None:
     cfg = build(make_project, _files(page=False))
     written: List[str] = []
 

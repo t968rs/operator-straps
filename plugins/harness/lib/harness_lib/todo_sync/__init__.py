@@ -172,8 +172,11 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
 
     A page on disk that rendering again with its own date reproduces is kept, date included, and the stamp
     file is written only when its text differs, so a render that would draw the same page leaves both files
-    as they are; only a catalog, configuration or page code change rewrites them, dated ``date``. The page
-    goes first, so an open page that reads a new stamp reloads into the new page.
+    as they are. Only a change to what the page draws (the TODO catalog, the research catalog or its stub
+    files, configuration, or page code), or a hand-edited or missing page, rewrites the page, dated
+    ``date``; a missing or differing stamp file is restored on its own, and one written beside a kept page
+    carries the kept page's date. The page goes first, so an open page that reads a new stamp reloads into
+    the new page.
     """
     todo = cfg.todo
     if not todo.catalog or not todo.snapshots.dir:
@@ -181,9 +184,8 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     build = _page_builder(cfg)
     folder = cfg.path(todo.snapshots.dir)
     path, live_path = folder / PAGE_NAME, folder / LIVE_NAME
-    kept = _kept_date(path, build)
-    rendered = kept or date.isoformat()
-    text = build(rendered)
+    kept = _kept_page(path, build)
+    rendered, text = kept if kept is not None else (date.isoformat(), build(date.isoformat()))
     stamp = page_stamp(text)
     if stamp is None:
         raise TodoSyncError(f"{PAGE_NAME}: rendered page carries no readable stamp; nothing written")
@@ -224,19 +226,30 @@ def _page_builder(cfg: HarnessConfig) -> Callable[[str], str]:
 
 
 def _read_text(path: Path) -> Optional[str]:
+    """The text at ``path`` read with universal newlines (CRLF and lone CR become LF), so a checkout that
+    converted line ends compares equal to the text ``write_atomic`` wrote."""
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return None
 
 
-def _kept_date(path: Path, build: Callable[[str], str]) -> Optional[str]:
-    """The render date of the page at ``path`` when ``build`` with that date reproduces it, else None."""
+def _universal_newlines(text: str) -> str:
+    """``text`` with CRLF and lone CR turned into LF, the translation a universal-newline read applies."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _kept_page(path: Path, build: Callable[[str], str]) -> Optional[Tuple[str, str]]:
+    """The render date and the built text of the page at ``path`` when ``build`` with that date reproduces
+    it under universal-newline translation, else None."""
     old = _read_text(path)
     header = parse_header(old.split("\n", 1)[0]) if old else None
-    if header is None or build(header.rendered) != old:
+    if header is None:
         return None
-    return header.rendered
+    built = build(header.rendered)
+    if _universal_newlines(built) != old:
+        return None
+    return header.rendered, built
 
 
 def _stub_links(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> List[List[str]]:

@@ -3,7 +3,8 @@
 ``render_snapshot`` writes the page as ``TODO_Snapshot.html`` in ``todo.snapshots.dir``, and
 ``todo_live.js`` beside it, from ``todo_sync.py render``, ``init``, ``add --inbox`` and ``lease release``; a
 bare ``add --spec``, ``retire``, ``split``, ``refresh`` or ``migrate-ids`` leaves the page for the next
-render. A render that would draw the same page writes neither file. Rule T2 flags a stale page only when
+render. A render that would draw the same page keeps the page and rewrites ``todo_live.js`` only when it is
+missing or differs. Rule T2 flags a stale page only when
 todo.top_n or the top-N ids, ranks, statuses or titles changed; the Summary counts, the other cells, the
 folded prose and the remaining-items table can go stale with no finding. Line 1 of the page is the
 ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a Summary block of catalog counts, the
