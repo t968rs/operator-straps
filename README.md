@@ -409,15 +409,20 @@ TODO sync needs only `todo.folder`. Once set, the catalog is `<folder>/RepoToDo.
 
 Every `todo_sync.py` command, option and exit code is listed in `plugins/harness/scripts/todo_sync.md`.
 
-`todo_sync.py render` rewrites the snapshot page on demand, and `init`, `add --inbox` (the inbox drain) and
-`lease release` rewrite it after their catalog writes; a bare `add --spec`, `retire`, `split`, `refresh` or
+`todo_sync.py render` brings the snapshot page up to date on demand, and `init`, `add --inbox` (the inbox drain)
+and `lease release` render it after their catalog writes; a bare `add --spec`, `retire`, `split`, `refresh` or
 `migrate-ids` leaves the page as it was until the next render. Rule T2 flags a stale page only when
 `todo.top_n` or the top-N ids, ranks, statuses or titles changed; other edits (the Summary counts, scores and the other columns, the
 folded prose, the remaining-items table) show after the next render with no finding. The page holds a summary
 of the catalog (item count, counts by status and kind, trackers and close candidates), then the top-N table
 (rank, id, item, status, kind, blast radius, LoE, score, GitHub issues), with each item's summary, proposed
 change, open decision and ranking reason folded under its title, and below it every remaining item in rank
-order, in a second table with the same columns, folded closed. Open it from disk in a browser: it polls the `todo_live.js` stamp beside it and reloads itself after the next render.
+order, in a second table with the same columns, folded closed. Open it from disk in a browser: it polls the `todo_live.js` stamp beside it and reloads itself after the next render that changes it.
+A render that would draw the same page leaves the page and its stamp as they are, date included, so only a
+change to what the page draws (the TODO catalog, the research catalog or its stub files, configuration, or page
+code), or a hand-edited or missing page, rewrites it and shows in `git status`; a missing or differing
+`todo_live.js` is restored on its own. Each run is recorded in `<state_dir>/todo-sync/render.json` (run date,
+page date, stamp, files written; runtime state, so gitignore `state_dir`).
 Dated `TODO_Snapshot_<YYYY_MMDD>.md` files from earlier releases are no longer written or read.
 
 Item ids are stable: a random code such as `todo-k7qf` (lowercase `todo-` plus four characters, at least one digit

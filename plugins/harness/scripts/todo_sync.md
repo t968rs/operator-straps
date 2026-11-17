@@ -77,13 +77,17 @@ the check is inactive: it prints one line, exits 0 and writes nothing.
 
 ### `render`
 
-Rewrites the one snapshot page, `<todo.snapshots.dir>/TODO_Snapshot.html` (T2 header line, catalog summary,
-top-N table, the remaining items folded in a second table), and its `todo_live.js` stamp, which an open page
-polls to reload itself. Prints the page's path.
+Brings the one snapshot page up to date, `<todo.snapshots.dir>/TODO_Snapshot.html` (T2 header line, catalog
+summary, top-N table, the remaining items folded in a second table), and its `todo_live.js` stamp, which an
+open page polls to reload itself. When the page on disk is exactly what a render with its own date would
+produce, it is kept, date included, and the stamp is written only when its text differs, so a render that
+would draw the same page writes neither file. Every successful run writes `<state_dir>/todo-sync/render.json`
+(run date, page date, stamp, files written).
+Prints the page's path.
 
 | Option | Meaning |
 |---|---|
-| `--date YYYY-MM-DD` | The render date the page shows (default today). |
+| `--date YYYY-MM-DD` | The render date a rewritten page shows (default today); a kept page keeps its own. |
 
 ### `runner`
 

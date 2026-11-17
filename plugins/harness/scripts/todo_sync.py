@@ -11,10 +11,10 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     in ``rules_skipped``; the todo-watch mod ignores such a subset report instead of reading its drift as
     the whole project's.
 ``render [--date YYYY-MM-DD]``
-    Rewrite the one snapshot page ``<todo.snapshots.dir>/TODO_Snapshot.html`` (T2 header line, catalog
-    summary, top-N table, the remaining items folded in a second table) and its ``todo_live.js`` stamp,
-    which an open page polls to reload itself, and print the page's path. ``--date`` sets the render date
-    the page shows.
+    Bring the one snapshot page ``<todo.snapshots.dir>/TODO_Snapshot.html`` up to date (T2 header line,
+    catalog summary, top-N table, the remaining items folded in a second table) and its ``todo_live.js``
+    stamp, which an open page polls to reload itself, and print the page's path. ``--date`` sets the render
+    date a rewritten page shows; a kept page keeps its own.
 ``runner``
     Write ``<state_dir>/todo-sync/runner.json`` (interpreter, this script, project, report) and print its
     path.
@@ -189,7 +189,8 @@ def _parser() -> argparse.ArgumentParser:
     chk.add_argument("--fail-on", choices=FAIL_LEVELS,
                      help="Exit 1 when a finding reaches this severity (warn: any warn or error).")
     rnd = sub.add_parser("render", parents=[common], help="Rewrite the snapshot page and its stamp.")
-    rnd.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date (default: today).")
+    rnd.add_argument("--date", type=dt.date.fromisoformat,
+                     help="Render date of a rewritten page (default: today); a kept page keeps its own.")
     sub.add_parser("runner", parents=[common], help="Write the runner pointer.")
     _reshapers(sub, common)
     ini = sub.add_parser("init", parents=[common],

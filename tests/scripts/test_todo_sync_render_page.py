@@ -1,5 +1,8 @@
 """``todo_sync.py render`` writes one snapshot page, ``TODO_Snapshot.html``, and its ``todo_live.js`` stamp.
 
+A render that would draw the same page leaves both files as they are, date included, and records the run in
+the runtime-state ``<state_dir>/todo-sync/render.json`` alone.
+
 Each case runs the driver as a subprocess against a ``make_project`` tree built from
 ``tests/lib/_todo_helpers.py``; every snapshot the helpers seed is dropped first, so the page under test is
 the one render writes.
@@ -12,7 +15,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
@@ -25,6 +28,7 @@ SCRIPT = PLUGIN_ROOT / "scripts" / "todo_sync.py"
 PAGE = "TODO_Snapshot.html"
 LIVE = "todo_live.js"
 REPORT_REL = Path(".claude") / "state" / "harness" / "todo-sync" / "report.json"
+RECORD_REL = REPORT_REL.parent / "render.json"
 BETA_STUB = "docs/RESEARCH/Beta/_IMPL_TODO.md"
 WALK_ROOTS = ()  # walks only the make_project snapshot folder
 
@@ -74,12 +78,94 @@ def test_render_writes_the_page_and_its_stamp_and_t2_is_clean(make_project) -> N
     assert _run(["check", "--rules", "T2"], root).returncode == 0 and _findings(root) == []
 
 
-def test_a_second_render_rewrites_the_one_page(make_project) -> None:
-    root = _render(make_project, _files())
+def _snap(root: Path) -> Dict[str, Tuple[bytes, int]]:
+    """Bytes and mtime of each file in the snapshot folder."""
+    return {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in (root / SNAP_DIR).iterdir()}
+
+
+def _record(root: Path) -> Dict[str, Any]:
+    return json.loads((root / RECORD_REL).read_text(encoding="utf-8"))
+
+
+def _rerender(root: Path) -> None:
     done = _run(["render", "--date", "2026-10-22"], root)
     assert done.returncode == 0, done.stderr
-    assert sorted(p.name for p in (root / SNAP_DIR).iterdir()) == [PAGE, LIVE]
-    assert "rendered=2026-10-22" in (root / SNAP_DIR / PAGE).read_text(encoding="utf-8").splitlines()[0]
+    assert Path(done.stdout.strip()) == root / SNAP_DIR / PAGE
+
+
+def test_a_render_that_changes_nothing_leaves_the_page_and_its_stamp(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    _rerender(root)
+    assert _snap(root) == before and sorted(before) == [PAGE, LIVE]
+    record = _record(root)
+    assert (record["run_date"], record["page_date"], record["wrote"]) == ("2026-10-22", "2026-10-21", [])
+    assert record["page"] == f"{SNAP_DIR}/{PAGE}" and record["stamp"] == page_stamp(before[PAGE][0].decode())
+
+
+def test_a_catalog_change_rewrites_the_page_and_its_stamp_with_the_new_date(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    catalog = json.loads((root / CATALOG_REL).read_text(encoding="utf-8"))
+    catalog["items"][0]["title"] = "Parser drops the first row"
+    (root / CATALOG_REL).write_text(json.dumps(catalog, indent=2), encoding="utf-8")
+    _rerender(root)
+    page = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8")
+    assert page.splitlines()[0].endswith(" rendered=2026-10-22 -->") and "Parser drops the first row" in page
+    assert (root / SNAP_DIR / LIVE).read_bytes() != before[LIVE][0]
+    assert _record(root)["wrote"] == [PAGE, LIVE]
+
+
+def test_a_hand_edited_page_is_rendered_again(make_project) -> None:
+    root = _render(make_project, _files())
+    page = root / SNAP_DIR / PAGE
+    page.write_text(page.read_text(encoding="utf-8") + "<!-- hand edit -->\n", encoding="utf-8")
+    _rerender(root)
+    text = page.read_text(encoding="utf-8")
+    assert "hand edit" not in text and text.splitlines()[0].endswith(" rendered=2026-10-22 -->")
+    assert _record(root)["wrote"] == [PAGE, LIVE]
+
+
+def test_a_configuration_change_rewrites_the_page_and_its_stamp_with_the_new_date(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    body = config({"folder": TODO_DIR, "top_n": 1})
+    (root / ".claude" / "harness.json").write_text(json.dumps(body, indent=2), encoding="utf-8")
+    _rerender(root)
+    first = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8").splitlines()[0]
+    assert " top=1 " in first and first.endswith(" rendered=2026-10-22 -->")
+    assert (root / SNAP_DIR / LIVE).read_bytes() != before[LIVE][0]
+    assert _record(root)["wrote"] == [PAGE, LIVE]
+
+
+def test_a_missing_stamp_file_comes_back_without_touching_the_page(make_project) -> None:
+    root = _render(make_project, _files())
+    before = _snap(root)
+    (root / SNAP_DIR / LIVE).unlink()
+    _rerender(root)
+    after = _snap(root)
+    assert after[PAGE] == before[PAGE] and after[LIVE][0] == before[LIVE][0]
+    assert _record(root)["wrote"] == [LIVE]
+
+
+def test_a_crlf_checkout_of_the_page_is_kept(make_project) -> None:
+    root = _render(make_project, _files())
+    page = root / SNAP_DIR / PAGE
+    page.write_bytes(page.read_bytes().replace(b"\n", b"\r\n"))
+    before = _snap(root)
+    _rerender(root)
+    assert _snap(root) == before
+    assert _record(root)["wrote"] == []
+
+
+def test_a_title_holding_a_carriage_return_keeps_the_page(make_project) -> None:
+    files = _files()
+    files[CATALOG_REL]["items"][0]["title"] = "Parser drops\r\nthe last row"
+    root = _render(make_project, files)
+    before = _snap(root)
+    _rerender(root)
+    assert _snap(root) == before
+    assert _record(root)["wrote"] == []
 
 
 def test_rows_link_their_stubs_by_position(make_project) -> None:
