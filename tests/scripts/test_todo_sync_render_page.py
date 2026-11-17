@@ -89,10 +89,11 @@ def test_rows_link_their_stubs_by_position(make_project) -> None:
     items[1]["sources"].append({"type": "impl_stub", "ref": BETA_STUB, "item": "Beta part"})
     items[2].update(id=ID2, sources=[{"type": "impl_stub", "ref": BETA_STUB, "item": "Beta"}])
     rows = _rows(_render(make_project, files))
-    assert f'<a class="id" href="../../Alpha/_IMPL_TODO.md">{ID2}</a>' in rows[1]
-    assert 'href="../../Beta/_IMPL_TODO.md"' in rows[1]
-    assert f'<a class="id" href="../../Beta/_IMPL_TODO.md">{ID2}</a>' in rows[2]
-    assert '<a class="id"' not in rows[0]
+    assert '<a class="stub" href="../../Alpha/_IMPL_TODO.md">1</a>' in rows[1]
+    assert '<a class="stub" href="../../Beta/_IMPL_TODO.md">2</a>' in rows[1]
+    assert '<a class="stub" href="../../Beta/_IMPL_TODO.md">1</a>' in rows[2]
+    assert '<a class="stub"' not in rows[0]
+    assert f'<td class="c-id"><span class="id">{ID2}</span></td>' in rows[2]
 
 
 def test_gh_and_tracker_cells(make_project) -> None:
@@ -115,12 +116,27 @@ def test_render_tolerates_malformed_link_fields(make_project) -> None:
     items[1]["id"] = [ID2]
     rows = _rows(_render(make_project, files))
     assert len(rows) == 3 and ID1 in rows[0]
-    assert '<a class="id"' not in rows[1]
+    assert '<a class="stub"' not in rows[1]
+
+
+def _title(root: Path) -> str:
+    text = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8")
+    return re.search(r"<title>(.*?)</title>", text).group(1)
+
+
+def test_the_title_opens_with_the_gh_repo_name(make_project) -> None:
+    root = _render(make_project, _files(), config({"folder": TODO_DIR, "gh": {"repo": "o/widgets"}}))
+    assert _title(root) == "widgets | TODO Snapshot: Top 10 (2026-10-21)"
+
+
+def test_without_a_gh_repo_the_title_opens_with_the_checkout_folder(make_project) -> None:
+    root = _render(make_project, _files())
+    assert _title(root) == f"{root.resolve().name} | TODO Snapshot: Top 10 (2026-10-21)"
 
 
 def test_render_with_null_stub_name(make_project) -> None:
     root = _render(make_project, _files(), config({"folder": TODO_DIR, "stub_name": None}))
-    assert f'<a class="id" href="../../Alpha/_IMPL_TODO.md">{ID2}</a>' in _rows(root)[1]
+    assert '<a class="stub" href="../../Alpha/_IMPL_TODO.md">1</a>' in _rows(root)[1]
 
 
 def test_the_name_pattern_no_longer_gates_render(make_project) -> None:

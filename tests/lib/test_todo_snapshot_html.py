@@ -1,9 +1,9 @@
 """TODO snapshot page: ``snapshot_html.render_page`` draws the catalog's top-N table as one themed HTML page.
 
 The page opens with the T2 header line, carries a Summary block of catalog counts above the table, keeps the
-Rank / Item / Status / Kind / Blast / LoE / Score / GH columns, folds each item's prose into a ``<details>``
-in its Item cell, and inlines the shared theme, its own CSS and a loader that reloads the page when the
-``todo_live.js`` stamp beside it changes.
+Rank / Id / Item / Status / Kind / Blast / LoE / Score / GH columns, folds each item's prose into a
+``<details>`` in its Item cell, and inlines the shared theme, its own CSS and a loader that reloads the page
+when the ``todo_live.js`` stamp beside it changes.
 """
 from __future__ import annotations
 
@@ -75,11 +75,11 @@ def _items() -> List[Dict[str, Any]]:
 
 
 def _page(items: Sequence[Dict[str, Any]], links: Sequence[Sequence[str]] = (), gh_repo: Optional[str] = None,
-          top_n: int = 10, **catalog_extra: Any) -> str:
+          top_n: int = 10, repo: Optional[str] = None, **catalog_extra: Any) -> str:
     catalog = {"items": list(items), "trackers": [], "close_candidates": [], **catalog_extra}
     page = sh.SnapshotPage(header=snapshot_header(SOURCE, top_n, SHA, DAY), catalog=catalog,
                            top=list(items)[:top_n], top_n=top_n, rendered=DAY, source=SOURCE, links=links,
-                           gh_repo=gh_repo)
+                           gh_repo=gh_repo, repo=repo)
     return sh.render_page(page)
 
 
@@ -114,9 +114,20 @@ def test_title_names_top_n_and_the_render_date() -> None:
     assert DAY in _text(text.split("<h1>", 1)[1].split("<table", 1)[0])
 
 
+def test_title_and_heading_open_with_the_repo_name() -> None:
+    text = _page(_items(), repo="widgets")
+    assert f"<title>widgets | TODO Snapshot: Top 10 ({DAY})</title>" in text
+    assert '<h1><span class="repo">widgets</span> TODO Snapshot: Top 10</h1>' in text
+
+
+def test_the_repo_name_is_escaped() -> None:
+    text = _page(_items(), repo="<w>")
+    assert "<title>&lt;w&gt; | " in text and '<span class="repo">&lt;w&gt;</span>' in text
+
+
 def test_the_table_keeps_its_columns() -> None:
     heads = re.findall(r"<th[^>]*>(.*?)</th>", _page(_items()))
-    assert heads == ["Rank", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH"]
+    assert heads == ["Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH"]
 
 
 def test_one_row_per_top_item_in_rank_order() -> None:
@@ -129,10 +140,10 @@ def test_one_row_per_top_item_in_rank_order() -> None:
 def test_cells_carry_badges_sizes_and_score() -> None:
     [row] = _rows(_page([_item(IDS[0], 1, status="NEEDS_DECISION", kind="feature")]))
     cells = _cells(row)
-    assert len(cells) == 8
-    assert 'data-status="NEEDS_DECISION"' in cells[2] and _text(cells[2]) == "NEEDS_DECISION"
-    assert 'data-kind="feature"' in cells[3] and _text(cells[3]) == "feature"
-    assert [_text(c) for c in cells[4:7]] == ["S", "M", "2.76"]
+    assert len(cells) == 9
+    assert 'data-status="NEEDS_DECISION"' in cells[3] and _text(cells[3]) == "NEEDS_DECISION"
+    assert 'data-kind="feature"' in cells[4] and _text(cells[4]) == "feature"
+    assert [_text(c) for c in cells[5:8]] == ["S", "M", "2.76"]
 
 
 def test_text_is_escaped() -> None:
@@ -154,11 +165,21 @@ def test_code_spans_become_code_elements() -> None:
     assert "`load()`" not in row
 
 
-def test_stub_links_wrap_the_id_and_number_the_extras() -> None:
+def test_id_cell_holds_the_bare_id_for_copying() -> None:
     rows = _rows(_page(_items()[:2], links=[[ALPHA, BETA], []]))
-    assert f'<a class="id" href="{ALPHA}">{IDS[0]}</a>' in rows[0]
-    assert f'href="{BETA}"' in rows[0] and ">2</a>" in rows[0]
-    assert '<a class="id"' not in rows[1] and f'<span class="id">{IDS[1]}</span>' in rows[1]
+    for row, ident in zip(rows, IDS):
+        assert re.search(r'<td class="c-id"><span class="id">([^<]*)</span></td>', row).group(1) == ident
+        assert "<a" not in _cells(row)[1]
+        assert ident not in _text(_cells(row)[2])
+
+
+def test_stub_links_follow_the_title_numbered_from_one() -> None:
+    rows = _rows(_page(_items()[:2], links=[[ALPHA, BETA], []]))
+    item_cell = _cells(rows[0])[2]
+    assert f'<a class="stub" href="{ALPHA}">1</a>' in item_cell
+    assert f'<a class="stub" href="{BETA}">2</a>' in item_cell
+    assert item_cell.index("Title 1") < item_cell.index(ALPHA)
+    assert '<a class="stub"' not in rows[1]
 
 
 def test_links_follow_row_position_not_id() -> None:
@@ -170,7 +191,7 @@ def test_links_follow_row_position_not_id() -> None:
 
 def _gh(item: Dict[str, Any], gh_repo: Optional[str] = None) -> str:
     [row] = _rows(_page([item], gh_repo=gh_repo))
-    return _cells(row)[7]
+    return _cells(row)[8]
 
 
 def test_gh_issue_links_to_its_source_url() -> None:
@@ -203,7 +224,7 @@ def test_details_carry_summary_proposal_decision_and_ranking() -> None:
     item = _item(IDS[0], 1, status="NEEDS_DECISION", summary="Summary text", proposed_change="Proposal text",
                  decision_question="Which one?", why_ranked="Ranked text")
     [row] = _rows(_page([item]))
-    item_cell = _cells(row)[1]
+    item_cell = _cells(row)[2]
     assert "<details" in item_cell and "<summary" in item_cell
     for text in ("Summary text", "Proposal text", "Which one?", "Ranked text"):
         assert text in item_cell
@@ -214,7 +235,7 @@ def test_malformed_fields_render_without_raising() -> None:
             "blast_radius": 5, "loe": None, "gh_issues": "x", "sources": 5, "summary": 5, "tracker": "t"}
     rows = _rows(_page([item], links=[[ALPHA]]))
     assert len(rows) == 1
-    assert '<a class="id"' not in rows[0] and f'href="{ALPHA}"' not in rows[0]
+    assert f'href="{ALPHA}">1</a>' in rows[0]
     assert '<span class="id">' in rows[0] and '<td class="c-rank">x</td>' in rows[0]
     assert "[&#x27;todo-k7qf&#x27;]" in rows[0]
 
@@ -241,8 +262,9 @@ def test_theme_and_loader_are_inlined_with_no_network_address() -> None:
     text = _page(_items())
     for folder, name in (("styles", "shared.css"), ("styles", "todo.css"), ("components", "todo.js")):
         assert (sh.PAGES / folder / name).read_text(encoding="utf-8").strip() in text
+    loads = re.sub(r'<a [^>]*href="https://[^"]*"', "", text)
     for needle in ("<link", "http://", "https://", "@import", "url("):
-        assert needle not in text
+        assert needle not in loads
     config = _script_config(text)
     assert config == {"src": f"{sh.LIVE_NAME}?t=", "reloadMs": sh.RELOAD_MS, "stamp": sh.page_stamp(text)}
 
@@ -303,3 +325,4 @@ def test_status_and_kind_badges_have_theme_rules() -> None:
     css = (sh.PAGES / "styles" / "todo.css").read_text(encoding="utf-8")
     assert '[data-status="NEEDS_DECISION"]' in css and '[data-status="OPEN"]' in css
     assert ".kind" in css and "details" in css
+    assert re.search(r"td\.c-id[^{]*\{[^}]*user-select: all", css)
