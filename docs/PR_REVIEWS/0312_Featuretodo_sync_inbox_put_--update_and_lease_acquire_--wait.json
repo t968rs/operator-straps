@@ -8,7 +8,7 @@
   "base_sha": "c072dfc56a717190dae26e34f817e2f88f8da454",
   "head_sha": "ebd83a2fd8612748bed9de9da40f60cc63d92b29",
   "review_date": "2026-11-17",
-  "verdict": "NOT READY TO MERGE - important: I1, I2",
+  "verdict": "READY TO MERGE - 20 of 20 findings resolved, 0 bubbled",
   "stats": {
     "additions": 2588,
     "deletions": 137,
@@ -28,7 +28,8 @@
     "system_shape (opus)",
     "roast (opus)",
     "adv_code_runtime (opus)",
-    "adv_code_tests (opus)"
+    "adv_code_tests (opus)",
+    "developer_notes_1 (developer)"
   ],
   "scoped_review_files": [
     "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/tests.json",
@@ -39,7 +40,8 @@
     "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/system_shape.json",
     "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/roast.json",
     "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/adv_code_runtime.json",
-    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/adv_code_tests.json"
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/developer_notes_1.json"
   ],
   "bubbles": [],
   "strengths": [
@@ -383,6 +385,30 @@
         "fix": [
           "Add assert f\"\\n## {name}\\n\" in body, f\"todo-editor.md has no {name} section\" to _section, and give next() a default plus an assert naming the section with no lease acquire step."
         ]
+      },
+      {
+        "id": "M17",
+        "name": "README goal table has no todo-edit row, so parallel split and update dispatch is not shown",
+        "file": "README.md",
+        "lines": "33-34",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: README should reflect that todo-edit dispatches agents in parallel. Verified: the 'Your goal' table (README.md:17-36) has rows for add-todo (line 33) and sync-gh-todo (line 34) but none for todo-edit; the parallel behavior appears only in the prose at README.md:439-444 (several split ids dispatch one agent each in one message, drafting at once and applying one at a time under the lease; --update dispatches one agent per id and the skill drains once with add --inbox).",
+        "fix": [
+          "Add a todo-edit row after the sync-gh-todo row (README.md:34) in the same column layout: Use `todo-edit`; What you get: retire, split, update or refresh catalog items, with several --split or --update ids dispatched as one todo-editor agent each in one message (splits draft at once and apply one at a time under the catalog lease; updates queue through the inbox and drain once); Ensurance: active only when todo.folder is set, the script draws ids, re-ranks and rewires links, and the main session only dispatches and drains."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "todo_sync.md never says several todo-editor agents run at once against one catalog",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "lines": "43-62",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: todo_sync.md should reflect parallel agent dispatch. Verified: the Who-runs-what rows (todo_sync.md:43, 48-49) and the Locking section (todo_sync.md:53-62) describe one todo-editor run; nothing states that /harness:todo-edit --split and --update now dispatch one agent per id at once, that parallel splits contend for the lease (each waits with lease acquire --wait 300 and applies one at a time), or that parallel update agents queue through inbox put, which takes no lock, and land in one add --inbox drain.",
+        "fix": [
+          "In todo_sync.md, extend the retire/split/refresh row (line 43) and the lease row (line 49) to say /harness:todo-edit --split dispatches one agent per id at once, and add a sentence to the Locking section: parallel split agents each take the lease with lease acquire --wait 300 from the dry run to lease release, so they apply one at a time; parallel update agents queue with inbox put (no lock) and the skill drains them once with add --inbox."
+        ]
       }
     ]
   },
@@ -463,5 +489,127 @@
         "result": "OK (recorded; not the configured base main)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo-editor.md update step 1 cites path:line in summary only when the update sets summary (carrying over text that still holds, untouched summary stays); step 2 adds the close-a-decision rule (needs_decision false, decision_question null, status other than NEEDS_DECISION in one update); TodoCatalog.schema.json: cited for the needs_decision/decision_question constraint, which the prose now matches, no edit needed"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - SKILL.md Step 2: retire one call for all its ids, refresh one call; drop ids whose canonical form repeats an earlier one and name them in Step 4; each agent applies only the guidance about its own id plus what applies to all; Step 4 relays one reply per id for split and update; todo-editor.md update step 2 carries the same per-id routing rule"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - test_the_agent_names_the_fields_an_update_may_set parses the backticked names of the 'Choose new values only for ...' sentence and asserts the set equals updates.UPDATE_FIELDS; rank message reworded; todo-editor.md: cited field list already matches UPDATE_FIELDS, no edit needed for this issue"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo-editor.md split step 3: with the lease held, re-read the item, compare with the step 1 read and redraft changed overridden or inherited fields before the dry run; Stop conditions exempt a split's lease acquire until its third held-lease refusal; SKILL.md: cited, its Step 2 split description needs no edit"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - test_the_skill_drains_the_inbox_once_after_the_update_agents anchors the order on subagent_type=\"harness:todo-editor\" and the Step 2 heading, and counts the launcher add --inbox lines (exactly one); SKILL.md: cited, its single drain in Step 3 already satisfies the test, no edit needed for this issue"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - put_updates Raises section reworded: TodoSyncError for an unreadable spec or a refused update (nothing written); OSError for a failed inbox write (present files deleted), matching _write_items behavior"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - _holds_updates routes on the presence of the updates key (isinstance dict and 'updates' in doc), so a malformed updates value reaches read_spec(path, 'updates') and is refused with an update spec reason; docstring updated"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo_sync.md intro says queues drafted items and field updates; add intro notes the inbox applies queued field updates; --inbox row reads 'When anything lands (an added item or an update)'; inbox.py _finish docstring reads 'when anything landed'"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Part of todo_sync.md already correct: the Locking paragraph (lines 57-58) names lease acquire --wait SECONDS. The todo_sync.py docstring edit belongs to the other fixer; no edit in this part; Locking docstring (todo_sync.py ~lines 127-129) now notes that lease acquire --wait SECONDS replaces the 10-second wait; todo_sync.md is the other part"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Part inbox.py holds no edit for this issue; the drain-reader prose lives in the sync-gh-todo and add-todo SKILL.md files owned by another fixer; Step 3 of sync-gh-todo and Step 4 of add-todo now name the updated M item(s) and overwrote <id> <field> parts of drained updates other runs queued, and read a problem: line opening inbox: added or inbox: updated as changes landed, matching todo-edit Step 3."
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - added plan 2023 beside issue #309 in the three new bullets (v1.0.0.md lines 230, 234, 238)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - reworded the _resolve docstring to name a retired, split or unknown id, or a raw naming more than one id; the repeated-id case is accepted by resolve_ids, so the code is unchanged"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - _seconds refuses non-finite values (math.isfinite added, import math), so inf and 1e999 are refused like negatives and NaN; catalog_lock.py needed no edit; Added \"inf\" and \"1e999\" to the parametrized refusals of test_the_wait_is_a_non_negative_number; the _seconds isfinite check is the other part's fixer."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Intro and Inbox drains now say the drain applies queued new items and field updates (inbox put, inbox put --update); plugin.json version bump left out, outside the file set."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - test_drain_applies_adds_and_updates_in_one_write wraps inbox.write_edits in a delegating counter and asserts exactly one catalog write."
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - The kind case of test_a_bad_update_is_refused now matches the schema enum refusal text \"update 1: kind: 'chore' is not one of\"."
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - _section asserts the heading exists before splitting; _acquire_step returns None-checked next() with an assert naming the section and the missing TS lease acquire step"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo-edit Step 3 gives the drain line in drain_lines order (added part first, then updated, overwrote, rejected, check drift) and the partial-failure form as `problem: inbox: added <ids>; updated <ids>, then: <reason>`, with the overwrite part limited to updates landing in the same drain (Step 2 already drops repeated canonical ids before per-id dispatch); add-todo gets the same problem form and same-drain qualifier; inbox.py: cited source of the line formats, no edit needed"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Added a todo-edit row after sync-gh-todo in the README goal table: retire/split/update/refresh, parallel per-id todo-editor dispatch (splits draft at once, apply one at a time under the catalog lease; updates queue through the inbox and drain once), active only with todo.folder"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo_sync.md: retire/split/refresh row and lease row now say /harness:todo-edit --split dispatches one agent per id at once; Locking section adds that parallel split agents each hold the lease via lease acquire --wait 300 from dry run to lease release (one at a time) and parallel update agents queue with inbox put (no lock), drained once by add --inbox"
+    }
+  ]
 }
