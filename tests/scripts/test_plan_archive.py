@@ -126,8 +126,9 @@ def test_archive_again_folds_later_tags_into_r1_2(driver, run: Run, project: Pat
     assert stem_tags(project) == [ARCHIVE, second_name, third_name]
 
 
-def test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags(driver, run: Run,
-                                                                      project: Path) -> None:
+def test_archive_folds_the_commit_tags_of_every_entry_kind(driver, run: Run, project: Path) -> None:
+    """Drives the freeze, lock, arm, unlock and receipt ``-commit`` tags; reopen and relink are not driven.
+    The name is the one write-plan strap behavior B12 was proven with."""
     finished(run, project)
     code, _, err = run("lock", "1")
     assert code == 0, err
