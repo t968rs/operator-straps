@@ -1,6 +1,6 @@
 ---
 name: write-plan
-description: Use when a spec or agreed design for multi-step work needs an implementation plan, before touching code, or when an existing plan's items need their status recorded with evidence. Triggers on "write a plan", "plan this", "write-plan", "record TASK-3".
+description: Use when a spec or agreed design for multi-step work needs an implementation plan, before touching code, when an existing plan's items need their status recorded with evidence, or when a merged plan's tags are archived. Triggers on "write a plan", "plan this", "write-plan", "record TASK-3", "archive plan 2021".
 argument-hint: "<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]"
 ---
 
@@ -140,7 +140,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    |---|---|
    | `base/<stem>/r1` | the base commit; `base/<stem>/r1-<m>` for the m-th base of the round (the original is m 1, so the first relink tags `r1-2`) |
    | `freeze/<stem>/r1.<k>-tree`, `lock/<stem>/r1.<k>-tree` | the tree of that entry |
-   | `<kind>/<stem>/r1.<k>-commit` (any entry kind: freeze, lock, arm, unlock, reopen, relink) | the commit that added the entry file, once committed; `-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit |
+   | `<kind>/<stem>/r1.<k>-commit` (any entry kind: freeze, lock, arm, unlock, relink) | the commit that added the entry file, once committed; `-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit |
    | `receipt/<stem>/<ITEM>-commit` or `-tree` | the commit or index tree `record --sha` or `--staged` tested; `.2`, `.3` on a re-record |
    | `archive/<stem>/r1`, `archive/<stem>/r1-<m>` | the plumbing commit `PLAN archive` builds over the folded tags' objects; `r1-<m>` for the m-th archive (the first is m 1) |
 
@@ -148,7 +148,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    `push: git push origin <names>` line. The developer runs the push line; tree tags never travel with
    `push --follow-tags`. Receipt tags stay local, so no push line names them (a clone that needs them pushes
    `refs/tags/receipt/*` by hand). A tag name that already sits on another object refuses the command with a
-   `problem:` line before anything is written. Each `PLAN` command but `archive` reconciles the ledger after its work, when it succeeds, by tagging the
+   `problem:` line before anything is written. Each `PLAN` command reconciles the ledger after its work, when it succeeds (`archive` before its fold), by tagging the
    commit that added each committed entry file, and `check` does too; both write refs, never files. A tag step
    that fails after the entry is written prints `warn:` and leaves the entry; the next command creates the tag.
    A freeze's push line never names its `-commit` tag, which exists only once the entry file is committed, so
@@ -191,18 +191,21 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    plan JSON's new blob, so a relink leaves the plan Frozen or Locked and `check` reports no `drift:` for it.
 
    **Archive.** `PLAN archive <id> [--remote]` runs only on the developer's explicit ask, after the PR
-   merges. It folds the plan's base, receipt and ledger entry tags (freeze, lock, arm, unlock, reopen, relink)
+   merges. It folds the plan's base, receipt and ledger entry tags (freeze, lock, arm, unlock, relink)
    into one annotated tag, `archive/<stem>/r1`, over a plumbing commit: `receipts/` and `freezes/` subtrees
    hold the tested trees and the entry trees, the base, entry and receipt commits are its parents, and the
-   message maps each folded tag name to its object. Every object is verified reachable from the archive before
-   any tag is created, and a miss refuses the command with nothing tagged or deleted. The folded local tags are
+   message maps each folded tag name to its object. The ledger is reconciled first, so the commit that added a
+   committed entry is tagged and folds with the rest. Every object is verified reachable from the archive before
+   any tag is created, and a miss refuses the command with nothing tagged or deleted. It refuses inside a strap scenario or red tree, before any work. The folded local tags are
    then deleted. The command prints its status line, a `tag:` line for the archive tag, one `push:` line for
    it, and a `deleted:` line naming every folded tag; with `--remote` it also prints a `remote:` line that
    deletes the folded tags (the local-only `receipt/` ones excepted) from the remote, for the developer to run.
    The delete is local only: without the `remote:` line, the next `git fetch` or `git pull` restores every
-   pushed folded tag (base and entry tags peel to main-line commits, so tag auto-follow brings them back) and
+   pushed folded tag (base and entry commit tags peel to main-line commits, and entry tree tags to trees those commits hold, so tag auto-follow brings them back) and
    a later archive folds them again. Run it as `PLAN archive <id> --remote` when those tags were pushed, and
-   have the developer run both the `push:` and the `remote:` lines.
+   have the developer run both the `push:` and the `remote:` lines. The `remote:` line leaves out the tags the
+   archive's own reconcile created; a folded tag the remote still lacks (one never pushed) makes that push fail,
+   so drop the names git reports as missing on the remote and rerun the line.
    Pushing the archive tag sends the receipt trees and commits the archive holds, while no `receipt/` tag
    travels. A later run folds the tags created since into `archive/<stem>/r1-<m>`, with the previous archive as
    its first parent.
