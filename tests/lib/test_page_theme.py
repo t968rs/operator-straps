@@ -133,7 +133,7 @@ def _rule(css: str, selector: str) -> str:
 def test_headings_take_the_heading_color() -> None:
     assert "color: var(--heading)" in _rule(_shared(), "h1, h2, h3")
     todo = (sh.PAGES / "styles" / "todo.css").read_text(encoding="utf-8")
-    assert "color: var(--heading)" in _rule(todo, "table.top th")
+    assert "color: var(--heading)" in _rule(todo, "table.items th")
 
 
 def test_pills_without_a_state_color_take_the_chip_color() -> None:

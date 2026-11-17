@@ -96,6 +96,22 @@ def test_rows_link_their_stubs_by_position(make_project) -> None:
     assert f'<td class="c-id"><span class="id">{ID2}</span></td>' in rows[2]
 
 
+def test_items_past_top_n_go_to_the_folded_rest_table(make_project) -> None:
+    files = _files()
+    files[BETA_STUB] = stub_text("beta-cache")
+    items = files[CATALOG_REL]["items"]
+    items[2].update(id=ID2, sources=[{"type": "impl_stub", "ref": BETA_STUB, "item": "Beta"}])
+    root = _render(make_project, files, config({"folder": TODO_DIR, "top_n": 1}))
+    page = (root / SNAP_DIR / PAGE).read_text(encoding="utf-8")
+    top, rest = page.split('<details id="rest">', 1)
+    assert len(re.findall(r'<tr class="row"', top)) == 1 and "<h2>Top 1</h2>" in top
+    assert "<h2>Remaining 2 items</h2>" in rest
+    rows = re.findall(r'<tr class="row".*?</tr>', rest, re.S)
+    assert len(rows) == 2 and '<a class="stub" href="../../Beta/_IMPL_TODO.md">1</a>' in rows[1]
+    assert page.splitlines()[0].startswith(f"<!-- todo-snapshot source={CATALOG_REL} top=1 ")
+    assert _run(["check", "--rules", "T2"], root).returncode == 0 and _findings(root) == []
+
+
 def test_gh_and_tracker_cells(make_project) -> None:
     rows = _rows(_render(make_project, _files()))
     assert '<a href="https://github.com/example/widgets/issues/11">#11</a>' in rows[0]
