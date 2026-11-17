@@ -146,8 +146,9 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     ``deleted:`` lines; ``--remote`` adds ``remote: git push origin --delete <folded tags but receipt
     ones>``. A plan without driver tags is refused. Runs no reconcile. Once archived, ``check`` and the
     reconcile count the archive's objects as tagged: an entry the archive folded gets no new ``-commit``
-    tag, and ``untagged:``, ``off-history:`` and tree lines skip an object an archive reaches or holds;
-    an entry written after the archive is tagged as before and folds into the next ``r1-<m>``.
+    tag, and ``untagged:`` and tree lines skip an object an archive reaches or holds (``off-history:``
+    still warns for a base off HEAD's history); an entry written after the archive is tagged as before and
+    folds into the next ``r1-<m>``.
 
 ``verify PLAN [--staged]``
     Run every COMPLETE item's test nodes on one throwaway detached worktree at HEAD (``--staged``: at a

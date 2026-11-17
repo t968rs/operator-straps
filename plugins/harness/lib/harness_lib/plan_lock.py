@@ -13,8 +13,10 @@ one ``push:`` line (never naming a ``receipt/`` tag) follow the command's status
 tree (``freeze_git.SCENARIO_MARKER`` at the project root) entries are still written, but no tag is created
 and nothing is reconciled. Once ``archive/<stem>/r<N>`` folds a plan's tags, its objects count as tagged:
 reconcile makes no ``-commit`` tag for an entry the archive folded, a refreeze tags no base the archive
-reaches, and ``check`` prints no ``untagged:`` or ``off-history:`` line for a base it reaches, a tree it
-holds or the commit of a folded entry; an entry written after the archive is tagged as before. Nothing
+reaches, and ``check`` prints no ``untagged:`` line for a base it reaches, a tree it holds or the commit of
+a folded entry; ``off-history:`` still warns for a base off HEAD's history, since an archive answers
+whether an object is tagged, not whether it is on HEAD. An entry written after the archive is tagged as
+before. Nothing
 here reads the config: callers pass the plan file, whose folder holds the ledger.
 This module never saves a plan except in ``write_freeze``; ``plan.py`` does the rest.
 """
@@ -621,14 +623,14 @@ def digest_view(plan: pm.ActionPlan, plans_folder: Path) -> pm.ActionPlan:
 
 def _base_lines(repo: Path, plan: pm.ActionPlan, stem: str, scenario: bool,
                 tips: Sequence[str] = ()) -> List[str]:
-    """``off-history:`` for a base not on HEAD's history and no archive of ``tips`` reaches; ``untagged:``
+    """``off-history:`` for a base not on HEAD's history, archived or not (the relink cue); ``untagged:``
     when no base tag peels to it and no archive of ``tips`` reaches it."""
     base = plan.base_commit
     if not base:
         return []
     role = f"base r{ROUND}"
     kept = fg.reaches(repo, tips, base)
-    lines = [] if kept or _on_head(repo, base) else [f"off-history: {base[:7]} ({role})"]
+    lines = [] if _on_head(repo, base) else [f"off-history: {base[:7]} ({role})"]
     names = git(repo, "tag", "--list", f"{fg.base_tag(stem, ROUND)}*").stdout.split()
     if not scenario and not kept and not any(_peel(repo, name) == base for name in names):
         lines.append(f"untagged: {base[:7]} ({role})")
@@ -704,8 +706,9 @@ def check_lines(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
     one ``legacy:`` line of a plan with an in-file stamp. Writes refs, never files.
 
     An object an archive of the plan keeps (its tips, read once per call) counts as tagged: the base it
-    reaches, a tree it holds and the commit of an entry it folded print no ``untagged:`` or ``off-history:``
-    line. An object outside every archive warns as before."""
+    reaches, a tree it holds and the commit of an entry it folded print no ``untagged:`` line. An object
+    outside every archive warns as before, and a base off HEAD's history prints ``off-history:`` either
+    way."""
     if plan.ledger is None and plan.frozen is not None:
         return [LEGACY.format(id=plan.plan_id)]
     stem = stem_of(plan_file, plan)
@@ -734,7 +737,7 @@ def receipt_lines(repo: Path, plan_file: Path, plan: pm.ActionPlan, item_id: str
 
     A receipt name an archive folded stays taken, so a re-record never reuses a name the archive message
     maps to another object. A re-record after an archive is tagged even when the archive keeps the same code:
-    the next archive folds the new tag (r1-<m>), as decision D1 of plan 1021 requires."""
+    the next archive folds the new tag (r1-<m>), as decision D1 of plan 2021 requires."""
     if fg.in_scenario_tree(repo):
         return []
     by_commit = prov.source == RecordSource.commit and prov.commit
