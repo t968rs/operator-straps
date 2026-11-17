@@ -13,14 +13,15 @@ root:
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" <command> [options]
 ```
 
-`main(argv)` parses `argv` (the command line when `None`), runs one command and returns its exit code.
+`main(argv)` parses `argv` (the command line when `None`), runs one command and returns its exit code. A bad
+argument raises `SystemExit(2)` from argparse instead of returning.
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
 | 0 | The command ran. |
-| 1 | `check --fail-on` only: a finding reached the given severity. |
+| 1 | `check --fail-on`: a finding reached the given severity. An unexpected error also exits 1, with a traceback on stderr. |
 | 2 | Refused: a configuration error, an unknown rule id, a refused operation, a lock held by another owner or a failed `gh` call. One `problem: <reason>` line goes to stderr. A bad argument also exits 2, with argparse's usage message. |
 
 ## Global options
@@ -40,7 +41,7 @@ Both go before or after the command.
 | `render` | A person, on demand; `init`, `add --inbox` and `lease release` render too. |
 | `runner` | A person. The harness SessionStart hook writes the same pointer without the command. |
 | `retire`, `split`, `refresh` | The `harness:todo-editor` agent, dispatched by `/harness:todo-edit`. |
-| `init` | `/harness:add-todo` when the catalog does not exist yet, or a person. |
+| `init` | `/harness:add-todo` and `/harness:sync-gh-todo` when the catalog does not exist yet, or a person. |
 | `untracked` | `/harness:sync-gh-todo`; the agent again when its file is missing. |
 | `add --spec` | A person. No skill or agent runs it: they queue items with `inbox put` instead. |
 | `add --inbox` | `/harness:add-todo` and `/harness:sync-gh-todo` after their agent returns, and the `todo-watch` mod. |
@@ -55,8 +56,10 @@ Every catalog write (`init`, `add`, `retire`, `split`, `refresh`; never a dry ru
 `<state_dir>/locks/<catalog path with '/' as '__'>.lock`: a write lock for one command, or, with
 `--lease TOKEN`, the lease that token names. A lock another owner holds is waited on for 10 seconds, then
 refused naming its owner, mode and age. `check`, `render`, `runner`, `untracked`, `inbox put` and every dry
-run take no lock. A catalog that still holds `TODO-NNN` ids refuses `untracked`, `add`, `retire`, `split` and
-`refresh`, naming `migrate-ids`.
+run take no lock. `add --inbox` takes the lock only when a file is queued; with nothing queued it prints
+`inbox: empty` and takes none. A real `migrate-ids` run holds a catalog lease of its own for the whole run and
+frees it afterwards, or, with `--lease TOKEN`, runs under that lease and leaves it held. A catalog that still
+holds `TODO-NNN` ids refuses `untracked`, `add`, `retire`, `split` and `refresh`, naming `migrate-ids`.
 
 ## Commands
 
@@ -130,8 +133,11 @@ item fields. Ids never change, only the catalog is written, and a catalog alread
 
 Creates the TODO folder, an empty schema-valid catalog (default ranking tables, no items, the current commit
 in `generated_from`) and the snapshot page with its stamp (both skipped when `todo.snapshots.dir` is null).
-Prints a `created <path>` line for the catalog and one for the page. Refuses, exit 2, when the catalog
-already exists; needs `todo.folder` and a git commit.
+Prints a `created <path>` line for the catalog and one for the page, then
+`next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues`. Refuses, exit 2, when the catalog
+already exists; needs `todo.folder` and a git commit. When the catalog is written but the page render fails,
+the catalog stays, no `created` or `next:` line prints, and exit 2 follows a `problem:` line on stderr that
+names `todo_sync.py render` as the next step.
 
 | Option | Meaning |
 |---|---|
@@ -141,9 +147,10 @@ already exists; needs `todo.folder` and a git commit.
 
 Lists the open GitHub issues that no catalog record covers (no resolving item, tracker, child, close candidate
 or research entry; `related_gh_issues` does not count), using `gh issue list` in `todo.gh.repo`, else the
-repository `gh` resolves for the checkout. Prints one `#N title` line per issue and writes the rows (issue
-text, comments, linked PR review text) to `<state_dir>/todo-sync/untracked.json`, or prints
-`untracked: none` and writes nothing. Refuses, exit 2, when `gh` fails, returns no JSON list or hits the
+repository `gh` resolves for the checkout. Prints an `untracked: N open issue(s) in no catalog record` header,
+one `#N title` line per issue, then `wrote <path>` for the rows (issue text, comments, linked PR review text)
+at `<state_dir>/todo-sync/untracked.json`. Prints `untracked: none` and writes nothing when no issue is open
+outside the catalog. Refuses, exit 2, when `gh` fails, returns no JSON list or hits the
 listing limit. No options.
 
 ### `add`

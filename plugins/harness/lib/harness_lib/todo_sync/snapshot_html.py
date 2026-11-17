@@ -8,11 +8,10 @@ the Summary counts, the other cells, the folded prose and the remaining-items ta
 finding. Line 1 of the page is the ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a
 Summary block of catalog counts, the top-N table and, folded closed below it, a second table of the remaining
 items in rank order. Both tables share the columns (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH):
-the Id cell holds the bare id for copying,
-and the Item cell links the item's stubs after its title and folds its prose into a ``<details>``. The CSS
-(``pages/styles/shared.css``, ``pages/styles/todo.css``), the theme toggle (``pages/components/theme.js``)
-and the loader (``pages/components/todo.js``) are read from the plugin root and inlined, so the page opens
-from disk with no network address.
+the Id cell holds the bare id for copying, and the Item cell links the item's stubs after its title and
+folds its prose into a ``<details>``. The CSS (``pages/styles/shared.css``, ``pages/styles/todo.css``), the
+theme toggle (``pages/components/theme.js``) and the loader (``pages/components/todo.js``) are read from
+the plugin root and inlined, so the page opens from disk with no network address.
 
 The page carries a stamp, the sha256 of the page rendered with an empty stamp, and ``todo_live.js`` sets
 ``window.TODO_LIVE`` to that stamp and the render date. The loader re-adds the sidecar every ``RELOAD_MS``
@@ -40,7 +39,7 @@ PAGES = plugin_root() / "pages"
 #: The GitHub copy of the driver's usage document; a link into the installed plugin would not resolve from a
 #: consuming project's page.
 USAGE = f"{HOME}/blob/main/plugins/harness/scripts/todo_sync.md"
-COLUMNS = ("Rank","Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
+COLUMNS = ("Rank", "Id","Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
 _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
 _CONFIG = re.compile(r"<script>\nvar TODO_PAGE = (\{.*?\});")
 _STAMP = re.compile(r"[0-9a-f]{64}")
@@ -201,11 +200,13 @@ def _table(cls: str, items: Sequence[Dict[str, Any]], links: Sequence[Sequence[s
 
 
 def _tables(page: SnapshotPage) -> List[str]:
-    """The top table under its heading, then the remaining items folded closed below it; a note when the
-    catalog has no items."""
-    if not page.top:
+    """The top table under its heading when it has rows, then the remaining items folded closed below it; a
+    note when neither list has rows."""
+    if not page.top and not page.rest:
         return ['<p class="note">No items in the catalog.</p>']
-    out = [f"<h2>Top {len(page.top)}</h2>", *_table("top", page.top, page.links, page.gh_repo)]
+    out: List[str] = []
+    if page.top:
+        out += [f"<h2>Top {len(page.top)}</h2>", *_table("top", page.top, page.links, page.gh_repo)]
     if page.rest:
         count = len(page.rest)
         label = f"Remaining {count} item{'' if count == 1 else 's'}"
