@@ -149,11 +149,11 @@ def test_a_failed_render_after_the_write_never_adds_the_items_twice(make_project
     _queue(cfg, "20261113T000001Z-00-aaaaaa.json", [_item(None, title="A local note")])
 
     def refuse(cfg, date: dt.date) -> Path:
-        raise TodoSyncError("snapshot name does not match todo.snapshots.name_pattern")
+        raise TodoSyncError("render refused")
 
     with monkeypatch.context() as patch:
         patch.setattr(inbox, "render_snapshot", refuse)
-        with pytest.raises(TodoSyncError, match="name_pattern"):
+        with pytest.raises(TodoSyncError, match="render refused"):
             inbox.drain(cfg, today=DAY)
     assert _names(cfg) == []
     assert inbox.drain_lines(inbox.drain(cfg, today=DAY)) == ["inbox: empty"]
@@ -272,7 +272,8 @@ def test_drain_adds_every_file_in_one_write_and_deletes_them(make_project) -> No
     ids = {i["id"] for i in _catalog(cfg)["items"]}
     assert {new for new, _ in result.added} <= ids
     assert _names(cfg) == []
-    assert cfg.path(f"{SNAP_DIR}/TODO_Snapshot_2026_1113.md").is_file()
+    page = cfg.path(f"{SNAP_DIR}/TODO_Snapshot.html").read_text(encoding="utf-8")
+    assert "rendered=2026-11-13" in page.splitlines()[0]
     assert result.drift is not None
     [line] = inbox.drain_lines(result)
     assert line.startswith("inbox: added 2 item(s): ") and f"check drift={result.drift}" in line

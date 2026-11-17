@@ -326,9 +326,11 @@ def test_arc_help_pages_apply_lands_in_the_project(project: Path) -> None:
     assert (project / HELP_DIR / f"{PAGE}.html").is_file()
 
 
+# render names todo_live.js, not the page: _todo_project pre-seeds TODO_Snapshot.html, so a page check
+# would pass even when render wrote nothing.
 TODO_OUTPUTS = {
     "todo_sync check": ".claude/state/harness/todo-sync/report.json",
-    "todo_sync render": "docs/RESEARCH/_TODO/Snapshots/TODO_Snapshot_2026_1021.md",
+    "todo_sync render": "docs/RESEARCH/_TODO/Snapshots/todo_live.js",
     "todo_sync session hook": ".claude/state/harness/todo-sync/runner.json",
 }
 
