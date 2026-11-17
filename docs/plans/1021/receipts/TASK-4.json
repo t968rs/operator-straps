@@ -1,0 +1,29 @@
+{
+  "plan_id": "1021",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "078d1b693ded583f9061756f4a18fde18ab78a39"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_write_plan_archive_contract.py::test_the_skill_has_an_archive_step",
+        "tests/skills/test_write_plan_archive_contract.py::test_the_tag_table_names_the_archive_tag",
+        "tests/skills/test_write_plan_archive_contract.py::test_the_agent_runs_check_after_the_freeze_commit",
+        "tests/skills/test_write_plan_archive_contract.py::test_the_skill_readme_and_schemas_readme_name_the_archive",
+        "tests/skills/test_write_plan_archive_contract.py::test_the_pip_template_merge_steps_name_an_actor"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_write_plan_archive_contract.py::test_the_skill_has_an_archive_step tests/skills/test_write_plan_archive_contract.py::test_the_tag_table_names_the_archive_tag tests/skills/test_write_plan_archive_contract.py::test_the_agent_runs_check_after_the_freeze_commit tests/skills/test_write_plan_archive_contract.py::test_the_skill_readme_and_schemas_readme_name_the_archive tests/skills/test_write_plan_archive_contract.py::test_the_pip_template_merge_steps_name_an_actor"
+    }
+  },
+  "evidence": "staged tree 078d1b6: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "6d10d5ad30e712497897d940752052f25a47bb2022ea3a327889e5c371d93d0b"
+}
