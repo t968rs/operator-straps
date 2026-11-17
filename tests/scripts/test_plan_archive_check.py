@@ -12,17 +12,17 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from types import ModuleType
-from typing import List
+from typing import List, Tuple
 
 from conftest import git
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _plan_driver_helpers as helpers  # noqa: E402
-from _plan_driver_helpers import Result, Run, write_op  # noqa: E402
-from _plan_lock_helpers import (PLANNED, STEM, advance_main, commit_all, entries, fill, prefixed,  # noqa: E402
-                                rewrite_base)
+from _plan_archive_helpers import finished, stem_tags  # noqa: E402
+from _plan_driver_helpers import Run  # noqa: E402
+from _plan_lock_helpers import (PLANNED, STEM, advance_main, commit_all, entries,  # noqa: E402
+                                prefixed, rewrite_base)
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo
@@ -30,38 +30,21 @@ ARCHIVE = f"archive/{STEM}/r1"
 QUIET = ("tag: ", "push: ", "untagged: ", "off-history: ")
 
 
-def stem_tags(project: Path) -> List[str]:
-    """Every tag of plan 0001's stem, archive tags included, sorted."""
-    return sorted(name for name in git(project, "tag", "--list").splitlines() if f"/{STEM}/" in name)
-
-
-def finished(run: Run, project: Path) -> None:
-    """Freeze and commit plan 0001, tag the freeze commit through ``check``, commit TASK-1 and record it by
-    commit, so the plan carries base, freeze tree, freeze commit and receipt tags."""
-    fill(run, project)
-    commit_all(project, "freeze plan 0001")
-    code, _, err = run("check", "1")
-    assert code == 0, err
-    write_op(project, "sub")
-    work = commit_all(project, "TASK-1: sub")
-    code, _, err = run("record", "1", "TASK-1", "--sha", work)
-    assert code == 0, err
-
-
-def archive(driver: ModuleType, run: Run, *args: str) -> Result:
-    """``plan.py archive <args>``; ``AssertionError`` while plan.py has no archive subcommand."""
-    assert "archive" in driver.COMMANDS, "plan.py has no archive subcommand"
-    return run("archive", *args)
-
-
 def loud(text: str) -> List[str]:
     """The reconcile and warning lines of a command's output."""
     return [line for prefix in QUIET for line in prefixed(text, prefix)]
 
 
+def archive_link(project: Path, name: str) -> Tuple[List[str], str]:
+    """The parents and the last message line of the commit the archive tag ``name`` peels to."""
+    commit = git(project, "rev-parse", f"refs/tags/{name}^{{commit}}")
+    parents = git(project, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+    return parents, git(project, "log", "-1", "--format=%B", commit).splitlines()[-1]
+
+
 def test_commands_after_archive_tag_nothing_and_warn_nothing(driver, run: Run, project: Path) -> None:
     finished(run, project)
-    code, _, err = archive(driver, run, "1")
+    code, _, err = run("archive", "1")
     assert code == 0, err
     for command in (("check", "1"), ("render", "1"), ("verify", "1")):
         code, out, err = run(*command)
@@ -73,7 +56,7 @@ def test_commands_after_archive_tag_nothing_and_warn_nothing(driver, run: Run, p
 def test_a_rewritten_base_the_archive_reaches_is_quiet(driver, run: Run, project: Path) -> None:
     old = advance_main(project)
     finished(run, project)
-    code, _, err = archive(driver, run, "1")
+    code, _, err = run("archive", "1")
     assert code == 0, err
     commit_all(project, "receipts of plan 0001")
     rewrite_base(project, old)
@@ -84,10 +67,11 @@ def test_a_rewritten_base_the_archive_reaches_is_quiet(driver, run: Run, project
     assert stem_tags(project) == [ARCHIVE]
 
 
-def test_an_entry_written_after_the_archive_is_tagged_and_folds_again(driver, run: Run, project: Path) -> None:
+def test_an_entry_written_after_the_archive_is_tagged_and_folds_again(
+        driver, run: Run, project: Path) -> None:
     from harness_lib import freeze_ledger as fl
     finished(run, project)
-    code, _, err = archive(driver, run, "1")
+    code, _, err = run("archive", "1")
     assert code == 0, err
     notes = (project / PLANNED).parent / "notes.txt"
     notes.write_text("a file the archive never saw\n", encoding="utf-8")
@@ -100,16 +84,54 @@ def test_an_entry_written_after_the_archive_is_tagged_and_folds_again(driver, ru
     assert code == 0, err
     assert any(line.startswith(f"tag: {commit} -> ") for line in prefixed(out, "tag: ")), out
     assert stem_tags(project) == sorted([ARCHIVE, tree, commit])
-    code, out, err = archive(driver, run, "1")
+    code, out, err = run("archive", "1")
     assert code == 0, err
     assert out.splitlines()[0].endswith("| folded 2 tag(s)"), out
     assert stem_tags(project) == [ARCHIVE, f"archive/{STEM}/r1-2"]
+    first = git(project, "rev-parse", f"{ARCHIVE}^{{commit}}")
+    second = git(project, "rev-parse", f"archive/{STEM}/r1-2^{{commit}}")
+    parents, last_line = archive_link(project, f"archive/{STEM}/r1-2")
+    assert parents[:1] == [first] and last_line == f"previous: {ARCHIVE} {first}", (parents, last_line)
+    notes.write_text("a second file the archive never saw\n", encoding="utf-8")
+    code, _, err = run("freeze", "1", "--refreeze")
+    assert code == 0, err
+    commit_all(project, "second refreeze plan 0001")
+    code, _, err = run("check", "1")
+    assert code == 0, err
+    code, _, err = run("archive", "1")
+    assert code == 0, err
+    assert stem_tags(project) == [ARCHIVE, f"archive/{STEM}/r1-2", f"archive/{STEM}/r1-3"]
+    parents, last_line = archive_link(project, f"archive/{STEM}/r1-3")
+    expected = f"previous: archive/{STEM}/r1-2 {second}"
+    assert parents[:1] == [second] and last_line == expected, (parents, last_line)
+
+
+def test_a_dropped_older_archive_tag_keeps_its_objects_archived(driver, run: Run, project: Path) -> None:
+    """With only ``r1-2`` left, its ``previous:`` chain keeps the first archive's objects counted, so check
+    re-tags nothing and warns nothing."""
+    finished(run, project)
+    code, _, err = run("archive", "1")
+    assert code == 0, err
+    notes = (project / PLANNED).parent / "notes.txt"
+    notes.write_text("a file the archive never saw\n", encoding="utf-8")
+    code, _, err = run("freeze", "1", "--refreeze")
+    assert code == 0, err
+    commit_all(project, "refreeze plan 0001")
+    code, _, err = run("check", "1")
+    assert code == 0, err
+    code, _, err = run("archive", "1")
+    assert code == 0, err
+    git(project, "tag", "-d", ARCHIVE)
+    code, out, err = run("check", "1")
+    assert code == 0, err
+    assert loud(out + err) == [], out + err
+    assert stem_tags(project) == [f"archive/{STEM}/r1-2"]
 
 
 def test_a_tree_outside_the_archive_still_warns(driver, run: Run, project: Path) -> None:
     from harness_lib import freeze_ledger as fl
     finished(run, project)
-    code, _, err = archive(driver, run, "1")
+    code, _, err = run("archive", "1")
     assert code == 0, err
     notes = (project / PLANNED).parent / "notes.txt"
     notes.write_text("a file the archive never saw\n", encoding="utf-8")

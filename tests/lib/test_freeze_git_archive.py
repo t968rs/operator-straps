@@ -82,6 +82,38 @@ def test_mktree_of_nothing_is_the_empty_tree(make_project, monkeypatch: pytest.M
     assert fg.mktree(repo, {}) == EMPTY_TREE
 
 
+@pytest.mark.parametrize("bad", ["", ".", "..", "a/b", "a\0b"])
+def test_mktree_refuses_bad_entry_names_before_any_git_call(
+        make_project, monkeypatch: pytest.MonkeyPatch, bad: str) -> None:
+    fg = _freeze_git(monkeypatch)
+    repo = make_project(files={"a.txt": "a\n"})
+    root = git(repo, "rev-parse", "HEAD^{tree}")
+    calls: List[List[str]] = []
+    real = fg.subprocess.run
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        calls.append(list(args[0]))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(fg.subprocess, "run", spy)
+    with pytest.raises(fg.FreezeGitError):
+        fg.mktree(repo, {bad: root})
+    assert calls == []
+
+
+def test_archived_names_keeps_folded_lines_and_skips_previous(
+        make_project, monkeypatch: pytest.MonkeyPatch) -> None:
+    fg = _freeze_git(monkeypatch)
+    repo = make_project(files={"a.txt": "a\n"})
+    head = git(repo, "rev-parse", "HEAD")
+    folded = f"receipt/{STEM}/TASK-1-tree"
+    message = (f"Archive of {STEM}\n\nbase/{STEM}/r1 {head}\n{folded} {head}\n"
+               f"previous: archive/{STEM}/r1 {head}\n")
+    tip = fg.commit_tree(repo, fg.mktree(repo, {}), [], message)
+    assert fg.archived_names(repo, [tip]) == {f"base/{STEM}/r1", folded}
+    assert fg.archived_names(repo, []) == set()
+
+
 def test_commit_tree_takes_each_parent_once_in_order(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
     fg = _freeze_git(monkeypatch)
     repo = make_project(files={"a.txt": "a\n"})
@@ -117,6 +149,20 @@ def test_archive_tips_reaches_and_tree_held(make_project, monkeypatch: pytest.Mo
     assert fg.tree_held(repo, tips, kept) and fg.tree_held(repo, tips, inner)
     assert not fg.tree_held(repo, tips, fg.mktree(repo, {"elsewhere": kept}))
     assert not fg.tree_held(repo, [], kept) and not fg.reaches(repo, [], base)
+    root = git(repo, "rev-parse", f"{archive}^{{tree}}")
+    assert not fg.tree_held(repo, tips, root)
+
+
+def test_archive_tips_orders_rounds_and_m_numerically(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
+    fg = _freeze_git(monkeypatch)
+    repo = make_project(files={"a.txt": "a\n"})
+    tree = fg.mktree(repo, {})
+    made = {}
+    for name in ("r10", "r1-10", "r2", "r1-2", "r1"):
+        made[name] = fg.commit_tree(repo, tree, [], f"archive {name}\n")
+        git(repo, "tag", "-a", "-m", name, f"archive/{STEM}/{name}", made[name])
+    expected = [made[name] for name in ("r1", "r1-2", "r1-10", "r2", "r10")]
+    assert fg.archive_tips(repo, STEM) == expected
 
 
 def test_delete_tags_removes_only_the_named(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,5 +171,7 @@ def test_delete_tags_removes_only_the_named(make_project, monkeypatch: pytest.Mo
     for name in ("base/plan/0021-archive/r1", "receipt/plan/0021-archive/TASK-1-tree", "keep"):
         git(repo, "tag", "-a", "-m", name, name, "HEAD")
     fg.delete_tags(repo, [])
-    fg.delete_tags(repo, ["base/plan/0021-archive/r1", "receipt/plan/0021-archive/TASK-1-tree"])
+    fg.delete_tags(repo, ["missing/plan/0021-archive/gone"])
+    fg.delete_tags(repo, ["base/plan/0021-archive/r1", "missing/plan/0021-archive/gone",
+                          "receipt/plan/0021-archive/TASK-1-tree"])
     assert _tags(repo) == ["keep"]
