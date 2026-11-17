@@ -1,9 +1,9 @@
 {
-  "plan_id": "1021",
+  "plan_id": "2021",
   "plan_created": "2026-11-16",
   "source_document": null,
-  "documentation": "docs/plans/1021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_PIP.html",
-  "branch": "1162-plan-skill-tag-archive",
+  "documentation": "docs/plans/2021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_PIP.html",
+  "branch": "2162-skill-tag-archive",
   "base_branch": "main",
   "execution_model": "serial",
   "items": [
@@ -194,7 +194,7 @@
     {
       "id": "TASK-3",
       "title": "Reconcile and check count an archived plan's objects as tagged",
-      "action": "In plugins/harness/lib/harness_lib/plan_lock.py, with tips = fg.archive_tips(repo, stem) and folded = fg.archived_names(repo, tips) read once per call (archived_names, new in plugins/harness/lib/harness_lib/freeze_git.py: the set of tag names the '<name> <sha40>' lines of the tips' commit messages list; empty for no tips): reconcile drops each row whose entry has a '<entry stem>-commit' or '-commit.<n>' name in folded, so an entry an archive folded gets no new -commit tag, even after a rebase moved the commit that added its file, while an entry written after the archive (a refreeze, relink, arm or unlock) is tagged as before and folds into r1-<m> (D1); base_held is also True when an archive reaches the base (fg.reaches), so a refreeze after the archive tags no base; _base_lines prints off-history only when the base is off HEAD's history and no archive reaches it, and untagged only when no base tag peels to it and no archive reaches it; _entry_lines prints a tree line only when no tree tag holds the entry's tree and no archive tree holds it (fg.tree_held), and the commit line only when the entry has no -commit name in folded (the archive keeps that entry's commit as a parent). An object outside every archive warns as before. Update the module docstrings of both files and the check_lines docstring. Copy the planned test file to its repo path first.",
+      "action": "In plugins/harness/lib/harness_lib/plan_lock.py, with tips = fg.archive_tips(repo, stem) and folded = fg.archived_names(repo, tips) read once per call (archived_names, new in plugins/harness/lib/harness_lib/freeze_git.py: the set of tag names the '<name> <sha40>' lines of the tips' commit messages list; empty for no tips): reconcile drops each row whose entry has a '<entry stem>-commit' or '-commit.<n>' name in folded, so an entry an archive folded gets no new -commit tag, even after a rebase moved the commit that added its file, while an entry written after the archive (a refreeze, relink, arm or unlock) is tagged as before and folds into r1-<m> (D1); base_held is also True when an archive reaches the base (fg.reaches), so a refreeze after the archive tags no base; _base_lines prints off-history whenever the base is off HEAD's history, archived or not (the relink cue), and untagged only when no base tag peels to it and no archive reaches it; _entry_lines prints a tree line only when no tree tag holds the entry's tree and no archive tree holds it (fg.tree_held), and the commit line only when the entry has no -commit name in folded (the archive keeps that entry's commit as a parent). An object outside every archive warns as before. Update the module docstrings of both files and the check_lines docstring. Copy the planned test file to its repo path first.",
       "files": [
         "plugins/harness/lib/harness_lib/plan_lock.py",
         "plugins/harness/lib/harness_lib/freeze_git.py",
@@ -264,7 +264,7 @@
           "red": "AssertionError"
         },
         {
-          "node": "tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_is_quiet",
+          "node": "tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_still_cues_relink",
           "red": "AssertionError"
         },
         {
@@ -385,7 +385,7 @@
     {
       "id": "STR-2",
       "title": "Strap round 4 of write-plan: archive behaviors, greens on the new hash, freeze",
-      "action": "After TASK-1 to TASK-4 are in the tree, through strap.py api write-plan: add_part the plan_archive module (plugins/harness/lib/harness_lib/plan_archive.py); add three mechanical behaviors whose tests are the planned nodes of TASK-2 (tests/scripts/test_plan_archive.py), TASK-3 (tests/scripts/test_plan_archive_check.py) and TASK-4 (tests/skills/test_write_plan_archive_contract.py), red AssertionError, each with a one-line rationale (a driver or file fact a pytest node proves); copy those three test files to docs/plans/strap/write-plan/tests/<repo path>. Run strap.py check write-plan until clean, strap.py red write-plan (it runs at the round-4 base, where archive is absent), then the greens of the earlier judgment behaviors B9, B10 and B11 on the new content hash: strap.py run write-plan <B> --arm green, one strap-scenario-runner dispatch at a time with the printed model, graded with verbatim quotes; a failed green is fixed in SKILL.md and run again on the same scenario. Then strap.py freeze write-plan and relay its tag: and push: lines. Lock waits for the developer's explicit ask.",
+      "action": "After TASK-1 to TASK-4 are in the tree, through strap.py api write-plan: add_part the plan_archive module (plugins/harness/lib/harness_lib/plan_archive.py); add three mechanical behaviors whose tests are the planned nodes of TASK-2 (tests/scripts/test_plan_archive.py), TASK-3 (tests/scripts/test_plan_archive_check.py) and TASK-4 (tests/skills/test_write_plan_archive_contract.py), red AssertionError, each with a one-line rationale (a driver or file fact a pytest node proves); copy those three test files to docs/plans/strap/write-plan/tests/<repo path>. Run strap.py check write-plan until clean, strap.py red write-plan (it runs at the round-4 base, where archive is absent), then the greens of the earlier judgment behaviors B9 and B11 (B10 is dropped) on the new content hash: strap.py run write-plan <B> --arm green, one strap-scenario-runner dispatch at a time with the printed model, graded with verbatim quotes; a failed green is fixed in SKILL.md and run again on the same scenario. Then strap.py freeze write-plan and relay its tag: and push: lines. Lock waits for the developer's explicit ask.",
       "files": [
         "docs/plans/strap/write-plan/SkillSpec.json",
         "docs/plans/freezes/skill/write-plan/"
@@ -508,7 +508,7 @@
   "formats": [
     {
       "name": "archive tag name, read by seen_plan_ids through _PLAN_TAG",
-      "example": "archive/plan/1021-plan-tagging-single-aggregate-tag-folds-the-rest/r1",
+      "example": "archive/plan/2021-plan-tagging-single-aggregate-tag-folds-the-rest/r1",
       "source": {
         "at": "plugins/harness/lib/harness_lib/plan_lock.py:41",
         "expect": "_PLAN_TAG = re.compile(r\"^[^/]+/plan/(\\d{4})-\")"
@@ -573,5 +573,5 @@
       ]
     }
   ],
-  "ledger": "plan/1021-plan-tagging-single-aggregate-tag-folds-the-rest"
+  "ledger": "plan/2021-plan-tagging-single-aggregate-tag-folds-the-rest"
 }

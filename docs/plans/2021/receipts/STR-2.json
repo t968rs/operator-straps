@@ -1,19 +1,19 @@
 {
-  "plan_id": "1021",
+  "plan_id": "2021",
   "item": "STR-2",
   "outcome": {
     "kind": "complete",
     "provenance": {
       "source": "staged",
-      "tree": "549509baf51c56a199da054c919f027d65f1cacd"
+      "tree": "c60d8a10545d67b9582fc2292049af851ab9b3dc"
     }
   },
-  "evidence": "staged tree 549509b",
+  "evidence": "staged tree c60d8a1",
   "deviations": {
     "extra_files": [],
     "substitutions": [],
     "change_digests": {}
   },
   "date": "2026-11-16",
-  "seal": "81307a051310af5030b21b9372f7d8a88b64bd63508a6643bd027736a86a7b33"
+  "seal": "2fe4c7e80e6db2adbf3b0fa81b0d02cf33a7e93c53678226994b50ef45ffe3dd"
 }

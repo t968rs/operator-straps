@@ -1,0 +1,28 @@
+{
+  "plan_id": "2021",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "c60d8a10545d67b9582fc2292049af851ab9b3dc"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_plan_archive_check.py::test_commands_after_archive_tag_nothing_and_warn_nothing",
+        "tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_still_cues_relink",
+        "tests/scripts/test_plan_archive_check.py::test_an_entry_written_after_the_archive_is_tagged_and_folds_again",
+        "tests/scripts/test_plan_archive_check.py::test_a_tree_outside_the_archive_still_warns"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_archive_check.py::test_commands_after_archive_tag_nothing_and_warn_nothing tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_still_cues_relink tests/scripts/test_plan_archive_check.py::test_an_entry_written_after_the_archive_is_tagged_and_folds_again tests/scripts/test_plan_archive_check.py::test_a_tree_outside_the_archive_still_warns"
+    }
+  },
+  "evidence": "staged tree c60d8a1: 4 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "b75da6b99f46af8f2ee50ebc54520b4063e3a56e5cbe928f3321efc524eda5d7"
+}
