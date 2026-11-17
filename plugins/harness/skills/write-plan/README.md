@@ -28,7 +28,7 @@ new --> write (models) --> check --> red --> decisions settled --> freeze
                                                                      |
                +-----------------------------------------------------+
                v
-     implement item --> record (receipt) --> ... --> verify --> merge
+     implement item --> record (receipt) --> ... --> verify --> merge --> archive (on ask)
                ^                                 |
                +---- design changed? evolution_api.add, cite it on the record
 ```
@@ -131,19 +131,21 @@ A commit sequence that keeps the history readable:
 7. **After the PR merges**: on the developer's explicit ask, `PLAN archive <id> [--remote]` folds the plan's
    base, receipt and ledger entry tags into one `archive/<stem>/r1` tag and deletes the folded local tags; the
    developer runs the `push:` line it prints and, with `--remote`, the `remote:` line that deletes the folded
-   tags from the remote.
+   tags from the remote. The delete is local only: without the `remote:` line the next `git fetch` or
+   `git pull` restores every pushed folded tag by tag auto-follow and a later archive folds them again, so a
+   plan whose tags were pushed archives with `--remote` and the developer runs both lines.
 
 **Tags.** The drivers create the plan's tags themselves (annotated, local), in the same command:
 `base/<stem>/r1` on the base commit (`r1-<m>` for a relinked base), `freeze/` and `lock/<stem>/r1.<k>-tree` on
 each entry's tree, `-commit` on the commit that added an entry file once it is committed, and
 `receipt/<stem>/<ITEM>-commit` or `-tree` on what `record` tested; after the PR merges, `PLAN archive` folds
-them all into one `archive/<stem>/r1` tag. A command prints one
+them all into one `archive/<stem>/r1` tag (`r1-<m>` for a later archive). A command prints one
 `tag: <name> -> <sha7>` line per tag it created and then one `push: git push origin <names>` line, which the
-developer runs to share them, since tree tags never travel with `push --follow-tags`. Receipt tags stay local and no
-push line names them. A tag name already on another object refuses the command before anything is written.
-`--sha` still takes any revision, and a tag passed there (`--sha v1.4.0`) is kept in the receipt next to the
-full SHA. Driver tags sit on main-line commits, so a release version is read with `git describe --match 'v*'`.
-The receipt's tested tree stays the evidence either way.
+developer runs to share them, since tree tags never travel with `push --follow-tags`. Receipt tags stay
+local and no push line names them. A tag name already on another object refuses the command before anything
+is written. `--sha` still takes any revision, and a tag passed there (`--sha v1.4.0`) is kept in the receipt
+next to the full SHA. Driver tags sit on main-line commits, so a release version is read with
+`git describe --match 'v*'`. The receipt's tested tree stays the evidence either way.
 
 ## Parallel execution
 
