@@ -13,6 +13,7 @@ from harness_lib.project import schema_path
 from harness_lib.todo_sync.ids import LEGACY_RE, MIGRATE_HINT, is_legacy
 from harness_lib.todo_sync.ranking import RankingError, expected_order, method_from, score
 from harness_lib.todo_sync.report import Finding
+from harness_lib.todo_sync.snapshot_html import PAGE_NAME
 from harness_lib.todo_sync.sources import TERMINAL_RESEARCH, Sources, posix, rows_sha256
 
 CAP = 20
@@ -76,15 +77,14 @@ def t1_schema(src: Sources) -> List[Finding]:
 
 
 def t2_snapshot(src: Sources) -> List[Finding]:
-    """T2 (warn): the newest snapshot's header hash equals the hash of the current top-N rows.
+    """T2 (warn): the snapshot page's header hash equals the hash of the current top-N rows.
 
     Catalog-side drift only (D10): the table body under the header is never compared.
     """
-    folder = posix(src.cfg.todo.snapshots.dir)
     snap = src.snapshot()
     fix = "Run todo_sync.py render."
     if snap is None:
-        return [Finding("T2", "warn", folder, "no snapshot matching todo.snapshots.name_pattern", fix=fix)]
+        return [Finding("T2", "warn", src.page_rel(), f"no snapshot page {PAGE_NAME}", fix=fix)]
     if snap.header is None:
         return [Finding("T2", "warn", snap.rel, "snapshot not produced by render (no header)", line=1,
                         fix=fix)]
