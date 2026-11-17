@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 78,
-    "needs_decision": 48,
+    "items": 76,
+    "needs_decision": 46,
     "trackers": 0,
-    "close_candidates": 33,
+    "close_candidates": 35,
     "by_status": {
-      "NEEDS_DECISION": 48,
+      "NEEDS_DECISION": 46,
       "OPEN": 30
     },
     "by_impact": {
-      "dev_velocity": 44,
+      "dev_velocity": 42,
       "docs_tooling": 24,
       "maintainability": 2,
       "runtime_failure": 6,
@@ -75,12 +75,12 @@
     "by_loe": {
       "XS": 5,
       "S": 26,
-      "M": 33,
-      "L": 13,
+      "M": 32,
+      "L": 12,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 70,
+      "gh_issue": 68,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -1408,7 +1408,7 @@
       ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "The developer asks for a mod (preferably in the banner display) that keeps the TODO and GitHub issue refs being worked on on screen, e.g. `Working: todo-cvm4 (238, 241)`. Per the session: the refs are tracked by hand today, as a session-bookmark note tying branch 1162-plan-skill-tag-archive to #284 / todo-4zhu with related todo-cvm4 (#283) and todo-w3ck (#265); the notes file in the main checkout now holds no notes (.claude/state/harness/session-bookmark/notes.json). Checked: todo-cvm4 cites #283 (docs/TODO/RepoToDo.json:2122-2138); #238 (merge-commit-msg squash title check) and #241 (todo_sync add catalog_entry_ids) are open issues unrelated to it, so the numbers in the example are unverified (illustrative, a typo of 283, or other issues). Surfaces: band-line draws the oStraps banner above the prompt as one line built by formatBanner (plugins/band-line/hooks/banner.ts:98-102) and already reads another mod's state atom (git-status's `git`, plugins/band-line/hooks/band.tsx:12); banner-status's ccstatusline option is the preferred banner (plugins/banner-status/README.md, option table) and its defaults carry `customCommandCacheTtlSeconds` (plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json:38), so a custom-command widget could print the same line (widget support unverified); git-status's own line is the fallback. A user on ccstatusline never sees a band-line segment. Branch names cannot supply the refs: local branches carry a sequence prefix, not an issue number (1166-todo-snapshot-table-format, 1162-plan-skill-tag-archive for #284, 2162/3162-skill-tag-archive; git branch). session-bookmark notes are free text with no scope field (plugins/session-bookmark/hooks/notes.ts:59-64, parseNotes keeps text only) and are read only at compaction, so they are no source either. Mods cannot read harness files: they copy `state_dir` (plugins/session-bookmark/hooks/notes.ts:11, stateDirOf) or the whole config (plugins/todo-watch/hooks/config.ts) and a test pins the copy. Related catalog items: todo-v8mh (branch-scoped notes go stale silently, #279), todo-jq3x (TODO item sets a session /goal through a session-bookmark hook, #282), todo-545g (edit a single bookmark note, #272). No open issue covers a working-refs banner (gh issue list searches for banner, status line, band, mod).",
+      "summary": "The developer asks for a mod (preferably in the banner display) that keeps the TODO and GitHub issue refs being worked on on screen, e.g. `Working: todo-cvm4 (238, 241)`. Per the session: the refs are tracked by hand today, as a session-bookmark note tying branch 1162-plan-skill-tag-archive to #284 (plan.py archive, since landed in PR #299, 73dc114) with related todo-cvm4 (#283) and #265 (driver tags, since landed in PR #271, 7f5aedf); the notes file in the main checkout now holds no notes (.claude/state/harness/session-bookmark/notes.json). Checked: todo-cvm4 cites #283 (docs/TODO/RepoToDo.json:2122-2138); #238 (merge-commit-msg squash title check) and #241 (todo_sync add catalog_entry_ids) are open issues unrelated to it, so the numbers in the example are unverified (illustrative, a typo of 283, or other issues). Surfaces: band-line draws the oStraps banner above the prompt as one line built by formatBanner (plugins/band-line/hooks/banner.ts:98-102) and already reads another mod's state atom (git-status's `git`, plugins/band-line/hooks/band.tsx:12); banner-status's ccstatusline option is the preferred banner (plugins/banner-status/README.md, option table) and its defaults carry `customCommandCacheTtlSeconds` (plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json:38), so a custom-command widget could print the same line (widget support unverified); git-status's own line is the fallback. A user on ccstatusline never sees a band-line segment. Branch names cannot supply the refs: local branches carry a sequence prefix, not an issue number (1166-todo-snapshot-table-format, 1162-plan-skill-tag-archive for #284, 2162/3162-skill-tag-archive; git branch). session-bookmark notes are free text with no scope field (plugins/session-bookmark/hooks/notes.ts:59-64, parseNotes keeps text only) and are read only at compaction, so they are no source either. Mods cannot read harness files: they copy `state_dir` (plugins/session-bookmark/hooks/notes.ts:11, stateDirOf) or the whole config (plugins/todo-watch/hooks/config.ts) and a test pins the copy. Related catalog items: todo-v8mh (branch-scoped notes go stale silently, #279), todo-jq3x (TODO item sets a session /goal through a session-bookmark hook, #282), todo-545g (edit a single bookmark note, #272). No open issue covers a working-refs banner (gh issue list searches for banner, status line, band, mod).",
       "proposed_change": "Recommended: a small refs store plus a band-line segment, not a ninth mod. (1) A harness skill (e.g. `/harness:working todo-cvm4 [#283] | --clear | --list`) whose script writes `<state_dir>/working-refs/refs.json` keyed by branch (`{version, refs: {<branch>: {todo_ids, issues, set_at}}}`), canonicalizing ids as todo_sync does and filling each TODO id's `gh_issues` from the catalog when no issue is named; keying by branch keeps a ref from following the developer onto the next branch (the staleness todo-v8mh describes). (2) band-line reads that file for git-status's current branch (it already holds the snapshot) and draws `Working: todo-cvm4 (283)` as a second line of its Box (plugins/band-line/hooks/band.tsx), leaving the one-line width budget of formatBanner alone; the file is re-read on `prompt.submit`/`turn.complete` by mtime, as todo-watch does (M6). band-line then copies `state_dir` like session-bookmark's notes.ts, with a contract test pinning the copy and the file shape against the script. (3) Optionally the script also prints the line for a ccstatusline custom-command widget, and setup-statusline offers it, so the preferred banner shows it too. Alternatives weighed: a new `working-refs` mod owning the state and drawing its own band (cleanest ownership, but a third AbovePrompt band and another install; band-line would need it as an optional dependency to merge the line); extending todo-watch (it already reads the catalog and harness.json, but it is inactive without `todo.folder` and its band is dismissable, wrong for a persistent line); branch-name parsing (rejected: prefixes are not issue numbers). Any new config key (e.g. a toggle or label) takes the four harness places plus a `hooks/config.ts` mirror and a `tests/mods/test_band-line_config_mirror.py`-style test. Bump band-line and harness versions and add the release-notes line.",
       "code_snippet": "plugins/band-line/hooks/banner.ts:98\nexport const formatBanner = (g: GitSnapshot, s: SessionFigures, columns = 120): string => {\n  const tail = `${commitsSegment(g)}${sessionSegment(s)}`\n  const head = `${needsAttention(g) ? WARNING : ''}${LABEL} ${branchSegment(g)} · ${treeSegment(g)}`\n  return clip(head, Math.max(columns - tail.length, MIN_HEAD)) + tail\n}",
       "files": [
@@ -2057,64 +2057,8 @@
       "why_ranked": "Severity 2 new review capability with an unclear scope, dev_velocity impact, M size."
     },
     {
-      "id": "todo-w3ck",
-      "rank": 34,
-      "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Choose the tag naming scheme (plan/<id>/base, plan/<id>/freeze[-N], strap/<skill>/r<N>/base, strap/<skill>/r<N>/freeze, or the off-branch names already in use), and decide whether a history rewrite moves the tags and re-points spec.base and plan base_commit (requiring a strap.py rebase-base subcommand) or leaves the old commits tagged only.",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#265",
-          "url": "https://github.com/t968rs/operator-straps/issues/265"
-        }
-      ],
-      "gh_issues": [
-        265
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "Per the session: the developer wants every necessary commit, every plan-referenced commit and every base-to-freeze range tagged as standing practice, with tags created by the drivers rather than printed as suggestions or checked only. Plan base_commit (plans 1013 and 1014 use 5a8ef39) is necessary: check reads anchors and sweeps at it once an item is done (plugins/harness/scripts/plan.py:265-271). Plan frozen.commit is display only (read at plugins/harness/scripts/plan_render.py:46 and plan_render_html.py:81). Strap spec base (write-plan 9368d9e) is necessary: the baseline arm runs git show <base>:<SKILL.md> (plugins/harness/scripts/strap.py:640), runs start from it (strap.py:391) and reopen refuses a base that does not descend from it (strap.py:911-912). Strap rounds[].base is history only. The strap frozen stamp stores no commit, so a freeze tag would sit at HEAD, one commit before the commit holding the stamp. Receipt evidence holds commit SHA text or staged tree SHA text; a tree SHA cannot be pinned by a tag. Scope: plan.py new tags the plan base, freeze and --refreeze tag the freeze; strap.py new and reopen tag the round base, freeze tags the round freeze; each check warns when a necessary SHA is untagged or unreachable. Tags stay local and the developer pushes them. Building this on a follow-up branch after 2150-plan-refreeze merges, since plan.py and strap.py are parts of the write-plan and strap-skills strap specs and an earlier build would re-stale them. Related: todo-m86m / issue #264 (strap hash scope).",
-      "proposed_change": "After 2150-plan-refreeze merges, add tag creation to plan.py (plan new tags the base; freeze and --refreeze tag the freeze) and strap.py (new and reopen tag the round base; freeze tags the round freeze), using local annotated tags that the developer pushes. Decided: the drivers create annotated tags (git tag -a, with a message naming the plan or strap round and the SHA role), not lightweight ones, because git push --follow-tags and the push.followTags setting carry only annotated tags that point at commits the push includes; lightweight tags are ignored, and a tag on a commit outside the pushed branch never follows and still needs git push origin <tag>. Still open: the naming scheme and history-rewrite handling. Extend check to warn when a necessary SHA (plan base_commit, strap spec base, round base or freeze) is untagged or unreachable. Naming and history-rewrite handling are open (see decision_question): the candidate names are plan/<id>/base, plan/<id>/freeze[-N], strap/<skill>/r<N>/base and strap/<skill>/r<N>/freeze. A tag keeps an old commit alive after a history rewrite, but spec.base and plan base_commit still point at the orphaned commit, so a rewrite needs those fields re-pointed (no driver command sets spec.base outside reopen; a strap.py rebase-base subcommand was floated). Existing hand-made tags on the branch: write-plan-skill-spec-base -> 9368d9e (correct); plan-1014-base -> 54cf0cc, which is plan 1014's frozen.commit, not its base_commit 5a8ef39, so it needs correcting when the scheme lands.",
-      "files": [
-        "plugins/harness/scripts/plan.py",
-        "plugins/harness/scripts/strap.py",
-        "plugins/harness/scripts/plan_render.py",
-        "plugins/harness/scripts/plan_render_html.py"
-      ],
-      "blast_radius": {
-        "level": "M",
-        "reasoning": "Touches plan.py and strap.py, both parts of the write-plan and strap-skills strap specs, and the check that reads their anchors. Local tags only, so no pushed state changes.",
-        "consumers": []
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "Tag creation in two drivers, a check extension, and a decision on naming and rewrite handling before code. Scope is set by the session; the naming decision is open."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 0.9129,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 4,
-          "blast_factor": 1.2,
-          "cost": 4.8,
-          "base_score": 0.9129,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 (a missing guard, with check already warning when a necessary SHA is untagged), dev_velocity impact (developer tooling less trustworthy than it needs to be), and M size, so a mid-tier tooling item."
-    },
-    {
       "id": "todo-v8mh",
-      "rank": 35,
+      "rank": 34,
       "title": "session-bookmark: a branch-scoped note goes stale silently after the branch changes",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2182,7 +2126,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 36,
+      "rank": 35,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2241,7 +2185,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 37,
+      "rank": 36,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2299,12 +2243,12 @@
     },
     {
       "id": "todo-e2jv",
-      "rank": 38,
+      "rank": 37,
       "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
       "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "The stamp-only churn the issue shows is gone since 458bef9 (PR #306, unchanged-page skip). Is that enough to close #303, or should the page become a static shell (changed only by page code or formatting) that reads the catalog rows from a gitignored data sidecar, or should consuming projects simply gitignore TODO_Snapshot.html and todo_live.js as this repository does (.gitignore last lines)?",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
       "tracker": null,
       "sources": [
         {
@@ -2318,19 +2262,21 @@
       ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "The issue (from a consuming project that tracks the page) wants a refresh to change only gitignored data, and the tracked HTML and JS to change only on code or formatting changes; its example is a commit touching only TODO_Snapshot.html and todo_live.js for a stamp refresh. Checked on main (458bef9, which squashes PR #306): render_snapshot keeps a page that rendering again with its own date reproduces, and rewrites todo_live.js only when its text differs (plugins/harness/lib/harness_lib/todo_sync/__init__.py:187-222, _kept_page at :260), and the run is recorded in the gitignored <state_dir>/todo-sync/render.json (:183-184), so a render with nothing new writes neither tracked file. Left: the page embeds the catalog rows (SnapshotPage(catalog=..., top=..., rest=...) at __init__.py:239-241) and its stamp is the sha256 of the page body (plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py:277-280), so any catalog change that alters what the page draws (a rescore, a retire, a new item) still rewrites both tracked files. A bare refresh does not render at all (snapshot_html.py:4-6); the render runs from lease release, add --inbox, init and render. In this repository both files are gitignored (.gitignore: docs/TODO/Snapshots/TODO_Snapshot*, docs/TODO/Snapshots/todo_live.js), so the churn only reaches consuming projects that track them.",
-      "proposed_change": "Per the decision: (a) close #303 as covered by 458bef9 / PR #306; or (b) split the page into a static shell (CSS, loader, theme, chrome) and a gitignored data sidecar (for example todo_data.js setting window.TODO_DATA, loaded like todo_live.js), so a render rewrites only the sidecar unless page code changed; rule T2, which reads the page's line-1 header, would then read the sidecar instead, and the loader draws the tables client-side; or (c) document in the todo_sync usage page and the README that consuming projects gitignore the page and its stamp file, and have init add the lines.",
+      "summary": "The issue (from a consuming project that tracks the page) wants a refresh to change only gitignored data, and the tracked HTML and JS to change only on code or formatting changes; its example is a commit touching only TODO_Snapshot.html and todo_live.js for a stamp refresh. Decided 2026-11-17 by the developer: option (b), a static page shell plus a gitignored catalog data file the page loads; closing #303 as covered by 458bef9 and documenting a gitignore (with init adding the lines) were rejected, and #303 stays open until (b) lands. Already shipped in 458bef9 (PR #306): a render records its run in the gitignored <state_dir>/todo-sync/render.json, and an unchanged page is kept (render_snapshot keeps a page that rendering again with its own date reproduces and rewrites todo_live.js only when its text differs, plugins/harness/lib/harness_lib/todo_sync/__init__.py:205-217; pinned by tests/scripts/test_todo_sync_render_page.py:96), so a render with nothing new writes neither tracked file. Not started: the page embeds the catalog rows (SnapshotPage(catalog=..., top=..., rest=...) at __init__.py:239-242) and its stamp is the sha256 of the page body (plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py:277-280), so any catalog change that alters what the page draws (a rescore, a retire, a new item) still rewrites both tracked files; tests/scripts/test_todo_sync_render_page.py:106 pins that rewrite and must change with the fix. A bare refresh does not render at all (snapshot_html.py:4-6); the render runs from lease release, add --inbox, init and render. In this repository both files are gitignored (.gitignore: docs/TODO/Snapshots/TODO_Snapshot*, docs/TODO/Snapshots/todo_live.js), so the churn only reaches consuming projects that track them.",
+      "proposed_change": "Option (b), as decided: split the page into a static shell (CSS, loader, theme, chrome) that changes only with page code or formatting, and a gitignored catalog data file beside it (for example todo_data.js setting window.TODO_DATA, loaded like todo_live.js) that carries the rows; the loader draws the tables client-side, and the page stamp hashes the shell only, so a rescore, retire or add rewrites only the data file. Rule T2, which reads the page's line-1 header (rows sha, cut, render date), reads the data file's header instead. Rework tests/scripts/test_todo_sync_render_page.py:106 to assert a catalog change rewrites the data file and leaves TODO_Snapshot.html and todo_live.js untouched, and cover the shell/data split in tests/lib/test_todo_snapshot_html.py. The data file must be ignored in consuming projects, and nothing under todo_sync writes a .gitignore today (a grep of the package finds none), so the todo_sync usage page (plugins/harness/scripts/todo_sync.md) names the ignore line; having init add it is optional.",
       "code_snippet": "plugins/harness/lib/harness_lib/todo_sync/__init__.py:212\n    if kept is None:\n        write_atomic(path, text)\n        wrote.append(PAGE_NAME)\n    if _read_text(live_path) != live:\n        write_atomic(live_path, live)\n        wrote.append(LIVE_NAME)",
       "files": [
         "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
         "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
         "plugins/harness/pages/components/todo.js",
         "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
-        "plugins/harness/scripts/todo_sync.md"
+        "plugins/harness/scripts/todo_sync.md",
+        "tests/scripts/test_todo_sync_render_page.py",
+        "tests/lib/test_todo_snapshot_html.py"
       ],
       "blast_radius": {
         "level": "M",
-        "reasoning": "Option (b) changes what the page carries and where rule T2 reads its header, across the renderer, the loader and the snapshot tests; options (a) and (c) touch no code.",
+        "reasoning": "The static-shell split changes what the page carries and where rule T2 reads its header, across the renderer, the loader and the snapshot tests.",
         "consumers": [
           "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
           "plugins/harness/lib/harness_lib/todo_sync/locking.py",
@@ -2342,7 +2288,7 @@
       },
       "loe": {
         "size": "M",
-        "reasoning": "Option (b) moves the table drawing into the loader and the T2 header into a sidecar, with tests; (a) and (c) are XS."
+        "reasoning": "Moves the table drawing into the loader and the T2 header into the data file, with the render-page and snapshot tests reworked."
       },
       "impact": "dev_velocity",
       "severity": 2,
@@ -2364,7 +2310,7 @@
     },
     {
       "id": "todo-zes6",
-      "rank": 39,
+      "rank": 38,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "kind": "feature",
       "status": "OPEN",
@@ -2423,7 +2369,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 40,
+      "rank": 39,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2478,7 +2424,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 41,
+      "rank": 40,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -2539,7 +2485,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 42,
+      "rank": 41,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "kind": "bug",
       "status": "OPEN",
@@ -2589,7 +2535,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 43,
+      "rank": 42,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2637,7 +2583,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 44,
+      "rank": 43,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2712,7 +2658,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 45,
+      "rank": 44,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2770,7 +2716,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 46,
+      "rank": 45,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -2826,7 +2772,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 47,
+      "rank": 46,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2889,7 +2835,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 48,
+      "rank": 47,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -2949,7 +2895,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 49,
+      "rank": 48,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -3010,7 +2956,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 50,
+      "rank": 49,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3077,7 +3023,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 51,
+      "rank": 50,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3152,67 +3098,8 @@
       "why_ranked": "Severity 2 for debt with a concrete cost (five stale frozen specs and forced green reruns), impact dev_velocity because only the strap tooling slows down and no output changes, and size L for a design pass plus a hash-scope migration across strap.py, its models, schema and docs."
     },
     {
-      "id": "todo-4zhu",
-      "rank": 52,
-      "title": "plan.py archive: fold a finished plan's driver tags into one archive tag",
-      "kind": "feature",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#284",
-          "url": "https://github.com/t968rs/operator-straps/issues/284"
-        }
-      ],
-      "gh_issues": [
-        284
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "A finished plan leaves dozens of driver tags (31 in one consumer plan, per the issue; unverified here), tree and receipt tags stay local, and after a squash merge the tags alone keep base and receipt commits alive. Checked the tag namespaces the issue names: base tags `base/<stem>/r<round>` (plugins/harness/lib/harness_lib/freeze_git.py:110), receipt tags `receipt/<stem>/<item>-<part>` (plugins/harness/lib/harness_lib/plan_lock.py:645), and the `untagged:` and `off-history:` warnings (plan_lock.py:564-594; strap has the same at plugins/harness/lib/harness_lib/strap_lock.py:489-519). plan.py has no archive subcommand (grep finds no 'archive' in plan.py, plan_lock.py or freeze_git.py). Proposal: `plan.py archive <id>` builds one annotated tag `archive/plan/<id>-<slug>/r<round>` over a plumbing commit whose tree holds receipts/ and freezes/ subtrees and whose parents are every base, freeze-entry, receipt and relink commit, verifies reachability, prints one push: line and deletes the local driver tags; reconcile and the untagged/off-history checks must then resolve through the archive; feed `git mktree` bytes on Windows. Related: todo-w3ck (#265, driver tags); #283 (same write-plan wording spots).",
-      "proposed_change": "Add an archive subcommand to plan.py backed by freeze_git plumbing (mktree with bytes stdin, commit-tree, tag -a), with a reachability check before deleting local tags and an optional --remote line printing the remote delete; teach reconcile and the untagged/off-history checks to treat objects reachable from the archive as tagged and to create no new -commit.N tags once it exists; keep archive/ outside the collision-checked prefixes. Tests over a temporary repo in tests/lib, a cross_os mark for the Windows bytes path; consider the same for strap.py afterward.",
-      "files": [
-        "plugins/harness/scripts/plan.py",
-        "plugins/harness/lib/harness_lib/plan_lock.py",
-        "plugins/harness/lib/harness_lib/freeze_git.py",
-        "plugins/harness/skills/write-plan/SKILL.md"
-      ],
-      "blast_radius": {
-        "level": "M",
-        "reasoning": "Every PLAN command's reconcile and tag checks, shared tag plumbing with strap.",
-        "consumers": [
-          "plugins/harness/scripts/plan.py",
-          "plugins/harness/scripts/strap.py"
-        ]
-      },
-      "loe": {
-        "size": "L",
-        "reasoning": "A plumbing builder with verification, reconcile changes, warning changes and cross-OS tests."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 0.6455,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 8,
-          "blast_factor": 1.2,
-          "cost": 9.6,
-          "base_score": 0.6455,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 debt (tag sprawl and local-only objects), dev_velocity impact, L size."
-    },
-    {
       "id": "todo-yuy7",
-      "rank": 53,
+      "rank": 51,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3272,7 +3159,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 54,
+      "rank": 52,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3294,7 +3181,7 @@
         265
       ],
       "catalog_entry_ids": [],
-      "summary": "Per the session: found while renaming plan 1021 to 2021 for PR #297 (branch 2162-skill-tag-archive, review issue I1). Checked: the write-plan strap fixture docs/plans/strap/write-plan/fixtures/plan-1021/docs/plans/1021_strap_round_reopen_ActionPlan.json is on main, and plugins/harness/lib/harness_lib/plan_doc.py:83-90 (find_plan) refuses a folder with two plans of one id (\"2 plans 1021\"); that the B11 green R-14 hit it is per the session (unverified). plugins/harness/skills/write-plan/SKILL.md:119-122 says a plan id that collides with one on the base branch moves the newer plan to the next free id, but plugins/harness/scripts/plan.py:1069-1115 registers only new, check, render, red, freeze, lanes, record, verify, lock, unlock, relink and archive: no renumber. The id is built into: the plan file name and plan_id, the PIP name (plan_doc.py:62-76), the docs/plans/<id>/ folder (receipts, DesignEvolution.json whose plan_id is pinned at plugins/harness/lib/harness_lib/evolution_models.py:136, live.js, planned tests), the ledger stem plan/<id>-<slug> (plugins/harness/lib/harness_lib/freeze_ledger.py:99-100) and its write-once entries under docs/plans/freezes/ (plugins/harness/hooks/guard_locked.py:7-9 denies every write there), the driver tags matched by plugins/harness/lib/harness_lib/plan_lock.py:48, and the item seals, which hash the plan id (plugins/harness/lib/harness_lib/plan_models.py:348-360, checked at plugins/harness/lib/harness_lib/plan_receipts.py:118 and :161 and plugins/harness/lib/harness_lib/plan_record.py:101). Per the session, the developer took a manual fresh-ledger route here: git mv to the new id, hand-set plan_id, the ledger stem and the DesignEvolution plan_id, freeze again, re-record every item, leave the old ledger and tags orphaned. Related, separate: plan_doc.next_plan_id (plan_doc.py:51-55, fed by plan.py:296) takes seen ids from plan_lock._branch_ids (plan_lock.py:759-767), a non-recursive ls-tree of the plans folder, so strap fixture plans under docs/plans/strap/*/fixtures/ are never counted. Catalog items on the same files: todo-4zhu (#284, plan.py archive, which the old-tag choice may reuse), todo-w3ck (#265, driver tags), todo-v55s (#178, strap scenario trees).",
+      "summary": "Per the session: found while renaming plan 1021 to 2021 for PR #297 (branch 2162-skill-tag-archive, review issue I1). Checked: the write-plan strap fixture docs/plans/strap/write-plan/fixtures/plan-1021/docs/plans/1021_strap_round_reopen_ActionPlan.json is on main, and plugins/harness/lib/harness_lib/plan_doc.py:83-90 (find_plan) refuses a folder with two plans of one id (\"2 plans 1021\"); that the B11 green R-14 hit it is per the session (unverified). plugins/harness/skills/write-plan/SKILL.md:119-122 says a plan id that collides with one on the base branch moves the newer plan to the next free id, but plugins/harness/scripts/plan.py:1069-1115 registers only new, check, render, red, freeze, lanes, record, verify, lock, unlock, relink and archive: no renumber. The id is built into: the plan file name and plan_id, the PIP name (plan_doc.py:62-76), the docs/plans/<id>/ folder (receipts, DesignEvolution.json whose plan_id is pinned at plugins/harness/lib/harness_lib/evolution_models.py:136, live.js, planned tests), the ledger stem plan/<id>-<slug> (plugins/harness/lib/harness_lib/freeze_ledger.py:99-100) and its write-once entries under docs/plans/freezes/ (plugins/harness/hooks/guard_locked.py:7-9 denies every write there), the driver tags matched by plugins/harness/lib/harness_lib/plan_lock.py:48, and the item seals, which hash the plan id (plugins/harness/lib/harness_lib/plan_models.py:348-360, checked at plugins/harness/lib/harness_lib/plan_receipts.py:118 and :161 and plugins/harness/lib/harness_lib/plan_record.py:101). Per the session, the developer took a manual fresh-ledger route here: git mv to the new id, hand-set plan_id, the ledger stem and the DesignEvolution plan_id, freeze again, re-record every item, leave the old ledger and tags orphaned. Related, separate: plan_doc.next_plan_id (plan_doc.py:51-55, fed by plan.py:296) takes seen ids from plan_lock._branch_ids (plan_lock.py:759-767), a non-recursive ls-tree of the plans folder, so strap fixture plans under docs/plans/strap/*/fixtures/ are never counted. Catalog items on the same files: todo-v55s (#178, strap scenario trees). Landed work on the same files: plan.py archive (#284, PR #299, 73dc114), which the old-tag choice may reuse, and the driver tags (#265, PR #271, 7f5aedf).",
       "proposed_change": "Add `plan.py renumber <plan> --to <id>` (default: the next free id). It refuses a Locked or armed plan and a target id already taken (on any branch, tag or strap fixture); moves the plan JSON, PIPs and docs/plans/<id>/ folder; rewrites plan_id in the plan and DesignEvolution.json and the documentation path; reseals every recorded item under the new id (or resets it to be recorded again, if a reseal without fresh evidence is not acceptable); starts the new ledger stem with a first freeze; and handles the old ledger and tags per the decision (keep, fold with `plan.py archive`, or carry over). Print each step as a line the developer can review, and leave the commit to the developer. Update write-plan SKILL.md:119-122 to name the command. Separately, count strap fixture plan ids in next_plan_id so the collision stops recurring.",
       "files": [
         "plugins/harness/scripts/plan.py",
@@ -3349,7 +3236,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 55,
+      "rank": 53,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -3411,7 +3298,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 56,
+      "rank": 54,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3470,7 +3357,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 57,
+      "rank": 55,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3531,7 +3418,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 58,
+      "rank": 56,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3589,7 +3476,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 59,
+      "rank": 57,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3647,7 +3534,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 60,
+      "rank": 58,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -3700,7 +3587,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 61,
+      "rank": 59,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -3754,7 +3641,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 62,
+      "rank": 60,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3810,7 +3697,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 63,
+      "rank": 61,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3864,7 +3751,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 64,
+      "rank": 62,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -3924,7 +3811,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 65,
+      "rank": 63,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3979,7 +3866,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 66,
+      "rank": 64,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4034,7 +3921,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 67,
+      "rank": 65,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -4085,7 +3972,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 68,
+      "rank": 66,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4142,7 +4029,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 69,
+      "rank": 67,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4195,7 +4082,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 70,
+      "rank": 68,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4250,7 +4137,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 71,
+      "rank": 69,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4311,7 +4198,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 72,
+      "rank": 70,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -4369,7 +4256,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 73,
+      "rank": 71,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4424,7 +4311,7 @@
     },
     {
       "id": "todo-jt35",
-      "rank": 74,
+      "rank": 72,
       "title": "Config key for a per-project browser icon on the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4484,7 +4371,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 75,
+      "rank": 73,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4547,7 +4434,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 76,
+      "rank": 74,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -4602,7 +4489,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 77,
+      "rank": 75,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4653,7 +4540,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 78,
+      "rank": 76,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4716,6 +4603,24 @@
   ],
   "trackers": [],
   "close_candidates": [
+    {
+      "number": 284,
+      "title": "plan.py archive: fold a finished plan's driver tags into one archive tag",
+      "url": "https://github.com/t968rs/operator-straps/issues/284",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #299 (\"Feature(plan): `plan.py archive` command\") is MERGED at 2026-11-17T09:01:04Z as 73dc114, on main (`git branch -a --contains 73dc114`). plugins/harness/scripts/plan.py:1046 defines cmd_archive; archive plumbing in freeze_git and archive-aware plan_lock tagging landed in fd83f10 and f9b1377. `gh issue view 284` already reports CLOSED (COMPLETED) at 2026-11-17T09:01:33Z. Catalog item todo-4zhu retired.",
+      "recommended_action": "None: already closed as completed by PR #299 (merge commit 73dc114); drop this entry once confirmed.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 265,
+      "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
+      "url": "https://github.com/t968rs/operator-straps/issues/265",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #271 (\"Feat(write-plan, strap-skills): freeze ledger, commit tags, Frozen and Locked (plan 1015)\") is MERGED at 2026-11-12T05:44:41Z as 7f5aedf, on main; it carries 763fba5 (git tag plumbing) and 067d52f (freeze ledger wired into plan.py and strap.py). The drivers create base and freeze tags, and check warns `untagged:` and `off-history:` (plugins/harness/lib/harness_lib/strap_lock.py:489-515 and plan_lock.py:640-669). `gh issue view 265` already reports CLOSED (COMPLETED) at 2026-11-12T05:44:43Z. Catalog item todo-w3ck retired.",
+      "recommended_action": "None: already closed as completed by PR #271 (merge commit 7f5aedf); drop this entry once confirmed.",
+      "related_todo_ids": []
+    },
     {
       "number": 161,
       "title": "`a-w` attach",
@@ -5033,7 +4938,9 @@
     "todo-bwe5",
     "todo-h4za",
     "todo-n7q5",
-    "todo-udx4"
+    "todo-udx4",
+    "todo-w3ck",
+    "todo-4zhu"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
