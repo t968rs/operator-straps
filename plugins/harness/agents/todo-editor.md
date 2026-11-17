@@ -136,7 +136,10 @@ the stub, the catalog or a commit message is not evidence.
 3. `TS lease acquire --owner "todo-editor split" --wait 300`, run with a Bash timeout of 330000 ms, and keep
    the token it prints (`lease: <token>`). Every split command below passes `--lease <token>`. A `problem:`
    line naming a holder means another run holds the catalog: run the same command again, up to 3 times in
-   all; the third refusal ends the run (relay it). Any other `problem:` line ends the run at once.
+   all; the third refusal ends the run (relay it). Any other `problem:` line ends the run at once. With the
+   lease held, Grep and Read the item again and compare it with the step 1 read: a queued update drained in
+   between can have changed it, and the dry run does not catch that. When a field the spec sets or a part
+   inherits changed, redraft those fields in the spec from the new values before the dry run.
 4. `TS split <id> --spec <path> --dry-run --lease <token>`. It reads the catalog as it is now, so a split that
    landed while this one drafted shows up here as a `problem:` line: fix the spec and rerun once. Check the
    parts land where expected and the refusal list is empty. The part ids it prints are provisional: the real
@@ -241,17 +244,20 @@ session's conversation had already established (or `none`). Draft exactly one it
 Runs for `Operation: update`. `Ids:` names one item and `Guidance:` says what to change.
 
 1. Grep the catalog for the item's canonical id and Read around the hit. Read what the guidance names (files,
-   lines, issues) and check its claims as **add** level 1 does: cite `path:line` in `summary`, and write a
-   claim the tree neither confirms nor refutes as `unverified`.
+   lines, issues) and check its claims as **add** level 1 does; when the update sets `summary`, cite
+   `path:line` there, carry over the existing text that still holds, and write a claim the tree neither
+   confirms nor refutes as `unverified`. A `summary` the guidance does not touch stays as it is.
 2. Choose new values only for `title`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`,
    `proposed_change`, `code_snippet`, `files`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked` and
-   `related_gh_issues`, and only for the ones the guidance touches. Each value replaces the field whole: a new
+   `related_gh_issues`, and only for the ones the guidance touches. Guidance that names several ids is
+   shared by one agent per id: apply only what it says about this item's id, plus what applies to all. Each value replaces the field whole: a new
    `files` is the full list and a new `loe` the full object, so carry over what stays. The shapes are those of
    **sync** step 3, and the item with its new values must still pass the schema checks listed there. The
    script refuses every other field (`id`, `rank`, `priority`, `depends_on`, `unblocks`, `sources`,
    `gh_issues`, `tracker`, `catalog_entry_ids`), and the drain rescores the item from `severity`, `impact`,
    `loe` and `blast_radius` and re-ranks the catalog, so a score changes through those four (on the catalog's
-   `ranking_method` scales), with `why_ranked` rewritten to match.
+   `ranking_method` scales), with `why_ranked` rewritten to match. To close a decision, set `needs_decision`
+   false, `decision_question` null and a `status` other than `NEEDS_DECISION` in the same update.
 3. Write `{"updates": [{"id": "<id>", "fields": {...}}]}` to
    `<state_dir>/todo-sync/update-<stamp>-<rand>.json` (`<stamp>` and `<rand>` as in **sync**, so update agents
    running at once never share a path).
@@ -286,7 +292,7 @@ Runs for retire, split and refresh once they hold a lease.
 ## Stop conditions
 
 Report and stop, do not improvise, when a script exits 2 (relay the `problem:` line verbatim, after one spec
-fix for split, sync, add or update), when an id is not in the catalog, when a split item holds one
+fix for split, sync, add or update, or after the third held-lease refusal of a split's lease acquire), when an id is not in the catalog, when a split item holds one
 deliverable, when `untracked` prints `untracked: none`, or when a fix would need a file outside the edit list.
 An update id the script refuses (retired, split or unknown) is relayed verbatim: no spec fix changes which
 item the id names. A retire, split or refresh run that holds a lease still runs `TS lease release <token>` before the reply on any of these stops, so the lease never

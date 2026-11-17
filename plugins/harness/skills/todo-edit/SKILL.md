@@ -43,11 +43,14 @@ todo.folder` when it is unset, and the agent relays that.
 ## Step 2: dispatch the agent
 
 Every `Agent` call takes `subagent_type="harness:todo-editor"`, the model from the table and
-`description="<Operation> TODO items"`. `--retire` and `--refresh` make one `Agent` call for all their ids.
-`--split` and `--update` make one `Agent` call per id, all in one message, each prompt naming its one id on
-the `Ids:` line and carrying the same guidance. The splits then draft their parts at once and take the catalog
-lease one at a time to apply them; the updates only queue, so none waits on another. The prompt is this block
-with the placeholders filled:
+`description="<Operation> TODO items"`. `--retire` makes one `Agent` call for all its ids, and `--refresh`
+one call. `--split` and `--update` make one `Agent` call per id, all in one message, each prompt naming its one
+id on the `Ids:` line and carrying the same guidance. Before dispatching per id, drop an id whose canonical
+form (lower-case, without a trailing `,` or `;`, `todo-` added when missing) repeats an earlier one, and name
+the dropped duplicates in the Step 4 report. When the guidance names several ids, each agent applies only what
+it says about its own id, plus what applies to all. The splits then draft their parts at once and take the
+catalog lease one at a time to apply them; the updates only queue, so none waits on another. The prompt is
+this block with the placeholders filled:
 
 ```
 SKILL: todo-edit
@@ -67,21 +70,23 @@ returned, apply whatever the inbox holds, once:
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" add --inbox
 ```
 
-Run it from the project root. It prints one line: `inbox: updated M item(s): <id> (<fields>), ...; check
-drift=<d>`, with an `added N item(s)` part when other queued items landed with it, an `overwrote <id> <field>`
-part when two queued updates set the same field (the later one wins), and a `; rejected K (<files>)` part when
-the catalog refused some queued files; `inbox: rejected K (<files>)` when it refused all of them; or
-`inbox: empty`. A refused file stays in the inbox as `<name>.rejected.json` beside a `<name>.reason.txt`
+Run it from the project root. It prints one line: `inbox: [added N item(s): <id> (#N|note), ...; ]updated M
+item(s): <id> (<fields>), ...; [overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=<d>`. The
+`added` part leads when other queued items landed with the updates; the `overwrote` part appears when two
+queued updates set the same field and both land in the same drain (the later one wins); the `rejected` part
+appears when the catalog refused some queued files. The line reads `inbox: rejected K (<files>)` when it
+refused all of them, or `inbox: empty`. A refused file stays in the inbox as `<name>.rejected.json` beside a `<name>.reason.txt`
 naming why: report its update as not applied. `inbox: empty` means nothing was waiting: either the agents
 queued nothing (their replies say why), or the todo-watch mod already drained the inbox and its summary line
-arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain. When it opens
-with `inbox: updated` or `inbox: added`, those changes landed and only the render, check or file cleanup
+arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain. When it
+reads `problem: inbox: added <ids>; updated <ids>, then: <reason>` (either part alone when only one kind landed),
+those changes landed and only the render, check or file cleanup
 failed: report them as applied. When it names a lock held by `todo_sync.py add --inbox`, the todo-watch mod is
 draining the updates and its summary line arrives as context. Otherwise the queued updates stay in the inbox.
 
 ## Step 4: report
 
-Relay every agent's reply as it stands, one per id, then the Step 3 line for an update. The edits are saved,
+Relay every agent's reply as it stands (one per id for split and update), then the Step 3 line for an update. The edits are saved,
 not committed; the developer reviews the diff and commits. For a retirement the reply answers three questions:
 the new state of each touched stub (`Stubs`), the research entries now fully resolved (`Resolved`), and the
 GitHub issues that can be closed, each with its reason (`Close`). When a reply lists open items (a missing
