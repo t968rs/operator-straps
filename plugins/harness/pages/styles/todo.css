@@ -1,24 +1,26 @@
 body { max-width: 84rem; }
+h1 .repo { color: var(--code-fg); }
 table.top { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
 table.top th, table.top td { border: 1px solid var(--line); padding: .3em .55em; text-align: left;
   vertical-align: top; }
-table.top th { position: sticky; top: 0; background: var(--bg); color: var(--accent);
+table.top th { position: sticky; top: 0; background: var(--bg); color: var(--heading);
   border-bottom: 2px solid var(--accent); }
 table.top tr.row:nth-child(odd) { background: var(--code); }
 table.top tr.row:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
 td.c-rank, td.c-score { text-align: right; font-variant-numeric: tabular-nums; }
 td.c-size, td.c-status, td.c-kind { text-align: center; white-space: nowrap; }
 td.c-gh { white-space: nowrap; }
+td.c-id { white-space: nowrap; user-select: all; cursor: copy; }
 .id { font: 600 13px ui-monospace, monospace; color: var(--code-fg); white-space: nowrap; }
-a.id, a.stub { text-decoration: none; }
-a.id:hover, a.stub:hover { text-decoration: underline; }
+a.stub { text-decoration: none; }
+a.stub:hover { text-decoration: underline; }
 a.stub { font: 12px ui-monospace, monospace; color: var(--accent); }
 details summary { cursor: pointer; }
 details[open] summary { margin-bottom: .35rem; }
 details p { margin: .3rem 0 .3rem 1rem; color: var(--muted); }
 details p strong { color: var(--fg); }
 .badge { font: 600 12px ui-monospace, monospace; padding: .05em .6em; border: 1px solid currentColor;
-  border-radius: 1em; color: var(--muted); white-space: nowrap; }
+  border-radius: 1em; color: var(--chip); white-space: nowrap; }
 .badge.status[data-status="OPEN"] { color: var(--accent); }
 .badge.status[data-status="NEEDS_DECISION"] { color: var(--run); font-weight: 700; }
 .badge.status[data-status="PARTIAL"], .badge.status[data-status="IN_PROGRESS"] { color: var(--ok); }

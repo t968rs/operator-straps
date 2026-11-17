@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from harness_lib.config import HarnessConfig
-from harness_lib.project import plugin_root
+from harness_lib.project import main_worktree, plugin_root
 from harness_lib.todo_sync.errors import TodoSyncError
 from harness_lib.todo_sync import rules_plans as rp
 from harness_lib.todo_sync import rules_research as rr
@@ -151,6 +151,14 @@ def runner_path(cfg: HarnessConfig) -> Path:
     return cfg.path(cfg.state_dir) / "todo-sync" / "runner.json"
 
 
+def repo_name(cfg: HarnessConfig) -> str:
+    """The name part of ``todo.gh.repo`` (``owner/name``), else the main checkout's folder name."""
+    repo = cfg.todo.gh_repo
+    if isinstance(repo, str) and repo.strip("/"):
+        return repo.strip("/").rsplit("/", 1)[-1]
+    return main_worktree(cfg.project_root).name
+
+
 def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     """Write the snapshot page ``TODO_Snapshot.html`` into ``todo.snapshots.dir``, then its
     ``todo_live.js`` stamp, and return the page's path.
@@ -169,7 +177,8 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     header = snapshot_header(posix(todo.catalog), todo.top_n, rows_sha256(items, todo.top_n), rendered)
     top = top_items(items, todo.top_n)
     page = SnapshotPage(header=header, catalog=catalog.data, top=top, top_n=todo.top_n, rendered=rendered,
-                        source=posix(todo.catalog), links=_stub_links(cfg, top), gh_repo=todo.gh_repo)
+                        source=posix(todo.catalog), links=_stub_links(cfg, top), gh_repo=todo.gh_repo,
+                        repo=repo_name(cfg))
     text = render_page(page)
     stamp = page_stamp(text)
     if stamp is None:

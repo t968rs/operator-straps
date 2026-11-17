@@ -6,10 +6,11 @@ bare ``add --spec``, ``retire``, ``split``, ``refresh`` or ``migrate-ids`` leave
 render. Rule T2 flags a stale page only when todo.top_n or the top-N ids, ranks, statuses or titles changed;
 the Summary counts, the other cells and the folded prose can go stale with no finding. Line 1 of the page is
 the ``<!-- todo-snapshot ... -->`` header rule T2 reads back; then come a Summary block of catalog counts and
-the table (Rank, Item, Status, Kind, Blast, LoE, Score, GH), whose Item cell folds the item's prose into a
-``<details>``. The CSS
-(``pages/styles/shared.css``, ``pages/styles/todo.css``) and the loader (``pages/components/todo.js``) are
-read from the plugin root and inlined, so the page opens from disk with no network address.
+the table (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH): the Id cell holds the bare id for copying,
+and the Item cell links the item's stubs after its title and folds its prose into a ``<details>``. The CSS
+(``pages/styles/shared.css``, ``pages/styles/todo.css``), the theme toggle (``pages/components/theme.js``)
+and the loader (``pages/components/todo.js``) are read from the plugin root and inlined, so the page opens
+from disk with no network address.
 
 The page carries a stamp, the sha256 of the page rendered with an empty stamp, and ``todo_live.js`` sets
 ``window.TODO_LIVE`` to that stamp and the render date. The loader re-adds the sidecar every ``RELOAD_MS``
@@ -26,6 +27,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from harness_lib.page_chrome import corner, theme_script
 from harness_lib.project import plugin_root
 
 PAGE_NAME = "TODO_Snapshot.html"
@@ -33,7 +35,7 @@ LIVE_NAME = "todo_live.js"
 LIVE_HEAD = "window.TODO_LIVE = "
 RELOAD_MS = 3000
 PAGES = plugin_root() / "pages"
-COLUMNS = ("Rank", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
+COLUMNS = ("Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
 _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
 _CONFIG = re.compile(r"<script>\nvar TODO_PAGE = (\{.*?\});")
 _STAMP = re.compile(r"[0-9a-f]{64}")
@@ -49,7 +51,8 @@ class SnapshotPage:
     """What one page draws: the T2 header line, the catalog, its top rows and their stub link targets.
 
     ``links[k]`` holds the stub link targets of ``top[k]`` (by position, so rows sharing an id never share
-    links); ``gh_repo`` (``owner/name``) builds an issue link when the item names no issue URL.
+    links); ``gh_repo`` (``owner/name``) builds an issue link when the item names no issue URL; ``repo``,
+    the repository name, opens the title and the heading when set.
     """
 
     header: str
@@ -60,6 +63,7 @@ class SnapshotPage:
     source: str
     links: Sequence[Sequence[str]] = ()
     gh_repo: Optional[str] = None
+    repo: Optional[str] = None
 
 
 def _e(value: Any) -> str:
@@ -150,15 +154,15 @@ def _prose(item: Dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _id_cell(item: Dict[str, Any]) -> str:
+    """The bare id, unlinked, so one click selects it whole for copying."""
+    return f'<td class="c-id"><span class="id">{_e(item.get("id"))}</span></td>'
+
+
 def _item_cell(item: Dict[str, Any], targets: Sequence[str]) -> str:
-    """The id (linked to the first stub), the title and numbered extra stubs, with the prose folded below."""
-    ident = item.get("id")
-    if isinstance(ident, str) and targets:
-        head = f'<a class="id" href="{_e(targets[0])}">{_e(ident)}</a>'
-    else:
-        head = f'<span class="id">{_e(ident)}</span>'
-    head += f" {inline(item.get('title'))}"
-    head += "".join(f' <a class="stub" href="{_e(t)}">{n}</a>' for n, t in enumerate(targets[1:], 2))
+    """The title and its stub links numbered from 1, with the prose folded below."""
+    head = inline(item.get("title"))
+    head += "".join(f' <a class="stub" href="{_e(t)}">{n}</a>' for n, t in enumerate(targets, 1))
     prose = _prose(item)
     if not prose:
         return f'<td class="c-item">{head}</td>'
@@ -168,7 +172,7 @@ def _item_cell(item: Dict[str, Any], targets: Sequence[str]) -> str:
 def _row(item: Dict[str, Any], targets: Sequence[str], repo: Optional[str]) -> str:
     score = _sub(item, "priority", "score")
     rank = _e(item.get("rank"))
-    cells = [f'<td class="c-rank">{rank}</td>', _item_cell(item, targets),
+    cells = [f'<td class="c-rank">{rank}</td>', _id_cell(item), _item_cell(item, targets),
              f'<td class="c-status">{_badge("status", item.get("status"))}</td>',
              f'<td class="c-kind">{_badge("kind", item.get("kind"))}</td>',
              f'<td class="c-size">{_e(_sub(item, "blast_radius", "level"))}</td>',
@@ -215,7 +219,8 @@ def _summary(catalog: Dict[str, Any]) -> str:
 def _intro(page: SnapshotPage) -> List[str]:
     writers = ", ".join(f"<code>{w}</code>" for w in ("render", "init", "add --inbox", "lease release"))
     bare = ", ".join(f"<code>{w}</code>" for w in ("add --spec", "retire", "split", "refresh", "migrate-ids"))
-    return [f"<h1>TODO Snapshot: Top {page.top_n}</h1>",
+    repo = f'<span class="repo">{_e(page.repo)}</span> ' if page.repo else ""
+    return [f"<h1>{repo}TODO Snapshot: Top {page.top_n}</h1>",
             f'<p class="note">Rendered {_e(page.rendered)} from <code>{_e(page.source)}</code>. '
             f"<code>todo_sync.py</code> rewrites this page on {writers}; a bare {bare} leaves it as it was "
             "until the next render. Edits to this file are overwritten.</p>",
@@ -233,8 +238,11 @@ def _document(page: SnapshotPage, stamp: str) -> str:
     body = [*_intro(page), _summary(page.catalog), *_table(page)]
     style = _asset("styles", "shared.css") + _asset("styles", "todo.css")
     title = f"TODO Snapshot: Top {page.top_n} ({page.rendered})"
+    if page.repo:
+        title = f"{page.repo} | {title}"
     return "\n".join([page.header, "<!DOCTYPE html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',
-                      f"<title>{_e(title)}</title>", f"<style>\n{style}</style>", "</head>", "<body>", *body,
+                      f"<title>{_e(title)}</title>", f"<style>\n{style}</style>", theme_script(), "</head>",
+                      "<body>", corner(), *body,
                       _script(stamp), "</body>", "</html>"]) + "\n"
 
 
