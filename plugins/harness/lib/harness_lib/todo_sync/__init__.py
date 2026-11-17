@@ -3,7 +3,7 @@
 Public API (the driver ``scripts/todo_sync.py``, the SessionStart hook and tests call these):
 
 - ``check(cfg, rules=None) -> Report``: run the rule catalog (or the selected ids).
-- ``render_snapshot(cfg, date) -> Path``: write the dated top-N snapshot T2 compares against.
+- ``render_snapshot(cfg, date) -> Path``: write the snapshot page T2 compares against, and its stamp.
 - ``write_runner(cfg) -> Path``: write the runner pointer the todo-watch mod executes.
 
 Every path is project-relative through ``cfg``; nothing is written under the plugin root.
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import re
 import sys
 import time
 from dataclasses import dataclass
@@ -25,8 +24,9 @@ from harness_lib.todo_sync.errors import TodoSyncError
 from harness_lib.todo_sync import rules_plans as rp
 from harness_lib.todo_sync import rules_research as rr
 from harness_lib.todo_sync import rules_todo as rt
-from harness_lib.todo_sync.report import (Finding, Report, snapshot_header, snapshot_markdown, write_atomic,
-                                          write_report)
+from harness_lib.todo_sync.report import Finding, Report, snapshot_header, write_atomic, write_report
+from harness_lib.todo_sync.snapshot_html import (LIVE_NAME, PAGE_NAME, SnapshotPage, live_script, page_stamp,
+                                                 render_page)
 from harness_lib.todo_sync.sources import JsonFile, Sources, posix, read_json, rows_sha256, top_items
 from harness_lib.todo_sync.stub_links import item_stubs, link_target
 
@@ -151,30 +151,33 @@ def runner_path(cfg: HarnessConfig) -> Path:
     return cfg.path(cfg.state_dir) / "todo-sync" / "runner.json"
 
 
-def snapshot_name(date: dt.date) -> str:
-    """``TODO_Snapshot_<YYYY>_<MMDD>.md`` for ``date``; render writes this fixed name, so
-    ``todo.snapshots.name_pattern`` must also fully match it or render refuses."""
-    return f"TODO_Snapshot_{date:%Y}_{date:%m%d}.md"
-
-
 def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
-    """Write the dated top-N snapshot into ``todo.snapshots.dir`` and return its path."""
+    """Write the snapshot page ``TODO_Snapshot.html`` into ``todo.snapshots.dir``, then its
+    ``todo_live.js`` stamp, and return the page's path.
+
+    The page goes first, so an open page that reads the new stamp reloads into the new page.
+    """
     todo = cfg.todo
     if not todo.catalog or not todo.snapshots.dir:
         raise TodoSyncError("render needs todo.folder and a non-null todo.snapshots.dir")
-    name = snapshot_name(date)
-    if not re.fullmatch(todo.snapshots.name_pattern, name):
-        raise TodoSyncError(f"{name} does not match todo.snapshots.name_pattern "
-                            f"{todo.snapshots.name_pattern}")
     catalog = read_json(cfg.project_root, todo.catalog)
     if not catalog.ok:
         raise TodoSyncError(f"{catalog.rel}: {catalog.error}")
-    items = [i for i in catalog.data.get("items") or [] if isinstance(i, dict)]
+    raw = catalog.data.get("items")
+    items = [i for i in raw if isinstance(i, dict)] if isinstance(raw, list) else []
     rendered = date.isoformat()
     header = snapshot_header(posix(todo.catalog), todo.top_n, rows_sha256(items, todo.top_n), rendered)
     top = top_items(items, todo.top_n)
-    text = snapshot_markdown(header, top, todo.top_n, rendered, _stub_links(cfg, top))
-    return write_atomic(cfg.path(todo.snapshots.dir) / name, text)
+    page = SnapshotPage(header=header, catalog=catalog.data, top=top, top_n=todo.top_n, rendered=rendered,
+                        source=posix(todo.catalog), links=_stub_links(cfg, top), gh_repo=todo.gh_repo)
+    text = render_page(page)
+    stamp = page_stamp(text)
+    if stamp is None:
+        raise TodoSyncError(f"{PAGE_NAME}: rendered page carries no readable stamp; nothing written")
+    folder = cfg.path(todo.snapshots.dir)
+    path = write_atomic(folder / PAGE_NAME, text)
+    write_atomic(folder / LIVE_NAME, live_script(stamp, rendered))
+    return path
 
 
 def _stub_links(cfg: HarnessConfig, top: List[Dict[str, Any]]) -> List[List[str]]:
