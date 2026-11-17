@@ -5,33 +5,25 @@
     "kind": "complete",
     "provenance": {
       "source": "staged",
-      "tree": "c60d8a10545d67b9582fc2292049af851ab9b3dc"
+      "tree": "a9c675bc1de4954f243e1658686779474fba0d53"
     },
     "tests": {
       "nodes": [
         "tests/scripts/test_plan_archive.py::test_archive_folds_every_driver_tag_into_one",
         "tests/scripts/test_plan_archive.py::test_archive_remote_line_skips_receipt_tags",
         "tests/scripts/test_plan_archive.py::test_archive_again_folds_later_tags_into_r1_2",
-        "tests/scripts/test_plan_archive.py::test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags",
+        "tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind",
         "tests/scripts/test_plan_archive.py::test_archive_refuses_when_an_object_is_unreachable"
       ],
-      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_archive.py::test_archive_folds_every_driver_tag_into_one tests/scripts/test_plan_archive.py::test_archive_remote_line_skips_receipt_tags tests/scripts/test_plan_archive.py::test_archive_again_folds_later_tags_into_r1_2 tests/scripts/test_plan_archive.py::test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags tests/scripts/test_plan_archive.py::test_archive_refuses_when_an_object_is_unreachable"
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_archive.py::test_archive_folds_every_driver_tag_into_one tests/scripts/test_plan_archive.py::test_archive_remote_line_skips_receipt_tags tests/scripts/test_plan_archive.py::test_archive_again_folds_later_tags_into_r1_2 tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind tests/scripts/test_plan_archive.py::test_archive_refuses_when_an_object_is_unreachable"
     }
   },
-  "evidence": "staged tree c60d8a1: 5 test node(s) passed",
+  "evidence": "staged tree a9c675b: 5 test node(s) passed",
   "deviations": {
     "extra_files": [],
-    "substitutions": [
-      {
-        "planned": "tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind",
-        "node": "tests/scripts/test_plan_archive.py::test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags",
-        "change": "EX4"
-      }
-    ],
-    "change_digests": {
-      "EX4": "b38ea910030ae5dfdc36042225ee3520605a2c727dc033b665866d70703e7c4e"
-    }
+    "substitutions": [],
+    "change_digests": {}
   },
-  "date": "2026-11-16",
-  "seal": "ac2cde1a33453592dd3abf16360e26828b5f9dc4e7af2f38ac67ca5f6027ec2a"
+  "date": "2026-11-17",
+  "seal": "619296afbb6bde24c26222d634332414529d9a3eb87563a442bf8ff63b2a0111"
 }
