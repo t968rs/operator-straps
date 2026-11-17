@@ -12,10 +12,10 @@ static ``ledger`` field (that stem) and ``load_plan`` fills ``frozen`` from the 
 is Frozen, Locked (``lock``), Locked and armed (``unlock --arm``) or Unlocked (``unlock``). Every
 tag-creating command preflights its tag names and refuses on a name already on another object before it
 writes anything; it prints ``tag: <name> -> <sha7>`` lines and one ``push: git push origin <tags>`` line
-after its status line (tags are local; the developer pushes). Every command that loads a plan, ``archive``
-excepted, reconciles its ledger after its own work, when that work succeeds (a refused command never
-reaches it): the commit that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a
-rewrite adds ``-commit.2``).
+after its status line (tags are local; the developer pushes). Every command that loads a plan reconciles
+its ledger after its own work, when that work succeeds (a refused command never reaches it), and
+``archive`` before its fold: the commit that added each committed entry file gets
+``<kind>/<stem>/r1.<k>-commit`` (a rewrite adds ``-commit.2``).
 Inside a strap scenario tree no tag is created and nothing is reconciled; ``archive`` refuses there.
 
 ``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``
@@ -37,7 +37,7 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     squash, a rebase or a staged attach leaves the plan valid. Open decisions are listed as ``open:``
     lines, not problems. Then it reconciles and warns, never failing on a warning: ``tag:``/``push:``,
     ``untagged: <sha7> (<role>)``, ``off-history: <sha7> (base r1)`` (the cue for ``relink``),
-    ``drift: <path> differs from <lock tag>`` on a Locked plan, or the single
+    ``drift: <path> differs from <ref>`` on a Locked plan, or the single
     ``legacy: plan <id> keeps an in-file stamp; migrates at its next refreeze``. Writes refs, never files.
 
 ``render PLAN``
@@ -144,7 +144,11 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     it ``archive/<stem>/r1`` (``r1-<m>`` when an archive exists, the previous archive its first parent; no
     tag moves), delete the folded local tags and print ``tag:``, ``push:`` (the archive alone) and
     ``deleted:`` lines; ``--remote`` adds ``remote: git push origin --delete <folded tags but receipt
-    ones>``. A plan without driver tags is refused. Runs no reconcile. Once archived, ``check`` and the
+    ones>``. A plan without driver tags is refused. Reconciles the ledger before the fold, so a committed
+    entry's ``-commit`` tag exists and folds; a tag that reconcile creates there is left off the
+    ``remote:`` line, since it never reached the remote. A folded tag the remote lacks (one never pushed)
+    makes the ``remote:`` push fail: drop the names git reports as missing on the remote and rerun the
+    line. Once archived, ``check`` and the
     reconcile count the archive's objects as tagged: an entry the archive folded gets no new ``-commit``
     tag, and ``untagged:`` and tree lines skip an object an archive reaches or holds (``off-history:``
     still warns for a base off HEAD's history); an entry written after the archive is tagged as before and

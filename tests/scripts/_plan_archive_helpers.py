@@ -22,7 +22,7 @@ def stem_tags(project: Path) -> List[str]:
 
 
 def driver_tags(project: Path) -> Dict[str, str]:
-    """``{name: peeled object}`` of plan 0001's base, freeze, lock and receipt tags."""
+    """``{name: peeled object}`` of plan 0001's driver tags (every kind in ``KINDS``; archive tags never)."""
     return {name: git(project, "rev-parse", f"refs/tags/{name}^{{}}") for name in stem_tags(project)
             if name.split("/", 1)[0] in KINDS}
 

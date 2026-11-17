@@ -15,17 +15,20 @@ A plan's driver tags are the tags under ``<kind>/<stem>/`` whose first segment i
 A plan that already has an archive folds again into ``archive/<stem>/r1-<m>`` (D1): ``m`` is one past the
 highest existing (the plain name counts as 1), the last archive commit is the first parent, and the message
 ends in a ``previous: <archive tag> <sha40>`` line; no tag ever moves. Before any tag is created, each folded
-commit must be reachable from the new commit (``freeze_git.reaches``) and each folded tree held in its tree
-(``freeze_git.tree_held``); a miss refuses with nothing tagged or deleted. Then the archive tag is created
-and the folded local tags are deleted. Inside a strap scenario tree (a linked worktree sharing the main
-checkout's tags) the command refuses before any work. Nothing here reconciles a ledger or reads the config.
+commit must be reachable from the new commit (``freeze_git.reaches``) and each folded tree a subtree of the
+new commit (membership in ``freeze_git.held_trees``, read once); a miss refuses with nothing tagged or
+deleted. Then the archive tag is created and the folded local tags are deleted. Inside a strap scenario
+tree (a linked worktree sharing the main checkout's tags) the command refuses before any work. Before the
+fold the plan's ledger is reconciled (``plan_lock.reconcile``), so the commit that added a committed entry
+is tagged and folds; the tags that reconcile creates are left out of the remote delete line, since they
+never reached the remote. Nothing here reads the config.
 """
 from __future__ import annotations
 
 import dataclasses
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from harness_lib import freeze_git as fg
 from harness_lib import plan_doc as pd
@@ -219,22 +222,32 @@ def _tag_and_delete(repo: Path, stem: str, name: str, commit: str, folded: List[
                             f"{exc}", f"finish with: git tag -d {' '.join(left)}"]) from None
 
 
-def archive_lines(plan_id: str, name: str, commit: str, folded: List[str], remote: bool) -> List[str]:
-    """The status, ``tag:``, ``push:`` and ``deleted:`` lines, and with ``remote`` the remote delete line."""
+def archive_lines(plan_id: str, name: str, commit: str, folded: List[str], remote: bool,
+                  local: Sequence[str] = ()) -> List[str]:
+    """The status, ``tag:``, ``push:`` and ``deleted:`` lines, and with ``remote`` the remote delete line.
+
+    The remote delete names every folded tag but the ``receipt/`` ones and ``local``, the tags this run's
+    reconcile created, which never reached the remote.
+    """
     lines = [f"archive [done] | plan {plan_id} | {name} -> {commit[:7]} | folded {len(folded)} tag(s)",
              f"tag: {name} -> {commit[:7]}", fg.push_line([name]), f"deleted: {' '.join(folded)}"]
-    pushed = [tag for tag in folded if not tag.startswith("receipt/")]
+    pushed = [tag for tag in folded if not tag.startswith("receipt/") and tag not in local]
     if remote and pushed:
         lines.append(f"remote: git push origin --delete {' '.join(pushed)}")
     return lines
 
 
 def archive(repo: Path, plan_file: Path, plan: pm.ActionPlan, remote: bool = False) -> List[str]:
-    """Fold the plan's driver tags into one archive tag; the output lines. ``PlanError`` on a refusal."""
+    """Fold the plan's driver tags into one archive tag; the output lines. ``PlanError`` on a refusal.
+
+    The ledger is reconciled first, so a committed entry without its ``-commit`` tag gets one and folds;
+    the tags it creates fold silently and its ``warn:`` lines close the output.
+    """
     stem = pk.stem_of(plan_file, plan)
     if fg.in_scenario_tree(repo):
         raise pd.PlanError(["plan.py archive does not run inside a strap scenario tree; nothing tagged or "
                             "deleted"])
+    created, warns = pk.reconcile(repo, plan_file, plan)
     tags = driver_tags(repo, stem)
     if not tags:
         raise pd.PlanError([f"plan {plan.plan_id} has no driver tags to archive"])
@@ -245,4 +258,4 @@ def archive(repo: Path, plan_file: Path, plan: pm.ActionPlan, remote: bool = Fal
         raise pd.PlanError(problems)
     folded = sorted(tags)
     _tag_and_delete(repo, stem, name, commit, folded)
-    return archive_lines(plan.plan_id, name, commit, folded, remote)
+    return archive_lines(plan.plan_id, name, commit, folded, remote, created) + warns

@@ -1,7 +1,8 @@
 """Plan 2021 TASK-2: ``plan.py archive`` folds a plan's driver tags into one archive tag (issue 284).
 
-``archive <id>`` folds every base, receipt and ledger-entry tag of the plan (``freeze``, ``lock``, ``arm``,
-``unlock``, ``reopen``, ``relink``) and builds a commit with git plumbing: its tree holds
+``archive <id>`` reconciles the ledger first, so a committed entry's ``-commit`` tag exists, then folds
+every base, receipt and ledger-entry tag of the plan (``freeze``, ``lock``, ``arm``, ``unlock``, ``reopen``,
+``relink``) and builds a commit with git plumbing: its tree holds
 ``receipts/<ITEM>[.n]`` (the tree each receipt tag names, a commit receipt's tree included) and
 ``freezes/r1.<k>`` (each freeze or lock tree tag), its parents are every distinct base, entry-commit and
 receipt commit, and its message maps each folded tag name to its object. It checks that the commit reaches
@@ -26,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _plan_driver_helpers as helpers  # noqa: E402
 from _plan_archive_helpers import driver_tags, finished, stem_tags  # noqa: E402
 from _plan_driver_helpers import Run  # noqa: E402
-from _plan_lock_helpers import STEM, commit_all, entries, prefixed, tag_target  # noqa: E402
+from _plan_lock_helpers import STEM, commit_all, entries, fill, prefixed, tag_target  # noqa: E402
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo
@@ -187,5 +188,69 @@ def test_archive_refuses_a_driver_tag_of_no_known_shape(driver, run: Run, projec
     code, _, err = run("archive", "1")
     assert code == 1, err
     assert problem_names(err) == {odd}, err
+    assert driver_tags(project) == before
+    assert git(project, "tag", "--list", "archive/*") == ""
+
+
+def test_archive_reconciles_first_so_the_freeze_commit_folds(driver, run: Run, project: Path) -> None:
+    """Freeze, commit and archive with no command between: the archive tags and folds the commit that added
+    the freeze entry, so the next ``check`` creates no ``-commit`` tag and the archive stays the only tag."""
+    fill(run, project)
+    sha = commit_all(project, "freeze plan 0001")
+    code, out, err = run("archive", "1", "--remote")
+    assert code == 0, err
+    commit = tag_target(project, ARCHIVE)
+    assert f"{ENTRY_COMMIT} {sha}" in git(project, "log", "-1", "--format=%B", commit)
+    assert sha in git(project, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+    assert f"deleted: {' '.join(sorted([BASE, ENTRY_COMMIT, TREE]))}" in out.splitlines(), out
+    assert prefixed(out, "remote: ") == [f"remote: git push origin --delete {BASE} {TREE}"], out
+    code, out, err = run("check", "1")
+    assert code == 0, err
+    assert not prefixed(out, "tag: ") and stem_tags(project) == [ARCHIVE], out
+
+
+def test_archive_keeps_two_receipts_of_one_item_apart(driver, run: Run, project: Path) -> None:
+    """A staged receipt and a commit receipt of TASK-1 folded together: the tree takes ``receipts/TASK-1``
+    and the commit receipt yields to its tag tail, ``receipts/TASK-1-commit``."""
+    before = finished(run, project)
+    code, _, err = run("record", "1", "TASK-1", "--staged")
+    assert code == 0, err
+    staged = driver_tags(project)[f"receipt/{STEM}/TASK-1-tree"]
+    code, _, err = run("archive", "1")
+    assert code == 0, err
+    commit = tag_target(project, ARCHIVE)
+    listed = git(project, "ls-tree", "--name-only", f"{commit}:receipts").splitlines()
+    assert sorted(listed) == ["TASK-1", "TASK-1-commit"], listed
+    assert git(project, "rev-parse", f"{commit}:receipts/TASK-1") == staged
+    tested = git(project, "rev-parse", f"{before[RECEIPT]}^{{tree}}")
+    assert git(project, "rev-parse", f"{commit}:receipts/TASK-1-commit") == tested
+
+
+def test_fold_refuses_when_a_receipt_name_and_tail_are_both_taken(driver, project: Path) -> None:
+    """``TASK-1-commit-tree`` takes ``receipts/TASK-1-commit`` and ``TASK-1-tree`` takes ``receipts/TASK-1``,
+    so the commit receipt ``TASK-1-commit`` has no free name: ``PlanError``, never an overwrite."""
+    from harness_lib import plan_archive as pa
+    from harness_lib import plan_doc as pd
+    head = git(project, "rev-parse", "HEAD")
+    tree = git(project, "rev-parse", "HEAD^{tree}")
+    tags = {f"receipt/{STEM}/TASK-1-commit-tree": tree, f"receipt/{STEM}/TASK-1-tree": tree,
+            f"receipt/{STEM}/TASK-1-commit": head}
+    with pytest.raises(pd.PlanError) as caught:
+        pa.fold_of(project, STEM, tags)
+    text = " ".join(caught.value.problems)
+    assert "receipts/TASK-1 " in text and "receipts/TASK-1-commit " in text, text
+
+
+def test_archive_refuses_inside_a_scenario_tree(driver, run: Run, project: Path, tmp_path: Path) -> None:
+    """A linked worktree carrying the scenario-tree marker shares the main checkout's tags: the archive
+    refuses there with nothing tagged or deleted."""
+    import harness_lib.freeze_git as fg
+    before = finished(run, project)
+    tree = tmp_path / "scenario"
+    git(project, "worktree", "add", "-q", "--detach", str(tree), "HEAD")
+    (tree / fg.SCENARIO_MARKER).write_text("", encoding="utf-8")
+    code, _, err = run("archive", "1", repo=tree)
+    assert code == 1, err
+    assert "does not run inside a strap scenario tree" in err, err
     assert driver_tags(project) == before
     assert git(project, "tag", "--list", "archive/*") == ""
