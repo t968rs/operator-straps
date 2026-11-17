@@ -90,7 +90,7 @@ def _validate(cfg: HarnessConfig, specs: Sequence[Any], pending: Sequence[int],
             reshape._preview_add(data, specs, pending, day, rng)
         else:
             add_items(data, specs, day, rng)
-    except RankingError as exc:
+    except (RankingError, ValueError) as exc:
         raise TodoSyncError(str(exc)) from exc
 
 
@@ -165,7 +165,7 @@ def put_updates(cfg: HarnessConfig, spec: Path) -> PutResult:
     _raw, data = load_catalog(cfg, "update")
     try:
         apply_updates(data, entries)
-    except RankingError as exc:
+    except (RankingError, ValueError) as exc:
         raise TodoSyncError(str(exc)) from exc
     return PutResult(_write_items(cfg, entries, "updates"))
 
@@ -223,12 +223,21 @@ class _Absorbed:
 
 def _holds_updates(path: Path) -> bool:
     """Whether the file at ``path`` is an object holding an ``updates`` key; the update reader then refuses
-    a malformed value with an update-spec reason. An unreadable file is not, so the add path reports it."""
+    a malformed value with an update-spec reason. An unreadable file is not, so the add path reports it.
+
+    Raises:
+        TodoSyncError: the object holds both ``updates`` and ``items``, which a drain refuses whole rather
+            than apply one list and drop the other.
+    """
     try:
         doc = json.loads(path.read_bytes().decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return False
-    return isinstance(doc, dict) and "updates" in doc
+    if not (isinstance(doc, dict) and "updates" in doc):
+        return False
+    if "items" in doc:
+        raise TodoSyncError("inbox file holds both items and updates; queue them separately")
+    return True
 
 
 def _absorb_updates(state: _Absorbed, path: Path) -> None:

@@ -3,137 +3,9 @@ write the runner pointer, start a catalog, list untracked GitHub issues, add, re
 catalog items, queue items and field updates in the inbox, hold the catalog lease, and switch a catalog to
 stable ids once.
 
-``check [--format summary|json|markdown] [--out PATH] [--rules S1,S2] [--fail-on error|warn]``
-    Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
-    ``<state_dir>/todo-sync/report.json``. ``summary`` prints one ``todo-sync drift=...`` line, ``json``
-    the report, ``markdown`` a findings table. Exit 0, or 1 when a finding reaches the ``--fail-on``
-    severity (``error``: any error; ``warn``: any warn or error). With ``todo.folder`` null the check is
-    inactive: one line, exit 0, nothing written. A ``--rules`` run marks each left-out rule ``not selected``
-    in ``rules_skipped``; the todo-watch mod ignores such a subset report instead of reading its drift as
-    the whole project's.
-``render [--date YYYY-MM-DD]``
-    Bring the one snapshot page ``<todo.snapshots.dir>/TODO_Snapshot.html`` up to date (T2 header line,
-    catalog summary, top-N table, the remaining items folded in a second table) and its ``todo_live.js``
-    stamp, which an open page polls to reload itself, and print the page's path. ``--date`` sets the render
-    date a rewritten page shows; a kept page keeps its own.
-``runner``
-    Write ``<state_dir>/todo-sync/runner.json`` (interpreter, this script, project, report) and print its
-    path.
-``retire ID [ID ...] [--dry-run] [--lease TOKEN]``
-    Remove finished items (``todo-k7qf`` or ``k7qf``, any case) from the catalog and record their ids in
-    ``retired_ids``, which no new id reuses. Ids are stable, so nothing is renumbered and no id is
-    rewritten: the kept items take ranks 1..n in order, items that lose their only unblocked item are
-    rescored, the counts recomputed, and only the catalog is written. Prints the follow-up the catalog
-    cannot record by itself: resolved issues to list as close candidates, trackers to revisit, research
-    catalog and stub lines naming a retired id (``dangling:``), and other files naming a retired id
-    (``reference (not rewritten):``; the snapshots and the history folders, ``artifacts.plans``,
-    ``reviews``, ``commit_messages``, ``summaries``, ``scratch`` and each planning prefix, are skipped, and so
-    are the TODO inbox (``<scratch_folder>/todo-inbox``) and ``state_dir``).
-    ``--dry-run`` prints the same report and writes nothing.
-``split ID --spec PATH [--dry-run] [--lease TOKEN]``
-    Replace one item with the parts in the spec file (``{"parts": [{...}, {...}]}``, each a set of field
-    overrides laid over a copy of the item; ``title`` required, ``id`` / ``rank`` / ``priority`` refused).
-    Every part gets a new id drawn past every live and retired id; the original id joins ``retired_ids``
-    and ``split_ids`` records its parts in spec order. Parts inherit the item's links, tracker and close
-    candidates; then rescore, re-rank and recount. No id is rewritten: research catalog and stub lines
-    naming the split id are listed as ``dangling:`` with its parts, and other files naming it as
-    ``reference (not rewritten):``, for a person to point at the right part. A dry run draws its own ids;
-    the real run draws again.
-``refresh [--dry-run] [--lease TOKEN]``
-    Rescore every item from ``ranking_method``, re-sort and set each rank to its position, after hand edits
-    to item fields. Ids never change and only the catalog is written. A catalog already in order is left
-    untouched.
-``init [--lease TOKEN]``
-    Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
-    commit in ``generated_from``) and the snapshot page with its ``todo_live.js`` stamp beside it (both
-    skipped when ``todo.snapshots.dir`` is null). Prints a ``created <path>`` line for the catalog and one for
-    the page; the stamp is written alongside the page and not listed. Refuses, exit 2 and nothing written,
-    when the catalog already exists; needs ``todo.folder`` and a git commit. A snapshot that fails after
-    the catalog is written names the catalog and ``render`` as the way on.
-``untracked``
-    List the open GitHub issues (``gh issue list``; ``todo.gh.repo``, else the repository ``gh`` resolves for
-    the checkout) that no catalog record covers: no item that resolves it (``gh_issues`` or a ``gh_issue``
-    source; ``related_gh_issues`` does not count), tracker, child, close candidate or research entry. Prints
-    one ``#N title`` line
-    per issue and writes the rows (issue text, comments and the text of linked PR reviews) to
-    ``<state_dir>/todo-sync/untracked.json``. Prints ``untracked: none`` and writes nothing when every open
-    issue is recorded. Refuses, exit 2, when ``gh`` fails, returns no JSON list, or the listing reaches the
-    issue limit (the result may be cut off), or the catalog still holds ``TODO-NNN`` ids (naming
-    ``migrate-ids``).
-``add (--spec PATH | --inbox) [--dry-run] [--file-issue] [--lease TOKEN]``
-    Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each holds the fields a person
-    judges, never ``id``, ``rank`` or ``priority``, and names its ``issue`` and ``url`` or neither). The
-    script draws each item a new stable id past every live and retired id, builds the source
-    (``gh_issue``, or for an entry with neither a local-only ``note`` dated today), scores the item,
-    re-sorts and recounts; no other id changes and only the catalog is written. A dry run draws its own
-    ids; the real run draws again. An issue the catalog already records is refused. ``--file-issue`` files
-    a GitHub issue (``gh issue create``, in ``todo.gh.repo`` when set) for each entry that names none, after
-    the whole spec passes a dry run, and records it as the ``gh_issue`` source; a failure after filing
-    names the issues filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
-    ``would file N issue(s)``. ``--inbox`` replaces ``--spec`` (one of the two is required): every queued
-    inbox file is added in one catalog write, oldest first; accepted files are deleted, a refused one is
-    renamed ``<name>.rejected.json`` beside a ``<name>.reason.txt``. Queued updates are applied with the
-    queued items in name order, then the catalog is re-ranked; a later queued update of a field an earlier
-    one set wins and the line names it. When anything landed, the snapshot is rendered and the check run.
-    Prints one
-    ``inbox: [added N item(s): ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>,
-    ...; ][rejected K (<files>); ]check drift=D`` line when anything landed, ``inbox: rejected K (<files>)``
-    when every queued file was refused, or ``inbox: empty`` without taking the lock when no file is queued
-    (an added item reads ``<id> (#N|note)``). ``--inbox`` refuses ``--dry-run`` and ``--file-issue``
-    (``inbox put`` files issues).
-``inbox put --spec PATH [--file-issue | --update]``
-    Queue the items of an ``add`` spec in the inbox (``<scratch_folder>/todo-inbox/``), one file per item,
-    after a dry run of the whole spec against the catalog; the catalog is never written and no lock is
-    taken. ``--file-issue`` files an issue for each entry that names none first, as ``add`` does. Prints one
-    ``queued <repo-relative path>`` line per file and one ``filed #N <url>`` line per issue filed.
-    ``--update`` queues field updates of existing items instead: the spec is
-    ``{"updates": [{"id": ..., "fields": {...}}]}``, each field one an ``add`` spec may carry other than
-    ``issue`` and ``url``, each id a live item (a retired or split id is refused), and one spec sets a field
-    of an item once. The whole spec is checked against the catalog first, then one inbox file is written per
-    update. ``--update`` takes no ``--file-issue`` (an update files no issue).
-``lease acquire --owner TEXT [--wait SECONDS]``
-    Take the catalog lease for a run of several commands and print ``lease: <token>``. Until it is released
-    every catalog write without ``--lease <token>`` (the todo-watch mod's drain included) waits, then refuses
-    naming the holder. A lease turns stale after 30 minutes. ``--wait`` sets how long a held lease or write
-    lock is waited on before the refusal (default 10 seconds; a todo-editor split passes 300).
-``lease release TOKEN``
-    Recount the catalog (no rescore or rerank; written only when the counts change), render the snapshot
-    (when ``todo.snapshots.dir`` is set), run the check, write its report and free the lease; prints
-    ``lease released; counts updated|unchanged``, ``rendered <path>`` and ``check drift=D``. A wrong token
-    or no lease refuses and frees nothing; a recount, render or check failure still frees the lease and
-    exits 2.
-``lease break``
-    Remove whatever lock or lease the catalog holds, the manual override for a crashed holder. Prints the
-    removed holder's owner, mode and age, or ``lease: none held``.
-``migrate-ids [--dry-run] [--exclude PATH]... [--lease TOKEN]``
-    Switch a catalog from rank-tied ``TODO-NNN`` ids to stable ``todo-xxxx`` ids, once. Each item draws an
-    id seeded from its old id and title, so a dry run and its real run (and two checkouts of one catalog)
-    agree; the ``old -> new`` map is stored in the catalog's ``legacy_ids``. Every live file naming an old
-    id is rewritten through the map: the research catalog, the stubs and each tracked or untracked text
-    file ``git grep`` finds, source and tests included, minus the catalog schema, the history folders
-    ``retire`` skips and each ``--exclude`` (repeatable; absolute or relative to the working directory, and
-    refused unless it lies below the project root; matched by path component: ``vendor`` skips
-    ``vendor/x.md``, never ``vendored.md``). The project's
-    ``todo.catalog_schema``, when set, must accept the migrated catalog: a real run refuses before any
-    write, a dry run reports it as ``schema:``. A rerun on a migrated catalog rewrites the remaining live
-    references through the stored map and adds new legacy ids to it; a legacy id the map already holds is
-    refused. ``--dry-run`` prints the new ids and the files it would rewrite and writes nothing. A real run
-    holds the catalog lease for its whole run (its ``git grep`` and rewrites can outlast a write lock) and
-    frees it afterwards, without the ``lease release`` recount; with ``--lease TOKEN`` it runs under that
-    held lease instead and leaves it held.
-
-Every catalog write (``init``, ``add``, ``retire``, ``split``, ``refresh``; not a dry run) holds the catalog
-lock, ``<state_dir>/locks/<catalog path with '/' as '__'>.lock``: the write lock for one command, or with
-``--lease TOKEN`` the lease that token names (a wrong token refuses at once). A lock another owner holds is
-waited on for 10 seconds (``lease acquire --wait SECONDS`` waits that long instead), then refused naming
-its owner, mode and age. ``check``, ``render``, ``runner``, ``untracked``, ``inbox put`` and every dry run
-take no lock.
-
-``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
-``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any
-refused operation (render, init, add, retire, split, refresh, migrate-ids, inbox put, lease, a lock held by
-another owner, a failed ``gh`` call) exits 2 with one ``problem:`` line on stderr. A catalog still holding
-``TODO-NNN`` ids refuses untracked, add, retire, split and refresh, naming ``migrate-ids``.
+Every command, option and exit code, the catalog lock and which skill, agent, mod or person runs each
+command are documented in ``todo_sync.md`` beside this script; a test checks that document against
+the parser.
 """
 from __future__ import annotations
 
@@ -211,7 +83,8 @@ def _parser() -> argparse.ArgumentParser:
     chk.add_argument("--rules", help="Comma-separated rule ids to run (default: all).")
     chk.add_argument("--fail-on", choices=FAIL_LEVELS,
                      help="Exit 1 when a finding reaches this severity (warn: any warn or error).")
-    rnd = sub.add_parser("render", parents=[common], help="Rewrite the snapshot page and its stamp.")
+    rnd = sub.add_parser("render", parents=[common],
+                         help="Bring the snapshot page and its stamp up to date (an unchanged page is kept).")
     rnd.add_argument("--date", type=dt.date.fromisoformat,
                      help="Render date of a rewritten page (default: today); a kept page keeps its own.")
     sub.add_parser("runner", parents=[common], help="Write the runner pointer.")

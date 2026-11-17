@@ -21,8 +21,8 @@ argument raises `SystemExit(2)` from argparse instead of returning.
 | Code | Meaning |
 |---|---|
 | 0 | The command ran. |
-| 1 | `check --fail-on`: a finding reached the given severity. An unexpected error also exits 1, with a traceback on stderr. |
-| 2 | Refused: a configuration error, an unknown rule id, a refused operation, a lock held by another owner or a failed `gh` call. One `problem: <reason>` line goes to stderr. A bad argument also exits 2, with argparse's usage message. |
+| 1 | `check --fail-on`: a finding reached the given severity. Any other unexpected error also exits 1, with a traceback on stderr. |
+| 2 | Refused: a configuration error, an unknown rule id, a refused operation, a lock held by another owner, a failed `gh` call, or a file read or write failure (`OSError`). One `problem: <reason>` line goes to stderr. A bad argument also exits 2, with argparse's usage message. |
 
 ## Global options
 

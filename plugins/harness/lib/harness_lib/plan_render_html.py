@@ -1,7 +1,9 @@
 """The HTML PIP of a receipts plan: one self-contained page that redraws itself from a ``live.js`` sidecar.
 
 The page carries the frozen plan (header, status, decisions, values, formats, sweeps, items) as escaped
-HTML with inline CSS and JS and no network address, so it opens from disk. The CSS and the loader script
+HTML with inline CSS and JS, so it opens from disk: it loads nothing from the network (no ``<link>``,
+``@import``, ``url()`` or remote script), and its one https address is a link target, the brand in the
+upper-right corner. The CSS and the loader script
 are asset files under ``PAGES`` (``pages/styles/shared.css``, ``pages/styles/plan.css``,
 ``pages/components/plan.js`` in the plugin root), read when a page renders: the CSS and the theme toggle
 (``pages/components/theme.js``, in ``<head>``) are always inlined, the loader script only on a plan frozen
@@ -30,12 +32,10 @@ from harness_lib.plan_doc import pip_html_path, pip_path
 from harness_lib.plan_enums import ItemStatus, OutcomeKind, RecordScheme
 from harness_lib.plan_models import (ActionItem, ActionPlan, Blocked, Closed, Completed, Decision,
                                      DecisionOption, Started)
-from harness_lib.page_chrome import corner, theme_script
+from harness_lib.page_chrome import PAGES, corner, theme_script
 from harness_lib.plan_render import _NAME, _expand_base, render_pip
-from harness_lib.project import plugin_root
 
 RELOAD_MS = 3000
-PAGES = plugin_root() / "pages"
 _PENDING = ItemStatus.PENDING.value
 # Outcome kind -> the item status it implies, read from the outcome models so the page cannot drift.
 _KIND_STATUS: Dict[str, str] = {

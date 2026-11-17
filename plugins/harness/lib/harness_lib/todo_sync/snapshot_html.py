@@ -13,7 +13,8 @@ share the columns (Rank, Id, Item, Status, Kind, Blast, LoE, Score, GH): the Id 
 copying, and the Item cell links the item's stubs after its title and folds its prose into a
 ``<details>``. The CSS (``pages/styles/shared.css``, ``pages/styles/todo.css``), the theme toggle
 (``pages/components/theme.js``) and the loader (``pages/components/todo.js``) are read from the plugin root
-and inlined, so the page opens from disk with no network address.
+and inlined, so the page loads no network address: no ``<link>``, ``@import``, ``url()`` or remote script. Its
+only https addresses are link targets (the brand and the usage document).
 
 The page carries a stamp, the sha256 of the page rendered with an empty stamp, and ``todo_live.js`` sets
 ``window.TODO_LIVE`` to that stamp and the render date. The loader re-adds the sidecar every ``RELOAD_MS``
@@ -30,18 +31,16 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from harness_lib.page_chrome import HOME, corner, theme_script
-from harness_lib.project import plugin_root
+from harness_lib.page_chrome import HOME, PAGES, corner, theme_script
 
 PAGE_NAME = "TODO_Snapshot.html"
 LIVE_NAME = "todo_live.js"
 LIVE_HEAD = "window.TODO_LIVE = "
 RELOAD_MS = 3000
-PAGES = plugin_root() / "pages"
 #: The GitHub copy of the driver's usage document; a link into the installed plugin would not resolve from a
 #: consuming project's page.
 USAGE = f"{HOME}/blob/main/plugins/harness/scripts/todo_sync.md"
-COLUMNS = ("Rank", "Id","Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
+COLUMNS = ("Rank", "Id", "Item", "Status", "Kind", "Blast", "LoE", "Score", "GH")
 _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
 _CONFIG = re.compile(r"<script>\nvar TODO_PAGE = (\{.*?\});")
 _STAMP = re.compile(r"[0-9a-f]{64}")

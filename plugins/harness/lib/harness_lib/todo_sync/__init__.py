@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from harness_lib.config import HarnessConfig
-from harness_lib.project import main_worktree, plugin_root
+from harness_lib.project import main_worktree, plugin_root, run_git
 from harness_lib.todo_sync.errors import TodoSyncError
 from harness_lib.todo_sync import rules_plans as rp
 from harness_lib.todo_sync import rules_research as rr
@@ -154,11 +155,28 @@ def runner_path(cfg: HarnessConfig) -> Path:
 
 
 def repo_name(cfg: HarnessConfig) -> str:
-    """The name part of ``todo.gh.repo`` (``owner/name``), else the main checkout's folder name."""
+    """The name part of ``todo.gh.repo`` (``owner/name``), else the name in the ``origin`` remote URL, else
+    the main checkout's folder name.
+
+    The remote comes before the folder because every clone shares it, while the folder name is set per
+    machine: a tracked page drawn from the folder name would differ between clones in differently named
+    folders, and each render on the other machine would rewrite it.
+    """
     repo = cfg.todo.gh_repo
     if isinstance(repo, str) and repo.strip("/"):
         return repo.strip("/").rsplit("/", 1)[-1]
-    return main_worktree(cfg.project_root).name
+    return _origin_name(cfg.project_root) or main_worktree(cfg.project_root).name
+
+
+def _origin_name(root: Path) -> Optional[str]:
+    """The last path part of the ``origin`` remote URL, any ``.git`` dropped; None without a usable one."""
+    try:
+        done = run_git(["git", "-C", str(root), "remote", "get-url", "origin"])
+    except OSError:
+        return None
+    url = done.stdout.strip().rstrip("/\\") if done.returncode == 0 else ""
+    name = re.split(r"[/:\\]", url)[-1]
+    return name.removesuffix(".git") or None
 
 
 def render_record_path(cfg: HarnessConfig) -> Path:
