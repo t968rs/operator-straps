@@ -1,4 +1,4 @@
-"""``plan.py archive``: fold a plan's driver tags into one ``archive/<stem>/r1`` tag (plan 1021, issue 284).
+"""``plan.py archive``: fold a plan's driver tags into one ``archive/<stem>/r1`` tag (plan 2021, issue 284).
 
 A plan's driver tags are the tags under ``<kind>/<stem>/`` whose first segment is ``base``, ``receipt`` or a
 ``freeze_ledger.EntryKind`` value (``freeze``, ``lock``, ``unlock``, ``arm``, ``reopen``, ``relink``);

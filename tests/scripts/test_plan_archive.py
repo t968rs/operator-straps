@@ -1,4 +1,4 @@
-"""Plan 1021 TASK-2: ``plan.py archive`` folds a plan's driver tags into one archive tag (issue 284).
+"""Plan 2021 TASK-2: ``plan.py archive`` folds a plan's driver tags into one archive tag (issue 284).
 
 ``archive <id>`` folds every base, receipt and ledger-entry tag of the plan (``freeze``, ``lock``, ``arm``,
 ``unlock``, ``reopen``, ``relink``) and builds a commit with git plumbing: its tree holds
