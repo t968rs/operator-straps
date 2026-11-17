@@ -152,6 +152,13 @@ def test_the_render_info_puts_writers_and_non_writers_on_their_own_lines() -> No
     assert len(keeps) == 1 and "add --spec" in keeps[0] and "migrate-ids" in keeps[0]
 
 
+def test_the_render_info_links_the_script_usage_from_its_name() -> None:
+    block = re.search(r'<section id="render-info">(.*?)</section>', _page(_items()), re.S).group(1)
+    link = f'<a href="{sh.USAGE}"><code>todo_sync.py</code></a>'
+    assert block.count(link) == 1
+    assert f"<p class=\"note\">Rewritten by {link} " in block
+
+
 def test_title_and_heading_open_with_the_repo_name() -> None:
     text = _page(_items(), repo="widgets")
     assert f"<title>widgets | TODO Snapshot ({DAY})</title>" in text
