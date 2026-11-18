@@ -1,0 +1,39 @@
+{
+  "plan_id": "2025",
+  "feature": "banner refs",
+  "branch_lineage": "main-->1168-todo-banner",
+  "primary_documents": {
+    "plan": "docs/plans/2025_banner_refs_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-17-working-refs-banner-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "main session (developer request 2026-11-18)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1",
+        "TASK-8"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "value 'plan 2025 refs'; context.tags",
+        "indicated": "refs held in context.tags until the refs field exists"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "field arrived with TASK-1",
+        "why_free_form": "plan_api.write refuses an unknown top-level key, so plan 2025 could not carry refs before TASK-1 added PlanRefs; TASK-8's live check needs them."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "refs {todo_ids: ['todo-k69m'], issues: [301, 315]} written with plan_api.write after TASK-1 was recorded; freeze r1.2"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "The banner reads plan refs from the typed field; the refreeze was scheduled in the plan's values before the first freeze."
+      },
+      "date": "2026-11-18"
+    }
+  ]
+}

@@ -5,6 +5,15 @@
   "documentation": "docs/plans/2025_banner_refs_PIP.html",
   "branch": "1168-todo-banner",
   "base_branch": "main",
+  "refs": {
+    "todo_ids": [
+      "todo-k69m"
+    ],
+    "issues": [
+      301,
+      315
+    ]
+  },
   "execution_model": "serial",
   "context": {
     "tags": [
