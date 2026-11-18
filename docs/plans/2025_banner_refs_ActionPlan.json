@@ -5,6 +5,15 @@
   "documentation": "docs/plans/2025_banner_refs_PIP.html",
   "branch": "1168-todo-banner",
   "base_branch": "main",
+  "refs": {
+    "todo_ids": [
+      "todo-k69m"
+    ],
+    "issues": [
+      301,
+      315
+    ]
+  },
   "execution_model": "serial",
   "context": {
     "tags": [
@@ -145,11 +154,12 @@
     {
       "id": "TASK-3",
       "title": "/harness:working, the per-branch override",
-      "action": "Copy the planned test file docs/plans/2025/tests/tests/skills/test_working_script.py to tests/skills/test_working_script.py first. New skill plugins/harness/skills/working/: SKILL.md (frontmatter name `working`, argument-hint '<todo-id|#issue>... | --clear | --list'; the add-bookmark SKILL.md shape: the first word picks set, clear or list; the reply is the script output verbatim) and commands/working.py (add_note.py's shape: sys.path lib insert, argparse with --repo and subcommands set TOKENS..., clear, list; main returns 0 or 1 and prints 'working: <reason>' to stderr). The store is cfg.path(cfg.state_dir) / OVERRIDES_REL. The branch is `git rev-parse --abbrev-ref HEAD`; 'HEAD' (detached) keys as DETACHED. `set` fills issues from the TODO catalog as plan.py new does and prints '<branch>: <format_refs>'; `clear` prints 'cleared <branch>' or 'no override for <branch>'; `list` prints one '<branch>: <format_refs>' line per branch or 'no overrides'. Add the skill to the README skill tables and the harness CHANGELOG-style lists the README keeps.",
+      "action": "Copy the planned test file docs/plans/2025/tests/tests/skills/test_working_script.py to tests/skills/test_working_script.py first. New skill plugins/harness/skills/working/: SKILL.md (frontmatter name `working`, argument-hint '-- <todo-id|#issue>... | --clear | --list' (the add-bookmark hint shape, which the guidance-tail contract requires), a body that cites `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md` for the split rule and no fenced command carrying $ARGUMENTS; the add-bookmark SKILL.md shape: the first word picks set, clear or list; the reply is the script output verbatim; 'working' joins _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py) and commands/working.py (add_note.py's shape: sys.path lib insert, argparse with --repo and subcommands set TOKENS..., clear, list; main returns 0 or 1 and prints 'working: <reason>' to stderr). The store is cfg.path(cfg.state_dir) / OVERRIDES_REL. The branch is `git rev-parse --abbrev-ref HEAD`; 'HEAD' (detached) keys as DETACHED. `set` fills issues from the TODO catalog as plan.py new does and prints '<branch>: <format_refs>'; `clear` prints 'cleared <branch>' or 'no override for <branch>'; `list` prints one '<branch>: <format_refs>' line per branch or 'no overrides'. Add the skill to the README skill tables and the harness CHANGELOG-style lists the README keeps.",
       "files": [
         "plugins/harness/skills/working/SKILL.md",
         "plugins/harness/skills/working/commands/working.py",
-        "README.md"
+        "README.md",
+        "tests/skills/test_skill_guidance_tail_contract.py"
       ],
       "dependencies": [
         "TASK-1"
@@ -161,9 +171,23 @@
         {
           "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:21",
           "expect": "NOTES_REL = \"session-bookmark/notes.json\""
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/SKILL.md:4",
+          "expect": "argument-hint: \"-- <note text> | --list | --clear\""
+        },
+        {
+          "at": "tests/skills/test_skill_guidance_tail_contract.py:25-29",
+          "expect": "\"a-w\", \"add-bookmark\", \"add-todo\""
         }
       ],
-      "commands": [],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q",
+          "expect": "passed",
+          "writes": []
+        }
+      ],
       "tests": [
         {
           "node": "tests/skills/test_working_script.py::test_set_writes_the_override_for_the_current_branch",
@@ -194,13 +218,12 @@
     {
       "id": "TASK-4",
       "title": "working-refs mod: scaffold and pure modules",
-      "action": "Copy the planned test file docs/plans/2025/tests/tests/mods/test_working_refs_contract.py to tests/mods/test_working_refs_contract.py first. New mod plugins/working-refs/ (the band-line layout): .claude-plugin/plugin.json (name working-refs, version 0.1.0, dependencies ['git-status'], types ./types/index.d.ts), .claude-plugin/icon.png (copy band-line's; tests/contract/test_plugin_icons.py), .gitignore (.claude-plugin/types/), tsconfig.json, hooks/hooks.json ({modules: ['./register.ts']}). Pure modules, no `$`: hooks/mirror.ts exports OVERRIDES_PATH, LINE_PATH, STORE_VERSION, DETACHED_KEY, DEFAULT_STATE_DIR, DEFAULT_PLANS, PLAN_SUFFIX, PIP_HTML_SUFFIX as `export const NAME = '...'` literals (the contract test reads them; notes.ts and todo-watch config.ts patterns); hooks/config.ts reads state_dir and artifacts.plans from a harness.json text over the mirror defaults (todo-watch readConfig pattern); hooks/plans.ts parses an ActionPlan text into {id, branch, baseBranch, baseCommit, refs, page} (page = the sibling PIP_HTML_SUFFIX file; a plan whose documentation is not that page is skipped, spec Builder's calls) and qualifies(plan, branch, mergeBaseOf, archivedIds): branch match, or baseCommit equal to the merge base of its baseBranch, and no archived id (D2, D3); hooks/overrides.ts parses overrides.json (version check, branches map; malformed reads as none); hooks/line.ts builds {plans, todoIds, issues} for a branch (the override's refs replace the union of the qualifying plans' refs; plan links are never overridden) and renders it: plain text 'plan 2025 · todo-k69m (301)' or 'plans 2024, 2025 · ...' and the ccstatusline form with each plan number an OSC 8 link to the page's file:/// URL (D8); empty when nothing qualifies and no override is set. types/index.d.ts declares the state atom `working-refs.line` ({branch, plans: [{id, page}], todoIds, issues} | null). Unit tests beside each module (*.test.ts, band-line test conventions).",
+      "action": "Copy the planned test file docs/plans/2025/tests/tests/mods/test_working_refs_contract.py to tests/mods/test_working_refs_contract.py first. New mod plugins/working-refs/ (the band-line layout): .claude-plugin/plugin.json (name working-refs, version 0.1.0, dependencies ['git-status'], types ./types/index.d.ts), .claude-plugin/icon.png (copy band-line's; tests/contract/test_plugin_icons.py), .gitignore (.claude-plugin/types/), tsconfig.json. hooks/hooks.json waits for TASK-5, which writes register.ts. Pure modules, no `$`: hooks/mirror.ts exports OVERRIDES_PATH, LINE_PATH, DETACHED_KEY, DEFAULT_STATE_DIR, DEFAULT_PLANS, PLAN_SUFFIX, PIP_HTML_SUFFIX, BRANCHES_KEY ('branches'), TODO_IDS_KEY ('todo_ids') and ISSUES_KEY ('issues') as `export const NAME = '...'` string literals and STORE_VERSION as the number literal `export const STORE_VERSION = 1` (the contract test reads them with ts_string and ts_number; notes.ts and todo-watch config.ts patterns); overrides.ts and plans.ts read the JSON through those key constants, never a spelled-out key. hooks/config.ts reads state_dir and artifacts.plans from a harness.json text over the mirror defaults (todo-watch readConfig pattern); hooks/plans.ts parses an ActionPlan text into {id, branch, baseBranch, baseCommit, refs, page} (page = the sibling PIP_HTML_SUFFIX file; a plan whose documentation is not that page is skipped, spec Builder's calls) and qualifies(plan, branch, mergeBaseOf, archivedIds): branch match, or baseCommit equal to mergeBaseOf(baseBranch), the merge base the caller resolves by D9, and no archived id (D2, D3); hooks/overrides.ts parses overrides.json (version check against the number STORE_VERSION, branches map; malformed reads as none); hooks/line.ts builds {plans, todoIds, issues} for a branch (the override's refs replace the union of the qualifying plans' refs; plan links are never overridden) and renders it: plain text 'plan 2025 · todo-k69m (301)' or 'plans 2024, 2025 · ...' and the ccstatusline form with each plan number an OSC 8 link to the page's file:/// URL (D8); empty when nothing qualifies and no override is set. types/index.d.ts declares the state atom `working-refs.line` ({branch, plans: [{id, page}], todoIds, issues, text} | null, where text is the plain form, so band-line draws it without a second copy of the format). Unit tests beside each module (*.test.ts, band-line test conventions).",
       "files": [
         "plugins/working-refs/.claude-plugin/plugin.json",
         "plugins/working-refs/.claude-plugin/icon.png",
         "plugins/working-refs/.gitignore",
         "plugins/working-refs/tsconfig.json",
-        "plugins/working-refs/hooks/hooks.json",
         "plugins/working-refs/hooks/mirror.ts",
         "plugins/working-refs/hooks/config.ts",
         "plugins/working-refs/hooks/plans.ts",
@@ -225,6 +248,10 @@
         {
           "at": "plugins/band-line/hooks/band.tsx:12",
           "expect": "const gitAtom = atom({ plugin: 'git-status', key: 'git' } as const, null)"
+        },
+        {
+          "at": "tests/mods/_mods_helpers.py:29-31",
+          "expect": "def ts_number(source: str, name: str) -> float:"
         }
       ],
       "commands": [
@@ -237,11 +264,15 @@
       "tests": [
         {
           "node": "tests/mods/test_working_refs_contract.py::test_store_paths_match",
-          "red": "ImportError"
+          "red": "AssertionError"
         },
         {
           "node": "tests/mods/test_working_refs_contract.py::test_store_version_and_detached_key_match",
-          "red": "ImportError"
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_working_refs_contract.py::test_override_and_refs_field_names_match",
+          "red": "AssertionError"
         },
         {
           "node": "tests/mods/test_working_refs_contract.py::test_defaults_equal_defaults_json",
@@ -256,13 +287,15 @@
     {
       "id": "TASK-5",
       "title": "working-refs mod: hooks, scans and the line file",
-      "action": "plugins/working-refs/hooks/register.ts and hooks/watch.ts. Resolve the project root and harness.json as todo-watch watch.ts does (session cwd, then CLAUDE_PROJECT_DIR). The branch comes from git-status's `git` atom. A scan lists the plans folder, reads every *_ActionPlan.json that has a sibling page, runs `git merge-base HEAD <base_branch>` once per distinct base branch and `git for-each-ref --format=%(refname:short) refs/tags/archive/plan/` once (archived ids from the tag names), applies qualifies, reads overrides.json, builds the line and stores it in the `line` atom only when it changed. Triggers: session.start; a branch change in git-status's snapshot; prompt.submit runs `git rev-parse HEAD` and the tag listing and rescans when HEAD or the archived set moved (spec Builder's calls: rebases); a newer mtime of the plans folder or of overrides.json (todo-watch checks.ts mtimeOf pattern) after a Write, Edit or Bash tool call and on prompt.submit. Every git call through $.process.run with a timeout, never throwing (git-status status.ts:155 pattern). After each change write the ccstatusline form to <state_dir>/working-refs/line.txt ($.fs.write; an empty file when nothing shows), per checkout (cfg.path, never main_worktree). README.md (hooks table, state, files, Checks, Loading). Register the mod: .claude-plugin/marketplace.json entry after band-line; CLAUDE.md 'nine TypeScript mods' naming `working-refs` (S1); the root README mod tables and install lines. Tests: hooks/watch.test.ts with a world that answers git, fs and state (todo-watch testWorld.ts pattern): a plan on the branch shows; a sibling plan by merge base shows; an archived plan drops on the next prompt; a rebase that moves the merge base rescans; an override replaces the refs; line.txt is written.",
+      "action": "plugins/working-refs/hooks/hooks.json ({modules: ['./register.ts']}), hooks/register.ts and hooks/watch.ts. Resolve the project root and harness.json as todo-watch watch.ts does (session cwd, then CLAUDE_PROJECT_DIR). The branch comes from git-status's `git` atom. A scan lists the plans folder, reads every *_ActionPlan.json that has a sibling page, resolves the merge base once per distinct base branch by D9 (no fetch: `git rev-parse --verify --quiet origin/<base>^{commit}`; when it exists, `git merge-base --is-ancestor origin/<base> <base>` picks the local branch on exit 0, else origin/<base>; then `git merge-base <tip> HEAD`; a failed call means no merge-base match for that base) and runs `git for-each-ref --format=%(refname:short) refs/tags/archive/plan/` once (archived ids from the tag names), applies qualifies, reads overrides.json, builds the line and stores it in the `line` atom when it changed. Triggers: session.start; a branch change in git-status's snapshot; prompt.submit runs `git rev-parse HEAD` and the tag listing and rescans when HEAD or the archived set moved (spec Builder's calls: rebases); after a Write, Edit or Bash tool call and on prompt.submit, a changed signature of the plans folder (the name and mtime of each *_ActionPlan.json and *_PIP.html, so a plan rewritten in place counts, which the folder's own mtime misses) or a newer mtime of overrides.json (todo-watch checks.ts mtimeOf pattern). Every git call through $.process.run with a timeout, never throwing (git-status status.ts:155 pattern). line.txt holds the ccstatusline form at <state_dir>/working-refs/line.txt, per checkout (cfg.path, never main_worktree): after every scan compare the rendered text with the file's contents (not with the atom, which starts null in each session) and rewrite on any difference, so the session.start scan empties a line another branch or an earlier session left (spec anti-goal). README.md (hooks table, state, files, Checks, Loading). Register the mod: .claude-plugin/marketplace.json entry after band-line; .github/workflows/ci.yml appends plugins/working-refs to the `claude plugin test` loop (line 128), so the mod's tests run in CI; CLAUDE.md 'nine TypeScript mods' naming `working-refs` (S1), and its new-config-key rule names working-refs' hooks/mirror.ts with tests/mods/test_working_refs_contract.py beside session-bookmark's notes.ts; the root README mod tables and install lines. Tests: hooks/watch.test.ts with a world that answers git, fs and state (todo-watch testWorld.ts pattern): a plan on the branch shows; a sibling plan by merge base shows; a lagging local main resolves against origin/main; an archived plan drops on the next prompt; a rebase that moves the merge base rescans; a plan rewritten in place updates the line; an override replaces the refs; line.txt is written, and a stale non-empty line.txt is emptied by the session.start scan when nothing qualifies.",
       "files": [
+        "plugins/working-refs/hooks/hooks.json",
         "plugins/working-refs/hooks/register.ts",
         "plugins/working-refs/hooks/watch.ts",
         "plugins/working-refs/hooks/watch.test.ts",
         "plugins/working-refs/README.md",
         ".claude-plugin/marketplace.json",
+        ".github/workflows/ci.yml",
         "CLAUDE.md",
         "README.md"
       ],
@@ -284,6 +317,14 @@
         {
           "at": ".claude-plugin/marketplace.json:39",
           "expect": "\"name\": \"band-line\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/branch_capture.py:76-87",
+          "expect": "return git_out(repo, \"merge-base\", base if local_ahead else remote, \"HEAD\").strip()"
+        },
+        {
+          "at": ".github/workflows/ci.yml:128",
+          "expect": "plugins/bubble-stamp plugins/parallel2-lanes; do claude plugin test \"$p\"; done"
         }
       ],
       "commands": [
@@ -308,7 +349,7 @@
     {
       "id": "TASK-6",
       "title": "band-line: the working line as a second line",
-      "action": "plugins/band-line/hooks/band.tsx reads the `working-refs` `line` atom (declared locally in band-line's types/index.d.ts, since working-refs is not a dependency) beside gitAtom and, when it holds plans or refs, draws a second <Text color='subtle'> under the banner text with the plain form of the line (line.ts's format copied or reimplemented from the atom fields: 'plan 2025 · todo-k69m (301)'); formatBanner is untouched. Without the mod the atom holds null and nothing extra draws. band.test.tsx: the world answers the working-refs atom; a set atom draws the second line, a null one does not, another band still stays under it. README: the second line and its source. plugin.json 0.1.1 -> 0.2.0.",
+      "action": "plugins/band-line/hooks/band.tsx adds `const refsAtom = atom({ plugin: 'working-refs', key: 'line' } as const, null)` beside gitAtom (D11; the key declared in band-line's own types/index.d.ts PluginState, since working-refs is not a dependency: value 'cross-mod state read') and, when it holds a value with a non-empty text, draws a second <Text color='subtle'> under the banner text with that text verbatim; formatBanner is untouched and the format is not copied. Without the mod the atom holds null and nothing extra draws. band.test.tsx: the world answers the working-refs atom; a set atom draws the second line; a world where working-refs never sets the key draws the banner exactly as before; another band still stays under it. README: the second line, its source and that working-refs is optional. plugin.json 0.1.1 -> 0.2.0.",
       "files": [
         "plugins/band-line/hooks/band.tsx",
         "plugins/band-line/hooks/band.test.tsx",
@@ -345,7 +386,7 @@
     {
       "id": "TASK-7",
       "title": "setup-statusline: the working-refs widget, project level",
-      "action": "Copy the planned test file docs/plans/2025/tests/tests/skills/test_setup_statusline_contract.py to tests/skills/test_setup_statusline_contract.py first. ccstatusline.defaults.json gains a third line holding one custom-command widget (new uuid id, commandPath `node -e \"try{process.stdout.write(require('fs').readFileSync('.claude/state/harness/working-refs/line.txt','utf8'))}catch(e){}\"`, preserveColors true, timeout 1000); customCommandCacheTtlSeconds stays 0 (S3). SKILL.md: step 4 gains the widget for an existing project file (opt-in: ask with AskUserQuestion, then add only that line); a new step resolves `state_dir` from `<project>/.claude/harness.json` (default .claude/state/harness) and rewrites the path in commandPath when it differs; the path stays relative so each worktree prints its own checkout's line (ccstatusline spawns the command with shell: true in its own cwd). The widget is only useful with the working-refs mod; say so. README: the widget row in the Defaults table and the opt-in step. plugin.json 0.2.1 -> 0.3.0.",
+      "action": "Copy the planned test file docs/plans/2025/tests/tests/skills/test_setup_statusline_contract.py to tests/skills/test_setup_statusline_contract.py first. ccstatusline.defaults.json gains a third line holding one custom-command widget (new uuid id, commandPath `node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s),r=(j.workspace||{}).project_dir||j.cwd||'.';process.stdout.write(require('fs').readFileSync(require('path').join(r,'.claude/state/harness/working-refs/line.txt'),'utf8'))}catch(e){}})\"`, preserveColors true, timeout 1000); the command resolves line.txt against workspace.project_dir (else cwd) of the status JSON ccstatusline pipes to its stdin (D10, value 'ccstatusline custom-command input'), so each worktree session prints its own checkout's line wherever ccstatusline runs; customCommandCacheTtlSeconds stays 0 (S3). SKILL.md: step 4 gains the widget for an existing project file (opt-in: ask with AskUserQuestion, then add only that line); a new step resolves `state_dir` from `<project>/.claude/harness.json` (default .claude/state/harness) and rewrites the '.claude/state/harness' part of commandPath when it differs. The widget is only useful with the working-refs mod; say so. README: the widget row in the Defaults table and the opt-in step. plugin.json 0.2.1 -> 0.3.0.",
       "files": [
         "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json",
         "plugins/banner-status/skills/setup-statusline/SKILL.md",
@@ -379,7 +420,7 @@
       "tests": [
         {
           "node": "tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own",
-          "red": "ImportError"
+          "red": "AssertionError"
         },
         {
           "node": "tests/skills/test_setup_statusline_contract.py::test_skill_resolves_state_dir_and_offers_the_widget_for_an_existing_config",
@@ -390,7 +431,7 @@
     {
       "id": "TASK-8",
       "title": "Release notes, harness version, live check",
-      "action": "plugins/harness/.claude-plugin/plugin.json 0.78.1 -> 0.79.0. docs/RELEASES/v1.0.0.md: Plugins table rows harness 0.65.1 -> 0.79.0, band-line 0.1.1 -> 0.2.0, banner-status 0.2.1 -> 0.3.0, working-refs (new) 0.1.0; drop band-line and banner-status from the Unchanged line; one Changes line each for plan.py new --refs, /harness:working, the working-refs mod (issues #301, #315, plan 2025), band-line's second line and the setup-statusline widget. Then the developer's live check in this repository (claude --plugin-dir plugins/working-refs, setup-statusline run once here): the ccstatusline third line shows 'plan 2025 · todo-k69m (301, 315)' on this branch (plan 2025's own refs, value 'plan 2025 refs'), the plan number opens the page, and a worktree session shows its own line. Recorded on the developer's confirmation.",
+      "action": "Precondition (main session, before this item is dispatched): plan 2025 carries refs {todo_ids: ['todo-k69m'], issues: [301, 315]}, written with plan_api.write and freeze --refreeze once TASK-1 is recorded (value 'plan 2025 refs'). plugins/harness/.claude-plugin/plugin.json 0.78.1 -> 0.79.0. docs/RELEASES/v1.0.0.md: the summary sentence (lines 3-5) also names the band-line and banner-status minor bumps and the added working-refs plugin; Plugins table rows harness 0.65.1 -> 0.79.0, band-line 0.1.1 -> 0.2.0, banner-status 0.2.1 -> 0.3.0, working-refs (new) 0.1.0; drop band-line and banner-status from the Unchanged line; one Changes line each for plan.py new --refs, /harness:working, the working-refs mod (issues #301, #315, plan 2025), band-line's second line and the setup-statusline widget. Then the developer's live check in this repository (claude --plugin-dir plugins/working-refs, setup-statusline run once here): the ccstatusline third line shows 'plan 2025 · todo-k69m (301, 315)' on this branch (plan 2025's own refs, value 'plan 2025 refs'), the plan number opens the page, a worktree session shows its own line, and band-line with and without working-refs draws its banner. Recorded on the developer's confirmation.",
       "files": [
         "plugins/harness/.claude-plugin/plugin.json",
         "docs/RELEASES/v1.0.0.md"
@@ -405,7 +446,12 @@
       "status": "PENDING",
       "evidence": "not started",
       "model": "haiku",
-      "anchors": [],
+      "anchors": [
+        {
+          "at": "docs/RELEASES/v1.0.0.md:3-5",
+          "expect": "harness bumped its minor version; the agent-watcher, bubble-stamp and todo-watch mods bumped their minor versions"
+        }
+      ],
       "commands": [
         {
           "run": "claude plugin validate --strict plugins/harness",
@@ -417,7 +463,6 @@
     }
   ],
   "base_commit": "0235b5700722589a9ab5bd6071e139395f50433b",
-  "frozen": null,
   "decisions": [
     {
       "id": "D1",
@@ -550,6 +595,54 @@
       ],
       "chosen": "osc8",
       "rationale": "ccstatusline 2.2.32 keeps escapes when preserveColors is true and draws OSC 8 links itself (renderOsc8Link, its git-pr widget); a live check confirms it on screen (TASK-8)."
+    },
+    {
+      "id": "D9",
+      "question": "Which base tip the merge-base clause of D2 compares with (local review I2).",
+      "options": [
+        {
+          "id": "resolve",
+          "summary": "the tip plan.py new recorded base_commit against: origin/<base> when it exists and local <base> does not contain it, else <base> (branch_capture.resolve_merge_base, without the fetch)"
+        },
+        {
+          "id": "local",
+          "summary": "local <base> only"
+        }
+      ],
+      "chosen": "resolve",
+      "rationale": "Plan-level: base_commit comes from resolve_merge_base, so the mod must compute the same merge base or a lagging local main never matches in a sibling worktree."
+    },
+    {
+      "id": "D10",
+      "question": "Where the ccstatusline widget resolves line.txt (local review I6).",
+      "options": [
+        {
+          "id": "payload",
+          "summary": "against workspace.project_dir (else cwd) of the status JSON ccstatusline pipes to the command's stdin"
+        },
+        {
+          "id": "cwd",
+          "summary": "relative to the command's working folder"
+        }
+      ],
+      "chosen": "payload",
+      "rationale": "Plan-level: ccstatusline spawns the command with no cwd option, so a relative path depends on where ccstatusline itself runs; the stdin payload names the session's project folder in every worktree."
+    },
+    {
+      "id": "D11",
+      "question": "How band-line gets the working line (local review I5).",
+      "options": [
+        {
+          "id": "atom",
+          "summary": "an atom over the working-refs `line` key, declared in band-line's own PluginState; null while working-refs is absent"
+        },
+        {
+          "id": "file",
+          "summary": "read <state_dir>/working-refs/line.txt with $.fs"
+        }
+      ],
+      "chosen": "atom",
+      "rationale": "Plan-level: the engine's state reads take any declared {plugin, key} and answer undefined for a key nobody set; only writes are limited to the owner (value 'cross-mod state read'). The atom also redraws on change, which a file read does not."
     }
   ],
   "values": [
@@ -611,8 +704,24 @@
     },
     {
       "name": "plan 2025 refs",
-      "value": "todo_ids ['todo-k69m'], issues [301, 315]; held in context.tags until the refs field exists, then written as refs by the main session (plan_api.write + freeze --refreeze, DesignEvolution entry) once TASK-1 is recorded",
+      "value": "todo_ids ['todo-k69m'], issues [301, 315]; held in context.tags until the refs field exists (plan_api.write refuses an unknown top-level key, plan_api.py:118), then written as refs by the main session with plan_api.write + freeze --refreeze once TASK-1 is recorded and before TASK-8 is dispatched; every planned red is AssertionError, so the refreeze's red check holds after TASK-1",
       "source": "developer, 2026-11-18"
+    },
+    {
+      "name": "ccstatusline custom-command input",
+      "value": "spawned with shell: true and no cwd option; stdin is JSON.stringify of the Claude Code status payload (workspace.project_dir, cwd, session_id) plus terminal_width",
+      "source": "ccstatusline 2.2.34 dist: src/utils/custom-command-capture.ts captureCustomCommand and src/widgets/CustomCommand.tsx render (input: jsonInput)",
+      "assumes": [
+        "payload"
+      ]
+    },
+    {
+      "name": "cross-mod state read",
+      "value": "read($, {plugin, key}) and $.state.get take any key a PluginState contract declares and answer undefined when unset; $.state.set is refused for another plugin's value",
+      "source": "engine types .claude-plugin/types/claude-code/index.d.ts: $.state.get doc ('{ plugin, key } as the owner's contract declares it'), ReadFunction StateRef overload (StateValue | undefined), $.state.set doc",
+      "assumes": [
+        "atom"
+      ]
     }
   ],
   "formats": [
@@ -664,5 +773,6 @@
         "docs/TODO/RepoToDo.json": "todo-k69m's prose citing the key; left as is"
       }
     }
-  ]
+  ],
+  "ledger": "plan/2025-banner-refs"
 }

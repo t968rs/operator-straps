@@ -1,0 +1,33 @@
+{
+  "plan_id": "2025",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "898eaf63fdafab9515697753dfb26ae43cba3096",
+      "commit": "07d79e0aed3a5d4504edc7ca32481f7c77facb15"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_working_refs.py::test_parse_refs_canonicalizes_todo_ids_and_issue_numbers",
+        "tests/lib/test_working_refs.py::test_parse_refs_drops_duplicates_keeping_the_first_order",
+        "tests/lib/test_working_refs.py::test_parse_refs_refuses_a_token_that_is_neither_an_id_nor_an_issue",
+        "tests/lib/test_working_refs.py::test_fill_issues_takes_gh_issues_from_the_catalog_when_none_are_named",
+        "tests/lib/test_working_refs.py::test_fill_issues_keeps_named_issues_as_they_are",
+        "tests/lib/test_working_refs.py::test_set_override_keys_by_branch_and_clear_removes_only_that_branch",
+        "tests/lib/test_working_refs.py::test_read_overrides_of_an_absent_file_is_empty",
+        "tests/lib/test_working_refs.py::test_a_plan_without_refs_dumps_no_refs_key"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_working_refs.py::test_parse_refs_canonicalizes_todo_ids_and_issue_numbers tests/lib/test_working_refs.py::test_parse_refs_drops_duplicates_keeping_the_first_order tests/lib/test_working_refs.py::test_parse_refs_refuses_a_token_that_is_neither_an_id_nor_an_issue tests/lib/test_working_refs.py::test_fill_issues_takes_gh_issues_from_the_catalog_when_none_are_named tests/lib/test_working_refs.py::test_fill_issues_keeps_named_issues_as_they_are tests/lib/test_working_refs.py::test_set_override_keys_by_branch_and_clear_removes_only_that_branch tests/lib/test_working_refs.py::test_read_overrides_of_an_absent_file_is_empty tests/lib/test_working_refs.py::test_a_plan_without_refs_dumps_no_refs_key"
+    }
+  },
+  "evidence": "commit 07d79e0: 8 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "55675156657543314a883190bc32548c4de3dde23bafb9abf73aada1a72218b1"
+}
