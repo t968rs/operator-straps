@@ -9,7 +9,7 @@ argument-hint: "<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance
 Arguments: `$ARGUMENTS`
 
 Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
-it: the plan title and the `new` flags (`--spec`, `--base`, `--no-fetch`), passed to `new` unchanged. After it:
+it: the plan title and the `new` flags (`--spec`, `--base`, `--no-fetch`, `--refs`), passed to `new` unchanged. After it:
 guidance for writing the plan (scope, a constraint, files to read first); it never reaches a command.
 
 A plan here is an ActionPlan JSON the driver checks, not prose. Every claim about existing code is an
@@ -33,7 +33,9 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
 
 ## Steps
 
-1. **Start.** `PLAN new "<title>" --spec <spec path>`. It prints the plan file, the PIP and the folder for
+1. **Start.** `PLAN new "<title>" --spec <spec path> [--refs <todo ids and issues>]`. `--refs` (for example
+   `--refs todo-k69m,#301`) stores the TODO ids and issue numbers the plan works on as the plan's `refs`; an id
+   given with no issue takes its issue from the TODO catalog. It prints the plan file, the PIP and the folder for
    planned test files, and records the base commit (merge base of the base branch and HEAD), which it tags
    `base/plan/<id>-<slug>/r1`. The plan number is one past the highest number in the plans folder of any
    local or remote-tracking branch and in any `*/plan/<no>-*` tag, so branches do not draw one number twice.
