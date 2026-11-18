@@ -35,7 +35,7 @@ new --> write (models) --> check --> red --> decisions settled --> freeze
 
 | Step | Command (`PLAN` = `plan.py`) | Writes |
 |---|---|---|
-| Start | `PLAN new "<title>" --spec <path>` | empty plan, its PIP, the planned-tests folder; pins the base commit |
+| Start | `PLAN new "<title>" --spec <path> [--refs '<ids and issues>']` | empty plan, its PIP, the planned-tests folder; pins the base commit |
 | Author | `plan_api.write(...)` from a script | plan JSON and PIP, after validating the whole plan |
 | Check | `PLAN check <id>` | nothing |
 | Red | `PLAN red <id>` | nothing (runs the tests on a throwaway worktree) |
