@@ -18,5 +18,10 @@
         "repo": "t968rs/operator-straps"
       }
     }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "ccstatusline --config E:/automation/operator-straps/.claude/ccstatusline.json",
+    "padding": 0
   }
 }
