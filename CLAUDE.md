@@ -1,8 +1,9 @@
 # operator-straps
 
 Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) and the `arc-straps`
-plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
-`pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`). Layout and install: `README.md`.
+plugin (ArcGIS Pro toolbox skills) plus nine TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
+`pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`, `working-refs`). Layout and install:
+`README.md`.
 
 ## Rules for changes
 
@@ -29,6 +30,8 @@ plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, 
   `hooks/layers/pr-review/config.ts`.
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
+  `working-refs` mirrors `state_dir` and `artifacts.plans` in `hooks/mirror.ts`, checked by
+  `tests/mods/test_working_refs_contract.py`.
   The four places are not a cost to weigh against the key. A setting a driver can read and act on belongs in a
   config key and the driver, never in skill prose the agent must remember to follow; the key is the cheaper
   path, and the touch list above is its checklist. Do not trim a feature to a "document only" version to
