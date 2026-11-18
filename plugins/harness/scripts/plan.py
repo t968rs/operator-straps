@@ -18,13 +18,17 @@ its ledger after its own work, when that work succeeds (a refused command never 
 ``<kind>/<stem>/r1.<k>-commit`` (a rewrite adds ``-commit.2``).
 Inside a strap scenario tree no tag is created and nothing is reconciled; ``archive`` refuses there.
 
-``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``
+``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch] [--refs REF ...]``
     Write an empty plan with the next plan id, the spec path and the base commit (the merge base of the base
     branch and HEAD, fetched from ``origin`` when the remote exists), then render its PIP and tag the base
     ``base/plan/<id>-<slug>/r1``. The plan id is one past the highest seen in the local plans folder, in
     the plans folder of every local and remote-tracking branch, and in every ``*/plan/<no>-*`` tag. A plan
     bound for the receipts scheme (``plan_render_html.uses_html``) gets the HTML page, named as its
-    ``documentation``.
+    ``documentation``. ``--refs`` (comma- or space-separated TODO ids and issue numbers, such as
+    ``'todo-k69m,#301'``; quote the value or each token, since a bare ``#`` starts a shell comment) stores
+    the plan's ``refs``. When no token is an issue number, the issues come from the named TODO ids'
+    ``gh_issues`` in the ``todo.catalog`` file when it reads, else the refs stay as named. A token that is
+    neither a TODO id nor an issue number is a refusal.
 
 ``check PLAN``
     Lint (item ids, dependencies, decisions, values, commands, planned test files), open every anchor, run
@@ -217,6 +221,7 @@ from harness_lib import plan_receipts as prt  # noqa: E402
 from harness_lib import plan_record as prc  # noqa: E402
 from harness_lib import plan_red as pr  # noqa: E402
 from harness_lib import plan_render_html as prh  # noqa: E402
+from harness_lib import working_refs as wr  # noqa: E402
 from harness_lib.branch_capture import (CaptureError, current_branch, git, git_out,  # noqa: E402
                                         resolve_merge_base, snapshot_commit)
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
@@ -283,25 +288,40 @@ def has_origin(repo: Path) -> bool:
 
 
 def skeleton(plan_id: str, spec: Optional[str], base: str, base_commit: str, branch: str,
-             pip_rel: str) -> Dict[str, Any]:
-    return {
+             pip_rel: str, refs: Optional[pm.PlanRefs] = None) -> Dict[str, Any]:
+    raw: Dict[str, Any] = {
         "plan_id": plan_id, "plan_created": today(), "execution_model": "serial",
         "source_document": spec, "documentation": pip_rel, "branch": branch or None, "base_branch": base,
         "base_commit": base_commit, "frozen": None, "decisions": [], "values": [], "formats": [],
         "sweeps": [], "items": [],
     }
+    if refs is not None:
+        raw["refs"] = refs.model_dump()
+    return raw
+
+
+def new_refs(tokens: Optional[Sequence[str]]) -> Optional[pm.PlanRefs]:
+    """The refs ``--refs`` names, issues filled from the TODO catalog; None when the flag is absent."""
+    if tokens is None:
+        return None
+    try:
+        return wr.fill_issues(wr.parse_refs(tokens), wr.catalog_data(active()))
+    except wr.WorkingRefsError as exc:
+        raise pd.PlanError([f"--refs {exc}"]) from exc
 
 
 def cmd_new(repo: Path, args: argparse.Namespace) -> int:
     spec = Path(args.spec).as_posix() if args.spec else None
     if spec and not (repo / spec).is_file():
         raise pd.PlanError([f"spec {spec} does not exist"])
+    refs = new_refs(args.refs)
     base = args.base or active().resolve_base_branch()
     base_commit = resolve_merge_base(repo, base, fetch=not args.no_fetch and has_origin(repo))
     folder = plans_dir()
     plan_id = pd.next_plan_id(folder, pk.seen_plan_ids(repo, folder))
     plan_file = pd.plan_path(folder, plan_id, pd.title_slug(args.title))
-    raw = skeleton(plan_id, spec, base, base_commit, current_branch(repo), rel(repo, pd.pip_path(plan_file)))
+    raw = skeleton(plan_id, spec, base, base_commit, current_branch(repo), rel(repo, pd.pip_path(plan_file)),
+                   refs)
     plan = pd.validate_plan(raw)
     if prh.uses_html(plan):
         plan.documentation = rel(repo, pd.pip_html_path(plan_file))
@@ -1096,6 +1116,8 @@ def _parser() -> argparse.ArgumentParser:
     new.add_argument("--spec", help="Repo-relative path of the spec the plan implements.")
     new.add_argument("--base", help="Base branch (default: the configured base branch).")
     new.add_argument("--no-fetch", action="store_true", help="Do not fetch the base branch from origin.")
+    new.add_argument("--refs", nargs="+", metavar="REF",
+                     help="Comma- or space-separated TODO ids and issue numbers, e.g. 'todo-k69m,#301'.")
     for name, text in (("check", "Check the plan against the tree."), ("render", "Write the PIP."),
                        ("red", "Run the planned tests and require each to fail as planned.")):
         sub.add_parser(name, help=text).add_argument("plan", help="Plan id or plan file.")

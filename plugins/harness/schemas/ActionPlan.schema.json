@@ -624,6 +624,31 @@
       "title": "PlanFormat",
       "type": "object"
     },
+    "PlanRefs": {
+      "additionalProperties": false,
+      "description": "The TODO ids and GitHub issues a plan works on, set by `plan.py new --refs`.",
+      "properties": {
+        "todo_ids": {
+          "description": "Canonical TODO ids (`todo-k69m`).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Todo Ids",
+          "type": "array"
+        },
+        "issues": {
+          "description": "GitHub issue numbers, each a positive integer.",
+          "items": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "title": "Issues",
+          "type": "array"
+        }
+      },
+      "title": "PlanRefs",
+      "type": "object"
+    },
     "PlannedTest": {
       "additionalProperties": false,
       "properties": {
@@ -948,6 +973,18 @@
       ],
       "default": null,
       "title": "Base Branch"
+    },
+    "refs": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlanRefs"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "TODO ids and issues the plan works on; the working-refs banner shows them while the plan qualifies for the branch. Hashed by the freeze digest; after the freeze a branch override covers changes."
     },
     "execution_model": {
       "title": "Execution Model",
