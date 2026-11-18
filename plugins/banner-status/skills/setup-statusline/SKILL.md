@@ -55,9 +55,23 @@ repository, so the change reaches everyone who checks it out; say so in the repo
 3. **Read the current setting.** Read `<project>/.claude/settings.json` when it exists.
    - A `statusLine` whose `command` already runs ccstatusline: go on (the run repairs it).
    - Any other `statusLine`: show it and stop, unless the arguments hold `--replace`.
-4. **Write the defaults** to `<project>/.claude/ccstatusline.json`, only when that file is absent. An existing
-   file is the user's tuning; keep it and say so.
-5. **Write the setting.** Set this key in `<project>/.claude/settings.json` (create the file with only this
+4. **Resolve `state_dir`.** The defaults' third line holds a `custom-command` widget that prints the line the
+   working-refs mod writes, and its `commandPath` names that file under the harness state folder. Read
+   `state_dir` from `<project>/.claude/harness.json` (default `.claude/state/harness`). When it differs from
+   the default, replace the `.claude/state/harness` part of the widget's `commandPath` with it, in the copy
+   that is written and in the line offered in step 5. The widget resolves the file against
+   `workspace.project_dir` (else `cwd`) of the status JSON that ccstatusline pipes to the command's stdin, so
+   each worktree session prints its own checkout's line. The widget is only useful with the working-refs mod
+   loaded; without it the file never appears and the widget prints nothing.
+5. **Write the defaults** to `<project>/.claude/ccstatusline.json` when that file is absent, with the step 4
+   path. An existing file is the user's tuning; keep it and say so, then offer the widget as an opt-in: ask
+   with `AskUserQuestion` (header `working-refs`) whether to add the working-refs line, stating that it needs
+   the working-refs mod:
+   - **Add the line:** append only the `custom-command` line from the defaults, with the step 4 path, as a new
+     last entry of `lines`; touch nothing else in the file. Skip it when a `custom-command` widget naming
+     `working-refs` is already there.
+   - **Keep the file as it is:** change nothing.
+6. **Write the setting.** Set this key in `<project>/.claude/settings.json` (create the file with only this
    key when it is absent), keeping every other key and the file's indentation:
 
    ```json
@@ -71,7 +85,8 @@ repository, so the change reaches everyone who checks it out; say so in the repo
    `<project>` is the absolute top level from step 1. ccstatusline resolves a relative `--config` against the
    folder the command runs in and writes a fresh defaults file where none is found, so an absolute path keeps
    a command run from another folder from creating a stray file.
-6. **Report** the two paths and whether each was written or kept, then: restart the session to pick the
+7. **Report** the two paths and whether each was written or kept (and whether the working-refs line was
+   added), then: restart the session to pick the
    setting up; the status line stays blank until the workspace trust dialog is accepted; `ccstatusline` run in
    a terminal with no piped input opens its editor (pass the same `--config` to edit this project's file).
 

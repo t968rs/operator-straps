@@ -35,6 +35,11 @@ approved by the user:
   installed binary then runs directly on every repaint and changes only on an upgrade; `npx -y
   ccstatusline@latest` resolves the package on every repaint and takes each release unasked. The `~` form
   pastes cleanly into PowerShell, cmd and sh; `^` is cmd's escape character.
+- **`state_dir`:** the skill reads `state_dir` from `.claude/harness.json` (default `.claude/state/harness`) and
+  rewrites the `.claude/state/harness` part of the working-refs widget's command when it differs.
+- **Working-refs line, opt-in for an existing file:** an existing `.claude/ccstatusline.json` is kept as it is;
+  the skill asks, and on a yes appends only the working-refs `custom-command` line as a new last line. A new
+  file gets it with the other defaults. The widget needs the working-refs mod.
 - **Existing `statusLine`:** one that does not run ccstatusline is shown and kept unless the skill is run with
   `--replace`.
 - **Shared:** `.claude/settings.json` is committed, so the setting reaches every checkout. A checkout without
@@ -45,7 +50,7 @@ approved by the user:
 
 ## Defaults
 
-`ccstatusline.defaults.json` is ccstatusline's config schema version 4 (ccstatusline 2.2.32), two lines:
+`ccstatusline.defaults.json` is ccstatusline's config schema version 4 (ccstatusline 2.2.32), three lines:
 
 | Line | Widget | Color | Shows |
 |---|---|---|---|
@@ -58,6 +63,12 @@ approved by the user:
 | 2 | `thinking-effort` | brightCyan | `Thinking: <level>` |
 | 2 | `context-length` | brightBlue | `Ctx: <tokens>`, `Ctx: 110.0k` |
 | 2 | `context-percentage` | default | the context window used, whole percent |
+| 3 | `custom-command` | the command's own | the working-refs line, read from `<state_dir>/working-refs/line.txt` |
+
+The third line is only useful with the working-refs mod, which writes that file. The command reads the status
+JSON that ccstatusline pipes to its stdin and resolves the file against `workspace.project_dir` (else `cwd`),
+so each worktree session prints its own checkout's line. `customCommandCacheTtlSeconds` stays 0 so the line
+follows each refresh.
 
 Git results are cached for 5 s (`gitCacheTtlSeconds`). Edit the project file with
 `ccstatusline --config <project>/.claude/ccstatusline.json` in a terminal (its editor opens when no input is
