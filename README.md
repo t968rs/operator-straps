@@ -33,6 +33,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Add a TODO note           | `add-todo`                                          | One ranked catalog item from a note typed after `--`, researched to the level `-r 0-3` asks; local-only, or backed by a new GitHub issue with `--issue`.                                                                          | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• The main session only prints the dispatch row and adds the conversation's context; the `todo-editor` agent researches and drafts, and the script scores, ranks and (with `--issue`) files the issue after the spec validates.                                                                                                                                                                                                                                                  |
 | Create TODO               | `sync-gh-todo`                                      | One drafted, ranked catalog item per open GitHub issue no catalog record mentions, then ranked among the existing items; no id changes.                                                                                           | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• `gh` lists the issues; the script refuses an issue the catalog already records, scores and ranks the items, and `check` runs after the edit.                                                                                                                                                                                                                                                                                                                                 |
 | Edit TODO items           | `todo-edit`                                         | Retire, split, update or refresh catalog items. Several `--split` or `--update` ids dispatch one `todo-editor` agent each in one message: splits draft at once and apply one at a time under the catalog lease; updates queue through the inbox and drain once. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• The script draws ids, re-ranks and rewires links; the main session only dispatches the agents and drains the inbox.                                                                                                                                                                                                                                                         |
+| Working refs override     | `working`                                           | The TODO ids and issues the working-refs banner line shows for the current branch, set by hand with `/harness:working <todo-id\|#issue>...`, listed with `--list`, dropped with `--clear`.                                         | • One override per branch (a detached HEAD is keyed `(detached)`), stored in `working-refs/overrides.json` under `state_dir`; the script alone writes it.<br>• With no issue among the tokens, the issues come from the named TODO items in the catalog (`todo.folder`); a token that is neither a TODO id nor an issue number is refused and nothing is written.                                                                                                                                                                                       |
 | ArcGIS toolbox help       | `arc-straps`                                        | `arc-meta` checks each tool's canonical help XML against its parameters, and the `.atbx` archive's hover text and "?" page against that XML; it applies the hover text, the page and the toolbox-level help, dry run first. `arc-help-pages` builds each tool's linked help page from a fragment and that XML, and checks the page and the tool's link targets. Paths come from `plugins.arc-straps` in `.claude/harness.json`. | • The checks and the apply writers share one generator, so a passing `check_applied` means the tool's hover text and "?" page hold what an apply writes; a reference to a key the rc lacks, or a literal description in `tool.content`, is left alone by the writer and keeps it failing.<br>• An apply writes a temp copy, validates it, then copies the original to `<archive>.bak` and swaps the copy in; a failed validation leaves the archive and any older `.bak` unchanged.<br>• Python runs through `harness-skill-api` (needs `harness` 0.56.0 or later); ArcGIS Pro is not needed. |
 | Banner Config             | `banner-status`: `setup-statusline`, or `band-line` | Options: (1) ccstatusline as the project's status line (needs Node.js and npm; `setup-statusline` offers the install)<br/>(2) `band-line`: an `oStraps:` band above the prompt with the model and context window, no npm install. | • The skill writes `.claude/settings.json` `statusLine` and `.claude/ccstatusline.json` only after the user approves each edit.<br>• `band-line` reads the `git-status` snapshot; neither draws without `git-status`.                                                                                                                                                                                                                                                                                                                           |
 
@@ -170,6 +171,27 @@ drafts in the configured artifact folders. `/harness:c-msg <change>` rewrites th
 - The file is versioned (`"version": 1`). A file that is not JSON or has another version is refused, not
   overwritten; `--clear` resets it.
 - What the bookmark prints and how the mod reads the notes: `plugins/session-bookmark/README.md`.
+
+### working
+
+`/harness:working` overrides, for the current branch, the TODO ids and issues the working-refs banner line shows.
+
+```text
+/harness:working todo-k69m #301
+/harness:working --list
+/harness:working --clear
+```
+
+| Form                                         | Effect                                            |
+|----------------------------------------------|---------------------------------------------------|
+| `/harness:working <todo-id\|#issue>...`       | Store the refs as the current branch's override   |
+| `/harness:working --list`                    | Print every branch's override                     |
+| `/harness:working --clear`                   | Drop the current branch's override                |
+
+- Tokens are TODO ids (`todo-k69m`, `k69m`) or issue numbers (`#301`, `301`), split on spaces and commas. When no
+  token is an issue, the issues come from the named items' `gh_issues` in the TODO catalog.
+- Overrides live in `working-refs/overrides.json` under `state_dir` (default `.claude/state/harness`), keyed by
+  branch name; a detached HEAD is keyed `(detached)`. Gitignore that folder like the other runtime state.
 
 ### Guidance after `--`
 
