@@ -15,6 +15,14 @@ oStraps: ⎇ feature/x ↑2 ↓1 · +3 ~3 ?2 · (R,L):1,2 | [Opus 5.5] · ctx:11
 - When the band is narrower than the line, the branch and tree are clipped; the commit counts and the session
   figures stay whole.
 
+## Working line (optional)
+
+When `working-refs` holds a working line, it draws as a second line in the subtle color directly under the
+banner, verbatim (`plan 2025 · todo-k69m (301)`). The source is the `working-refs` mod's `line` state value
+(`$.state['working-refs'].line`, its `text` field), read as an atom so the line redraws when it changes.
+`working-refs` is optional and not listed under `dependencies`: while it is not installed, or its line is
+null or empty, only the banner draws, exactly as before.
+
 ## Needs git-status
 
 `git-status` takes the snapshot (`$.state['git-status'].git`) and attaches the per-prompt `GIT_STATE`
@@ -31,7 +39,7 @@ calls with an empty line, so the git state shows once.
 | `session.start` | Reads the session figures and starts a 60 s refresh of them. |
 | `turn.complete`, `prompt.submit` | Read the session figures; a write only when they moved. |
 | `ui.status` | Clears the line when git-status sets it; every other plugin's line passes. |
-| `ui.render` `AbovePrompt` | Draws the banner above whatever the hooks beneath drew (agent-watcher's band stays on screen); yields to a survey. |
+| `ui.render` `AbovePrompt` | Draws the banner, then working-refs's working line when one is set, above whatever the hooks beneath drew (agent-watcher's band stays on screen); yields to a survey. |
 
 ## State
 

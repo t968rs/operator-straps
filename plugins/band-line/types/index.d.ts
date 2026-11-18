@@ -26,8 +26,21 @@ export type SessionFigures = {
   ctxPercent: number | null
 }
 
+/**
+ * The part of working-refs's working line this mod reads: the plain form it draws verbatim. A local copy of
+ * the shape, so band-line does not depend on working-refs.
+ */
+export type WorkingLine = {
+  /** The plain form (`plan 2025 · todo-k69m (301)`). */
+  text: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
+    'working-refs': {
+      /** The checkout's working line; null or unset while working-refs is absent or has nothing to show. */
+      line: WorkingLine | null
+    }
     'band-line': {
       /** The session figures the banner shows; all null before the first reading. */
       session: SessionFigures
