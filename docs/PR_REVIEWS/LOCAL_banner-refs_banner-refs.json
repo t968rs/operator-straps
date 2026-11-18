@@ -1,0 +1,657 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": "local-banner-refs",
+  "pr_title": "banner-refs",
+  "branch": "banner-refs",
+  "base_branch": "1168-todo-banner",
+  "base_sha": "f6bd86be2891b35e8bba6e4abae1d075bb4f0382",
+  "head_sha": "73d0e24d493ac353022504819f71e01ed7e3755a",
+  "review_date": "2026-11-18",
+  "verdict": "READY TO MERGE - 21 of 21 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 3458,
+    "deletions": 65,
+    "files_changed": 59,
+    "source": {
+      "additions": 3141,
+      "deletions": 65,
+      "files_changed": 58
+    }
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/cicd.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/config.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/tests.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/runtime.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/docs.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/overall.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/local-banner-refs/local-banner-refs_20261118T083405Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "ci.yml mod-test loop adds plugins/working-refs, matching the new plugin directory that ships hooks/*.test.ts files, so its tests run in CI.",
+    "The plugin is already registered in .claude-plugin/marketplace.json and listed in CLAUDE.md, so the CI list agrees with the other registration points; the strict validate loop picks it up through the plugins/*/ glob.",
+    "ActionPlan.schema.json matches the pydantic models exactly: tools/gen_plan_schema.py --check reports ok for all three schemas, so PlanRefs and the optional refs property are generated output, not hand edits.",
+    "PlanRefs is closed (additionalProperties false) with integer-only issues, and refs defaults to null via anyOf, so existing plans without refs still validate.",
+    "watch.test.ts builds a real repository model (HEAD, origin/main presence, is-ancestor, merge bases by tip, archive tags) and a case-folding fake filesystem. The scan logic runs end to end against it, with no stubbed helpers.",
+    "The D9 tests pin both the outcome (the line text) and the merge-base argv. A lagging local main has to resolve through origin/main, and a sibling plan costs one merge-base call per base branch.",
+    "The line.txt stale-file test (watch.test.ts:408-414) covers the spec anti-goal: the session.start scan empties a line an earlier session left, compared against the file and not the atom.",
+    "test_working_refs_contract.py reads the mirror before it imports the harness module, and it checks the key names against a real set_override write and PlanRefs.model_fields, not against copied literals.",
+    "line.test.ts checks that the ccstatusline form, with its OSC 8 escapes stripped, equals the plain form, so the two renderings cannot drift apart.",
+    "The band-line tests cover the three required states (refs set, null or empty, never written) and the case where another band sits below. The never-written world falls through to the engine's own state.get.",
+    "watch.ts baseTipOf/mergeBaseFor follow D9 exactly: origin/<base> when it exists and local <base> does not contain it, else <base>, then merge-base with HEAD. Any failed git call becomes no match, never a throw.",
+    "One writer per file (D6) holds in the code: working_refs.py writes overrides.json only through a temp file and os.replace, and the mod only reads it and alone writes line.txt.",
+    "writeLineFile compares with the file on disk rather than the atom, so the first scan of a session clears a stale line.txt left by another branch or an earlier session, as TASK-5 requires.",
+    "The Python and TS refs formatting match: format_refs and formatRefs give the same three shapes (ids with issues in parentheses, ids alone, '#N' issues alone).",
+    "The detached key matches on both sides: working.py maps `rev-parse --abbrev-ref HEAD` == 'HEAD' to '(detached)', the value git-status's porcelain branch.head reports, and qualifies() refuses rule 1 for it.",
+    "Scan pacing (isBusy/isOwed) and memo comparisons hold git work down: git runs only while a plan was read, merge bases resolve once per distinct base branch, and branch-matched plans skip the merge-base call.",
+    "plan.py validates --refs before resolving the base or allocating a plan id, so a bad token refuses with a problem line and leaves nothing behind.",
+    "band.tsx reads the cross-mod atom with optional chaining and a truthy text check, so the banner draws exactly as before while working-refs is absent (D11).",
+    "plugins/working-refs/README.md matches watch.ts closely: root probe order, the D9 base-tip resolution, the git-only-while-plans prompt probe, the name/size/mtime signature, one-scan-at-a-time pacing and the line.txt compare-with-file rule are all described as coded.",
+    "Release notes plugin table and summary sentence agree with every plugin.json at head (harness 0.79.0, band-line 0.2.0, banner-status 0.3.0, working-refs 0.1.0), and the Unchanged line drops exactly the two bumped mods.",
+    "CLAUDE.md gains both the nine-mods sweep (S1) and the mirror.ts/contract-test pairing in the config-key rule, so the new mod's mirror is discoverable from the repo rules.",
+    "band-line README states the optional, non-dependency read of working-refs's `line` atom and the unchanged banner when it is absent, matching band.tsx and its local PluginState declaration (D11).",
+    "Plan records are coherent: receipts for TASK-1..7 name the planned test nodes, EX1 in DesignEvolution explains the r1.2 refreeze that moved refs from context.tags into the new field, and D9-D11 carry their review provenance.",
+    "working.py parses and validates every token before it resolves the branch or writes, so a bad token exits 1 with nothing written, as SKILL.md:47 promises.",
+    "Each of the override file, the line file and ccstatusline.json has one writer: working.py writes overrides.json, the mod writes line.txt, and the setup skill writes ccstatusline.json; the paths match (OVERRIDES_REL, mirror.ts OVERRIDES_PATH).",
+    "The ccstatusline widget resolves line.txt against workspace.project_dir (else cwd) from the piped status JSON and swallows its own errors, so each worktree session prints its own line, and an absent mod prints nothing instead of failing.",
+    "setup-statusline keeps the user's tuned ccstatusline.json: adding the widget is opt-in, appends a single line, and is skipped when a working-refs widget is already there.",
+    "The defaults JSON, SKILL.md steps and banner-status README describe the third line, the state_dir rewrite and the mod dependency the same way.",
+    "One writer per file (D6): the harness alone writes overrides.json and the mod alone writes line.txt, and both files are pinned by tests/mods/test_working_refs_contract.py through mirror.ts.",
+    "The mod's merge-base resolution in baseTipOf/mergeBaseFor follows branch_capture.resolve_merge_base step for step without the fetch (D9), and watch.test.ts covers both the lagging-local and local-ahead tips.",
+    "Python format_refs and TS formatRefs render the same format, and line.test.ts checks that the OSC 8 form, with its escapes stripped, equals the plain form.",
+    "watch.ts fails open everywhere: every git call carries a timeout and a catch, scans are paced one at a time with an owed rerun, and work runs after the dispatch through later().",
+    "band-line reads the working line as an optional cross-mod atom without depending on working-refs; its tests cover the null, empty and never-set cases and confirm that another band stays below the line.",
+    "line.txt is compared with what is on disk rather than with the atom, so the session.start scan clears a stale line left by another branch or session, and an empty line never creates the file.",
+    "plan.py new resolves --refs before any base resolution or file write, so a bad token is refused with a problem line and leaves nothing behind.",
+    "Release notes, the version bumps, CLAUDE.md's mod count and mirror rule, the marketplace entry and the CI mod-test loop are all updated together, as plan TASK-5 and TASK-8 require.",
+    "Every string the mod copies from the harness (store paths, version, detached key, refs field names, defaults, plan suffixes) is in one mirror.ts, and test_working_refs_contract.py pins each one against the Python side, including the PlanRefs field set.",
+    "CLAUDE.md's new-config-key rule now names working-refs' mirror.ts and its contract test, and the mod count (nine), marketplace entry, CI mod-test loop and root README rows were updated together.",
+    "Each file has a single writer, and the docs agree on it everywhere: harness_lib, working.py, mirror.ts, overrides.ts and both READMEs all say overrides.json is written by the harness only and line.txt by the mod only.",
+    "watch.ts's base-tip resolution (D9) follows branch_capture.resolve_merge_base without the fetch, and the working-refs README states the same rule, so the docs, the plan decision and the code agree.",
+    "band-line reads the working line through a locally declared PluginState key with no dependency, and the tests cover both the absent-mod case and band ordering.",
+    "The release notes table, the summary sentence and the Unchanged line all match the four plugin.json version bumps and the added plugin.",
+    "Each file has one writer: the harness owns overrides.json and the mod owns line.txt (D6), so a rescan can never overwrite an override written between its read and its write.",
+    "mirror.ts keeps every shared name as a literal, and test_working_refs_contract.py pins each one against harness_lib (paths, version, detached key, field names, defaults, suffixes), so drift between the two sides fails a test.",
+    "D9 is implemented faithfully: baseTipOf/mergeBaseFor repeat resolve_merge_base without the fetch, there is one resolution per distinct base, and git runs only for plans that rule 1 did not already match.",
+    "watch.test.ts is genuinely behavioral: a fake repository, fs and state answer every `$` call, and the tests check archive drops, rebases, in-place rewrites, overrides and stale line.txt clearing.",
+    "Every host failure degrades to an empty line: git runs with timeouts and never throws, scans run one at a time with owed reruns, and line.txt is compared with the disk rather than the per-session atom, so a stale line from another branch is cleared at session start.",
+    "band-line reads working-refs through an atom over its own PluginState declaration, which redraws on change, and it has tests for absent, null and empty values and for band stacking, with no hard dependency on the new mod.",
+    "The refs field leaves frozen digests alone: skeleton writes `refs` only when given, and test_a_plan_without_refs_dumps_no_refs_key pins that."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "ActionPlan schema gained refs/PlanRefs but schemas/README.md was not updated (Update protocol)",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "54,234,348-351",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/schemas/ActionPlan.schema.json adds the PlanRefs definition and the top-level optional `refs` field (regenerated from plan_models.py:401-408,427-430), but plugins/harness/schemas/README.md is untouched by the PR. Its own Update protocol (README.md:330, 'When changing any schema file under this directory, update this README in the SAME PR') and the Updates checklist (README.md:334-340) require it. The ActionPlan section's plan-level field list (README.md:54) still names only base_commit, frozen, ledger and completed; the Step 2 flow (README.md:234) shows `plan.py new \"<title>\" --spec <path>` with no `--refs`; and the Migration list (README.md:348-351) has no entry telling a project that pinned ActionPlan.schema.json (every level closed, additionalProperties false) to drop or recopy the pin, which the 0.43.0 and 0.69.0 entries do for the same situation. A pinned copy makes the schema hook reject every plan written with `--refs`.",
+        "fix": [
+          "In plugins/harness/schemas/README.md: add `refs` (`todo_ids`, `issues`; set by `plan.py new --refs`, read by the working-refs mod, hashed by the freeze digest) to the plan-level field bullet at line 54, add `[--refs REF ...]` to the `plan.py new` line at 234, and add a Migration bullet `refs on the ActionPlan (harness 0.79.0)` saying a project that pinned ActionPlan.schema.json must drop the pin or copy the plugin's, which now allows `refs`."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "working SKILL.md routes the `--` tail into the refs, against the guidance-tail rule it cites",
+        "file": "plugins/harness/skills/working/SKILL.md",
+        "files": [
+          "plugins/harness/skills/working/SKILL.md",
+          "README.md",
+          "plugins/harness/reference/skill_arguments.md",
+          "plugins/working-refs/hooks/line.ts"
+        ],
+        "lines": "3-4,9-11,17,21-24,38-43",
+        "reviewer": "docs, skill_package, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The skill's argument-hint `-- <todo-id|#issue>... | --clear | --list` (line 4) and its table row `-- <todo-id|#issue>...` stores the refs (line 17) treat text after a standalone `--` as refs. Lines 22-24 then say the split follows `reference/skill_arguments.md` and that guidance never reaches the command line. That reference (lines 14-20) makes the tail after `--` guidance for every skill whose own arguments are not free text, and the root README (line 211) lists only `c-msg`, `check-runlogs` and `add-bookmark` as skills where a leading `--` is optional. Refs are ids, not free text. So `/harness:working -- todo-k69m`, the shape the hint advertises, reads as no own arguments (the usage line) under the cited rule but as a set under the skill's table. `/harness:working todo-k69m -- only the banner` gives no rule for the tail: the first-word table (lines 38-43) maps it to `WORKING set` with every token, and `parse_refs` then refuses `only` with exit 1. The add-bookmark shape the plan copied works only because add-bookmark states its free-text exemption (its lines 22-24) and has a leading-`--` row in its first-word table; working has neither.\n\nAlso (docs): The description (line 3, \"overriding what the branch name and its plan say\") and the body (lines 9-10, \"By default they come from the branch name and its plan\") name the branch name as a source of refs. The mod builds the refs from the union of the qualifying plans' `refs` only (`plugins/working-refs/hooks/line.ts:41-44`), and a plan qualifies by its `branch` field or by its `base_commit` matching the merge base (`plans.ts:103-110`). The branch name contributes no ref. Line 10-11 also calls the file \"per project\", but `working.py:33` stores it under the checkout's `state_dir`, and the mod README (line 71) says each worktree has its own.\n\nAlso (skill_package): The arguments table (working/SKILL.md:17) and argument-hint (line 4) say `-- <todo-id|#issue>...` stores the refs, while lines 21-24 cite skill_arguments.md, under which everything after a standalone `--` is guidance that never reaches the command line. That reference only makes a leading `--` optional for skills whose own arguments are free text; refs are not free text, and this body never claims the exception (add-bookmark states it outright at its SKILL.md:23). The hint also passes test_hint_advertises_the_guidance_tail only because it contains `-- <`, not because the skill has a guidance tail, so `/harness:working todo-k69m -- <guidance>` has no stated meaning.\n\nAlso (system_shape): SKILL.md:4 advertises `-- <todo-id|#issue>... | --clear | --list` and the table at SKILL.md:17 treats `-- <todo-id|#issue>...` as a set, while SKILL.md:22-24 (and reference/skill_arguments.md:14-16,33-35) say everything after the first standalone `--` is guidance that 'never reaches the command line'. The free-text exception (skill_arguments.md:19-20) that lets add-bookmark use `-- <note text>` covers free text, not ids. `/harness:working todo-k69m -- focus on X` has no defined parse: the table's 'anything else' row would pass every word. The hint shape was chosen in TASK-3 to satisfy the `-- <` check of test_skill_guidance_tail_contract.py:56-58, so the skill now advertises a guidance tail it never applies.\n\nAlso (system_shape): SKILL.md:3 ('overriding what the branch name and its plan say') and SKILL.md:9-10 ('By default they come from the branch name and its plan') claim that refs are derived from the branch name. The mod's buildLine (plugins/working-refs/hooks/line.ts:37-47) takes refs only from the override or the union of the qualifying plans' `refs`; the branch name only selects the override and rule 1 of qualifies (plans.ts:103-110). The working-refs README (README.md:12-13) states it correctly.\n\nAlso (roast): The argument-hint and the Arguments table say `-- <todo-id|#issue>...` stores the refs. The next paragraph says the guidance split follows skill_arguments.md and that 'the guidance never reaches the command line', and under that rule text after `--` is guidance. The routing table has no row for a leading `--` or for `--` alone. add-bookmark, whose shape this skill copies, says outright that a leading `--` is dropped and that the rest is always the payload. This skill leaves the agent to guess.\n\nAlso (roast): The working SKILL.md says that by default the refs 'come from the branch name and its plan', and its description says the override is 'overriding what the branch name and its plan say'. The mod never reads refs from the branch name. buildLine takes the union of the qualifying plans' `refs`, and the branch only decides which plans qualify (rule 1, or rule 2 by merge base). A reader will look for a branch-name parser that doesn't exist.",
+        "fix": [
+          "Treat the `--` tail as guidance: set the hint to `\"<todo-id|#issue>... | --clear | --list [-- <guidance>]\"` (it still holds `-- <`, which the guidance-tail test checks), drop the `-- <todo-id|#issue>...` form from the line 17 row, and state that only the arguments before a standalone `--` become `WORKING set` tokens; add a first-word row where `--` alone or first prints the usage line.",
+          "Or keep the hint and declare the add-bookmark exemption: say that a leading `--` is dropped and the rest are tokens, that a later `--` starts guidance which never reaches `set`, add the leading-`--` row to the first-word table, and add `working` to the free-text list in README.md line 211.",
+          "Line 3: \"overriding the refs of the plans that qualify for the branch\". Lines 9-11: \"By default they are the union of the `refs` of the plans that qualify for the branch (its own plan, or a plan whose base commit is the branch's merge base); an override set here replaces them for that branch only. The file is per checkout (`<state_dir>/working-refs/overrides.json`)...\"",
+          "In working/SKILL.md after line 24, state the rule explicitly as add-bookmark does: a leading `--` is optional and everything after it is refs; a later standalone `--` starts guidance, and only the tokens before it reach `WORKING set`.",
+          "Set the hint to `<todo-id|#issue>... | --clear | --list [-- <guidance>]`, drop the `or -- <todo-id|#issue>...` alternative from SKILL.md:17, and state that only the words before a standalone `--` become tokens.",
+          "Reword SKILL.md:3 and 9-10 to say the refs default to the union of the `refs` of the plans that qualify for the branch (its own plan, or one written against its merge base).",
+          "Copy add-bookmark's wording: 'the tokens are the whole value, so a leading `--` is dropped', add the rows 'a leading `--` -> WORKING set <rest>' and 'nothing (or `--` alone) -> usage line', and drop the sentence saying guidance never reaches the command line, or reword it to match.",
+          "Reword both places: 'By default they are the union of the `refs` of the plans that qualify for the branch (its own plan, or a plan written at its merge base); an override set here replaces them for that branch only.'"
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Unquoted #N tokens become shell comments in the working and write-plan commands",
+        "file": "plugins/harness/skills/working/SKILL.md",
+        "files": [
+          "plugins/harness/skills/working/SKILL.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "README.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "15-24,38-45",
+        "reviewer": "skill_package, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "working/SKILL.md:42 maps the arguments to `WORKING set <token>...`, each token as a separate argument, with no quoting rule, and line 21 names `#301` as a valid token. In the Bash tool an unquoted word starting with `#` begins a comment, so `/harness:working todo-k69m #301` (the README.md:182 example) runs `set todo-k69m`: #301 is silently dropped and fill_issues replaces it with the catalog's gh_issues. `/harness:working #301` runs `set` with no tokens, an argparse usage error (exit 2), not the documented `working:` line. write-plan/SKILL.md:36-38 has the same hole: `--refs` takes comma- or space-separated tokens (plan.py nargs='+'), so `--refs todo-k69m #301` loses the issue and `--refs #301` fails in argparse. The add-bookmark skill this one copies quotes its argument in single quotes (add-bookmark/SKILL.md:61).\n\nAlso (overall): SKILL.md routes every other first word to `WORKING set <token>...`, each token as a separate argument, and the skill's own examples use `#301`. The Bash tool runs Git Bash, where a word that starts with `#` opens a comment: `... working.py set todo-k69m #301` drops `#301` without a message. fill_issues then sees no issue and fills the issues from the catalog, so the stored override differs from what the developer typed. `... working.py set #301` gets no tokens at all, and argparse exits 2 with a usage error instead of the documented `working:` line. tests/skills/test_working_script.py calls main() with a list, so no shell is involved and the tests cannot catch this. The same trap applies to `plan.py new --refs`, whose docstring and the write-plan step advertise space-separated tokens (`--refs todo-k69m #301` loses the issue).\n\nAlso (system_shape): plugins/harness/skills/working/SKILL.md:42 tells the agent to run `WORKING set <token>...`, 'each token as a separate argument', and the README (README.md:182, 189) and the skill (SKILL.md:21) advertise `#301` as the issue form. Through the Bash tool, a word that starts with `#` after whitespace begins a comment: `sh .../hpy .../working.py set todo-k69m #301` runs `set todo-k69m` only. working.py then sees no issue, fill_issues (working_refs.py:78-87) fills the issues from the catalog instead, and the script prints success, so the developer's explicit issue is silently replaced or lost. The same applies to `plan.py new --refs todo-k69m #301` in the space-separated form the docstring allows (plan.py:248-251, write-plan SKILL.md step 1 says 'comma- or space-separated'). The tests call main() with a Python list (tests/skills/test_working_script.py:44,53) and so cannot see it.\n\nAlso (roast): The working skill routes everything else to `WORKING set <token>...`, each token as a separate argument, through the Bash tool, and gives `#301` as the issue form. In bash a word that starts with `#` begins a comment, so `... working.py set todo-k69m #301` runs as `set todo-k69m`. The issue is dropped with no error. Then `fill_issues` sees no issue and fills in the catalog's `gh_issues`, so the stored override quietly differs from what the developer typed. The write-plan step 1 hint `--refs <todo ids and issues>`, with `plan.py --refs` documented as space-separated, has the same trap for a space-separated `#N`. Most banners don't silently rewrite their input; this one does.\n\nAlso (overall): The argument-hint and the arguments table accept `-- <todo-id|#issue>...`, but the 'First word' routing table has no row for a leading `--`, for `--` alone, or for a `-- guidance` tail after the tokens. The add-bookmark table this skill copies covers all three. skill_arguments.md treats a leading `--` as optional only for skills whose arguments are free text, and these arguments are ids, so whether the text after `--` is refs or guidance is left to the session. Passing `--` or the guidance words into `set` makes parse_refs refuse them.",
+        "fix": [
+          "In working/SKILL.md line 42, say each token goes on the command line in single quotes (`WORKING set 'todo-k69m' '#301'`), and add a one-line example; in write-plan/SKILL.md step 1, write the flag as `--refs '<todo ids and issues>'` with the example `--refs 'todo-k69m,#301'`.",
+          "In working/SKILL.md, require each token to be single-quoted on the command line (`WORKING set 'todo-k69m' '#301'`) and say why; in write-plan/SKILL.md step 1, quote the `--refs` value or keep the comma form only.",
+          "Or tell the session to pass issues as bare numbers (drop the leading `#`; parse_refs already accepts `301`), and note it in both SKILL.md files.",
+          "SKILL.md:42: change the row to `WORKING set <token>...`, each token as a separate single-quoted argument (`'#301'`): an unquoted word starting with `#` is a shell comment. Add the same note to the write-plan SKILL.md step 1 `--refs` sentence and to plan.py's `new` docstring (or show only the comma form `todo-k69m,#301`, where `#` is mid-word).",
+          "Have the skill strip a leading `#` from issue tokens before building the command (the parser already accepts `301`), and say so in SKILL.md.",
+          "In working SKILL.md, require each token to be single-quoted on the command line (`WORKING set 'todo-k69m' '#301'`), and say why: bash reads a leading `#` as a comment.",
+          "Alternatively, have the skill join the tokens with commas into one single-quoted argument (`WORKING set 'todo-k69m,#301'`), which parse_refs already splits; do the same in write-plan step 1 (`--refs 'todo-k69m,#301'`).",
+          "Add routing rows: a leading `--` is dropped and the rest are tokens; `--` alone prints the usage line; for any other standalone `--`, only the words before it are tokens and the rest is guidance that never reaches the command."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "The git-status snapshot trigger has no test; the test named for it exercises the prompt fallback",
+        "file": "plugins/working-refs/hooks/watch.test.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.test.ts",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "357-367",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "Plan TASK-5 lists 'a branch change in git-status's snapshot' as a scan trigger. The code for it is the `state.set` hook on `{plugin: 'git-status', key: 'git'}` plus onSnapshot (watch.ts:359-363, 375-381). The test named 'a branch change in git-status's snapshot rescans' (watch.test.ts:357-367) changes `w.git` underneath and then submits a prompt. Its own comment says the engine refuses a test's `$.state.set`. So the rescan comes from onPrompt's branch comparison (watch.ts:348), and neither onSnapshot nor the state.set hook runs in any test. If either broke, for example a wrong key in the filter or a `branch === memo.branch` check that never matches, the suite would stay green. The banner would then refresh only at the next prompt.",
+        "fix": [
+          "Export the snapshot decision as a pure function (e.g. `isSnapshotMove(memo, branch)` or a `branchOfSnapshot(value)` plus the comparison), unit-test it for a same branch, another branch, a null snapshot and an unscanned memo, and rename watch.test.ts:357 to 'a branch change seen at the next prompt rescans'.",
+          "If the testing engine offers a route to dispatch a git-status-owned `state.set` (a hook registered as that plugin), drive onSnapshot through it and assert the line changes without a prompt."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "The 'unchanged line is not written again' test never reaches a second write attempt",
+        "file": "plugins/working-refs/hooks/watch.test.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.test.ts",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "416-423",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test at watch.test.ts:416-423 starts a scan, then sends a prompt and a Bash call and asserts one write. In this world neither probe starts a rescan: onPrompt (watch.ts:347-357) sees the same branch, HEAD, tags, plans signature and override mtime, and afterToolCall (watch.ts:336-340) sees no file move. writeLineFile (watch.ts:277-280) therefore runs once, and its compare-before-write check is never tested for a non-empty line. If that check were removed, the test would still pass. The empty-line case is covered elsewhere (watch.test.ts:295-302, 408-414). The test proves that probes skip needless rescans, which is not the behavior its name claims.",
+        "fix": [
+          "Force a rescan that renders the same text before the assertion, e.g. rewrite the plan with identical content at a newer mtime (`w.setFile(<plan path>, planJson(), NOW - 1_000)`) or write an override for another branch, then call `bash($, w)` and assert `w.writes.length === 1` and `w.gits` grew (proving a scan ran).",
+          "Rename the test to what it checks now ('an unmoved world runs no rescan and no write') and add a separate test that forces the same-text rescan."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "No test covers `working set` filling issues from the TODO catalog",
+        "file": "tests/skills/test_working_script.py",
+        "files": [
+          "tests/skills/test_working_script.py",
+          "plugins/harness/skills/working/commands/working.py"
+        ],
+        "lines": "42-85",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Plan TASK-3 says `set` fills issues from the TODO catalog the same way `plan.py new` does. working.py reads the catalog and calls fill_issues (working.py:31-32, 49-51). Every test in test_working_script.py uses a project with no `todo` config, so `catalog` is always `{}`. The `cfg.todo.catalog` / read_json branch never runs, and the wiring into fill_issues is never checked. `plan.py new` has the matching test (test_plan_new_refs.py:46-50). The working command, whose override replaces the plan refs in the banner, does not, so a regression that drops the filled issues would pass.",
+        "fix": [
+          "Add `test_set_fills_issues_from_the_todo_catalog` to test_working_script.py: build the project with `{\"todo\": {\"folder\": \"docs/TODO\"}}`, write `docs/TODO/RepoToDo.json` mapping todo-k69m to [301] (as `_with_catalog` does in test_plan_new_refs.py:29-37), run `set todo-k69m`, and assert the stored issues are [301] and stdout holds 'todo-k69m (301)'."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "banner-status and band-line descriptions do not mention the new working-refs line",
+        "file": ".claude-plugin/marketplace.json",
+        "files": [
+          ".claude-plugin/marketplace.json",
+          "plugins/banner-status/.claude-plugin/plugin.json",
+          "plugins/band-line/.claude-plugin/plugin.json",
+          "README.md"
+        ],
+        "lines": "36,41",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "banner-status now ships a third ccstatusline line (the working-refs widget, README.md:66-71), and band-line draws working-refs's line under its banner (band-line README.md:18-24). Neither change reaches the short descriptions users see: banner-status plugin.json:4 and marketplace.json:36 still list only git branch, model, thinking effort and context window; band-line plugin.json:4 and marketplace.json:41 list only git state, model and context window. The root README Banner Config row (README.md:38) mentions neither.",
+        "fix": [
+          "Add 'and the working-refs line' (as an optional third line or second band line) to the banner-status and band-line descriptions in each plugin.json and marketplace.json, and add one bullet to the README Banner Config row."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Missing space after `=` in turnEnd",
+        "file": "plugins/band-line/hooks/band.test.tsx",
+        "lines": "86",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The edit at band.test.tsx:86 left `const turnEnd =($: Engine, turnId: string) =>`. Every other arrow binding in the file has a space after `=`.\n\nAlso (overall): `const turnEnd =($: Engine, turnId: string) =>` lost the space after `=` when the `texts` helper was inserted above it.",
+        "fix": [
+          "Restore `const turnEnd = ($: Engine, turnId: string) =>`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "setup-statusline still says it only creates ccstatusline.json from the defaults",
+        "file": "plugins/banner-status/skills/setup-statusline/SKILL.md",
+        "lines": "3,21",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "Step 5 (setup-statusline/SKILL.md:70-72) can now append the working-refs line to an existing `<project>/.claude/ccstatusline.json`, but the Files written table (line 21) still describes that file as only 'copied from' the defaults, and the frontmatter description (line 3) says it writes 'a ccstatusline defaults file'.",
+        "fix": [
+          "Line 21: 'ccstatusline's config, copied from `${CLAUDE_SKILL_DIR}/ccstatusline.defaults.json` when absent; an existing file only gains the working-refs line, on a yes in step 5'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "setup-statusline state_dir rewrite yields a dead widget for an absolute or backslashed state_dir",
+        "file": "plugins/banner-status/skills/setup-statusline/SKILL.md",
+        "files": [
+          "plugins/banner-status/skills/setup-statusline/SKILL.md",
+          "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json",
+          "plugins/banner-status/README.md",
+          "plugins/working-refs/README.md",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "58-65",
+        "reviewer": "docs, roast, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 4 (lines 58-65) tells the skill to replace the `.claude/state/harness` part of the widget's `commandPath` with `state_dir`. The command joins it with `require('path').join(r, ...)` (ccstatusline.defaults.json third line). `state_dir` may be absolute (the mod's `config.ts:52-57` keeps an absolute one, as `cfg.path()` does). `path.join` does not reset at an absolute segment, so `E:/proj` joined with `D:/state/working-refs/line.txt` names a path that does not exist, and the widget's `catch` prints nothing with no sign of the failure. A Windows `state_dir` written with backslashes would also land inside a single-quoted JS string inside a JSON string, where each backslash is an escape. The banner-status README bullet (lines 312-313) repeats the rule without the limit.\n\nAlso (roast): The mod writes line.txt under the first folder at or above the session cwd that holds `.claude/harness.json` (or under an absolute `state_dir` as given). The widget reads `path.join(workspace.project_dir || cwd, '<state_dir>/working-refs/line.txt')`. With an absolute `state_dir`, setup-statusline step 4 splices the absolute path into `path.join(r, ...)`, which gives `<project>\\D:\\state\\...`, and the mod's file is also shared across worktrees, which contradicts the README's 'each worktree has its own line'. With a session launched in a subfolder of the project, project_dir is that subfolder while the mod writes at the project root. Either way the widget prints nothing.\n\nAlso (overall, system_shape): The widget command builds the file path as `require('path').join(r, '<state_dir>/working-refs/line.txt')`, and setup-statusline step 4 substitutes the configured `state_dir` into it. path.join concatenates, so an absolute `state_dir` (which harness `cfg.path()` and the mod's `under()` in hooks/config.ts both accept) becomes `<project>/D:/state/...`. A Windows `state_dir` written with backslashes also breaks once placed in a JS single-quoted string inside JSON (`\\s` turns into `s`). In both cases the widget prints nothing while the mod writes the file elsewhere.\n\nAlso (system_shape): setup-statusline SKILL.md:58-62 and the banner-status README (README.md:38-39) say the skill substitutes the configured `state_dir` into the widget's commandPath. The command (ccstatusline.defaults.json:33) builds the path with `require('path').join(r, '<state_dir>/working-refs/line.txt')`. path.join concatenates an absolute second argument under `r` (`E:/proj/E:/state/...`), so with an absolute `state_dir` the widget reads a missing file and prints nothing. The harness (`cfg.path`) and the mod (config.ts:56-57 `under`, tested in overrides.test.ts:69-72) both accept an absolute `state_dir`.",
+        "fix": [
+          "Use `require('path').resolve(r, '<state_dir>/working-refs/line.txt')` in the defaults' command (resolve keeps an absolute second argument), and have step 4 write `state_dir` with forward slashes; update the README bullet to match.",
+          "Or keep `join` and have step 4 refuse or warn on an absolute `state_dir`, writing a relative one with forward slashes only; say so in the README bullet.",
+          "In setup-statusline step 4, when `state_dir` is absolute, replace the whole `path.join(r,'...')` argument with the absolute file path. Note in the working-refs README Files section that an absolute state_dir is shared by every checkout.",
+          "Optionally, have the widget command walk up from project_dir to the first folder holding `.claude/harness.json`, the same root rule the mod uses.",
+          "Use `require('path').resolve(r, '...')` in the defaults' commandPath (the contract test's `f\"{state_dir}/{LINE_REL}\" in commandPath` assertion still holds), and have SKILL.md step 4 write `state_dir` with forward slashes.",
+          "In ccstatusline.defaults.json:33, use `require('path').resolve(r, '...')`: resolve keeps an absolute second argument and joins a relative one. No test changes needed, since test_setup_statusline_contract.py checks only the substring and project_dir.",
+          "Or have SKILL.md step 4 say that an absolute `state_dir` replaces the whole joined path and is written as a literal absolute path."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Issue numbers: plan refs and override refs follow different rules",
+        "file": "plugins/harness/lib/harness_lib/plan_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/working-refs/hooks/overrides.ts",
+          "plugins/working-refs/hooks/plans.ts",
+          "plugins/harness/schemas/ActionPlan.schema.json"
+        ],
+        "lines": "401-407",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "`PlanRefs.issues` is `List[StrictInt]` with no lower bound, so plan_api.write or a hand-edited override file can store 0, a negative number or a duplicate. The mod reads the two sources differently. plans.ts `uniqueIssues` keeps only positive integers and drops duplicates. overrides.ts `isWhole` (`Number.isInteger`) keeps 0, negatives and duplicates. The same `issues` list can therefore show one way when it comes from a plan and another way when it comes from an override, and Python's `format_refs` prints whatever the model accepted (`#0`, `#-5`). `parse_refs` only produces positive numbers, so this happens only for values written another way.\n\nAlso (overall): PlanRefs.issues is List[StrictInt], so a plan written through plan_api.write can carry `issues: [0, -3]`. parse_refs never produces those, and plans.ts uniqueIssues filters them out (n > 0), so a validated plan holds values the banner silently ignores.",
+        "fix": [
+          "Bound the model: `issues: List[Annotated[StrictInt, Field(gt=0)]]` on PlanRefs, which read_overrides already skips on ValidationError, and in overrides.ts make `isWhole` require `n > 0`, matching plans.ts.",
+          "Or leave the model as it is and make overrides.ts filter and de-duplicate with the same rule as plans.ts `uniqueIssues`, so both sources render the same way.",
+          "Constrain the items to positive integers (`List[Annotated[StrictInt, Field(gt=0)]]`) and regenerate ActionPlan.schema.json with tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "An empty ref set is stored as an override",
+        "file": "plugins/harness/lib/harness_lib/working_refs.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/working_refs.py",
+          "plugins/harness/skills/working/commands/working.py"
+        ],
+        "lines": "46-63",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "parse_refs returns an empty PlanRefs for tokens that hold only separators (`set ,`, `--refs ,`). do_set then writes an override with no ids and no issues and prints `<branch>: `. The mod's buildLine treats that empty override as replacing the plans' refs, which silently blanks the refs part of the line for the branch.",
+        "fix": [
+          "In parse_refs, raise WorkingRefsError('no TODO id or issue number given') when both lists end up empty; plan.py new and working.py already turn that into a refusal."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "plan.py reimplements the TODO catalog read that working.py takes from todo_sync",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/skills/working/commands/working.py",
+          "plugins/harness/lib/harness_lib/working_refs.py"
+        ],
+        "lines": "138-147,281-290",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "D7 fills issues from the catalog in two places, and each reads the file its own way. `catalog_json()` in plan.py reads and parses the file by hand (json.loads, catching OSError and ValueError, then an isinstance(dict) check). working.py `context()` calls `harness_lib.todo_sync.sources.read_json`, which already returns the parsed object, or an error for an absent, unparseable or non-object file. The two readers do the same job, so a later change to how the catalog resolves or validates (an absolute catalog path, an encoding fallback, a schema check) has to be made in both or `plan.py new --refs` and `/harness:working set` drift apart.\n\nAlso (overall, system_shape): plan.py adds catalog_json(), its own json.loads of `active().path(todo.catalog)`. working.py context() reads the same file through todo_sync.sources.read_json. TASK-3 asks `set` to fill issues 'as plan.py new does', but the two paths can disagree on an unreadable or non-object catalog.\n\nAlso (system_shape): plan.py adds catalog_json() (plan.py:281-290: active().todo.catalog, active().path(), json.loads, dict check), while working.py's context() (working.py:23-33) reads the same file through todo_sync.sources.read_json. TASK-3 says `set` fills issues 'as plan.py new does'. Each new caller of fill_issues now has to pick one of two readers, and their edge cases can drift (an absolute catalog path, an unreadable file).",
+        "fix": [
+          "Add one helper to harness_lib/working_refs.py, such as `catalog_of(cfg) -> Dict[str, Any]` built on `todo_sync.sources.read_json(cfg.project_root, cfg.todo.catalog)` that returns {} when the key is unset or the read fails. Call it from plan.py `new_refs` and from working.py `context`, and delete `catalog_json`.",
+          "Or have plan.py `catalog_json` call `read_json(active().project_root, catalog)` and return `found.data if found.ok else {}`, like working.py does.",
+          "Move one `catalog_data(cfg)` helper into harness_lib.working_refs, built on read_json, and call it from both plan.py new_refs and working.py context.",
+          "Add a `catalog_data(cfg) -> Dict[str, Any]` helper to harness_lib.working_refs (or reuse read_json there) and call it from both plan.py new_refs and working.py context; delete plan.py's catalog_json."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Docs say each id 'with no issue' is filled; the code fills only when no token is an issue",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "248-251",
+        "reviewer": "overall, system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "fill_issues returns the refs unchanged when any issue is named, so in `--refs todo-a,todo-b,#5` neither id is filled. The plan.py docstring ('a TODO id given with no issue takes its gh_issues'), write-plan SKILL.md step 1 ('an id given with no issue takes its issue') and the v1.0.0 release line ('a TODO id named without an issue') read as a per-id rule. The root README and working/SKILL.md state the rule correctly ('when no token is an issue').\n\nAlso (system_shape): working_refs.fill_issues (working_refs.py:78-87) returns the refs unchanged whenever any issue is named, so `--refs todo-a,todo-b,#5` stores todo-b without its catalog issues. plan.py's docstring (plan.py:249-250, 'a TODO id given with no issue takes its gh_issues'), write-plan SKILL.md step 1 ('an id given with no issue takes its issue from the TODO catalog') and the release note (docs/RELEASES/v1.0.0.md:637-638, 'a TODO id named without an issue') read as a per-id rule. The harness README (README.md:191-192, 'When no token is an issue') and the working SKILL (SKILL.md:21-22) state the real rule.\n\nAlso (docs): write-plan SKILL.md lines 37-38 say \"an id given with no issue takes its issue from the TODO catalog\", and the release note (v1.0.0.md lines 250-252) says \"a TODO id named without an issue takes its `gh_issues` from the TODO catalog\". `working_refs.fill_issues` (`plugins/harness/lib/harness_lib/working_refs.py:78-87`) returns the refs unchanged as soon as any issue is named, so `--refs todo-k69m,todo-zz11,#301` gets no catalog issues for either id. The root README (lines 193-194) and the working SKILL.md (lines 21-22) state the rule correctly: \"when no token names an issue\". The plan.py docstring (lines 27-29, outside this bucket) repeats the per-id wording.",
+        "fix": [
+          "Reword the three texts to 'when no token is an issue number, the issues come from the named ids' gh_issues in the TODO catalog'.",
+          "Reword the three texts to the README form: when no token is an issue number, the issues come from the named TODO ids' `gh_issues` in the catalog.",
+          "write-plan SKILL.md lines 37-38: \"when no issue number is given, the issues come from the named ids' `gh_issues` in the TODO catalog\"; the same wording in docs/RELEASES/v1.0.0.md line 251 and the plan.py module docstring lines 28-29."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "working SKILL.md reply contract misses the argparse exit",
+        "file": "plugins/harness/skills/working/SKILL.md",
+        "files": [
+          "plugins/harness/skills/working/SKILL.md",
+          "plugins/harness/skills/working/commands/working.py"
+        ],
+        "lines": "47,52",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "working/SKILL.md:47,52 say the only failure is exit 1 with a `working:` line, but working.py:71-78 uses argparse, which exits 2 with a `usage:` line on a malformed call (for example `set` with no tokens, the result of the comment-stripping case above). The reply rule does not cover that output.",
+        "fix": [
+          "In working/SKILL.md:52, add: 'On exit 2 (an argparse usage error), its stderr verbatim.'"
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "clear and list load the TODO catalog they discard",
+        "file": "plugins/harness/skills/working/commands/working.py",
+        "files": [
+          "plugins/harness/skills/working/commands/working.py",
+          "plugins/harness/scripts/plan.py",
+          "tests/skills/test_working_script.py"
+        ],
+        "lines": "23-33,57-68",
+        "reviewer": "skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "working.py:59 and :66 call context(), which reads and parses the TODO catalog (line 31), then discard it as `_catalog`; only `set` uses it.\n\nAlso (roast): TASK-3 says `set` fills issues from the TODO catalog 'as plan.py new does'. plan.py has its own `catalog_json()` (active().path + json.loads, {} on failure), while working.py's `context()` uses `todo_sync.sources.read_json(cfg.project_root, ...)`. That is the same job written twice, with different failure handling. tests/scripts/test_plan_new_refs.py covers the plan.py path, but no test in tests/skills/test_working_script.py runs `set <todo-id>` against a catalog, so a broken working.py catalog read would go unnoticed.",
+        "fix": [
+          "Split context() into store_path(repo) (activate the config and return the override path) and a catalog read called only by do_set.",
+          "Move one catalog reader into harness_lib.working_refs (for example `catalog_of(cfg) -> Dict`), call it from both plan.py and working.py, and add a test_working_script case that writes a catalog under `todo.folder` and checks that `set todo-k69m` stores its gh_issues."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "write-plan argument-hint omits the new `--refs` flag",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "lines": "4,12",
+        "reviewer": "docs, skill_package, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Line 12 now lists `--refs` among the `new` flags passed through, and step 1 documents it. The frontmatter `argument-hint` (line 4) still reads `<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]`, so the slash-command hint never shows the flag. Line 12 also runs past the 110-column wrap the file keeps elsewhere.\n\nAlso (skill_package): write-plan/SKILL.md:12 and step 1 (line 36) now pass `--refs` to `new`, but the frontmatter argument-hint at line 4 still reads `<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]`, so the slash-command hint does not show the flag.\n\nAlso (system_shape): write-plan SKILL.md:12 now lists `--refs` among the `new` flags passed through, and step 1 documents it, but the frontmatter argument-hint (SKILL.md:4) is still `<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]`, so the slash-command hint does not show the flag.\n\nAlso (roast): TASK-2 added `--refs` to `plan.py new`, and write-plan SKILL.md now lists it in the split paragraph and in step 1. The frontmatter argument-hint still reads `<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]`, so the slash-command hint never shows the new flag.",
+        "fix": [
+          "Line 4: `argument-hint: \"<title> [--spec PATH] [--base BRANCH] [--no-fetch] [--refs REF...] [-- <guidance>]\"`; rewrap line 12-13 at 110 columns.",
+          "Change line 4 to `argument-hint: \"<title> [--spec PATH] [--base BRANCH] [--no-fetch] [--refs REFS] [-- <guidance>]\"`.",
+          "SKILL.md:4: `argument-hint: \"<title> [--spec PATH] [--base BRANCH] [--no-fetch] [--refs REF...] [-- <guidance>]\"`.",
+          "Set line 4 to `argument-hint: \"<title> [--spec PATH] [--base BRANCH] [--no-fetch] [--refs REF...] [-- <guidance>]\"`."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "config.ts tests live in overrides.test.ts",
+        "file": "plugins/working-refs/hooks/overrides.test.ts",
+        "lines": "3,41-73",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Plan TASK-4 asks for 'Unit tests beside each module'. The readConfig and store-path tests (overrides.test.ts:41-73) exercise config.ts, but they sit in overrides.test.ts, and the mod has no config.test.ts. Someone looking for config.ts coverage would not find it.",
+        "fix": [
+          "Move the 'readConfig' and 'the store paths' describe blocks to a new plugins/working-refs/hooks/config.test.ts, with the imports they need."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Mod and widget pick the checkout by different rules (cwd first vs project_dir first)",
+        "file": "plugins/working-refs/hooks/watch.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.ts",
+          "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json",
+          "plugins/banner-status/README.md"
+        ],
+        "lines": "60-70,160-171",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "watch.ts resolveWatch tries the session cwd and the folders above it first, then CLAUDE_PROJECT_DIR. The widget reads `workspace.project_dir` first, then `cwd`. In a session launched in the main checkout whose cwd moves into a linked worktree, the mod writes the worktree's line.txt, so band-line shows the worktree's line, while ccstatusline reads the main checkout's line.txt, which holds a stale line or none. banner-status README and SKILL.md step 4 promise that 'each worktree session prints its own checkout's line', and that holds only when the session was launched in that worktree.",
+        "fix": [
+          "Make both sides use one rule: either the widget prefers `j.cwd` (walking up to `.claude/harness.json`, as the mod does), or the mod prefers CLAUDE_PROJECT_DIR.",
+          "Or keep D10 as decided and narrow the README/SKILL wording to sessions launched in the worktree."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Python format_refs and the clear/list messages are only partly tested",
+        "file": "tests/lib/test_working_refs.py",
+        "files": [
+          "tests/lib/test_working_refs.py",
+          "tests/skills/test_working_script.py"
+        ],
+        "lines": "36-45",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The plan specifies two forms for format_refs: 'todo-k69m (301)' and, for issues alone, '#301, #315'. The Python side reaches only the first form, indirectly through the `set` and `list` output. The issues-alone form, which the `/harness:working` reply prints, is tested only in the TypeScript copy (line.test.ts:25-29), so the two renderers can drift without a failing test. The 'no override for <branch>' and 'no overrides' replies (working.py:61, 68) are also untested, and fill_issues is never given two ids to check the union in id order.",
+        "fix": [
+          "Add a test_working_refs.py case: `format_refs(parse_refs(['#301', '#315'])) == '#301, #315'`, `format_refs(parse_refs(['todo-a', 'todo-b', '#1'])) == 'todo-a, todo-b (1)'`, and a fill_issues case with two catalog ids asserting the union in id order.",
+          "Add test_working_script.py cases for `clear` with no override ('no override for <branch>') and `list` on an empty store ('no overrides')."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Implicit Optional in the `_project` helper signature",
+        "file": "tests/skills/test_working_script.py",
+        "lines": "13,32",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`def _project(make_project, config: Dict[str, Any] = None)` declares a non-Optional type with a None default. The project style requires `Optional[X]`.",
+        "fix": [
+          "Change the signature to `config: Optional[Dict[str, Any]] = None` and add `Optional` to the `typing` import."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "git rev-parse --verify --quiet HEAD^{commit}; git rev-parse --verify --quiet 1168-todo-banner^{commit}; git merge-base <base sha> <head sha>; git branch --show-current; git show-ref --verify --quiet refs/heads/HEAD; git rev-list --count <merge base>..<head sha>",
+        "stdout": "73d0e24d493ac353022504819f71e01ed7e3755a\nf6bd86be2891b35e8bba6e4abae1d075bb4f0382\nbanner-refs\n10\n",
+        "result": "OK (state=LOCAL; no PR)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "banner-refs",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "banner-refs",
+        "head_ref_name": "banner-refs",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "f6bd86be2891b35e8bba6e4abae1d075bb4f0382",
+        "head_sha": "73d0e24d493ac353022504819f71e01ed7e3755a",
+        "base_ancestor_command": "git merge-base --is-ancestor f6bd86be2891b35e8bba6e4abae1d075bb4f0382 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 73d0e24d493ac353022504819f71e01ed7e3755a HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "plan.json meta.base_branch",
+        "value": "1168-todo-banner",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - The fix is the schemas/README.md update (plan-level refs field, plan.py new --refs, Migration bullet), owned by the other part's fixer; this part's schema and model files need no edit for it.; schemas/README.md: refs added to the plan-level field bullet, [--refs REF ...] added to the plan.py new line in the Step 2 flow, and a Migration bullet 'refs on the ActionPlan (harness 0.79.0)' tells a project with a pinned ActionPlan.schema.json to drop or recopy the pin"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - Added test_a_separator_only_set_exits_1_and_writes_nothing; no code edit in working.py: the refusal comes from parse_refs in working_refs.py (other part), and do_set propagates its WorkingRefsError to main's exit 1; parse_refs raises WorkingRefsError('no TODO id or issue number given') when no id or issue is left after splitting; plan.py new_refs and working.py (ValueError catch) already refuse it"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - No edit in working.py: the exit-2 argparse reply line belongs to working/SKILL.md (other part); working.py:71-78 argparse parsing is unchanged; working/SKILL.md Reply adds: on exit 2 (an argparse usage error), its stderr verbatim"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - Added test_list_on_an_empty_store_says_no_overrides and test_clear_with_no_override_says_so_and_writes_nothing; the format_refs and two-id fill_issues cases are in tests/lib/test_working_refs.py (other part); added test_working_refs.py cases: format_refs issues-alone ('#301, #315'), ids with issues ('todo-k69m, todo-v8mh (1)'), and fill_issues over two catalog ids asserting the union in id order (todo ids are real catalog-shaped ids; the brief's todo-a examples fail ID_RE)"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - Changed _project signature to config: Optional[Dict[str, Any]] = None and added Optional to the typing import"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - Added test_set_fills_issues_from_the_todo_catalog with a project todo folder docs/TODO and a RepoToDo.json catalog mapping todo-k69m to 301; asserts stored issues [301] and stdout 'todo-k69m (301)'; working.py catalog wiring (lines 31-32, 49-51) is exercised with no edit"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - marketplace.json banner-status and band-line descriptions now name the working-refs line (optional third line / second band line); README Banner Config row gains a working-refs bullet; banner-status plugin.json description now names the working-refs line as an optional third line; band-line plugin.json description now names the working-refs line (optional third line when that mod is installed); banner-status, marketplace.json and README parts are another fixer's"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - option 1: hint is `<todo-id|#issue>... | --clear | --list [-- <guidance>]`, the `-- <refs>` table form is gone, only words before the first standalone `--` become tokens, a `--` alone-or-first row prints the usage line; description and body now say refs default to the union of qualifying plans' refs and the file is per checkout; README (free-text list stays correct), skill_arguments.md (rule now followed) and line.ts (already takes refs from plans only) need no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - working/SKILL.md set row single-quotes each token (`WORKING set 'todo-k69m' '#301'`) with the shell-comment reason and an example; README: its `#301` examples are slash-command input, not shell, so no edit; write-plan SKILL.md step 1 quotes the --refs value or each token ('todo-k69m,#301' or 'todo-k69m' '#301') and explains that a bare # starts a shell comment; plan.py new --refs docstring carries the same quoting note"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - setup-statusline Files written row says the defaults are copied when absent and an existing file only gains the working-refs line on a yes in step 5; frontmatter description says it writes a ccstatusline config file (defaults when absent, else only the opt-in line)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - widget command uses require('path').resolve so an absolute state_dir is kept; step 4 and the banner-status README bullet require forward slashes and describe the resolve rule; working-refs README Files notes an absolute state_dir is shared by every checkout; watch.ts: cited, the mod already keeps an absolute state_dir, no edit"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - D10 kept; banner-status README Defaults paragraph narrowed to sessions launched in a worktree and names the cwd-moves-into-a-worktree split (SKILL.md step 4 narrowed the same way under M4's edit); watch.ts and ccstatusline.defaults.json: rule kept as decided, no edit"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - watch.ts exports pure branchOfSnapshot and isSnapshotMove, used by the state.set hook and onSnapshot; watch.test.ts unit-tests same branch, another branch, null snapshot and unscanned memo, and renames the prompt-driven test to 'a branch change seen at the next prompt rescans'"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - the 'unchanged line is not written again' test rewrites the plan with identical text at a newer mtime, runs a Bash call, asserts git calls grew (a rescan ran), the line is unchanged and writes stay at 1; watch.ts: compare-before-write already correct, no edit"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - plan.py new docstring and write-plan SKILL.md step 1 now state the rule as 'when no token is an issue number, the issues come from the named ids' gh_issues in the TODO catalog' (matches working_refs.fill_issues); the v1.0.0 release line is in the other part; v1.0.0 release line reworded to the README rule: when no token is an issue number, the issues come from the named TODO ids' gh_issues in the catalog; plan.py, write-plan SKILL.md are another fixer's"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - write-plan SKILL.md frontmatter argument-hint gains [--refs REF ...]; the split paragraph at lines 11-13 rewrapped under 110 columns"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - restored the space after `=` in `const turnEnd = ($: Engine, turnId: string) =>`"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - readConfig and store-path describe blocks moved from overrides.test.ts to new hooks/config.test.ts with their imports; overrides.test.ts keeps the parseOverrides block and imports only DETACHED_KEY and STORE_VERSION"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - added working_refs.catalog_data(cfg), built on todo_sync.sources.read_json ({} when todo.catalog is unset or the read fails); plan.py new_refs and working.py do_set call it; plan.py catalog_json deleted"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - working.py context() split into store_path(repo) (activates the config, returns the override path); only do_set reads the catalog through working_refs.catalog_data; plan.py: shares that reader (edited under M8), no further change; tests/skills/test_working_script.py: already holds test_set_fills_issues_from_the_todo_catalog covering set todo-k69m against a catalog"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "73d0e24 (working-tree snapshot; developer commits) - PlanRefs.issues items bounded to positive ints (Annotated[StrictInt, Field(gt=0)]), ActionPlan.schema.json regenerated (gen_plan_schema --check ok); overrides.ts isIssue keeps n > 0 and dedupes like plans.ts uniqueIssues (fixer w1_fix_1 edit; its report listed two unchanged schema files) (outside fixer waves)"
+    }
+  ]
+}
