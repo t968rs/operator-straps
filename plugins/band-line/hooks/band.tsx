@@ -11,6 +11,8 @@ import { formatBanner, needsAttention, NO_FIGURES } from './banner'
 
 const gitAtom = atom({ plugin: 'git-status', key: 'git' } as const, null)
 const sessionAtom = atom({ plugin: 'band-line', key: 'session' } as const, NO_FIGURES)
+/** working-refs's working line; it stays null while that mod is absent or has nothing to show. */
+const refsAtom = atom({ plugin: 'working-refs', key: 'line' } as const, null)
 
 export const registerBand = (on: On): void => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -18,11 +20,13 @@ export const registerBand = (on: On): void => {
     const git = await read($, gitAtom)
     if (git === null) return next(e)
     const text = formatBanner(git, await read($, sessionAtom), e.props.bodyColumns)
+    const refs = (await read($, refsAtom))?.text
     const below = await next(e).catch(() => undefined)
     const { Box, Text } = $.ui.resolve(e)
     return (
       <Box flexDirection="column">
         <Text color={needsAttention(git) ? 'warning' : 'subtle'}>{text}</Text>
+        {refs ? <Text color="subtle">{refs}</Text> : null}
         {below}
       </Box>
     )

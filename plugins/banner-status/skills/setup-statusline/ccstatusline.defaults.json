@@ -25,6 +25,15 @@
         "metadata": { "label": "" },
         "numberFormat": { "style": "whole" }
       }
+    ],
+    [
+      {
+        "id": "51bfaf03-6256-4bd9-97a4-03099b1d4f2d",
+        "type": "custom-command",
+        "commandPath": "node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s),r=(j.workspace||{}).project_dir||j.cwd||'.';process.stdout.write(require('fs').readFileSync(require('path').resolve(r,'.claude/state/harness/working-refs/line.txt'),'utf8'))}catch(e){}})\"",
+        "preserveColors": true,
+        "timeout": 1000
+      }
     ]
   ],
   "flexMode": "full",
