@@ -1,0 +1,27 @@
+{
+  "plan_id": "2024",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "2dff88527127471c59eaed088cd7b2d76ada346a"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_states_the_base_check",
+        "tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_names_the_off_history_end_state",
+        "tests/skills/test_write_plan_relink_contract.py::test_the_skill_readme_states_the_relink_refusal"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_states_the_base_check tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_names_the_off_history_end_state tests/skills/test_write_plan_relink_contract.py::test_the_skill_readme_states_the_relink_refusal"
+    }
+  },
+  "evidence": "staged tree 2dff885: 3 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "989e8a9adcbbac6ccec3be25a13c4d0a7140756a8513827b4aa7ed7a9f2acbab"
+}

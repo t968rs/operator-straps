@@ -1,0 +1,74 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-5",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "2474356006b72820cfb6e22f17c445ea03e4579e"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_pr_review_adversarial.py::test_only_the_flag_plans_an_adversarial_run",
+        "tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows",
+        "tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_records_the_refuter_plan",
+        "tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_writes_refuter_briefs_with_the_run_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_logs_the_pending_check",
+        "tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_refuses_a_missing_script_before_the_run",
+        "tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_refuses_a_pinned_schema_without_refuted",
+        "tests/scripts/test_pr_review_adversarial.py::test_init_prints_each_target_finding_under_its_key",
+        "tests/scripts/test_pr_review_adversarial.py::test_init_refuses_before_the_reviewer_recorded",
+        "tests/scripts/test_pr_review_adversarial.py::test_init_refuses_a_run_id_that_is_not_current",
+        "tests/scripts/test_pr_review_adversarial.py::test_init_on_a_slot_without_findings_records_an_empty_report",
+        "tests/scripts/test_pr_review_adversarial.py::test_merge_refuses_a_slot_without_refutations",
+        "tests/scripts/test_pr_review_adversarial.py::test_merge_refuses_a_refutation_of_an_older_report",
+        "tests/scripts/test_pr_review_adversarial.py::test_code_refuter_reports_and_refutations_are_not_strays",
+        "tests/scripts/test_pr_review_adversarial.py::test_block_reprints_a_refuter_report",
+        "tests/scripts/test_pr_review_adversarial.py::test_fold_refuses_an_adv_source_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_merge_marks_the_refuted_issue_and_folds_the_attack",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_writes_refuted_resolutions_and_keeps_the_issue",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_completes_the_adversarial_check",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_prints_each_refuted_id_with_its_evidence",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_replace_after_a_phase4_stop_keeps_working",
+        "tests/scripts/test_pr_review_adversarial.py::test_all_refuted_with_a_phase4_failure_holds_a_valid_review",
+        "tests/scripts/test_pr_review_adversarial.py::test_only_an_adversarial_build_writes_the_check",
+        "tests/scripts/test_pr_review_adversarial.py::test_refute_on_a_review_without_the_flag_closes_the_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_refute_refuses_an_id_already_closed",
+        "tests/scripts/test_pr_review_adversarial.py::test_refute_refuses_an_unknown_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_appends_not_resolved_and_reopens_the_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_hands_the_id_to_the_next_waves",
+        "tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_moves_a_done_run_back_to_fix",
+        "tests/scripts/test_pr_review_adversarial.py::test_unrefute_bubble_appends_bubbled_and_bubbles_the_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_unrefute_refuses_an_id_that_is_not_refuted_or_unknown[not-refuted]",
+        "tests/scripts/test_pr_review_adversarial.py::test_unrefute_refuses_an_id_that_is_not_refuted_or_unknown[unknown]",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_refute",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_unrefute",
+        "tests/scripts/test_pr_review_adversarial.py::test_bubble_refuses_a_refuted_id_naming_unrefute",
+        "tests/scripts/test_pr_review_adversarial.py::test_closeout_resolved_refuses_a_refuted_id_naming_unrefute",
+        "tests/scripts/test_pr_review_adversarial.py::test_waves_plan_no_fixer_for_a_refuted_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_bubble_refute_then_unrefute_fix_hands_the_id_to_waves",
+        "tests/scripts/test_pr_review_adversarial.py::test_waves_ids_refuses_a_refuted_id_naming_unrefute",
+        "tests/scripts/test_pr_review_adversarial.py::test_waves_ids_plans_an_id_after_unrefute_fix",
+        "tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_refute_of_an_upheld_id",
+        "tests/scripts/test_pr_review_adversarial.py::test_refute_under_the_flag_adds_the_id_to_refuted_ids",
+        "tests/scripts/test_pr_review_adversarial.py::test_refute_from_done_keeps_the_phase"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_pr_review_adversarial.py::test_only_the_flag_plans_an_adversarial_run tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_records_the_refuter_plan tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_writes_refuter_briefs_with_the_run_id tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_logs_the_pending_check tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_refuses_a_missing_script_before_the_run tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_refuses_a_pinned_schema_without_refuted tests/scripts/test_pr_review_adversarial.py::test_init_prints_each_target_finding_under_its_key tests/scripts/test_pr_review_adversarial.py::test_init_refuses_before_the_reviewer_recorded tests/scripts/test_pr_review_adversarial.py::test_init_refuses_a_run_id_that_is_not_current tests/scripts/test_pr_review_adversarial.py::test_init_on_a_slot_without_findings_records_an_empty_report tests/scripts/test_pr_review_adversarial.py::test_merge_refuses_a_slot_without_refutations tests/scripts/test_pr_review_adversarial.py::test_merge_refuses_a_refutation_of_an_older_report tests/scripts/test_pr_review_adversarial.py::test_code_refuter_reports_and_refutations_are_not_strays tests/scripts/test_pr_review_adversarial.py::test_block_reprints_a_refuter_report tests/scripts/test_pr_review_adversarial.py::test_fold_refuses_an_adv_source_id tests/scripts/test_pr_review_adversarial.py::test_merge_marks_the_refuted_issue_and_folds_the_attack tests/scripts/test_pr_review_adversarial.py::test_build_writes_refuted_resolutions_and_keeps_the_issue tests/scripts/test_pr_review_adversarial.py::test_build_completes_the_adversarial_check tests/scripts/test_pr_review_adversarial.py::test_build_prints_each_refuted_id_with_its_evidence tests/scripts/test_pr_review_adversarial.py::test_build_replace_after_a_phase4_stop_keeps_working tests/scripts/test_pr_review_adversarial.py::test_all_refuted_with_a_phase4_failure_holds_a_valid_review tests/scripts/test_pr_review_adversarial.py::test_only_an_adversarial_build_writes_the_check tests/scripts/test_pr_review_adversarial.py::test_refute_on_a_review_without_the_flag_closes_the_id tests/scripts/test_pr_review_adversarial.py::test_refute_refuses_an_id_already_closed tests/scripts/test_pr_review_adversarial.py::test_refute_refuses_an_unknown_id tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_appends_not_resolved_and_reopens_the_id tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_hands_the_id_to_the_next_waves tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_moves_a_done_run_back_to_fix tests/scripts/test_pr_review_adversarial.py::test_unrefute_bubble_appends_bubbled_and_bubbles_the_id tests/scripts/test_pr_review_adversarial.py::test_unrefute_refuses_an_id_that_is_not_refuted_or_unknown[not-refuted] tests/scripts/test_pr_review_adversarial.py::test_unrefute_refuses_an_id_that_is_not_refuted_or_unknown[unknown] tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_refute tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_unrefute tests/scripts/test_pr_review_adversarial.py::test_bubble_refuses_a_refuted_id_naming_unrefute tests/scripts/test_pr_review_adversarial.py::test_closeout_resolved_refuses_a_refuted_id_naming_unrefute tests/scripts/test_pr_review_adversarial.py::test_waves_plan_no_fixer_for_a_refuted_id tests/scripts/test_pr_review_adversarial.py::test_bubble_refute_then_unrefute_fix_hands_the_id_to_waves tests/scripts/test_pr_review_adversarial.py::test_waves_ids_refuses_a_refuted_id_naming_unrefute tests/scripts/test_pr_review_adversarial.py::test_waves_ids_plans_an_id_after_unrefute_fix tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_refute_of_an_upheld_id tests/scripts/test_pr_review_adversarial.py::test_refute_under_the_flag_adds_the_id_to_refuted_ids tests/scripts/test_pr_review_adversarial.py::test_refute_from_done_keeps_the_phase"
+    }
+  },
+  "evidence": "staged tree 2474356: 43 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/lib/harness_lib/review_models.py",
+        "change": "EX5"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX5": "25340829c54c1d09eee47c38724735485e6344aae2abdcd5924e9c90078f1e4e"
+    }
+  },
+  "date": "2026-11-12",
+  "seal": "2ea5ea321992a604fc7c8bcd8c25bd2729cd8a5ae2c58e39093199a1f4b88bd7"
+}

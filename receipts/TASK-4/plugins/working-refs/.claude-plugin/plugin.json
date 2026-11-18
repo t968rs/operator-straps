@@ -1,0 +1,10 @@
+{
+  "name": "working-refs",
+  "version": "0.1.0",
+  "description": "The plans, TODO ids and issues the current branch works on, as one line for the ccstatusline widget and band-line",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "types": "./types/index.d.ts",
+  "dependencies": ["git-status"]
+}

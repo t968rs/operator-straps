@@ -1,0 +1,29 @@
+{
+  "plan_id": "2023",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "a2af6f080727a4ed9a963f3f531308ab95cf5f2d"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_todo_sync_update_cli.py::test_inbox_put_takes_an_update_flag",
+        "tests/scripts/test_todo_sync_update_cli.py::test_put_update_queues_and_add_inbox_applies",
+        "tests/scripts/test_todo_sync_update_cli.py::test_parallel_queued_updates_land_in_one_drain_with_drift_0",
+        "tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_a_computed_field",
+        "tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_file_issue"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_todo_sync_update_cli.py::test_inbox_put_takes_an_update_flag tests/scripts/test_todo_sync_update_cli.py::test_put_update_queues_and_add_inbox_applies tests/scripts/test_todo_sync_update_cli.py::test_parallel_queued_updates_land_in_one_drain_with_drift_0 tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_a_computed_field tests/scripts/test_todo_sync_update_cli.py::test_put_update_refuses_file_issue"
+    }
+  },
+  "evidence": "staged tree a2af6f0: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "4471f8077f10c32646ad994f35f11c5be13f1307144a6910c45bb6164d779643"
+}

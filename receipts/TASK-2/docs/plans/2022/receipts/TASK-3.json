@@ -1,0 +1,36 @@
+{
+  "plan_id": "2022",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "60a0994f0f4088982703955bb591f6e56cfcb20c"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_todo_snapshot_canned.py::test_the_page_and_its_stamp_take_the_todo_message"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_todo_snapshot_canned.py::test_the_page_and_its_stamp_take_the_todo_message"
+    }
+  },
+  "evidence": "staged tree 60a0994: 1 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/lib/harness_lib/config.py",
+        "change": "EX1"
+      },
+      {
+        "path": "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "change": "EX1"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "25d580f5a0b40f173cab00c2bd9aefd55cae75fb288bfc66bc9bb3310a3a0e16"
+    }
+  },
+  "date": "2026-11-17",
+  "seal": "634db263d0e6f8eb743fff311a6cafffaf3dfb304d214ff045dd79891406348d"
+}

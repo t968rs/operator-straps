@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/harness/pr-team/dispatch_plan.schema.json",
+  "title": "pr-team Dispatch Plan",
+  "description": "Plan file written by `harness:pr-team-orchestrator` or `harness:pr-team-fixer`. The main session reads it, fans out the listed agents in parallel, and collects their return-contract signal lines.",
+  "$comment": "The shim does NOT read agent prompt content - the `prompt_file_path` field is passed to each agent as a literal path; the agent reads its own task spec. This keeps main-session context size bounded by reviewer/fixer count, not by prompt body size. Consumers: main session.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "pr_number",
+    "phase",
+    "dispatch_parallel",
+    "exclusions_fixture_path",
+    "runtime_dir",
+    "agents"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "agents"
+        ],
+        "properties": {
+          "agents": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "no_op_reason"
+        ],
+        "properties": {
+          "dispatch_parallel": {
+            "type": "boolean",
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "agents"
+        ],
+        "properties": {
+          "agents": {
+            "type": "array",
+            "minItems": 1
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "no_op_reason"
+          ]
+        }
+      }
+    }
+  ],
+  "properties": {
+    "no_op_reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Required when `agents` is empty (zero-fan-out plan). One-line summary of why this plan dispatches nothing - typically because every issue classified as bubble-up (architectural-ambiguity, out-of-scope, or needs-follow-up) and no mechanical fixes remained for Haiku assignment. The shim recognizes empty `agents` + non-empty `no_op_reason` as the legitimate skip path; without `no_op_reason` an empty `agents` array fails schema validation."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^pr[0-9]{1,7}_[0-9]{8}T[0-9]{6}Z$",
+      "description": "Stable per-skill-invocation identifier. Format: `pr{NNNN}_{UTC ISO8601-basic}`. Example: `pr1122_20260518T060416Z`. The shim derives this once at orchestrator dispatch and reuses it across every step of the run; agents must copy it verbatim into their dispatch plans on subsequent invocations. Used to namespace `runtime_dir` and to correlate JSONL stats rows."
+    },
+    "pr_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9999999,
+      "description": "GitHub PR number under review. NOT zero-padded. Capped at 9,999,999 to stay consistent with the 7-digit limit baked into the run_id regex pattern; widen both fields together if GitHub ever issues 8-digit PR numbers."
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "dispatch_review",
+        "dispatch_fix"
+      ],
+      "$comment": "Self-describing tag for forensics on a corrupt runtime dir; not a runtime decision input - the shim and agents both know the phase at the call site.",
+      "description": "Which phase of the shim protocol produced this plan. `dispatch_review` is the Phase 2 fan-out plan (reviewer agents); `dispatch_fix` is the Phase 5 fan-out plan (fixer subagents; typically `model: haiku`, but the schema accepts any enum value per agents[i].model). The shim uses this to choose post-dispatch behavior (route returns to consolidator vs closer)."
+    },
+    "dispatch_parallel": {
+      "type": "boolean",
+      "description": "If `true`, the shim must fan out the agents in a single tool-call block (parallel). If `false`, the shim must dispatch agents serially OR collapse to inline (the orchestrator decided parallel wasn't justified - e.g. single-bucket PR, single-issue fix batch). The shim does NOT second-guess this - the orchestrator owns the bucket-sort decision."
+    },
+    "exclusions_fixture_path": {
+      "type": "string",
+      "description": "Repo-relative path to the project's machine-generated exclusions JSON (`exclusions` in .claude/harness.json), or an empty string when the project configures none. The orchestrator passes this value to phase4_branch_safety.py via the `--exclusions-fixture` CLI flag; the script filters the clean-tree check through it in process. The resulting exclusions_fixture field in verification_log.pre_fix_time.clean_tree_check records the path actually used, providing an audit trail of which exclusions list governed the branch-safety check."
+    },
+    "runtime_dir": {
+      "type": "string",
+      "description": "Repo-relative directory containing all in-flight artifacts for this run: prompt files, agent output files, intermediate aggregations. Always `<state_dir>/pr-team/_runtime/{run_id}/`, with `state_dir` from .claude/harness.json (default `.claude/state/harness`). The shim creates this directory before writing the plan; cleanup happens at QA-pass success (`.complete` sentinel + sweep of older `_runtime/*` dirs). The project keeps its state_dir git-ignored (or lists `{runtime_dir}/**` in the file at exclusions_fixture_path), so Phase 4 clean-tree checks do not STOP on in-flight runtime files."
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 0,
+      "description": "Ordered list of subagent dispatches the shim will issue. When non-empty: the shim issues each as `Agent(subagent_type=<from agent.subagent_type>, model=<from agent.model>, description=<from agent.summary>, prompt=<canonical per-agent prompt template defined in the pr-team skill's canonical_prompt_template.md - single source of truth; SKILL.md Step 2 references this file by path>)`. When empty: the plan is a legitimate no-op (every issue bubbled); `no_op_reason` is required and `dispatch_parallel` must be `false`. The shim treats `prompt_file_path` as opaque - never reads its content. The shim's only context contribution per agent is the agent's return-contract signal block.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "subagent_type",
+          "model",
+          "summary",
+          "prompt_file_path",
+          "output_file_path",
+          "expected_return_signal"
+        ],
+        "not": {
+          "properties": {
+            "id": {
+              "const": "closer"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "$comment": "The literal 'closer' is reserved for the shim-injected CLOSEOUT row; no plan-side agent may use it. SKILL.md L371-372 documents the invariant.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+            "description": "Short, lowercase, snake_case identifier unique within this plan (e.g. `r1_config`, `r2_python`, `r3_overall`, `r4_lens`, `f1_rename`, `f2_pep8`). Maps 1:1 to the `output_file_path` basename. Used in JSONL stats rows as the `cell` segment after `pr{NNNN}_`."
+          },
+          "subagent_type": {
+            "type": "string",
+            "description": "Exact `subagent_type` string the shim passes to `Agent()`. Examples: `harness:pr-reviewer`, `general-purpose`, `harness:roast-my-code`. Must be a registered subagent name the harness recognizes."
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "haiku",
+              "sonnet",
+              "opus",
+              "inherit"
+            ],
+            "description": "Model family override. `inherit` means use the shim's session model.",
+            "$comment": "Reviewer agents typically request `opus` or `inherit`; fixer agents typically request `haiku`."
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+              "default"
+            ],
+            "description": "Optional thinking-budget hint. `default` (or omitted) inherits the shim's session effort."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Short, imperative label shown in the shim's spinner during the parallel dispatch (e.g. `R1 config bucket`, `Fixer A: rename token sweep`). Kept brief because all N labels appear in the same parallel tool-call block. The shim passes this value as the `description=` argument when calling `Agent()`; the field is named `summary` here to avoid colliding with the JSON-Schema meta-keyword `description`."
+          },
+          "prompt_file_path": {
+            "type": "string",
+            "description": "Repo-relative path to the agent's task-spec file under `runtime_dir/prompts/{id}.md` (markdown is the canonical form; the agent's first action is to Read this file). The shim NEVER reads this file; it is passed to the agent as a literal path string. This is the load-bearing trick that keeps the shim's context proportional to N, not to prompt body size."
+          },
+          "output_file_path": {
+            "type": "string",
+            "description": "Repo-relative path the agent MUST write its detailed output to, under `runtime_dir/outputs/{id}.json` (canonical) or `.md` (when JSON is overkill for a fixer). The shim does NOT read this file directly; the consolidator/closer reads it during its own subagent invocation. The path appears in the agent's return-contract `OUTPUT:` line as the back-reference."
+          },
+          "expected_return_signal": {
+            "type": "string",
+            "description": "What return-contract verbs the shim accepts for this agent. The shim validates the actual return verb against this set; unexpected verbs produce a STOP_PROTOCOL signal back to the user.",
+            "oneOf": [
+              {
+                "const": "DONE",
+                "description": "Reviewer-style contract: DONE, FAIL, or STOP are accepted (STOP is emitted on Phase 1 structural-guard failure per terminals.reviewer.schema.json's signal enum)."
+              },
+              {
+                "const": "DONE_OR_FORK",
+                "description": "Fixer-style contract: DONE, FAIL, FORK_AMBIGUITY, FORK_BLOCKER, or STOP are accepted per terminals.fixer.schema.json's signal enum."
+              },
+              {
+                "const": "DONE_OR_STOP",
+                "description": "Mode-change-agent contract: DONE or STOP are accepted. Reserved for a hypothetical future mode-change agent dispatched through the plan.",
+                "$comment": "current orchestrator and closer dispatches are direct from the shim and bypass this enum."
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "plan_id": "2022",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "60a0994f0f4088982703955bb591f6e56cfcb20c"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_todo_sync_render_page.py::test_render_writes_the_page_and_its_stamp_and_t2_is_clean",
+        "tests/scripts/test_todo_sync_render_page.py::test_a_second_render_rewrites_the_one_page",
+        "tests/scripts/test_todo_sync_render_page.py::test_rows_link_their_stubs_by_position",
+        "tests/scripts/test_todo_sync_render_page.py::test_gh_and_tracker_cells",
+        "tests/scripts/test_todo_sync_render_page.py::test_render_tolerates_malformed_link_fields",
+        "tests/scripts/test_todo_sync_render_page.py::test_render_with_null_stub_name",
+        "tests/scripts/test_todo_sync_render_page.py::test_the_name_pattern_no_longer_gates_render",
+        "tests/scripts/test_todo_sync_render_page.py::test_t2_reads_the_page_not_a_dated_markdown_snapshot",
+        "tests/lib/test_todo_snapshot_wiring.py::test_sources_reads_the_page",
+        "tests/lib/test_todo_snapshot_wiring.py::test_t2_is_clean_on_an_in_sync_page",
+        "tests/lib/test_todo_snapshot_wiring.py::test_t2_without_the_page_names_it",
+        "tests/lib/test_todo_snapshot_wiring.py::test_t2_edited_top_row_warns_on_the_page",
+        "tests/lib/test_todo_snapshot_wiring.py::test_init_writes_the_page_and_its_stamp"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_todo_sync_render_page.py::test_render_writes_the_page_and_its_stamp_and_t2_is_clean tests/scripts/test_todo_sync_render_page.py::test_a_second_render_rewrites_the_one_page tests/scripts/test_todo_sync_render_page.py::test_rows_link_their_stubs_by_position tests/scripts/test_todo_sync_render_page.py::test_gh_and_tracker_cells tests/scripts/test_todo_sync_render_page.py::test_render_tolerates_malformed_link_fields tests/scripts/test_todo_sync_render_page.py::test_render_with_null_stub_name tests/scripts/test_todo_sync_render_page.py::test_the_name_pattern_no_longer_gates_render tests/scripts/test_todo_sync_render_page.py::test_t2_reads_the_page_not_a_dated_markdown_snapshot tests/lib/test_todo_snapshot_wiring.py::test_sources_reads_the_page tests/lib/test_todo_snapshot_wiring.py::test_t2_is_clean_on_an_in_sync_page tests/lib/test_todo_snapshot_wiring.py::test_t2_without_the_page_names_it tests/lib/test_todo_snapshot_wiring.py::test_t2_edited_top_row_warns_on_the_page tests/lib/test_todo_snapshot_wiring.py::test_init_writes_the_page_and_its_stamp"
+    }
+  },
+  "evidence": "staged tree 60a0994: 13 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/lib/harness_lib/todo_sync/stub_links.py",
+        "change": "EX1"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "25d580f5a0b40f173cab00c2bd9aefd55cae75fb288bfc66bc9bb3310a3a0e16"
+    }
+  },
+  "date": "2026-11-17",
+  "seal": "1917f1e705d57c77e4c688c91fed0825d7364a267402ab96011aef59fb783f89"
+}

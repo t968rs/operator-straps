@@ -1,0 +1,44 @@
+{
+  "plan_id": "2023",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "327fc4f62c100a339e7e63b8ceec57abec1dec4a"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_todo_sync_updates.py::test_update_fields_are_the_add_fields_without_the_issue",
+        "tests/lib/test_todo_sync_updates.py::test_apply_updates_sets_the_fields_and_reranks",
+        "tests/lib/test_todo_sync_updates.py::test_an_update_leaves_every_other_field",
+        "tests/lib/test_todo_sync_updates.py::test_an_id_is_read_in_any_case_and_without_its_prefix",
+        "tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[rank]",
+        "tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[catalog_entry_ids]",
+        "tests/lib/test_todo_sync_updates.py::test_a_retired_or_split_id_is_refused",
+        "tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[severity]",
+        "tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[no-id]",
+        "tests/lib/test_todo_sync_updates.py::test_one_spec_sets_a_field_once",
+        "tests/lib/test_todo_sync_updates.py::test_an_empty_spec_is_refused",
+        "tests/lib/test_todo_sync_updates.py::test_put_updates_queues_one_file_per_update_and_leaves_the_catalog",
+        "tests/lib/test_todo_sync_updates.py::test_put_updates_writes_nothing_on_a_refusal",
+        "tests/lib/test_todo_sync_updates.py::test_drain_applies_adds_and_updates_in_one_write",
+        "tests/lib/test_todo_sync_updates.py::test_a_later_update_of_one_field_wins_and_is_named",
+        "tests/lib/test_todo_sync_updates.py::test_updates_of_one_item_from_two_files_merge_their_fields",
+        "tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_of_a_retired_id",
+        "tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_that_sets_a_computed_field",
+        "tests/lib/test_todo_sync_updates.py::test_drain_lines_name_the_updates_and_the_overwrites",
+        "tests/lib/test_todo_sync_updates.py::test_drain_lines_of_adds_alone_are_unchanged"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_todo_sync_updates.py::test_update_fields_are_the_add_fields_without_the_issue tests/lib/test_todo_sync_updates.py::test_apply_updates_sets_the_fields_and_reranks tests/lib/test_todo_sync_updates.py::test_an_update_leaves_every_other_field tests/lib/test_todo_sync_updates.py::test_an_id_is_read_in_any_case_and_without_its_prefix tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[rank] tests/lib/test_todo_sync_updates.py::test_a_field_outside_the_list_is_refused[catalog_entry_ids] tests/lib/test_todo_sync_updates.py::test_a_retired_or_split_id_is_refused tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[severity] tests/lib/test_todo_sync_updates.py::test_a_bad_update_is_refused[no-id] tests/lib/test_todo_sync_updates.py::test_one_spec_sets_a_field_once tests/lib/test_todo_sync_updates.py::test_an_empty_spec_is_refused tests/lib/test_todo_sync_updates.py::test_put_updates_queues_one_file_per_update_and_leaves_the_catalog tests/lib/test_todo_sync_updates.py::test_put_updates_writes_nothing_on_a_refusal tests/lib/test_todo_sync_updates.py::test_drain_applies_adds_and_updates_in_one_write tests/lib/test_todo_sync_updates.py::test_a_later_update_of_one_field_wins_and_is_named tests/lib/test_todo_sync_updates.py::test_updates_of_one_item_from_two_files_merge_their_fields tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_of_a_retired_id tests/lib/test_todo_sync_updates.py::test_drain_refuses_an_update_that_sets_a_computed_field tests/lib/test_todo_sync_updates.py::test_drain_lines_name_the_updates_and_the_overwrites tests/lib/test_todo_sync_updates.py::test_drain_lines_of_adds_alone_are_unchanged"
+    }
+  },
+  "evidence": "staged tree 327fc4f: 20 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "767f25a3c339bac1d1d14eb27a30efd65dbcb112935fce93b7540d1c6fe769c1"
+}

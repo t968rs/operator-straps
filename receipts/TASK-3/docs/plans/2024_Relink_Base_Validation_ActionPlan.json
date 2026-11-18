@@ -1,0 +1,327 @@
+{
+  "plan_id": "2024",
+  "plan_created": "2026-11-17",
+  "source_document": null,
+  "documentation": "docs/plans/2024_Relink_Base_Validation_PIP.html",
+  "branch": "1167-relink-tags",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "relink checks anchors and sweeps at the candidate base before writing",
+      "action": "Issue 313. (1) plan_lock.relink gains a keyword-only, required parameter `vet: Callable[[str], List[str]]`. Right after `new, match = relink_target(repo, old, to)` and before `preflight`, `plan.base_commit = new`, `save`, the ledger entry and the tag, call `vet(new)`; a non-empty result raises `pd.PlanError(problems)`, so nothing is written. plan_lock stays free of plan_checks and history_paths, as it already takes `save` from the driver. Update the relink docstring to say the candidate is vetted first. (2) plan.py gains `relink_claim_problems(repo, plan_file, plan, candidate) -> List[str]` (under 15 lines, beside base_claim_problems): view = book_of(plan_file, plan).view() (cmd_relink loads the plan with pd.load_plan, whose item statuses on a receipts plan are all PENDING because the statuses live in receipts; only the book view knows which items are done); run pc.anchor_problems(view, repo, candidate) + pc.sweep_problems(view, repo, history_paths(active()), candidate) and return each as `at base <candidate[:7]>: <problem>`, the base_claim_problems shape. It runs on every relink, whether or not an item is done (D1A). (3) cmd_relink passes `vet=lambda sha: relink_claim_problems(repo, plan_file, plan, sha)` (or a functools.partial). (4) The module docstring's relink section (plan.py:132-136) and the --to help (plan.py:1109) say the candidate base must hold the plan's anchors and sweeps, else relink refuses with at-base problem lines and writes nothing. Copy the planned test file docs/plans/2024/tests/tests/scripts/test_plan_relink_check.py to tests/scripts/ first. Existing relink tests keep passing: their anchor (src/calc.py:1, def add) holds at every base.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_lock.py",
+        "plugins/harness/scripts/plan.py",
+        "tests/scripts/test_plan_relink_check.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:581-582",
+          "expect": "def relink(repo: Path, plan_file: Path, plan: pm.ActionPlan, to: Optional[str], save: Callable[[Path, pm.ActionPlan], object])"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:593",
+          "expect": "new, match = relink_target(repo, old, to)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:599-601",
+          "expect": "preflight(repo, tags) plan.base_commit = new save(plan_file, plan)"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:1037-1040",
+          "expect": "def cmd_relink(repo: Path, args: argparse.Namespace) -> int: plan_file = locate(repo, args.plan) plan = pd.load_plan(plan_file) entry, lines = pk.relink(repo, plan_file, plan, args.to, save)"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:357",
+          "expect": "return (plan.base_commit or None) if any(i.status in DONE for i in plan.items) else None"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:370",
+          "expect": "return (claim_problems(repo, book.view())"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:462-467",
+          "expect": "base = plan.base_commit if not base or claims_rev(plan) is not None: return [] found = (pc.anchor_problems(plan, repo, base) + pc.sweep_problems(plan, repo, history_paths(active()), base)) return [f\"at base {base[:7]}: {p}\" for p in found]"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:269-275",
+          "expect": "def book_of(plan_file: Path, plan: pm.ActionPlan) -> prt.RecordBook:"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:132-136",
+          "expect": "``relink PLAN [--to REF]``"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:1109",
+          "expect": "relink.add_argument(\"--to\", metavar=\"REF\", help=\"The new base (default: the patch-id match on HEAD).\")"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_plan_relink_check.py tests/scripts/test_plan_relink_lock.py tests/scripts/test_plan_lock.py tests/scripts/test_plan_archive_check.py -q",
+          "expect": "passed, no failures"
+        },
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/plan_lock.py plugins/harness/scripts/plan.py tests/scripts/test_plan_relink_check.py",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_once_an_item_is_done",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_before_any_item_is_done",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_where_a_sweep_classification_goes_stale",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "patch-id miss names the off-history end state instead of inviting --to",
+      "action": "Per D3A. In plan_lock.relink_target, the refusal when fg.patch_id_match returns None keeps its first clause ('no commit on HEAD's history matches base <sha12> by patch-id') and replaces '; pass --to REF' with the end state, for example: '; a base squashed or merged away has no counterpart, and its off-history: warning in check is then the end state (--to only for a commit known to hold the base's code)'. strap_lock.py keeps its own hint (D4A). Copy docs/plans/2024/tests/tests/scripts/test_plan_relink_counterpart.py to tests/scripts/ first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_lock.py",
+        "tests/scripts/test_plan_relink_counterpart.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_lock.py:551-555",
+          "expect": "found = fg.patch_id_match(repo, base) if found is None: raise pd.PlanError([f\"no commit on HEAD's history matches base {base[:12]} by patch-id; \" \"pass --to REF\"]) return found, \"patch-id\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/freeze_git.py:282-283",
+          "expect": "None when nothing matches, ``old`` has no patch id (a merge or an empty commit) or a git step fails."
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_plan_relink_counterpart.py tests/scripts/test_plan_lock.py -q",
+          "expect": "passed, no failures"
+        },
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/plan_lock.py tests/scripts/test_plan_relink_counterpart.py",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_relink_counterpart.py::test_relink_without_a_counterpart_names_the_off_history_end_state",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "Relink paragraph in the write-plan SKILL.md and README",
+      "action": "Copy docs/plans/2024/tests/tests/skills/test_write_plan_relink_contract.py to tests/skills/ first. SKILL.md **Relink.** paragraph (step 8): after 'or takes `--to`', add that relink then runs the plan's anchors and sweeps at that candidate base (the claims `check` reads there once an item is done, and that a freeze requires there before one is) and refuses with `at base <sha7>:` problem lines when any fails, writing nothing. Close the paragraph with: a base squashed inside another pull request (or a merge commit) has no counterpart on HEAD's history; relink refuses it, and the `off-history:` warning is then the correct end state, so no `--to` is guessed. 'That is the cue to offer a relink' becomes the cue when a counterpart exists. README.md (the Locked paragraph, lines 67-69): append '; it refuses a base where the plan's anchors or sweeps fail, and a base squashed inside another pull request, which has no counterpart, stays off-history'. Keep both files clean for tests/lib/test_strap_lint.py (no first or second person).",
+      "files": [
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "plugins/harness/skills/write-plan/README.md",
+        "tests/skills/test_write_plan_relink_contract.py"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/write-plan/SKILL.md:186-191",
+          "expect": "**Relink.** After the developer rebases or squashes, a plan base that left HEAD's history shows as `off-history:` in `check`."
+        },
+        {
+          "at": "plugins/harness/skills/write-plan/SKILL.md:193",
+          "expect": "**Archive.**"
+        },
+        {
+          "at": "plugins/harness/skills/write-plan/README.md:67-69",
+          "expect": "After a rebase or squash moves the base off HEAD's history (`check` prints `off-history:`), `PLAN relink <id>` re-points `base_commit` on the developer's request and leaves the plan Frozen or Locked."
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_write_plan_relink_contract.py tests/lib/test_strap_lint.py tests/skills/test_write_plan_archive_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_states_the_base_check",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_names_the_off_history_end_state",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_relink_contract.py::test_the_skill_readme_states_the_relink_refusal",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "harness version bump and v1.0.0 release notes",
+      "action": "Bump plugins/harness/.claude-plugin/plugin.json version 0.78.0 -> 0.78.1 (patch: a fix, no new flag under D2A). The latest release tag is v0.7.0 and docs/RELEASES/v1.0.0.md is the proposed next release, so extend it: the Plugins table harness row becomes '| harness | 0.65.1 | 0.78.1 |', and the Changes list gains one line, e.g. '- Fix(write-plan): `plan.py relink` runs the plan's anchors and sweeps at the candidate base and refuses with `at base <sha7>:` problem lines before it writes the base, the `relink` entry or the tag; a base with no patch-id counterpart is refused with the `off-history:` end state instead of a `--to REF` hint (issue #313, plan 2024).' No other plugin changes.",
+      "files": [
+        "plugins/harness/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.78.0\","
+        },
+        {
+          "at": "docs/RELEASES/v1.0.0.md:28",
+          "expect": "| harness | 0.65.1 | 0.78.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "validation passes, exit 0"
+        },
+        {
+          "run": "git grep -n -e \"0.78.1\" -- plugins/harness/.claude-plugin/plugin.json docs/RELEASES/v1.0.0.md",
+          "expect": "the plugin.json version line and the harness row of the Plugins table"
+        }
+      ]
+    }
+  ],
+  "base_commit": "26e2c29a183adcbdac808336aa1313c9e0391b0e",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "When does relink run the anchor and sweep check at the candidate base? check reads them at base_commit once an item is done (claims_rev, plan.py:351-357), and freeze requires them at the base while no item is done (base_claim_problems, plan.py:456-467).",
+      "options": [
+        {
+          "id": "D1A",
+          "summary": "Always: a relinked base must satisfy both readers, so a base that breaks a later freeze --refreeze is refused as well as one that breaks check"
+        },
+        {
+          "id": "D1B",
+          "summary": "Only when an item is done (claims_rev of the book view is not None), as issue 313 proposes; with no item done the relink writes unchecked and a later refreeze reports the problems through base_claim_problems"
+        }
+      ],
+      "chosen": "D1A",
+      "rationale": "Developer choice 2026-11-17: always check. freeze requires the anchors at the base while no item is done, so a relinked base must satisfy both readers."
+    },
+    {
+      "id": "D2",
+      "question": "Does relink get an override flag that writes the base despite failing claims?",
+      "options": [
+        {
+          "id": "D2A",
+          "summary": "No override: the refusal is final; a base with no valid counterpart stays off-history, which check only warns about"
+        },
+        {
+          "id": "D2B",
+          "summary": "--force: write anyway and print each at-base problem as a warn: line; the plan then fails check until a write plus freeze --refreeze re-anchors it (unlock first on a Locked plan); adds a test and a minor harness bump"
+        }
+      ],
+      "chosen": "D2A",
+      "rationale": "Developer choice 2026-11-17: no override. The anchors quote the old base, which its tag keeps reachable; off-history: only warns."
+    },
+    {
+      "id": "D3",
+      "question": "What does relink without --to print when patch-id finds no counterpart (a merge commit has no patch id, freeze_git.py:282-283)? Today it ends with 'pass --to REF', which invited the guessed --to in the plan 2023 incident.",
+      "options": [
+        {
+          "id": "D3A",
+          "summary": "Reword: drop 'pass --to REF'; say a base squashed or merged away has no counterpart and its off-history: warning is the end state, and that --to is only for a commit known to hold the base's code"
+        },
+        {
+          "id": "D3B",
+          "summary": "D3A plus the cause: name 'a merge commit has no patch id' when the base has two or more parents (git rev-list --parents -n 1); adds a test with a merge-commit base"
+        },
+        {
+          "id": "D3C",
+          "summary": "Keep the message: TASK-1's check already refuses a bad --to; TASK-2 is dropped"
+        }
+      ],
+      "chosen": "D3A",
+      "rationale": "Developer choice 2026-11-17: drop the --to hint and name the off-history: end state."
+    },
+    {
+      "id": "D4",
+      "question": "strap.py relink (strap_lock.py:465-483) has the same unchecked --to and the same 'pass --to REF' hint; a strap edit spec's base feeds its baseline SKILL.md (strap.py:706). Is it in scope?",
+      "options": [
+        {
+          "id": "D4A",
+          "summary": "Plan relink only; file a TODO for strap relink (it has no anchors or sweeps to check)"
+        },
+        {
+          "id": "D4B",
+          "summary": "Also make strap relink refuse a candidate base without the spec's SKILL.md (edit mode) and reword its patch-id hint; adds an item over strap_lock.py and strap.py"
+        }
+      ],
+      "chosen": "D4A",
+      "rationale": "Developer choice 2026-11-17: plan relink only; strap relink is tracked separately."
+    }
+  ],
+  "values": [
+    {
+      "name": "harness plugin version",
+      "value": "0.78.0 -> 0.78.1 (patch: a fix, no new flag)",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3",
+      "assumes": [
+        "D2A"
+      ]
+    },
+    {
+      "name": "release notes file",
+      "value": "docs/RELEASES/v1.0.0.md",
+      "source": "gh release list --limit 1: v0.7.0 is the latest tag; v1.0.0.md is the proposed next release since v0.7.0, so this branch extends it"
+    },
+    {
+      "name": "refusal line prefix",
+      "value": "at base <sha7>: ",
+      "source": "plugins/harness/scripts/plan.py:467 (base_claim_problems)"
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "pk\\.relink\\(|def relink\\(",
+      "hits": {
+        "plugins/harness/lib/harness_lib/plan_lock.py": "definition of relink; TASK-1 adds the vet parameter",
+        "plugins/harness/scripts/plan.py": "the one caller, cmd_relink; TASK-1 passes the vet"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "pass --to REF",
+      "hits": {
+        "plugins/harness/lib/harness_lib/plan_lock.py": "relink_target's patch-id refusal; TASK-2 rewords it (D3)",
+        "plugins/harness/lib/harness_lib/strap_lock.py": "strap relink's own hint; left as is under D4A"
+      }
+    }
+  ],
+  "ledger": "plan/2024-relink-base-validation"
+}

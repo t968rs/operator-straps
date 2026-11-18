@@ -1,0 +1,708 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 304,
+  "pr_title": "todo snapshot table format",
+  "branch": "1166-todo-snapshot-table-format",
+  "base_branch": "main",
+  "base_sha": "88f36f189e498a7736ee6a3a644e2546c11e24bc",
+  "head_sha": "3a34045412542e35b3cf7ab35ac1332c84418edb",
+  "review_date": "2026-11-17",
+  "verdict": "READY TO MERGE - 23 of 23 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 5336,
+    "deletions": 372,
+    "files_changed": 57,
+    "source": {
+      "additions": 3928,
+      "deletions": 372,
+      "files_changed": 52
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)",
+    "adv_code_plans (opus)",
+    "failing_tests_1 (tests)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/config.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/tests.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/docs.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/overall.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/roast.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/adv_code_plans.json",
+    "docs/_scratch/pr_review/0304/pr304_20261117T205537Z/findings/failing_tests_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The one-line todo.top_n description change in plugins/harness/config/harness.schema.json:173 matches the renderer: _page_builder in todo_sync/__init__.py passes ranked[:cut] as the top table and ranked[cut:] as the folded remaining-items table, and the key, type and minimum are unchanged so no default, dataclass or mirror needs touching.",
+    "Lease-wait tests shrink catalog_lock.WAIT_SECONDS to 0.2 s and free the held lease from a Timer at 0.6 s, so a successful acquire genuinely proves --wait overrode the default (the monkeypatch reaches catalog_lock._acquire via a call-time module lookup).",
+    "test_todo_sync_updates.py spies on inbox.write_edits by wrapping the real function, proving one catalog write for adds plus updates without stubbing the code under test.",
+    "Render no-op tests compare bytes plus mtime_ns of both snapshot files and cover the CRLF checkout, the embedded carriage return, the missing stamp file, a hand edit and a config change, pinning exactly when render rewrites.",
+    "test_todo_snapshot_wiring.py's write-order spy calls through to write_atomic, so the second render's 'record only' assertion runs against real files on disk.",
+    "test_page_theme.py exercises theme.js behaviorally under node with stubbed DOM globals (cycle order, stored choice, junk value, corner fallback) and skips cleanly when node is absent.",
+    "test_todo_sync_usage_doc.py derives every leaf command and option from the live argparse tree, so the usage document cannot silently fall behind the parser.",
+    "Network-address guards in the plan and TODO page tests strip only https anchor targets, keeping the no-load contract (<link>, @import, url(), script src) intact while admitting the brand and usage links.",
+    "New test files spell their data files (todo_sync.md, theme.js, shared.css, plan.css, todo.css, todo-edit/SKILL.md, todo-editor.md) in code, so tools/select_tests.py picks them up on a change.",
+    "render_snapshot keeps an unchanged page by rebuilding it with the page's own header date and comparing after universal-newline translation, so a checkout with CRLF conversion does not churn the page, and the stamp file is restored on its own when only it is missing or differs.",
+    "_page_builder reads the catalog and resolves stub links once, then reuses them for the keep check and the rewrite.",
+    "Update validation reuses reshape._check_types and _check_item with a label, so update refusals read `update N: ...` and go through the same schema checks as an added item. An update cannot touch ids, ranks, scores or issue keys (UPDATE_FIELDS).",
+    "drain applies update and add files in name order against one working catalog. The (id, field) bookkeeping reports a field a later file set again instead of letting it be overwritten silently, and a rejected update file leaves `seen` untouched because apply_updates raises before returning.",
+    "`lease acquire --wait` is checked by a finite, non-negative argparse type (_seconds), and the value goes straight through locking.acquire into catalog_lock.acquire_lease, whose default stays WAIT_SECONDS when the flag is omitted.",
+    "theme.js applies a stored theme from <head> before the body draws, checks the stored value against its own table, and falls back to auto when localStorage is unavailable; shared.css carries matching [data-theme] rules.",
+    "todo_sync.md and the todo_sync.py module docstring agree with the parser and the code on every new surface checked: `--wait` (finite, 0 or more, default 10), `inbox put --update` refusing `--file-issue`, the bracketed drain-line grammar and the `problem: inbox: added ...; updated ..., then:` landed-failure text.",
+    "The update field list in todo-editor.md (step 2 of `## update`) matches `UPDATE_FIELDS` (ADD_REQUIRED + ADD_OPTIONAL less ISSUE_KEYS) exactly, and the refused-field list and the close-a-decision recipe match `_TYPE_RULES` (decision_question accepts null; status limited to ADD_STATUSES).",
+    "The split rework closes the stale-read gap: the agent re-reads the item once it holds the lease (todo-editor.md split step 3), because a drained update would not show up in the dry run. Stop conditions and finish say which runs hold no lease and so skip the release.",
+    "The plan 2023 freeze entry's file digest (85ff86f) matches the ActionPlan blob at head, and there is one sealed receipt per task.",
+    "README, the release notes, the todo-watch README and the three skills all describe the same drain and lease model (one inbox, adds and updates drained together, split lease from the dry run), with version rows matching the plugin.json bumps (harness 0.78.0, todo-watch 0.5.1).",
+    "todo-edit Step 3's drain-line parts (added, updated, overwrote, rejected, check drift, in that order and joined by '; ') match inbox.drain_lines exactly, and the landed-then-failed problem form matches inbox.drain's `_landed_text` output.",
+    "Per-id dispatch for --split/--update lines up with the agent: the update section reads 'Ids: names one item', and split specs and update specs use per-id or stamped-random paths so parallel agents never collide.",
+    "The skill keeps the single drain after all update agents return and the todo-watch overlap ('inbox: empty' means the mod already drained) is explained, with the parallel contract test pinning one drain after the dispatch.",
+    "Cross-references were updated together: README skill row and usage line, todo_sync.md caller table, todo-watch README and the agent description all name the update operation.",
+    "render_snapshot keeps a page that a re-render with its own date reproduces, compares with universal-newline translation, and is backed by subprocess tests for CRLF checkouts, a CR inside a title, a hand edit, a config change and a missing stamp file.",
+    "The update path reuses the add-spec type and schema checks through a label parameter rather than copying them, validates the whole spec before anything is queued, and applies queued adds and updates in one catalog write with later-wins overwrite reporting.",
+    "todo_sync.md is guarded by a test that walks the driver's own argparse tree, so a new command or option cannot go undocumented.",
+    "`--wait` rejects negative, non-numeric and non-finite values (inf, 1e999), and threaded tests show the wait outlasting the shortened default.",
+    "Prose contract tests pin the agent and skill handshake to code: the update field sentence must equal updates.UPDATE_FIELDS, and the split lease step must come after the spec write and right before the dry run.",
+    "All six plan 2023 items carry sealed receipts that name their test nodes, and the README, the release notes and both plugin versions move together with the code.",
+    "The drain-line format is stated identically in todo_sync.py's docstring, todo_sync.md, the add-todo, sync-gh-todo and todo-edit skills and matches inbox.drain_lines and _landed_text, including the `problem: inbox: added ...; updated ..., then:` failure form.",
+    "todo-editor.md's update field list is pinned to updates.UPDATE_FIELDS by test_todo_edit_parallel_contract, so the agent prose and the driver cannot drift on which fields an update may set.",
+    "todo_sync.md is guarded by test_todo_sync_usage_doc, which walks the real argparse tree, so every new option (--wait, --update) is forced into the usage document in lockstep.",
+    "The split-lease reshuffle is told consistently across todo-editor.md (rules, steps 1-4, finish, stop conditions), README, todo_sync.md and the release note, and the agent re-reads the item under the lease to catch a drained update, closing the gap the dry run cannot.",
+    "render_snapshot's keep-if-identical contract (universal-newline compare, stamp restored alone, render.json record) is described the same way in its docstring, the driver docstring, todo_sync.md, README and the release note, and each claim has a subprocess test.",
+    "Release note table (harness 0.78.0, todo-watch 0.5.1) matches both plugin.json bumps, and the top_n schema description was updated alongside the new rest table.",
+    "render_snapshot keeps a page only when rebuilding it with its own date reproduces it under universal-newline translation, so CRLF checkouts and titles with carriage returns stay kept; subprocess tests cover the catalog, config, hand-edit, missing-stamp and CRLF cases.",
+    "Field updates are checked in full at `inbox put --update` and checked again against the working catalog at drain, land in the same single catalog write as queued adds, and a later file overwriting a field is reported (`overwrote <id> <field>`), not lost silently.",
+    "test_todo_edit_parallel_contract pins the agent's list of updatable fields to `updates.UPDATE_FIELDS`, so the prose and the code cannot disagree about what an update may set.",
+    "test_todo_sync_usage_doc walks the real argparse tree and fails when a command or option goes undocumented in todo_sync.md.",
+    "`--wait` rejects negative, non-numeric and non-finite values in an argparse type, and the lease-wait tests use a real second thread to free a held lease, not a stub.",
+    "Split agents now draft before taking the lease and re-read the item once they hold it, which lets parallel splits run without one applying a stale draft over another's changes.",
+    "render_snapshot keeps an unchanged page byte for byte (date included) and rewrites todo_live.js only when it differs, so an open page reloads only on a real change, and the todo-watch mtime probe on the snapshots folder is not tripped by no-op renders.",
+    "_kept_page compares the new text after universal-newline translation, so a checkout that converted the page to CRLF still counts as unchanged; write_atomic writes with newline='\\n', which keeps that comparison symmetric.",
+    "Inbox update files are fully validated when they are queued (put_updates dry-runs apply_updates against the catalog) and validated again at drain time against the working catalog. A conflicting update queued later is set aside as rejected with its reason and does not abort the drain.",
+    "_holds_updates sends any object with an updates key to the update reader, so a malformed updates value is rejected with an update-spec reason instead of a misleading add-spec one.",
+    "apply_updates works on a deep copy and goes through _rerank, which rescores, re-ranks and recounts, so a status or scoring-input update never leaves counts or ranks stale.",
+    "--wait accepts only finite, non-negative seconds (NaN and inf are refused), and catalog_lock._acquire treats 0 as 0, not as the default.",
+    "test_todo_sync_render_page.py compares bytes and st_mtime_ns of the snapshot folder and the render.json `wrote` list, so an unchanged render that rewrote identical bytes would still fail.",
+    "The CRLF-checkout and carriage-return-in-title cases each fail on their own if _kept_page drops its universal-newline normalization.",
+    "The lease-wait tests shrink catalog_lock.WAIT_SECONDS to 0.2 s and free the held lease at 0.6 s, so a --wait the driver or locking.acquire ignored makes them fail instead of passing on the default.",
+    "test_items_past_top_n_go_to_the_folded_rest_table reverses catalog order before rendering, which proves the driver sorts by rank before cutting top_n.",
+    "test_todo_sync_usage_doc.py walks the driver's own argparse tree, so a new subcommand or option without a usage-doc section fails the build.",
+    "docs/plans/2023_Parallel_TODO_Editing_Remix_ActionPlan.json at the PR head is blob 85ff86f, the same blob docs/plans/freezes/plan/2023-parallel-todo-editing-remix/r1.1-freeze.json records, so the plan was not edited after its freeze.",
+    "Every verification command the plan names targets a test file present at the PR head (test_todo_sync_usage_doc.py, test_todo_sync_catalog_lock_cli.py, test_catalog_lock.py, test_todo_sync_inbox.py, test_todo_sync_add.py, test_todo_sync_reshape.py, test_todo_sync_add_note.py, test_todo_sync.py, test_todo_edit_skill_contract.py, test_dispatch_skill_headers.py, test_todo_inbox_prose_contract.py).",
+    "TASK-6's git grep expectations hold at the head: README.md:440 carries `--update todo-sp7t`, plugin.json:3 reads 0.78.0, and docs/RELEASES/v1.0.0.md:28 reads `| harness | 0.65.1 | 0.78.0 |`.",
+    "The plan's drain-line format example (added; updated; overwrote; rejected; check drift=D) matches drain_lines in plugins/harness/lib/harness_lib/todo_sync/inbox.py:433-451 at the head.",
+    "Receipts TASK-1 to TASK-5 list exactly the test nodes their plan items name, and TASK-6 (no tests) records a staged tree alone; the PENDING statuses in the frozen plan and the PIP page follow the receipts scheme used by plans 1019 to 2022, where live.js and status_view carry the state.",
+    "The UPDATE_FIELDS set in the plan's values (15 fields) and in TASK-5's agent prose is the same set, and both exclude issue and url as D3A chose."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Per-id guidance rule for parallel splits is not in the agent's split procedure",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "files": [
+          "plugins/harness/skills/todo-edit/SKILL.md",
+          "plugins/harness/agents/todo-editor.md",
+          "README.md"
+        ],
+        "lines": "45-53,89",
+        "reviewer": "skill_package, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "todo-edit Step 2 (SKILL.md:45-53) dispatches one todo-editor per `--split` id, all carrying the same Guidance line, and says 'When the guidance names several ids, each agent applies only what it says about its own id, plus what applies to all.' Only the agent's `update` section carries that rule (todo-editor.md update step 2). The agent's `split` step 1 says only 'Guidance from the prompt wins.', and the skill's prompt block has no line telling the agent to filter, so a split agent dispatched for `todo-m3x9` with guidance `m3x9 one part per module; k7qf split by layer` is told by its own procedure to obey the whole guidance. The skill promises a behavior the agent that does the work never specifies.\n\nAlso (docs): todo-editor.md:136-139 has each split run `lease acquire --wait 300` up to 3 times (900 s in all) and end the run on the third held-lease refusal. With N split ids dispatched at once (todo-edit SKILL.md:47-52), the last split waits for the N-1 critical sections before it: re-read, dry run, real run, dangling-prose edits, check and `lease release`. With a few slow opus splits that can exceed 900 s, and that split ends with a relayed refusal. README.md:35 and :442-443, todo_sync.md:61-63 and the release note promise that parallel splits 'apply one at a time' and do not mention the limit. todo-edit Step 4 (SKILL.md:89) just relays each reply, and nothing tells the main session to tell the developer which ids did not split and need a rerun.",
+        "fix": [
+          "In plugins/harness/agents/todo-editor.md `## split` step 1, after 'Guidance from the prompt wins.', add: 'Guidance that names several ids is shared by one agent per id: apply only what it says about this item's id, plus what applies to all.' (the same sentence the update section uses).",
+          "Optionally pin it in tests/skills/test_todo_edit_parallel_contract.py by asserting the sentence appears in both the split and update agent sections.",
+          "In todo-edit SKILL.md Step 4, add: a split reply that ends on the third held-lease refusal did not split its id; name those ids first and say to rerun `--split` for them. In the README todo-edit paragraph, add one clause saying a split waits up to 15 minutes in all for the lease, so a long batch can leave late ids unsplit.",
+          "Or cap the number of split ids one run dispatches (for example 3) in Step 1, and print the argument hint above it."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Theme toggle tests never run the deferred path that every real page takes",
+        "file": "tests/lib/test_page_theme.py",
+        "files": [
+          "tests/lib/test_page_theme.py",
+          "plugins/harness/pages/components/theme.js"
+        ],
+        "lines": "37-62,182-208",
+        "reviewer": "adv_code_tests, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Both renderers inline pages/components/theme.js in <head>, where document.body is still null, so in a browser the toggle is always added through the else branch: document.addEventListener(\"DOMContentLoaded\", addButton). THEME_HARNESS in tests/lib/test_page_theme.py always hands the script a non-null document.body and makes addEventListener throw, so every node-run case goes through the synchronous `if (document.body) { addButton(); }` branch. Nothing checks the branch production uses: with it broken or removed, no test fails, but the theme button never appears on a rendered plan or TODO page.\n\nAlso (overall): theme.js is inlined in `<head>`, so on a real page `document.body` is null when it runs and the button is added only through `document.addEventListener(\"DOMContentLoaded\", addButton)`. The stubbed document in THEME_HARNESS always provides `body`, and its `addEventListener` throws, so every node test goes through the `document.body` branch. The deferred branch that real pages use is untested.\n\nAlso (system_shape): Both renderers inline theme.js inside <head> (page_chrome.theme_script; test_page_theme pins it there), where document.body is still null, so in a real page theme.js always takes `document.addEventListener(\"DOMContentLoaded\", addButton)`. THEME_HARNESS in tests/lib/test_page_theme.py stubs document.body as present and makes addEventListener throw, so every node case runs only the `if (document.body)` branch that a browser never reaches for these pages. The module docstring's claim that the toggle is placed under the brand at load is therefore untested on the path that matters.\n\nAlso (roast): `theme_script()` inlines theme.js in `<head>`, where `document.body` is still null, so in a browser the button is always added through the `DOMContentLoaded` branch (theme.js:32). The node harness in test_page_theme.py always provides a `body`, and its `addEventListener` throws `no body`. As a result every toggle test covers only the branch real pages never take, and a broken `DOMContentLoaded` path would still pass.\n\nAttack: In plugins/harness/pages/components/theme.js, change the last line `if (document.body) { addButton(); } else { document.addEventListener(\"DOMContentLoaded\", addButton); }` to `if (document.body) { addButton(); }` (or change the event name to \"load-never\"). Then run `python -m pytest tests/lib/test_page_theme.py tests/lib/test_todo_snapshot_html.py tests/lib/test_plan_render_html.py -q` with node on PATH: every test passes. Open the rendered TODO_Snapshot.html or a plan _PIP.html in a browser: the script runs in <head> while document.body is null, the else branch is gone, and no #theme-toggle button is ever added to the .corner block.",
+        "fix": [
+          "Add a THEME_HARNESS mode (for example data.deferred) where document.body starts null and addEventListener records the (event, handler) pair. Assert that the event is \"DOMContentLoaded\" and that the button exists only after the recorded handler runs (once document.body and .corner are set), placed under .corner.",
+          "As a no-node fallback, add a source-level assertion that theme.js holds `document.addEventListener(\"DOMContentLoaded\", addButton)` in the branch taken when document.body is null.",
+          "Add a harness mode where `document.body` is null and `addEventListener` records the listener, then fire it and assert the button lands in `.corner` with the stored theme already applied",
+          "Add a harness flag that sets document.body to null and records the DOMContentLoaded listener, then fires it and asserts the button lands in .corner with the stored theme already applied before the listener runs.",
+          "Add a harness mode with `body: null` whose `addEventListener(name, fn)` records `fn`; the test asserts the event name is `DOMContentLoaded`, then calls `fn` and checks that the button lands in `.corner` and still cycles auto, light and dark."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "todo-edit SKILL.md wraps the anchor phrase 'The prompt is this block' across two lines, failing two contract tests",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "lines": "52-53",
+        "reviewer": "failing_tests_1",
+        "fix_kind": "mechanical",
+        "summary": "CI pytest + ruff (ubuntu-latest) on pull/304/merge 43bf936 (head 3a34045): 2 failed, 6090 passed. tests/skills/test_todo_edit_skill_contract.py::test_dispatch_prompt_carries_the_flag_line and ::test_skill_passes_stable_ids_as_typed both raise IndexError at _fenced_after (test line 33), because text.split('The prompt is this block', 1) finds no match. Root cause: the Step 2 paragraph of plugins/harness/skills/todo-edit/SKILL.md was reflowed by the #312 squash, so line 52 ends 'The prompt is' and line 53 starts 'this block with the placeholders filled:'. Verified at 3a34045 with git show and reproduced locally: both node ids fail with the same IndexError (2 failed, 8 passed). The test is right; the skill text broke its anchor.",
+        "fix": [
+          "Reflow the Step 2 paragraph of plugins/harness/skills/todo-edit/SKILL.md so 'The prompt is this block with the placeholders filled:' sits on one line (line length 110), then rerun tests/skills/test_todo_edit_skill_contract.py"
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README scratch_folder row still names only add and sync as inbox writers",
+        "file": "README.md",
+        "lines": "521",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "README.md:521 describes `scratch_folder` as the TODO inbox 'that the `todo-editor` agent's `add` and `sync` runs write'. With this PR the agent's `update` operation also queues there (`inbox put --update`), as todo-edit Step 3, todo_sync.md:48 and the todo-watch README now say.",
+        "fix": [
+          "Change the row to 'that the `todo-editor` agent's `add`, `sync` and `update` runs write'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Split lease wait of 300 s lives in agent prose, not a driver-read setting",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "README.md",
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/scripts/todo_sync.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "136-141",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "CLAUDE.md (Rules for changes, new config key) says a setting a driver can read and act on belongs in a config key and the driver, never in skill prose the agent must remember. The PR adds the driver option `lease acquire --wait SECONDS` but the value the parallel-split flow depends on (300 s) exists only as a literal in todo-editor.md split step 3 (`--wait 300`, with a 330000 ms Bash timeout), echoed by README.md, todo_sync.md and the release note. The plan's D1A rationale cites the same project rule, yet the number a project would tune (a slow catalog, many parallel splits) has no key, and three documents must change together when it moves. Decision D1A was the developer's call, so this is a shape note, not a defect.",
+        "fix": [
+          "Add a key (e.g. todo.lease.split_wait_seconds, default 300) through the four config places, have `lease acquire` read it when an `--owner` split asks (or add `--wait split`), and have the agent pass no literal; the docs then name the key.",
+          "Keep D1A as chosen and record in docs/plans/2023 DesignEvolution (or the plan's values entry) why the wait stays an agent literal, so a later review does not reopen it."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "PAGES constant defined three times",
+        "file": "plugins/harness/lib/harness_lib/page_chrome.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/page_chrome.py",
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ],
+        "lines": "12",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "page_chrome.py adds `PAGES = plugin_root() / \"pages\"` beside the identical constants in snapshot_html.py and plan_render_html.py. Both renderers already import from page_chrome, so the three copies can drift apart.",
+        "fix": [
+          "Import PAGES from harness_lib.page_chrome in snapshot_html.py and plan_render_html.py and drop their local definitions; `sh.PAGES` and `prh.PAGES` stay available to the tests as module attributes"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Page docstrings still promise no network address after the brand and usage links were added",
+        "file": "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "plugins/harness/lib/harness_lib/page_chrome.py"
+        ],
+        "lines": "3-4",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plan_render_html.py:3-4 says the PIP carries 'inline CSS and JS and no network address, so it opens from disk', and snapshot_html.py:15-16 says the TODO page 'opens from disk with no network address'. Both renderers now emit corner() (page_chrome.BRAND, an <a href=\"https://github.com/t968rs/operator-straps\">), and the TODO page's Render info block links USAGE (https://github.com/.../todo_sync.md). The same PR loosened the tests to match (test_plan_render_html.py docstring now reads 'no network address outside a link target'; test_todo_snapshot_html strips <a href=https://...> before the check), so the module docstrings are the one place left claiming the old contract.",
+        "fix": [
+          "Reword both module docstrings to the contract the tests pin: no network address is loaded (no <link>, @import, url() or remote script); the only https addresses are link targets (the brand and, on the TODO page, the usage document)."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Repo-name fallback depends on the local folder name, so the kept page differs between clones",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "README.md",
+          "docs/RELEASES/v1.0.0.md",
+          "tests/scripts/test_todo_sync_render_page.py",
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py"
+        ],
+        "lines": "156-161,218",
+        "reviewer": "overall, roast, adv_code_runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "When `todo.gh.repo` is unset, `repo_name` uses `main_worktree(cfg.project_root).name`, and the page puts that name in its `<title>` and `<h1>`. The folder name is set per machine. Two clones in differently named folders draw different pages, so in a project that tracks `TODO_Snapshot.html`, each render on the other machine rewrites the page and shows it in `git status`. That works against the kept-page rule this PR adds to stop date-only churn. The README and release note present the fallback as equivalent to the configured name.\n\nAlso (roast): With `todo.gh.repo` unset, `repo_name` falls back to `main_worktree(cfg.project_root).name`, and that name goes into the page `<title>` and `<h1>`. Two clones in differently named folders draw different pages from the same catalog. In a project that tracks `TODO_Snapshot.html`, each machine's render rewrites the tracked page with its own folder name. That defeats the kept-page logic this PR adds, whose release note promises the tracked pair stops churning. So the page stays stable across days but not across laptops.\n\nAlso (adv_code_runtime): repo_name falls back to main_worktree(cfg.project_root).name when todo.gh.repo is null, which is the shipped default (plugins/harness/config/defaults.json:88). The name is drawn into the page's <h1> and <title>, so the rendered text depends on the folder each developer cloned into. Two clones with different folder names each see the other's page as differing from what they would build, so _kept_page returns None and render_snapshot rewrites the page with a new date and stamp even though the catalog did not change. This undoes the keep-the-page-when-unchanged behavior the PR adds, and it churns a tracked page between machines.\n\nAttack: Use a project whose .claude/harness.json leaves todo.gh.repo at its default null, with TODO_Snapshot.html tracked in git. Clone it twice at the same commit, as <dir>/proj and <dir>/proj-copy. In proj, run `todo_sync.py render --date 2026-11-01`; the page reads `<h1><span class=\"repo\">proj</span>TODO Snapshot</h1>` and `<title>proj | TODO Snapshot (2026-11-01)</title>`. Commit it and pull in proj-copy. In proj-copy, run `todo_sync.py render`: repo_name returns 'proj-copy', so build(header.rendered) no longer matches the page on disk, _kept_page returns None, and the page is rewritten with today's date and a new stamp. `git status` shows TODO_Snapshot.html modified with no catalog change, and render.json records `\"wrote\": [\"TODO_Snapshot.html\", \"todo_live.js\"]`. Running render again in proj after the next pull flips it back.",
+        "fix": [
+          "Fall back to a value every clone shares (the repo name parsed from the `origin` remote URL), and use the folder name only when there is no remote",
+          "Omit the repo span when `todo.gh.repo` is unset, and say in the README that setting `todo.gh.repo` names the page",
+          "Derive the fallback from the repository, not the folder: parse the name from `git remote get-url origin` (strip `.git`), and use the folder name only when no remote exists.",
+          "Omit the repo line when `todo.gh.repo` is unset (`repo=None`), and say in the README and the `top_n`/snapshot docs that setting `todo.gh.repo` names the page.",
+          "Draw the repository name only from a configured value (todo.gh.repo), and leave SnapshotPage.repo None when it is unset, so the page text never depends on a local path.",
+          "Derive the fallback from something every clone shares, such as the repository name in the origin remote URL, and use the folder name only when there is no remote."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "put_updates lets a ranking ValueError escape as a traceback",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "165-169",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "put_updates converts only RankingError into TodoSyncError around apply_updates. apply_updates ends in reshape._rerank, which reads ranking_method and rescores every item, and a catalog-level fault there can raise ValueError. drain already treats that as a known failure: _probe catches (RankingError, ValueError) and _absorb_one catches ValueError. The driver's main() catches only ConfigError, TodoSyncError and OSError, so `inbox put --update` against such a catalog crashes with a traceback where drain would refuse cleanly. put's _validate (inbox.py:93) has the same narrow catch, but put_updates is new code and could have matched _probe.",
+        "fix": [
+          "Catch (RankingError, ValueError) in put_updates (inbox.py:168) and re-raise as TodoSyncError, as _probe does; optionally widen _validate at inbox.py:93 the same way."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "A queued file holding both `updates` and `items` silently drops its items",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+          "tests/lib/test_todo_sync_updates.py"
+        ],
+        "lines": "224-231,249-254",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_holds_updates sends any object with an `updates` key down the update path, and read_spec(path, \"updates\") returns only that list. A hand-made or hand-edited inbox file that also carries an `items` list is accepted and deleted, and its add items never land; nothing reports them. put and put_updates never write such a file, so this only happens to a file written by hand, but the drain's contract is to apply or refuse each file, never half-apply it.\n\nAlso (roast): `_holds_updates` sends any object with an `updates` key to the update reader, whatever the value. Its docstring says that is deliberate, so a malformed value gets an update-spec refusal and does not fall through to the add path with a misleading `add spec` reason. No test queues `{\"updates\": \"x\"}`, `{\"updates\": []}` or `{\"updates\": [...], \"items\": [...]}` and asserts which reader runs or what reason the `.reason.txt` file gives. The fix this rule came from has no test to keep it from regressing.",
+        "fix": [
+          "In _holds_updates (or _absorb_one), refuse a file whose object holds both `updates` and `items`, for example by raising TodoSyncError(\"inbox file holds both items and updates; queue them separately\"), so it is set aside with that reason.",
+          "Or apply both lists from such a file: updates first, then add_items on the `items` list.",
+          "In tests/lib/test_todo_sync_updates.py, queue a file `{\"updates\": \"x\"}` and one `{\"updates\": []}` beside a good update, drain, and assert both are rejected with a reason naming `update spec` (or `at least one update`) while the good update lands."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Missing space in the COLUMNS tuple",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+        "lines": "44",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "`COLUMNS = (\"Rank\", \"Id\",\"Item\", ...)` has no space after the comma before \"Item\". The configured ruff selection does not flag it, but it breaks the file's formatting.\n\nAlso (overall): `COLUMNS = (\"Rank\", \"Id\",\"Item\", ...)` has no space after the comma following \"Id\". The repo's ruff selection does not include E231, so lint does not flag it.",
+        "fix": [
+          "Write `COLUMNS = (\"Rank\", \"Id\", \"Item\", \"Status\", \"Kind\", \"Blast\", \"LoE\", \"Score\", \"GH\")`.",
+          "Write `(\"Rank\", \"Id\", \"Item\", \"Status\", \"Kind\", \"Blast\", \"LoE\", \"Score\", \"GH\")`"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "todo_sync.md exit-code table leaves out the OSError route to exit 2",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "files": [
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "24-25",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/todo_sync.md:24-25 lists exit 2 as a configuration error, an unknown rule id, a refused operation, a held lock or a failed `gh` call, and says an unexpected error exits 1 with a traceback. `main` in plugins/harness/scripts/todo_sync.py catches `(ConfigError, TodoSyncError, OSError)` and prints `problem:` with exit 2, so a file-system failure (for example a failed inbox write in `put_updates`, which the inbox.py docstring says raises OSError, or a failed render write) exits 2 with a `problem:` line, not 1 with a traceback. A caller that tells the two codes apart from this table reads such a failure wrong.",
+        "fix": [
+          "Add 'or a file read or write failure (OSError)' to the exit-2 row, and narrow the exit-1 sentence to 'any other unexpected error'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Driver docstring and todo_sync.md describe every command twice",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/scripts/todo_sync.md",
+          "tests/scripts/test_todo_sync_usage_doc.py"
+        ],
+        "lines": "1-130",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The PR adds `plugins/harness/scripts/todo_sync.md` as the usage reference, guarded against the parser by test_todo_sync_usage_doc.py. It also keeps the full per-command reference in the `todo_sync.py` module docstring (lines 1-130) and edits both copies for `--update`, `--wait` and the kept page. Only the markdown copy is tested, so the docstring can drift without any check failing. Two manuals for one script means one of them will end up wrong.",
+        "fix": [
+          "Cut the module docstring to its first paragraph (still used by `_summary()` for argparse) and a line that points to `todo_sync.md`.",
+          "Or extend test_todo_sync_usage_doc.py so every leaf command and option also appears in the module docstring."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "render subcommand help still says it always rewrites the page",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "lines": "214",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The `render` subparser help reads \"Rewrite the snapshot page and its stamp.\", but `render_snapshot` now keeps a page that a re-render with its own date reproduces and writes `todo_live.js` only when its text differs. The module docstring, the `--date` help, todo_sync.md and the README all describe the keep-unchanged behavior, so `todo_sync.py --help` is the one surface that contradicts the code.",
+        "fix": [
+          "Change the help to e.g. \"Bring the snapshot page and its stamp up to date (an unchanged page is kept).\""
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "sync-gh-todo leaves out the same-drain condition on the overwrote part",
+        "file": "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "plugins/harness/skills/add-todo/SKILL.md",
+          "plugins/harness/skills/todo-edit/SKILL.md"
+        ],
+        "lines": "77-78,82-83",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/sync-gh-todo/SKILL.md:77-78 says the `overwrote <id> <field>` part appears 'when two queued updates set the same field'. `_absorb_updates` in inbox.py records an overwrite only against `(id, field)` pairs that an accepted file earlier in the same drain set, and the sibling texts say so: add-todo SKILL.md:84-85 and todo-edit SKILL.md:75-76 both add 'and both land in the same drain'. Two updates drained separately (for example by the todo-watch mod after each agent returns) overwrite silently.\n\nAlso (skill_package): add-todo Step 4, sync-gh-todo Step 3 and todo-edit Step 3 describe the same `add --inbox` output, but sync-gh-todo drops the qualifier 'and both land in the same drain' from the `overwrote` part (SKILL.md:77-78), which inbox._absorb_updates requires (only accepted files in one drain are compared), and phrases the landed-then-failed case as 'A `problem:` line opening `inbox: added` or `inbox: updated`' while the other two quote the exact form `problem: inbox: added <ids>; updated <ids>, then: <reason>` (inbox.drain's `_landed_text`). Readers of one skill get a different contract than readers of its siblings.",
+        "fix": [
+          "Append 'and both land in the same drain' after 'set the same field' in sync-gh-todo SKILL.md, matching add-todo.",
+          "In plugins/harness/skills/sync-gh-todo/SKILL.md, append 'and both land in the same drain' to the `overwrote` sentence and replace the 'opening `inbox: added` or `inbox: updated`' sentence with the add-todo wording: 'When it reads `problem: inbox: added <ids>; updated <ids>, then: <reason>` (either part alone when only one kind landed), those changes landed ...'."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "argument-hint shows guidance as optional for `--update`",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "lines": "4",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "Step 1 stops the run on '`--update` with no guidance' and prints the argument-hint as the correction, but the hint ends with a single optional `[-- <guidance>]` shared by every operation, so the printed hint does not tell the developer what was missing. README.md:440 already writes the form as `--update todo-sp7t -- <what to change>`.",
+        "fix": [
+          "Change the hint to `--retire ID[, ID ...] [--delete-retired] | --split ID[, ID ...] | --update ID[, ID ...] -- <what to change> | --refresh  [-- <guidance>]` (the parallel contract test's substring check on `--update ID[, ID ...]` still passes)."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "todo-edit Step 3 drain-line grammar makes the updated part mandatory",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "files": [
+          "plugins/harness/skills/todo-edit/SKILL.md",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "73-80",
+        "reviewer": "docs, skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/todo-edit/SKILL.md:73-74 gives the drain line as `inbox: [added N item(s): ...; ]updated M item(s): <id> (<fields>), ...; [overwrote ...; ][rejected K (<files>); ]check drift=<d>`, with `updated` unbracketed. `drain_lines` in plugins/harness/lib/harness_lib/todo_sync/inbox.py appends the updated part only when `result.updated` is non-empty, so a drain where every queued update was refused but a queued add from another run landed prints `inbox: added 1 item(s): ...; rejected 2 (...); check drift=0`, a line the skill's grammar says cannot occur. The skill tells the main session to report each refused file's update as not applied, so the mismatch can confuse the report step. todo_sync.py's docstring and todo_sync.md:172 already bracket every part.\n\nAlso (skill_package): todo-edit Step 3 gives the drain line as `inbox: [added ...; ]updated M item(s): ...; [overwrote ...; ][rejected K ...; ]check drift=<d>`, with `updated` outside brackets. inbox.drain_lines (plugins/harness/lib/harness_lib/todo_sync/inbox.py, drain_lines) emits `updated` only when an update landed: when the queued updates are all refused but another run's queued add lands in the same drain (or the todo-watch mod already applied the updates and only adds remain), the line is `inbox: added ...; rejected K (...); check drift=<d>` with no `updated` part. The skill's own grammar does not cover that line, and the todo_sync.py docstring brackets `updated` as optional.\n\nAlso (system_shape): todo-edit SKILL.md:73-74 gives the drain line as `inbox: [added ...; ]updated M item(s): ...; [overwrote ...; ][rejected ...; ]check drift=<d>`, with `updated` unbracketed. inbox.drain_lines (inbox.py, drain_lines) emits the updated part only when result.updated is non-empty, so a --update run whose own update files were all refused while another run's queued add landed, or whose updates the todo-watch mod already drained before a queued add remained, prints `inbox: added N item(s): ...; [rejected K (...); ]check drift=D` with no updated part. The skill text then describes a shape the driver does not print; todo_sync.py's docstring and todo_sync.md (add --inbox row) bracket every part correctly.",
+        "fix": [
+          "Bracket the updated part to match todo_sync.md: `inbox: [added N item(s): <id> (#N|note), ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=<d>`, and add that a line with no `updated` part means no queued update landed (each refused one is named in `rejected`).",
+          "Bracket the part like the others: `inbox: [added N item(s): <id> (#N|note), ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=<d>`, and add 'an update missing from the `updated` part was refused or applied by an earlier drain'.",
+          "Bracket the updated part in SKILL.md:73-74 (`inbox: [added N item(s): ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote ...; ][rejected K (<files>); ]check drift=<d>`), matching todo_sync.md, and add that an update missing from the line was either refused (its .rejected.json) or already drained by the todo-watch mod."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Step 4 omits the dropped-duplicate report that Step 2 assigns to it",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "lines": "89",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "Step 2 (SKILL.md:49-50) says to 'name the dropped duplicates in the Step 4 report', but Step 4 lists what to relay (each agent's reply, the Step 3 line, open items first) and never mentions duplicates, so a reader working from Step 4 skips them.",
+        "fix": [
+          "In Step 4, after 'then the Step 3 line for an update', add 'and the ids Step 2 dropped as duplicates'."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Id-cell loop passes vacuously on an empty row list",
+        "file": "tests/lib/test_todo_snapshot_html.py",
+        "lines": "253-258",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_id_cell_holds_the_bare_id_for_copying iterates `zip(rows, IDS)`; if `_rows` ever matches nothing (a renamed row class, a changed `<tr>` shape) the loop body never runs and the test passes without checking any Id cell. The sibling tests index rows directly and fail loudly, this one does not.",
+        "fix": [
+          "Add `assert len(rows) == 2` before the loop at tests/lib/test_todo_snapshot_html.py:255."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Held lease not freed when the refusal assertion fails",
+        "file": "tests/scripts/test_todo_sync_lease_wait.py",
+        "lines": "70-77",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_acquire_refuses_once_its_own_wait_runs_out frees `held` only on the success path (line 77); a failing `pytest.raises` or timing assert skips the release. The project is a temp tree, so the leak is cosmetic, but the sibling test uses try/finally.",
+        "fix": [
+          "Wrap the raises/timing block in `try: ... finally: locking.free(cfg, held)`."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "'parallel' test runs its puts one after another",
+        "file": "tests/scripts/test_todo_sync_update_cli.py",
+        "lines": "93-106",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_parallel_queued_updates_land_in_one_drain_with_drift_0 and the module docstring speak of agents queuing in parallel, but the two `inbox put --update` calls run sequentially in one process; the test proves two queued lanes drain together, not that concurrent puts are safe. The name overstates what is exercised.",
+        "fix": [
+          "Rename to e.g. `test_two_queued_update_specs_land_in_one_drain_with_drift_0`.",
+          "Or run the two puts from two threads (as test_todo_sync_lease_wait.py does with a Timer) so the name holds."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Usage-doc option check matches by prefix",
+        "file": "tests/scripts/test_todo_sync_usage_doc.py",
+        "lines": "77-81",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_every_option_is_named_in_its_command_section tests `` f\"`{opt}\" in section ``, so an option is counted as documented when only a longer option sharing its prefix is named (a future `--in` would pass on `` `--inbox ``). No collision exists in the current parser, so this is hardening of the guard, not a present miss.",
+        "fix": [
+          "Match with a boundary: `re.search(rf\"`{re.escape(opt)}(?![\\w-])\", section)`."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Reply test name promises placement under Added, code checks presence only",
+        "file": "tests/skills/test_todo_edit_parallel_contract.py",
+        "files": [
+          "tests/skills/test_todo_edit_parallel_contract.py",
+          "plugins/harness/agents/todo-editor.md"
+        ],
+        "lines": "98-102",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_the_agent_reports_queued_updates_under_added asserts only that `queued update` appears somewhere in the `## Reply` section; it would still pass if the phrase moved to another reply line (Retired, Notes). The agent's contract (todo-editor.md:267, :317) puts it on the `Added:` line, which the test name claims to pin.",
+        "fix": [
+          "Select the `Added:` line of the Reply section (e.g. `re.search(r\"^Added: .*$\", reply, re.M)`) and assert `queued update: <id> (<fields>)` is in that line."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 304 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":21,\"first_sha\":\"e97c79e0764464e4a24a4d066a09a3215d8d9231\",\"headRefName\":\"1166-todo-snapshot-table-format\",\"headRefOid\":\"3a34045412542e35b3cf7ab35ac1332c84418edb\",\"last_sha\":\"3a34045412542e35b3cf7ab35ac1332c84418edb\",\"mergeCommit\":null,\"number\":304,\"state\":\"OPEN\",\"title\":\"todo snapshot table format\",\"url\":\"https://github.com/t968rs/operator-straps/pull/304\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests",
+          "adv_code_plans"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests",
+          "adv_refute_adv_code_plans"
+        ],
+        "result": "OK (33 checked, 0 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 33,
+          "findings_refuted": 0,
+          "findings_upheld": 33,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1166-todo-snapshot-table-format",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1166-todo-snapshot-table-format",
+        "head_ref_name": "1166-todo-snapshot-table-format",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "A  docs/PR_REVIEWS/0304_todo_snapshot_table_format.json\n M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e97c79e0764464e4a24a4d066a09a3215d8d9231",
+        "head_sha": "3a34045412542e35b3cf7ab35ac1332c84418edb",
+        "base_ancestor_command": "git merge-base --is-ancestor e97c79e0764464e4a24a4d066a09a3215d8d9231 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 3a34045412542e35b3cf7ab35ac1332c84418edb HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - README scratch_folder row now names the todo-editor agent's add, sync and update runs as inbox writers (cell padding trimmed to keep the table aligned)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - already present in todo-edit SKILL.md Step 3: the overwrote part carries 'and both land in the same drain' and the landed-then-failed case quotes 'problem: inbox: added <ids>; updated <ids>, then: <reason>'; the sync-gh-todo and add-todo parts belong to another fixer; sync-gh-todo SKILL.md: the overwrote sentence now ends 'and both land in the same drain'; the landed-then-failed sentence now quotes 'problem: inbox: added <ids>; updated <ids>, then: <reason>' with the add-todo wording; add-todo SKILL.md: already present at lines 84-85 ('and both land in the same drain') and line 89 (exact 'problem: inbox: added <ids>; updated <ids>, then: <reason>' form); the fix belongs to the sync-gh-todo part"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - test_the_agent_reports_queued_updates_under_added now selects the Reply section's 'Added:' line and asserts 'queued update: <id> (<fields>)' is on it"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - todo-editor split step 1 now limits shared guidance to its own id (same sentence as update), pinned by a new test over both sections; todo-edit Step 4 names ids a split left unsplit after the third held-lease refusal (15 minutes in all) and says to rerun --split; README todo-edit paragraph states the 15-minute lease wait"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - todo-edit Step 2 reflowed so 'The prompt is this block with the placeholders filled:' sits on one line, restoring the _fenced_after anchor"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - snapshot_html.py imports PAGES from harness_lib.page_chrome and drops its local PAGES definition and the now-unused plugin_root import; page_chrome.py is the canonical definition and is unchanged; plan_render_html.py imports PAGES from harness_lib.page_chrome and drops its local definition and the now-unused plugin_root import; prh.PAGES stays a module attribute"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - snapshot_html.py module docstring now states the contract the tests pin: no <link>, @import, url() or remote script; the only https addresses are link targets (the brand and the usage document); page_chrome.py docstring makes no network claim; plan_render_html.py module docstring now says the page loads nothing from the network (no <link>, @import, url() or remote script) and its one https address is a link target, the brand"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - COLUMNS tuple in snapshot_html.py now has a space after each comma"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - put_updates and _validate now catch (RankingError, ValueError) and re-raise TodoSyncError, matching _probe; todo_sync.py: main already maps TodoSyncError to exit 2, no edit needed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - _holds_updates raises TodoSyncError('inbox file holds both items and updates; queue them separately') so the drain sets such a file aside; tests cover {updates: 'x'}, {updates: []} beside a good update, and a file holding both lists"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - todo_sync.py module docstring exit-2 list now names a file read or write failure (OSError); main already catches OSError, so the code needs no change; todo_sync.md table belongs to the other part; todo_sync.md exit table: exit 2 row adds a file read or write failure (OSError); exit 1 sentence narrowed to any other unexpected error"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - render subparser help now reads 'Bring the snapshot page and its stamp up to date (an unchanged page is kept).'"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - inbox.py drain_lines already emits each part only when non-empty, matching the bracketed grammar; the fix is the SKILL.md grammar in the other part; todo_sync.md: already present at line 172 (add --inbox row brackets every part, including [updated M item(s): ...; ]); the bracket fix belongs to the todo-edit SKILL.md part; Step 3 drain line brackets the updated part like the other parts, and adds that a line without updated means no queued update landed; a missing update was refused (named in rejected, kept as .rejected.json) or already drained by the todo-watch mod"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - THEME_HARNESS gains a deferred mode (document.body and the corner null while the script runs, addEventListener records listeners, fired once the body exists) and a new test asserts no early button, the stored theme applied at once, a DOMContentLoaded listener, then the button under .corner still cycling; theme.js: cited, its DOMContentLoaded branch is correct and needs no edit"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - test_id_cell_holds_the_bare_id_for_copying asserts len(rows) == 2 before the zip loop, so an empty row list fails instead of passing vacuously"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - test_acquire_refuses_once_its_own_wait_runs_out wraps the raises/timing block in try/finally so the held lease is freed on failure too"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - the two inbox put --update calls now run from two threads started together through a Barrier (_put_in_threads), so the test name holds; the rename option was not taken because the 2023 ActionPlan names this test node"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - option check matches with a boundary, re.search(rf\"`{re.escape(opt)}(?![\\w-])\", section), so a longer option sharing the prefix no longer counts"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - repo_name falls back to the name in the origin remote URL (.git dropped) before the folder name, via a new _origin_name helper on run_git; README and release note describe the order and advise todo.gh.repo for a tracked page without origin; new render test covers the origin name; cited file: snapshot_html.py draws page.repo unchanged"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - Cut the todo_sync.py module docstring to its summary paragraph (still _summary()'s argparse description) plus a pointer to todo_sync.md; test_todo_sync_usage_doc.py now checks the docstring names todo_sync.md and stays at two paragraphs; cited file: todo_sync.md already holds every command, the lock and exit codes"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - argument-hint (frontmatter line 4) now shows --update ID[, ID ...] -- <what to change>, so the printed correction names the required guidance"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - Step 4 now names the ids Step 2 dropped as duplicates, after the Step 3 line for an update"
+    },
+    {
+      "id": "M2",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-17",
+      "evidence": "3a34045 (working-tree snapshot; developer commits) - closed, no action: kept the 300 s lease wait in agent prose per plan 2023 decision D1A: the wait pairs with a 330000 ms Bash timeout under the 600 s tool cap, which no config key can carry; rationale recorded as plan 2023 DesignEvolution entry EX1"
+    }
+  ]
+}

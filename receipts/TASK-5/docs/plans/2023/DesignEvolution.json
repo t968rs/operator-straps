@@ -1,0 +1,38 @@
+{
+  "plan_id": "2023",
+  "feature": "Parallel TODO Editing Remix",
+  "branch_lineage": "1166-todo-snapshot-table-format-->4166-todo-sync-parallel-followup",
+  "primary_documents": {
+    "plan": "docs/plans/2023_Parallel_TODO_Editing_Remix_ActionPlan.json",
+    "spec": "https://github.com/t968rs/operator-straps/issues/309"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "pr-review PR 304 (M2)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "decisions D1 (D1A); values 'split lease wait' and 'split acquire Bash timeout'",
+        "indicated": "lease acquire --wait SECONDS in the driver; the split passes --wait 300 with a Bash timeout of 330000 ms, both written in todo-editor.md split step 3"
+      },
+      "issue": {
+        "category": "yagni",
+        "why_categorical": "review asked whether the 300 s split wait belongs in a config key",
+        "why_free_form": "Review finding M2: the project rule puts a setting a driver can read in a config key, yet the split wait exists only as an agent literal echoed by README.md, todo_sync.md and the release note; a later review could reopen the question"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D1A stays as chosen: the split wait remains the literal --wait 300 in todo-editor.md, with no todo.lease key"
+      },
+      "why_new_outcome": {
+        "category": "yagni",
+        "free_form": "The wait is bounded by the Bash tool's 600000 ms foreground cap, a property of the agent's tool call, not of the project, and the agent must also write the matching Bash timeout (330000 ms) on the same call. A key would still leave that timeout as agent prose, so the two numbers would split across a config file and the agent and could drift apart; keeping both on one prose line keeps them in step. The driver option is generic (--wait SECONDS, default 10 s from catalog_lock), so moving the split wait changes one agent line and the documents that quote it, and the 600 s cap keeps any value a key could hold within a narrow range anyway."
+      },
+      "date": "2026-11-17"
+    }
+  ]
+}

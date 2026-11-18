@@ -1,0 +1,53 @@
+name: Pylint
+
+on:
+  push:
+    branches: [main]
+  # On request for any branch: the Actions tab's "Run workflow" branch picker, or
+  # `gh workflow run pylint.yml --ref <branch>`.
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The project targets 3.11 (pyproject.toml, ci.yml); lint against the same grammar and stdlib.
+        python-version: ["3.11"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      id: setup-uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: "0.11.15"
+        enable-cache: true
+        cache-dependency-glob: requirements-dev.txt
+
+    - name: Report uv cache status
+      run: |
+        echo "uv cache hit: ${{ steps.setup-uv.outputs.cache-hit }}"
+        echo "uv cache key: ${{ steps.setup-uv.outputs.cache-key }}"
+
+    # The CI dependency set, so third-party imports resolve (E0401) without a separate list to keep.
+    - name: Install dependencies
+      run: |
+        uv pip install --system pylint -r requirements-dev.txt
+
+    # Report only: findings print in the log and never fail the job (--exit-zero). The rule set and the
+    # import paths live in pyproject.toml, so a local `pylint` run reports the same.
+    - name: Analysing the code with pylint
+      run: |
+        pylint --exit-zero $(git ls-files '*.py' ':!:tests/*')
+    # Tests also skip: docstrings on test functions and grouping classes (C0116, C0115), fixtures
+    # passed in by the name they are defined under (W0621) or requested only for their side effect
+    # (W0613), private helpers reached on purpose (W0212), and exact `== []` asserts (C1803).
+    - name: Analysing the tests with pylint
+      if: ${{ !cancelled() }}
+      run: |
+        pylint --exit-zero --disable=C0115,C0116,C1803,W0212,W0613,W0621 $(git ls-files 'tests/*.py')

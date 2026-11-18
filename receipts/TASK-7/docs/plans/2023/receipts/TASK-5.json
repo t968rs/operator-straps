@@ -1,0 +1,31 @@
+{
+  "plan_id": "2023",
+  "item": "TASK-5",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b8da7d0d5b953836f6af86787969414ebefc1d4e"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_todo_edit_parallel_contract.py::test_argument_hint_takes_several_split_ids_and_an_update",
+        "tests/skills/test_todo_edit_parallel_contract.py::test_update_without_guidance_stops_at_the_hint",
+        "tests/skills/test_todo_edit_parallel_contract.py::test_split_and_update_dispatch_one_agent_per_id_in_one_message",
+        "tests/skills/test_todo_edit_parallel_contract.py::test_the_skill_drains_the_inbox_once_after_the_update_agents",
+        "tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_queues_updates_and_holds_no_lease",
+        "tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_names_the_fields_an_update_may_set",
+        "tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_reports_queued_updates_under_added"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_todo_edit_parallel_contract.py::test_argument_hint_takes_several_split_ids_and_an_update tests/skills/test_todo_edit_parallel_contract.py::test_update_without_guidance_stops_at_the_hint tests/skills/test_todo_edit_parallel_contract.py::test_split_and_update_dispatch_one_agent_per_id_in_one_message tests/skills/test_todo_edit_parallel_contract.py::test_the_skill_drains_the_inbox_once_after_the_update_agents tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_queues_updates_and_holds_no_lease tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_names_the_fields_an_update_may_set tests/skills/test_todo_edit_parallel_contract.py::test_the_agent_reports_queued_updates_under_added"
+    }
+  },
+  "evidence": "staged tree b8da7d0: 7 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "939311141e7b17c485c66bbf6c16f931a844d1e88ffe2d168eaf4f81a998640c"
+}

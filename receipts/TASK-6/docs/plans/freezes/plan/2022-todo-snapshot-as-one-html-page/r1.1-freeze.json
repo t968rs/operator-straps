@@ -1,0 +1,26 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "1d808ded398076525ddc0ed71f8c97034b5732aa",
+  "files": {
+    "docs/plans/2022_TODO_snapshot_as_one_HTML_page_ActionPlan.json": "9762acb5c9ce08570d88421f2902aa61ebb875b7"
+  },
+  "ignored": {
+    "docs/plans/2022/tests/tests/lib/test_todo_snapshot_canned.py": "b6dad1b9e246ba5a6633e5078dfdabf2143e634262943ab0e8cec27d363b33a6",
+    "docs/plans/2022/tests/tests/lib/test_todo_snapshot_html.py": "25f38054cc249ddfa70d46ba971bab7ab79c45138a65a149eec8f82ffd7eb0e1",
+    "docs/plans/2022/tests/tests/lib/test_todo_snapshot_wiring.py": "47cf05ac1c95932888701b5ab2946f3884cf5890a035f0dab128287c87c380b3",
+    "docs/plans/2022/tests/tests/scripts/test_todo_sync_render_page.py": "f994f1d473e8c0b911a474783f926f450132d023af09390eb6903dbf8b37f675"
+  },
+  "at": "2026-11-17T09:13:53+00:00",
+  "base": "73dc11499bafbcde714ae10c7459007869f5c8c2",
+  "history": false,
+  "digest": "20852d330e3e149b1fa67d532c11b4809ab7be6fb15f8491b0f96cbe4f8cd75e",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

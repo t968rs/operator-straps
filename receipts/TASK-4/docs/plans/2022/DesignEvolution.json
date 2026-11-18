@@ -1,0 +1,92 @@
+{
+  "plan_id": "2022",
+  "feature": "TODO snapshot as one HTML page",
+  "branch_lineage": "main-->1165-todo-snapshot-html",
+  "primary_documents": {
+    "plan": "docs/plans/2022_TODO_snapshot_as_one_HTML_page_ActionPlan.json"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "review-local local-todo-page-2022 (-a)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 and TASK-3 files",
+        "indicated": "TASK-2 changes only the todo_sync render, sources, rules, scaffold and report modules; TASK-3 changes canned messages, schema, README, agent prose, provenance, gitignore, version and release notes"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "prose outside the item files still described dated markdown snapshots",
+        "why_free_form": "Review findings M4, M7 and M9: the TodoSnapshots docstring in config.py, the stub_links.py docstrings (and its href encoding of % # ?) and the sync-gh-todo SKILL.md init line still named Markdown or dated snapshots"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 also edits todo_sync/stub_links.py; TASK-3 also edits harness_lib/config.py and skills/sync-gh-todo/SKILL.md"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the review closed those findings in the same files; leaving them would ship docs that contradict the page"
+      },
+      "date": "2026-11-17"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "pr-review PR 300 (M3)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 files; DesignEvolution EX1 new_outcome",
+        "indicated": "TASK-2 changes only its listed files plus todo_sync/stub_links.py (EX1)"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "the record of files EX1 changed left out its test",
+        "why_free_form": "The EX1 review fix M7 (stub_links.py href encoding of % # ?) also added a %, #, ? link_target case to tests/lib/test_todo_sync_stub_links.py; no item's files, no EX entry and no receipt extra_files named that test"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 also edits tests/lib/test_todo_sync_stub_links.py, the test that covers todo_sync/stub_links.py"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the catalog names every file the EX1 review fix touched; EX1 stays as recorded so the TASK-2 and TASK-3 receipt digests that cite it still hold"
+      },
+      "date": "2026-11-17"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "pr-review PR 300 (M8)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 action",
+        "indicated": "test_root_separation.py TODO_OUTPUTS names the page"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "a page check cannot fail",
+        "why_free_form": "The _todo_project helper in tests/contract/test_root_separation.py pre-seeds TODO_Snapshot.html, so a TODO_OUTPUTS entry naming the page passes even when render writes nothing"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "test_root_separation.py TODO_OUTPUTS names docs/RESEARCH/_TODO/Snapshots/todo_live.js for todo_sync render, a file render writes and the helper does not seed"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the render entry has to name an output the project does not already hold, or the contract check proves nothing"
+      },
+      "date": "2026-11-17"
+    }
+  ]
+}

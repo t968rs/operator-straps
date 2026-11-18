@@ -1,0 +1,15 @@
+{
+  "title": "pr-team terminals.jsonl - union dispatch",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/harness/pr-team/terminals.schema.json",
+  "description": "Top-level union for terminals.jsonl rows. Every row matches ONE of (reviewer-row, fixer-row), discriminated by the required `agent_role` field.",
+  "$comment": "Decomposition rationale: reviewer agents and fixer agents have distinct allowable verbs and distinct DONE-row shapes (reviewer carries `counts`; fixer carries `fixed`+`bubbled`+`edited`). Keeping the two row schemas separate makes the verb-set and field-set explicit per role. Common $defs (agent_id, agent_role enum, ts, output_path, signal-specific fields like reason/issue_id/issue_description) live in terminals.common.schema.json. Four-file split rationale: this dispatcher ONEOF's into terminals.reviewer.schema.json and terminals.fixer.schema.json with $defs in terminals.common.schema.json. The split is intentional - keeping the file count high (4) trades against the per-file line count (which stays small per role). Reasons: (1) each agent does not have to read 500+ lines of JSON schema to know its own row shape; (2) humans do not want to read 500+ lines of monolithic schema either; (3) the split-by-purpose layout (reviewer rows, fixer rows, shared $defs, union dispatcher) is immediately readable - each file's purpose matches its name.",
+  "oneOf": [
+    {
+      "$ref": "terminals.reviewer.schema.json"
+    },
+    {
+      "$ref": "terminals.fixer.schema.json"
+    }
+  ]
+}

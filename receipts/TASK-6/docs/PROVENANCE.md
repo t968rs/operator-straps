@@ -1,0 +1,53 @@
+# Provenance
+
+The harness was imported from `t968rs/floodplain_development` `origin/dev` at `c5ce7313d` (2026-10-13), following
+the file manifest in floodplain_development issue #1561. History was not carried over; this file is the link back.
+
+Additional sources at import time:
+
+| Imported path | Origin |
+|---|---|
+| `plugins/harness/skills/d-w/**`, `tests/skills/test_detached_worktree_script.py` | floodplain branch `skill-d-w` (`2454831be` tip at import) |
+| `plugins/harness/hooks/{bash_discipline,bash_allow_shapes,powershell_allow_shapes}.py` | `t968rs/t968rs_claude` working tree, `.claude/hooks/*.py` |
+| `plugins/harness/skills/{fold-in-review,agent-permissions}/**` | `t968rs/t968rs_claude` working tree, `skills/` (fold-in-review was untracked there) |
+| `plugins/harness/skills/consumer-contract-audit/{SKILL.md,repo-fixtures.schema.json}` | same; the fpm `repo-fixtures.json` data stays with floodplain_development |
+| `plugins/harness/skills/{merge-commit,searching-sourcegraph}/**` | floodplain `origin/dev` at `107d70a90` (2026-10-14), `.claude/skills/`. `merge-commit` was later folded into `merge-commit-msg` (issue 80): its `merge_body.py` concatenation of commit-message TXT files is gone, and the branch-ledger lookup it did survives as the ledger-subject listing in `merge_commit_msg.py capture` |
+| `plugins/harness/skills/check-runlogs/commands/latest_runlog.py` | floodplain `origin/dev` at `107d70a90`, `scripts/_script_runners/_RUN_TESTS.py`: the log-name timestamp rules (`timestamp`, `_get_console_filename_date`, `sort_paths_by_timestamp`), rewritten against `runlogs.*` config; the runner and its archiving stay with floodplain_development. No verbatim import commit |
+| `plugins/harness/skills/strap-debugging/**` | `obra/superpowers` `main` at `bb92a77` (2026-10-10), `skills/systematic-debugging/` (MIT, Jesse Vincent; `LICENSE` copied beside it). Verbatim except: the `SKILL.md` frontmatter `name`/`description` and "(when installed)" on its two `superpowers:` skill pointers; `find-polluter.sh` reads paths whole (spaces survive), takes an optional test command (default `npm test`), stops on exit 126/127 and refuses a pollution target that exists before any test runs (its `.git` example became `packages/core/.git`), exits 2 when the pattern matches no test file or the usage is wrong (exit 1 is reserved for a found polluter), counts and reports test files that exited non-zero, runs each test with stdin from `/dev/null`, and its "To investigate" hints echo the configured test command with the quoted file; `root-cause-tracing.md` shows the script's skill-directory path, the test-command argument and the absent-target rule; `condition-based-waiting.md` points at its generic `waitFor` (with a baseline rule for event waits) instead of the example file and passes the `description` argument in its snippets; `condition-based-waiting-example.ts` (tied to upstream's own test domain), `CREATION-LOG.md` and the `test-*.md` pressure scenarios left out |
+| `plugins/harness/lib/harness_lib/todo_sync/{ranking,report,rules*,snapshot_html}.py`, `plugins/harness/schemas/catalogs/TodoCatalog.schema.json` | floodplain working tree (2026-10-17), the git-ignored repo TODO bootstrap scripts (`build_repo_todo.py`: the `score` / `sort_key` formula and `counts` tally; `validate_repo_todo.py`: the cross-record checks; `todo_table.py`: the top-N table, now drawn as HTML by `snapshot_html.py`) and `docs/RESEARCH/RepoToDo.schema.json`. Rewritten, not copied: the generator's per-item override tables stay behind, the scoring is recomputed from the catalog's own `ranking_method` data (rule T10), and the schema moved to draft 2020-12 with generic path patterns. `rules_plans.py` and `rules_research.py` are original to this repo, not ported from these scripts. No verbatim import commit |
+| `plugins/harness/lib/harness_lib/todo_sync/retire.py` (`todo_sync.py retire`) | a one-off floodplain session script (2026-10-19, never committed) that retired five finished items from `RepoToDo.json`: remove, renumber to `TODO-<rank>`, drop retired ids from tracker and close-candidate lists, recount, and rewrite moved ids in the research catalog and stubs. Rewritten, not copied: the hard-coded paths, item ids and close-candidate evidence text stay behind; rescoring when an unblock bonus lapses, the dangling-id report and the other-reference scan are new. No verbatim import commit |
+| `plugins/harness/lib/harness_lib/todo_sync/reshape.py` (`todo_sync.py split`, `refresh`), `plugins/harness/skills/todo-edit/SKILL.md`, `plugins/harness/agents/todo-editor.md` | a one-off floodplain session script (2026-10-20, `split_todo_001.py`, never committed) that split one `RepoToDo.json` item into two, renumbered every later item, rewired the shared dependent, recounted and rewrote ids in the research catalog and stubs. Rewritten, not copied: the hard-coded paths, item ids, part text and prose replacements stay behind; the part content now comes from a spec file the agent writes, links, trackers and close candidates are rewired generically, prose naming the split id is redirected and listed for review, and `refresh` is new. No verbatim import commit |
+| `plugins/harness/skills/writing-docstrings/**`, `plugins/harness/lib/harness_lib/writing_docstrings_{models,api}.py`, `tests/lib/test_writing_docstrings_api.py` | floodplain `main` at `0ee1af72d` (2026-11-02): `.claude/skills/writing-docstrings/{SKILL.md,docstring_tiers.py}`, `docs/conventions/docstring_format.md` and `scripts/__tests__/test_docstring_tiers.py` (issue 176). The tier script split into models (tiers, layouts, labels, flags, the report row), an analysis module and a skill command; the 110-character limit became `docstrings.line_length`; long lines no longer count a CR line ending; a named symbol the file does not define, a missing file and a syntax error are `problem:` lines. The convention moved into the skill folder with domain examples replaced by neutral ones; the rules are unchanged. `decompose-phase1`, which runs the tier script in floodplain, stays there. No verbatim import commit |
+| `plugins/pytest-scope/hooks/{interpreter,scope}{,.test}.ts` | floodplain `origin/dev` at `107d70a90`, `.claude/mods/fpm-guardrails/hooks/{interpreter,testScope,registry}{,.test}.ts`: the interpreter rewrite and the broad pytest deny; registry guard tracking and the registry lookup stay with floodplain_development |
+| `plugins/arc-straps/skills/arc-meta/**` | floodplain `origin/dev` at `0c4e45eb6` (2026-11-04), `.claude/skills/arc-meta/` and `scripts/fpm/_tbx_staging/metadata/{metadata_format,patch_tool_rc,clean_tool_metadata,patch_toolbox_metadata}.py`: paths moved to `plugins.arc-straps` config, the three apply scripts re-cut as `arc_meta_{rc,page,toolbox}.py` over one shared archive rewrite, the generator vendored as `arc_meta_format.py`; no verbatim import commit |
+
+The import commit is verbatim (paths moved, content unchanged except `.gitignore`). Every later commit is a
+decoupling or packaging change against it.
+
+## Path map
+
+| floodplain_development | operator-straps |
+|---|---|
+| `scripts/gh_workflows/*.py` (minus `sync_copilot_exclusions.py`) | `plugins/harness/lib/harness_lib/` |
+| `scripts/_admin_utils/git_status_filter_excluded.py` | `plugins/harness/lib/harness_lib/` |
+| `.claude/hooks/hook_scripts/{id_handling,pr_json_validation}.py` | `plugins/harness/lib/harness_lib/validation/` |
+| `.claude/agent_scripts/*.py`, `scripts/_admin_utils/txt_to_commit_dict.py` | `plugins/harness/scripts/` |
+| `.claude/hooks/{check_phase5_sentinel,validate-pr-json-schema}.py`, `approve-python-c.sh` | `plugins/harness/hooks/` (the `.sh` became `approve_python_c.py`) |
+| `.claude/agents/{messenger,pr-*,roast-my-code}.md` | `plugins/harness/agents/` |
+| `.claude/agent-schemas/**` (minus `CICDActionAudit`) | `plugins/harness/schemas/` |
+| `.claude/skills/<generic>/**` | `plugins/harness/skills/` |
+| `.claude/CLAUDE.md` | `plugins/harness/rules/HARNESS_RULES.md` (cut to the generic half) |
+| `docs/conventions/commit_format.md` | `plugins/harness/reference/commit_format.md` |
+| `.claude/mods/{pr-review-watch,session-bookmark}/**` | `plugins/{agent-watcher,session-bookmark}/` |
+| `.claude/mods/fpm-guardrails/hooks/status{,.test}.ts` | `plugins/git-status/hooks/` (generic half only, after the split) |
+| `scripts/__tests__/{discipline,pr_review,_admin_utils}/...` (the 23 moved + 5 split tests) | `tests/{lib,scripts,hooks,skills,schemas,mods}/` |
+| `.claude/skills/arc-meta/SKILL.md` (at `0c4e45eb6`, as for every arc-meta row) | `plugins/arc-straps/skills/arc-meta/SKILL.md` |
+| `.claude/skills/arc-meta/scripts/arc_meta_models.py` | `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py` |
+| `.claude/skills/arc-meta/scripts/arc_meta_api.py` | `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py` (archive and canonical-XML helpers split out to `arc_meta_archive.py`, `arc_meta_canonical.py`) |
+| `scripts/fpm/_tbx_staging/metadata/metadata_format.py` | `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py` |
+| `scripts/fpm/_tbx_staging/metadata/patch_tool_rc.py` | `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py` |
+| `scripts/fpm/_tbx_staging/metadata/clean_tool_metadata.py` | `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_page.py` |
+| `scripts/fpm/_tbx_staging/metadata/patch_toolbox_metadata.py` | `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py` |
+| `scripts/__tests__/_tbx_staging/test_{metadata_format,patch_tool_rc,patch_toolbox_metadata}.py` | `tests/arc/test_arc_meta_{format,rc,toolbox}.py` |
+| `scripts/__tests__/skills/test_arc_meta_api.py` | `tests/arc/test_arc_meta_api.py` (tests 1-8, 12-21), `tests/arc/test_arc_meta_page.py` (tests 9-11), `tests/arc/_arc_toolbox.py` (the demo builder) |
+| `scripts/__tests__/skills/test_arc_meta_skill_contract.py` | `tests/skills/test_arc_meta_skill_contract.py` |

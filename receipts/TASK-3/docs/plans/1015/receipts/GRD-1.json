@@ -1,0 +1,30 @@
+{
+  "plan_id": "1015",
+  "item": "GRD-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "4da97dcdde68b4823928f418f8d9ea152cfc57de"
+    },
+    "tests": {
+      "nodes": [
+        "tests/hooks/test_guard_locked.py::test_write_to_locked_plan_json_is_denied",
+        "tests/hooks/test_guard_locked.py::test_unlocked_and_outside_paths_pass",
+        "tests/hooks/test_guard_locked.py::test_ledger_files_always_denied",
+        "tests/hooks/test_guard_locked.py::test_bash_and_powershell_writes_matched",
+        "tests/hooks/test_guard_locked.py::test_dispatchers_registered_and_compose_guard_locked",
+        "tests/hooks/test_guard_locked.py::test_sealed_plan_json_stays_writable_under_lock"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/hooks/test_guard_locked.py::test_write_to_locked_plan_json_is_denied tests/hooks/test_guard_locked.py::test_unlocked_and_outside_paths_pass tests/hooks/test_guard_locked.py::test_ledger_files_always_denied tests/hooks/test_guard_locked.py::test_bash_and_powershell_writes_matched tests/hooks/test_guard_locked.py::test_dispatchers_registered_and_compose_guard_locked tests/hooks/test_guard_locked.py::test_sealed_plan_json_stays_writable_under_lock"
+    }
+  },
+  "evidence": "staged tree 4da97dc: 6 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-11",
+  "seal": "ca9f777457d593731b9025b7e67ca4de567a97a83a3e9f9da79ead8300d03362"
+}

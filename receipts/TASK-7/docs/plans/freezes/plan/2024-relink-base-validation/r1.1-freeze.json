@@ -1,0 +1,25 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "681d9bfa5dfdb82d7944f6176142ba9b40a608cc",
+  "files": {
+    "docs/plans/2024_Relink_Base_Validation_ActionPlan.json": "b151dc44c65227a7856f0ad4b2eb091cc59c476f"
+  },
+  "ignored": {
+    "docs/plans/2024/tests/tests/scripts/test_plan_relink_check.py": "56085f8164062463994a41823a263860bcd2a4a49d2429a7dbb51db3ee8b23e8",
+    "docs/plans/2024/tests/tests/scripts/test_plan_relink_counterpart.py": "9044b3463bbbf72671065689babcba1533dfdd65fd515233500372835fa4a725",
+    "docs/plans/2024/tests/tests/skills/test_write_plan_relink_contract.py": "b28d897981a01fe4559cc271b8a7a1f122fd5099d5b9c92009350a5a407c8715"
+  },
+  "at": "2026-11-17T22:37:31+00:00",
+  "base": "26e2c29a183adcbdac808336aa1313c9e0391b0e",
+  "history": false,
+  "digest": "5da3afcfac8dc5b09793538e7c04f8b0852a21f3bc33a073b41ddc72b04f10a1",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

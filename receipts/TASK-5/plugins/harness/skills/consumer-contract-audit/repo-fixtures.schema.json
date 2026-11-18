@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Consumer Contract Audit — Repo Fixture Catalog",
+  "description": "Per-project catalog of shared mutable fixtures with their consumer maps, kept by each project at .claude/harness/consumer-fixtures.json. Used to pre-fill steps 1 and 2 of the consumer-contract-audit skill when a known fixture is being modified.",
+  "type": "object",
+  "required": ["catalog_version", "fixtures"],
+  "properties": {
+    "catalog_version": {
+      "type": "string",
+      "description": "Semver of the catalog format itself (NOT of the project catalogued)."
+    },
+    "fixtures": {
+      "type": "array",
+      "description": "Shared mutable fixtures of the project that keeps this file.",
+      "items": {"$ref": "#/definitions/fixture"}
+    }
+  },
+  "definitions": {
+    "fixture": {
+      "type": "object",
+      "required": ["name", "location", "kind", "consumers"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Class.attribute or function/module-level identifier — the exact symbol the audit applies to."
+        },
+        "location": {
+          "type": "string",
+          "description": "Source file path relative to repo root."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "queue",
+            "tracker",
+            "ledger",
+            "registry",
+            "schema_catalog",
+            "path_history",
+            "accounting_dict",
+            "state_map",
+            "dyad",
+            "other"
+          ],
+          "description": "Shape of the fixture — kind names are conventional, not authoritative."
+        },
+        "summary": {
+          "type": "string",
+          "description": "One-paragraph description of what the fixture holds and why it exists."
+        },
+        "history": {
+          "type": "array",
+          "description": "PR/issue numbers where this fixture was the subject of a consumer-contract regression. Establishes 'this fixture has bitten us before' priors.",
+          "items": {
+            "type": "object",
+            "required": ["pr_or_issue", "summary"],
+            "properties": {
+              "pr_or_issue": {"type": "string"},
+              "summary": {"type": "string"},
+              "lesson": {"type": "string"}
+            }
+          }
+        },
+        "consumers": {
+          "type": "array",
+          "minItems": 2,
+          "description": "Every public-API code path that reads or walks the fixture. Minimum 2 — fixtures with one consumer don't qualify for this catalog.",
+          "items": {"$ref": "#/definitions/consumer"}
+        }
+      }
+    },
+    "consumer": {
+      "type": "object",
+      "required": ["name", "location", "role", "contract"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Function or method identifier — Class.method or module.function."
+        },
+        "location": {
+          "type": "string",
+          "description": "Source file path relative to repo root, optionally with :line."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["producer", "gatekeeper", "accountant"],
+          "description": "Producer = mutates the fixture. Gatekeeper = filters/skips based on fixture state. Accountant = reads contents to produce summary/report."
+        },
+        "contract": {
+          "type": "string",
+          "description": "One-line observable contract: '<consumer> depends on <fixture> having <X> when <Y> happens.' Written in terms of what the consumer observes, not implementation detail."
+        },
+        "fragility_notes": {
+          "type": "string",
+          "description": "Optional — known coincidences, races, or 'survives only because' caveats. The places future refactors will break."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "586037ae1393a171989c88ed381b05a1a74813d2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_review_merge_adversarial.py::test_refuted_is_the_only_new_closed_status",
+        "tests/lib/test_review_merge_adversarial.py::test_schema_version_is_at_least_2_3_0",
+        "tests/lib/test_review_merge_adversarial.py::test_compute_verdict_settles_a_refuted_id",
+        "tests/lib/test_review_merge_adversarial.py::test_not_resolved_latest_status_is_no_disposition",
+        "tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[REFUTED]",
+        "tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[BUBBLED]",
+        "tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[NOT_RESOLVED]",
+        "tests/lib/test_review_merge_adversarial.py::test_pending_rule_still_refuses_other_resolutions",
+        "tests/lib/test_review_merge_adversarial.py::test_pending_rule_still_refuses_a_ready_verdict",
+        "tests/schemas/test_pr_review_schema_adversarial.py::test_schema_version_matches_the_merge_constant_and_is_at_least_2_3_0",
+        "tests/schemas/test_pr_review_schema_adversarial.py::test_refuted_bubbled_and_not_resolved_are_resolution_statuses",
+        "tests/schemas/test_pr_review_schema_adversarial.py::test_adversarial_check_is_optional",
+        "tests/schemas/test_pr_review_schema_adversarial.py::test_adversarial_check_declares_and_accepts_the_s29_fields",
+        "tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[None]",
+        "tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[BUBBLED]",
+        "tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[NOT_RESOLVED]",
+        "tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_another_resolution_stays_incoherent",
+        "tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_a_ready_verdict_stays_incoherent",
+        "tests/hooks/test_schema_hook_refuted.py::test_all_refuted_review_clears_the_sentinel",
+        "tests/hooks/test_schema_hook_refuted.py::test_refuted_and_bubbled_review_clears_the_sentinel",
+        "tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_bubble_clears_the_sentinel",
+        "tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix",
+        "tests/hooks/test_schema_hook_refuted.py::test_refuted_entries_do_not_lift_the_sha_evidence_rule",
+        "tests/lib/test_review_merge_adversarial.py::test_not_resolved_latest_status_is_open_despite_a_bubble_entry",
+        "tests/lib/test_review_merge_adversarial.py::test_entry_ids_keep_the_orphan_guard_and_the_merge_refusal",
+        "tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_fix_after_a_bubble_keeps_the_sentinel",
+        "tests/hooks/test_schema_hook_refuted.py::test_a_refuted_sha_evidence_does_not_clear_a_ready_review"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_review_merge_adversarial.py::test_refuted_is_the_only_new_closed_status tests/lib/test_review_merge_adversarial.py::test_schema_version_is_at_least_2_3_0 tests/lib/test_review_merge_adversarial.py::test_compute_verdict_settles_a_refuted_id tests/lib/test_review_merge_adversarial.py::test_not_resolved_latest_status_is_no_disposition tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[REFUTED] tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[BUBBLED] tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[NOT_RESOLVED] tests/lib/test_review_merge_adversarial.py::test_pending_rule_still_refuses_other_resolutions tests/lib/test_review_merge_adversarial.py::test_pending_rule_still_refuses_a_ready_verdict tests/schemas/test_pr_review_schema_adversarial.py::test_schema_version_matches_the_merge_constant_and_is_at_least_2_3_0 tests/schemas/test_pr_review_schema_adversarial.py::test_refuted_bubbled_and_not_resolved_are_resolution_statuses tests/schemas/test_pr_review_schema_adversarial.py::test_adversarial_check_is_optional tests/schemas/test_pr_review_schema_adversarial.py::test_adversarial_check_declares_and_accepts_the_s29_fields tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[None] tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[BUBBLED] tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[NOT_RESOLVED] tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_another_resolution_stays_incoherent tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_a_ready_verdict_stays_incoherent tests/hooks/test_schema_hook_refuted.py::test_all_refuted_review_clears_the_sentinel tests/hooks/test_schema_hook_refuted.py::test_refuted_and_bubbled_review_clears_the_sentinel tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_bubble_clears_the_sentinel tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix tests/hooks/test_schema_hook_refuted.py::test_refuted_entries_do_not_lift_the_sha_evidence_rule tests/lib/test_review_merge_adversarial.py::test_not_resolved_latest_status_is_open_despite_a_bubble_entry tests/lib/test_review_merge_adversarial.py::test_entry_ids_keep_the_orphan_guard_and_the_merge_refusal tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_fix_after_a_bubble_keeps_the_sentinel tests/hooks/test_schema_hook_refuted.py::test_a_refuted_sha_evidence_does_not_clear_a_ready_review"
+    }
+  },
+  "evidence": "staged tree 586037a: 27 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-12",
+  "seal": "529d198aedde6cbaa88457f519184dc4d2e17bf37d859ad19bd3cf0032ff8ba3"
+}

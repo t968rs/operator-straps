@@ -1,0 +1,72 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 42,
+  "pr_title": "Add widget cache",
+  "branch": "feature/widget-cache",
+  "base_branch": "main",
+  "base_sha": "1111111aaaaaaa",
+  "head_sha": "2222222bbbbbbb",
+  "review_date": "2026-10-01",
+  "verdict": "NOT READY TO MERGE - important: I1",
+  "stats": {
+    "additions": 120,
+    "deletions": 8,
+    "files_changed": 3
+  },
+  "reviewers": [
+    "pr-reviewer-core"
+  ],
+  "scoped_review_files": [
+    "src/widget.py"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Cache keys are typed — no stringly lookups"
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Cache never evicts",
+        "file": "src/widget.py",
+        "lines": "10-12",
+        "summary": "Unbounded growth.",
+        "fix": [
+          "Add an LRU bound."
+        ],
+        "fix_kind": "mechanical"
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Docstring typo",
+        "file": "src/widget.py",
+        "lines": "3",
+        "summary": "Typo.",
+        "fix": [
+          "Fix the typo."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M2",
+        "name": "Unused import",
+        "file": "src/util.py",
+        "lines": "1",
+        "summary": "Unused.",
+        "fix": [
+          "Remove it."
+        ],
+        "fix_kind": "mechanical"
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "skipped": true,
+    "reason": "fixture review"
+  }
+}

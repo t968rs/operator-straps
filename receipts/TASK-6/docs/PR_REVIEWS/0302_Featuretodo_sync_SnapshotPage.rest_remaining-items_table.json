@@ -1,0 +1,401 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 302,
+  "pr_title": "Feature(todo_sync): `SnapshotPage.rest` remaining-items table",
+  "branch": "2166-todo-snapshot-tables",
+  "base_branch": "1166-todo-snapshot-table-format",
+  "base_sha": "3098fc1ede6823edd4cbcedef5c042ad697a521d",
+  "head_sha": "2bfe0a86da1f9071b56e17bc4986dfa7db2043b4",
+  "review_date": "2026-11-17",
+  "verdict": "READY TO MERGE - 11 of 11 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 475,
+    "deletions": 50,
+    "files_changed": 13,
+    "source": {
+      "additions": 475,
+      "deletions": 50,
+      "files_changed": 13
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0302/pr302_20261117T174032Z/findings/config.json",
+    "docs/_scratch/pr_review/0302/pr302_20261117T174032Z/findings/tests.json",
+    "docs/_scratch/pr_review/0302/pr302_20261117T174032Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0302/pr302_20261117T174032Z/findings/docs.json",
+    "docs/_scratch/pr_review/0302/pr302_20261117T174032Z/findings/roast.json",
+    "docs/_scratch/pr_review/0302/pr302_20261117T174032Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The top_n schema description now matches render(): top = ranked[:top_n], rest = ranked[top_n:] rendered as a second table (todo_sync/__init__.py:180-183).",
+    "Description-only schema edit: type, minimum and key set are unchanged, so defaults.json, config.py and the todo-watch mirror stay in sync.",
+    "The usage-doc test builds its command and option list from the live todo_sync.py parser, so a new subcommand or flag fails CI until todo_sync.md documents it in that command's section.",
+    "The end-to-end render test runs `check --rules T2` after a top_n=1 render, showing the T2 header and rows hash still agree with the page once rows are split across two tables.",
+    "The exact-string assertion on `<details id=\"rest\"><summary><h2>Remaining 2 items</h2></summary>` pins the closed-by-default fold and the heading/table adjacency, and the no-rest and singular-label cases cover both edges.",
+    "test_rest_rows_link_their_stubs_by_position uses an empty first rest_links entry, which shows that rest links line up by position separately from the top table's links.",
+    "All new tests are behavioral: they render real pages or run the real driver subprocess, with no stubbed collaborators.",
+    "test_page_theme follows the CSS selector rename (table.top th to table.items th), so the heading-color rule stays tested for both tables.",
+    "`ranked_items` is extracted from `top_items`, and `top_items` now calls it, so the T2 `rows_sha256` hash and the rendered page sort items the same way.",
+    "Stub links are computed once over every ranked item and sliced at the same cut as the items. This keeps the per-row positional contract (`links[k]` and `rest_links[k]`) for both tables, using one `Sources` instance.",
+    "`_table` is generalized to take the class, items and links, and both tables share the `table.items` CSS selectors. The new `details#rest` heading rule matches the markup.",
+    "The docstrings agree with the code: the module docstring, the `SnapshotPage` docstring and the driver's `render` usage all describe the folded second table. The module docstring also says T2 does not track the remaining-items table, which matches the hash, still computed over the top N only.",
+    "The `USAGE` link points to the GitHub copy and carries a comment explaining why: a path into the installed plugin would not resolve from a consuming project's page.",
+    "The usage document matches the parser command for command and option for option, and tests/scripts/test_todo_sync_usage_doc.py fails when a leaf command lacks a section or an option goes unnamed in its section.",
+    "The README and the release notes describe the page as it now renders: the Id column (COLUMNS in snapshot_html.py), the `Top N` heading, and the folded `Remaining N items` table that is omitted when nothing remains.",
+    "The release notes say plainly that rule T2 still compares only the top-N rows, so the remaining-items table can go stale until the next render, and the README's no-finding list adds that table to match.",
+    "The `render` entry in the todo_sync.py docstring, the usage document and the `todo.top_n` schema description were updated together, so the three agree.",
+    "top_items now delegates to ranked_items (sources.py:138-146), so the T2 hash rows and the page's top table come from one sort and cannot disagree about which items are 'top'.",
+    "render_snapshot resolves stub links once for the whole ranked list and slices them alongside the items (__init__.py:178-183), keeping links positionally aligned across the top/rest split without a second Sources walk.",
+    "test_items_past_top_n_go_to_the_folded_rest_table renders through the real CLI and then runs `check --rules T2`, proving the second table does not trip the staleness rule.",
+    "test_todo_sync_usage_doc.py walks the live argparse tree, so a new command or option fails the build until the usage document names it.",
+    "Schema description, README, module docstrings and release note all state the same contract: T2 covers only the top N, the remaining-items table can go stale until the next render.",
+    "Stub links are computed once over the ranked list and sliced with the same cut as the items, so `links[k]`/`rest_links[k]` stay aligned with `top[k]`/`rest[k]` by position.",
+    "`top_items` now delegates to `ranked_items`, so the T2 hash, the top table and the rest table share one ordering rule; a test pins `top_items(items, n) == ranked_items(items)[:n]`.",
+    "The end-to-end render test checks the T2 check still passes with a rest table present, guarding the header/rows_sha256 contract.",
+    "The usage-document test derives every leaf command and option from the live argparse parser, so the document cannot silently fall behind the CLI; the scoped tests (72) pass at the PR head and ruff is clean."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README TODO sync section does not link the new usage document",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "405-448",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new plugins/harness/scripts/todo_sync.md is linked from the snapshot page's Render info block (snapshot_html.py:42,250) and from the release notes, but README.md:405-421, the TODO sync section that names `todo_sync.py render`, `init`, `add --inbox` and the other commands, never points to it. The edited paragraph also leaves a ragged break at README.md:418-420, where `todo_live.js` stamp beside it and` sits on a short line of its own.\n\nAlso (roast): The PR adds a full CLI reference, plugins/harness/scripts/todo_sync.md, and links it from the snapshot page and the release note, but README.md's TODO sync section (README.md:405-448), the place a person reads first, still describes todo_sync.py commands inline and never names the document. The only in-repo route to it is a rendered HTML page or a release note.",
+        "fix": [
+          "Add a sentence to README.md near line 410: Every `todo_sync.py` command, option and exit code is listed in `plugins/harness/scripts/todo_sync.md`. Reflow lines 418-420 into full-width lines.",
+          "Add one sentence to the README TODO sync section, e.g. 'Every `todo_sync.py` command, option and exit code: `plugins/harness/scripts/todo_sync.md`.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Formatting leftovers in snapshot_html.py",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+        "lines": "10-12,40-43",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The edit dropped the space after the first element of `COLUMNS` (`(\"Rank\",\"Id\", ...)`, line 43); the old line had it. The module docstring reflow also left a short line at line 11 ('the Id cell holds the bare id for copying,'), with the sentence continuing on line 12.\n\nAlso (roast): USAGE is pinned to `{HOME}/blob/main/plugins/harness/scripts/todo_sync.md` (snapshot_html.py:42). A consuming project on an older installed harness gets a page whose `todo_sync.py` link describes whatever main says today: a command or option added or renamed after its install shows up as documented, and a removed one vanishes. The comment explains why the link is remote, not why it is unversioned.",
+        "fix": [
+          "Restore `COLUMNS = (\"Rank\", \"Id\", \"Item\", \"Status\", \"Kind\", \"Blast\", \"LoE\", \"Score\", \"GH\")` and rejoin docstring lines 10-12 into full-width lines.",
+          "Note the drift in the comment at snapshot_html.py:40-41 and in the Render info line (e.g. 'usage on main'), so a reader knows the document may be newer than the installed driver.",
+          "Or build the link from a ref that tracks the installed plugin (a release tag recorded in the plugin manifest) when one exists, falling back to main."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Remaining-items table hidden when the top slice is empty",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "203-214",
+        "reviewer": "runtime, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`_tables` returns the 'No items in the catalog.' note whenever `page.top` is empty and never looks at `page.rest`. `render_snapshot` cuts at `todo.top_n` with no clamp, and on a config load without `jsonschema` the schema's `minimum: 1` is not enforced (`config.py:566` takes `int(t[\"top_n\"])` as is). A `top_n` of 0 then puts every item in `rest`, and the page says the catalog is empty. That contradicts the `SnapshotPage` docstring ('`rest` is drawn as a second, folded table when it has rows'). A negative `top_n` splits the list from the end.\n\nAlso (adv_code): `_tables` returns the 'No items in the catalog.' note whenever `page.top` is empty, before it looks at `page.rest`. A page whose top slice is empty but whose rest holds items (top_n 0, reachable from `render_snapshot` when the config loads without `jsonschema`, since `_validate_minimal` checks only top-level keys and `int(t[\"top_n\"])` takes 0; or any direct `SnapshotPage` caller) claims the catalog is empty and drops every item, the new rest table included.\n\nAttack: Render `sh.SnapshotPage(header=snapshot_header(\"c.json\", 0, \"0\"*64, \"2026-11-17\"), catalog={\"items\": [item], \"trackers\": [], \"close_candidates\": []}, top=[], top_n=0, rendered=\"2026-11-17\", source=\"c.json\", rest=[item], rest_links=[[]])` with `item = {\"id\": \"todo-a\", \"rank\": 1, \"title\": \"Alpha\", \"status\": \"open\"}` through `sh.render_page`: the output contains 'No items in the catalog.' and no `class=\"items rest\"` table (probe run at the PR head printed `no-items note: True`, `rest table: False`). Through the driver: a project with `todo.top_n: 0` loaded without `jsonschema` gets `ranked[:0] == []` at plugins/harness/lib/harness_lib/todo_sync/__init__.py:178-183, so `todo_sync.py render` writes a page that lists none of the catalog's items.",
+        "fix": [
+          "In `_tables`, show the note only when `not page.top and not page.rest`, and draw the Top heading and table only when `page.top` has rows.",
+          "In `render_snapshot`, clamp the cut (`cut = max(todo.top_n, 1)`) or reject `top_n < 1` in the config builder so the minimal load matches the schema.",
+          "Gate the note on both lists: `if not page.top and not page.rest:` return the note; otherwise draw the top table only when `page.top` has rows and the rest table when `page.rest` has rows.",
+          "Reject `top_n < 1` in `config.py` (`_todo` builder) so the schema's `minimum: 1` also holds on a load without `jsonschema`."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Exit-code table claims 1 is check --fail-on only; main does not always return",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "files": [
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "16,23",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/todo_sync.md:23 says exit 1 means only `check --fail-on` reached its severity. `main` catches only ConfigError, TodoSyncError and OSError (todo_sync.py:440-445), so any other exception escapes as a traceback with interpreter exit 1, which the table would misread as a fail-on result. Line 16 says `main(argv)` returns its exit code, but on a bad argument `parse_args` raises SystemExit(2) instead of returning (todo_sync.py:439).",
+        "fix": [
+          "Reword the 1 row: `check --fail-on`: a finding reached the given severity. An unexpected error also exits 1, with a traceback on stderr. Change line 16 to say that a bad argument raises SystemExit(2) from argparse instead of returning."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Who-runs-what table omits /harness:sync-gh-todo as an init caller",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "files": [
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/skills/sync-gh-todo/SKILL.md"
+        ],
+        "lines": "43",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/todo_sync.md:43 says `init` is run by `/harness:add-todo` when the catalog does not exist yet, or a person. The sync-gh-todo skill also runs `todo_sync.py init` when its `untracked` step fails with a missing catalog (plugins/harness/skills/sync-gh-todo/SKILL.md:32-38), so the table understates who writes a new catalog.",
+        "fix": [
+          "Change the `init` row to: `/harness:add-todo` and `/harness:sync-gh-todo` when the catalog does not exist yet, or a person."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Locking section leaves out migrate-ids and the empty inbox drain",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "files": [
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/scripts/todo_sync.py",
+          "tests/scripts/test_todo_sync_usage_doc.py"
+        ],
+        "lines": "52-59,75-79",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/harness/scripts/todo_sync.md:54-59 lists the catalog writes that hold the lock (`init`, `add`, `retire`, `split`, `refresh`) and the commands that take none, but never mentions `migrate-ids`, which writes the catalog under a lease of its own for its whole run, or the `--lease` one (todo_sync.py:365-374). It also says every `add` holds the lock, while `add --inbox` with nothing queued prints `inbox: empty` without taking it (todo_sync.py:320-326). A reader of the Locking section alone could take migrate-ids for unlocked. The per-command sections state both facts, so only the summary section is incomplete.\n\nAlso (roast): plugins/harness/scripts/todo_sync.md restates, command by command, the reference that already lives in the todo_sync.py module docstring (todo_sync.py:5-125): lock wait of 10 seconds, 30-minute lease staleness, render's page contents, exit codes, global options. This very PR had to edit the `render` paragraph in both places (todo_sync.py:14-17 and todo_sync.md:77-79). tests/scripts/test_todo_sync_usage_doc.py only checks that every leaf command has a section and every option string appears in it, so a changed behavior (a new wait time, a new exit path, a new writer of the page) can be fixed in one copy and silently left stale in the other. Two hand-kept copies of one CLI reference; the second one is the one the snapshot page now links to.",
+        "fix": [
+          "Append to the Locking paragraph: `migrate-ids` holds a catalog lease of its own for its whole real run (or runs under the `--lease` one and leaves it held), and `add --inbox` takes the lock only when a file is queued.",
+          "Make todo_sync.md the single reference: cut the todo_sync.py module docstring to its first paragraph (the argparse description `_summary()` reads) plus a one-line pointer to scripts/todo_sync.md, and keep per-option text in the argparse `help=` strings.",
+          "Or keep both, and extend test_todo_sync_usage_doc.py to compare the load-bearing facts (lock wait seconds, lease staleness minutes, the writer and bare-command lists in snapshot_html._intro) against the constants the code uses."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "init and untracked output descriptions omit lines the script prints",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "files": [
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/skills/sync-gh-todo/SKILL.md"
+        ],
+        "lines": "133,144-147",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/todo_sync.md:133 says `init` prints a `created <path>` line for the catalog and one for the page. `_init` also prints `next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues` (todo_sync.py:310), and a snapshot failure after the catalog lands ends with a `problem:` line that names `render`, which sync-gh-todo keys on (SKILL.md:43). Lines 144-146 say `untracked` prints one `#N title` line per issue, but `_untracked` also prints an `untracked: N open issue(s) in no catalog record` header and a `wrote <path>` line (todo_sync.py:299-301), which the sync-gh-todo skill documents (SKILL.md:28-30). The usage document is the reference for these outputs and should list every line.",
+        "fix": [
+          "In the `init` section, add the trailing `next:` line and the partial-failure case: the catalog was written, the page failed, and the `problem:` line names `render` as the next step.",
+          "In the `untracked` section, describe the output as an `untracked: N open issue(s) in no catalog record` header, one `#N title` line per issue, and `wrote <path>`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "ranked_items test leaves the stable-order claim untested and sits outside the module's subject",
+        "file": "tests/lib/test_todo_snapshot_html.py",
+        "files": [
+          "tests/lib/test_todo_snapshot_html.py",
+          "tests/lib/test_todo_sync_snapshot_header.py",
+          "plugins/harness/lib/harness_lib/todo_sync/sources.py"
+        ],
+        "lines": "217-221",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "ranked_items' docstring says rankless items sort last 'keeping catalog order among them' (sources.py:139), but the test has only one rankless item, so a sort that reorders the rankless tail would pass. The test also lives in test_todo_snapshot_html.py, whose module docstring covers snapshot_html.render_page only; tests/lib/test_todo_sync_snapshot_header.py already covers the sources helpers (top_items, rows_sha256).\n\nAlso (roast): ranked_items' docstring (sources.py:139) promises items without an int rank sort last 'keeping catalog order among them', and the rest table now shows those items to a reader. test_ranked_items_put_items_without_an_int_rank_last (tests/lib/test_todo_snapshot_html.py:217-221) has exactly one unranked item, so the stable-order half of the contract could break (e.g. a secondary sort key on id) and the test would still pass.",
+        "fix": [
+          "Add a second rankless item ahead of the first in the input (for example rank 'x' then rank None) and assert they keep that relative order after the ranked ones; move the test to tests/lib/test_todo_sync_snapshot_header.py.",
+          "Add a second unranked item ahead of the first in the input, e.g. items = [{**_item('todo-z', 8), 'rank': None}, {**_item('todo-c', 9), 'rank': None}, _item('todo-b', 2), _item('todo-a', 1)], and assert the ids come out ['todo-a', 'todo-b', 'todo-z', 'todo-c']."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Rest-table rank order is never exercised against an out-of-order catalog",
+        "file": "tests/scripts/test_todo_sync_render_page.py",
+        "files": [
+          "tests/scripts/test_todo_sync_render_page.py",
+          "tests/lib/test_todo_snapshot_html.py"
+        ],
+        "lines": "99-112",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The driver now sorts the whole catalog with ranked_items and slices both items and stub links at top_n (todo_sync/__init__.py:178-183). The new end-to-end test builds its catalog from the TodoCatalog.min.json fixture, whose items already sit in rank order (tests/lib/_todo_helpers.py:5,29), so it would still pass if the driver handed render_page `items[cut:]` unsorted, or computed links from catalog order instead of rank order. The unit test test_the_rest_table_draws_the_remaining_items_in_rank_order_folded_closed (tests/lib/test_todo_snapshot_html.py:190) also passes pre-sorted `items[top_n:]`, so its 'rank order' name only checks that render_page keeps the input order.",
+        "fix": [
+          "In test_items_past_top_n_go_to_the_folded_rest_table, reverse files[CATALOG_REL]['items'] after the stub edit, then assert the data-rank values of the top and rest rows come out ascending (['1'] and ['2', '3']) and that the Beta stub stays on the ID2 row.",
+          "Rename the unit test to say 'in the given order', since render_page does not sort, and keep the rank-order claim for the driver test."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Global options and section bounds are checked more loosely than the docstring states",
+        "file": "tests/scripts/test_todo_sync_usage_doc.py",
+        "lines": "4-5,56-59,76-78",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says the two global options are 'named once in the document', but test_the_global_options_are_named accepts a mention anywhere, including inside a command example, so deleting the `## Global options` section (todo_sync.md:26) would still pass. _section ends a command section only at the next `### `, so text in a `## ` section added after the last command (`migrate-ids`) would count as that command's option documentation.",
+        "fix": [
+          "Assert the globals inside the `## Global options` section (slice from '## Global options' to the next '\\n## '), and end _section at the first '\\n## ' or '\\n### ' after its start; or reword the docstring to 'named somewhere in the document'."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Leftover sys.path insert of tests/lib in the usage-doc test",
+        "file": "tests/scripts/test_todo_sync_usage_doc.py",
+        "lines": "12,16-19",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Line 16 inserts tests/lib on sys.path, but the module imports no tests/lib helper: conftest resolves from tests/ (as in test_malformed_exclusions.py and test_pr_sum.py) and harness_lib comes from the pytest pythonpath (test_todo_snapshot_html.py imports it with no insert). The insert, the `import sys` and both `# noqa: E402` markers exist only for that unneeded line.\n\nAlso (roast): test_todo_sync_usage_doc.py:16 inserts `Path(__file__).resolve().parents[1] / 'lib'`, which is tests/lib, not the plugin's lib; the module imports nothing from tests/lib, and harness_lib already resolves through pyproject's pythonpath (plugins/harness/lib, tests). Copied boilerplate that does nothing except look like it matters.",
+        "fix": [
+          "Delete line 16 and `import sys` (line 12), and drop the `# noqa: E402` markers on lines 18-19.",
+          "Delete the sys.path.insert line (tests/scripts/test_todo_sync_usage_doc.py:16) and the now-unneeded `# noqa: E402` markers on lines 18-19, plus the `sys` import if nothing else uses it."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 302 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"1166-todo-snapshot-table-format\",\"commits_count\":6,\"first_sha\":\"be212d4dd232e9b76ae8b502ae1c7fadce7039a6\",\"headRefName\":\"2166-todo-snapshot-tables\",\"headRefOid\":\"2bfe0a86da1f9071b56e17bc4986dfa7db2043b4\",\"last_sha\":\"2bfe0a86da1f9071b56e17bc4986dfa7db2043b4\",\"mergeCommit\":null,\"number\":302,\"state\":\"OPEN\",\"title\":\"Feature(todo_sync): `SnapshotPage.rest` remaining-items table\",\"url\":\"https://github.com/t968rs/operator-straps/pull/302\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (17 checked, 0 refuted, 1 code findings)",
+        "counts": {
+          "findings_checked": 17,
+          "findings_refuted": 0,
+          "findings_upheld": 17,
+          "code_findings": 1
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "2166-todo-snapshot-tables",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "2166-todo-snapshot-tables",
+        "head_ref_name": "2166-todo-snapshot-tables",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "be212d4dd232e9b76ae8b502ae1c7fadce7039a6",
+        "head_sha": "2bfe0a86da1f9071b56e17bc4986dfa7db2043b4",
+        "base_ancestor_command": "git merge-base --is-ancestor be212d4dd232e9b76ae8b502ae1c7fadce7039a6 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 2bfe0a86da1f9071b56e17bc4986dfa7db2043b4 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "1166-todo-snapshot-table-format",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - My part edits no file: the link sentence and the reflow of README.md:418-420 belong to the README fixer; plugins/harness/scripts/todo_sync.md is the link target.; README.md TODO sync section: added the sentence naming plugins/harness/scripts/todo_sync.md as the full CLI reference after the config paragraph, and reflowed the ragged todo_live.js sentence into full-width lines"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - todo_sync.md exit-code row 1 now lists the unexpected-error exit with a traceback, and the main(argv) paragraph says a bad argument raises SystemExit(2) from argparse instead of returning."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - Who-runs-what init row now names /harness:sync-gh-todo alongside /harness:add-todo.; the init row fix lives in plugins/harness/scripts/todo_sync.md (other part); SKILL.md already documents the init call at lines 32-38, so no edit here"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - init section adds the trailing next: line and the partial-failure case (catalog kept, problem: line naming render, no created or next: line); untracked section adds the untracked: N header, the #N title lines and the wrote <path> line.; the init and untracked output fixes live in plugins/harness/scripts/todo_sync.md (other part); SKILL.md already documents the untracked header, the issue lines and wrote path at lines 28-30 and the render partial-failure line at line 43, so no edit here"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - Restored the space after \"Rank\" in COLUMNS and rejoined the module docstring lines 10-15 into full-width lines (option 1); the unversioned USAGE link note is left as is since option 1 resolves the issue."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - _tables now returns the no-items note only when both page.top and page.rest are empty, draws the Top heading and table only when page.top has rows, and still draws the folded rest table when page.rest has rows; __init__.py and config.py: no edit, the fix in _tables covers the top_n 0 path from render_snapshot."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - test_the_global_options_are_named now checks the ## Global options section only; _section and the new _globals_section end at the next ## or ### heading; module docstring reworded to match"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - removed the tests/lib sys.path insert, the import sys and pathlib Path imports it alone used, and both noqa E402 markers; conftest and harness_lib imports stay"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - moved the ranked_items test to test_todo_sync_snapshot_header.py with two rankless items (rank 'x' then None) ahead of the ranked ones, asserting ['todo-a', 'todo-b', 'todo-z', 'todo-c'] so the catalog-order tail is pinned; dropped it and its imports from test_todo_snapshot_html.py; sources.py: the docstring already states the contract the test now checks"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - test_items_past_top_n_go_to_the_folded_rest_table reverses the catalog items after the stub edit and asserts top data-rank ['1'], rest ['2', '3'], and the Beta stub plus ID2 id on the rank-3 rest row; test_todo_snapshot_html.py: the driver test now carries the rank-order claim, the unit test needs no edit"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "2bfe0a8 (working-tree snapshot; developer commits) - Locking section of todo_sync.md now states that add --inbox takes the lock only when a file is queued (prints inbox: empty and takes none otherwise) and that a real migrate-ids run holds a lease of its own for the whole run, or runs under the --lease one and leaves it held; todo_sync.py: cited behavior (_drain, _migrate) already matches, no edit; test_todo_sync_usage_doc.py: chosen option is the doc append, no test change needed"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "plan_id": "1020",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b3fa8d5f2d969195e58644ba216963c0908c3c4e"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_plan_page_assets.py::test_pages_sit_under_the_plugin_root",
+        "tests/lib/test_plan_page_assets.py::test_the_page_inlines_the_shared_style_then_the_plan_style",
+        "tests/lib/test_plan_page_assets.py::test_the_shared_style_holds_the_theme_and_the_plan_style_the_page_rules",
+        "tests/lib/test_plan_page_assets.py::test_the_page_inlines_the_loader",
+        "tests/lib/test_plan_page_assets.py::test_the_module_holds_no_asset_literals",
+        "tests/lib/test_plan_page_assets.py::test_no_views_folder_ships",
+        "tests/lib/test_plan_page_assets.py::test_the_literal_ban_scans_page_assets"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_page_assets.py::test_pages_sit_under_the_plugin_root tests/lib/test_plan_page_assets.py::test_the_page_inlines_the_shared_style_then_the_plan_style tests/lib/test_plan_page_assets.py::test_the_shared_style_holds_the_theme_and_the_plan_style_the_page_rules tests/lib/test_plan_page_assets.py::test_the_page_inlines_the_loader tests/lib/test_plan_page_assets.py::test_the_module_holds_no_asset_literals tests/lib/test_plan_page_assets.py::test_no_views_folder_ships tests/lib/test_plan_page_assets.py::test_the_literal_ban_scans_page_assets"
+    }
+  },
+  "evidence": "staged tree b3fa8d5: 7 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "cc4c03bc9ed1d48d5e5e1b98ab4801f1b5fa07f2b57d0b3eff73c1d5b9aee801"
+}

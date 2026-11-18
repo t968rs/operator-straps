@@ -1,0 +1,166 @@
+{
+  "$schema": "red_flags.schema.json",
+  "_meta": {
+    "purpose": "Internal-monologue red flags that signal an imminent skill violation. If a thought matches one of these, STOP and re-read the relevant phase.",
+    "schema_version": "1.0",
+    "last_reviewed": "2026-10-10",
+    "eviction_policy": "scan for repetition before adding; collapse stale entries when section exceeds 20 bullets. Stale = not heard internally on the prior 5 PR reviews."
+  },
+  "flags": [
+    {
+      "id": "F001",
+      "flag_text": "This is a simple PR, the checks are overkill",
+      "category": "general_skill_discipline"
+    },
+    {
+      "id": "F002",
+      "flag_text": "The dirty files are definitely not part of the PR",
+      "category": "branch_safety"
+    },
+    {
+      "id": "F003",
+      "flag_text": "The session prompt already shows the branch / status, so I don't need to run the command",
+      "category": "branch_safety"
+    },
+    {
+      "id": "F004",
+      "flag_text": "base_branch is probably main",
+      "category": "branch_safety"
+    },
+    {
+      "id": "F005",
+      "flag_text": "I'll skip Check N and come back to it",
+      "category": "general_skill_discipline"
+    },
+    {
+      "id": "F006",
+      "flag_text": "The skill doesn't literally say I can't, so I can",
+      "category": "general_skill_discipline"
+    },
+    {
+      "id": "F007",
+      "flag_text": "The code freeze is in N minutes",
+      "category": "general_skill_discipline"
+    },
+    {
+      "id": "F008",
+      "flag_text": "This PR is ready to merge, I just need to formalize the review",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F009",
+      "flag_text": "I'll write the Phase 3 JSON after I summarize the findings for the user",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F010",
+      "flag_text": "I can fill verification_log with 'OK' strings -- the schema only checks the field exists",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F011",
+      "flag_text": "I know the schema -- I'll write the JSON directly without reading the file",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F012",
+      "flag_text": "This file is named `debug_` / `tmp_` / `scratch_`, I can skip reading the diff",
+      "category": "branch_safety"
+    },
+    {
+      "id": "F013",
+      "flag_text": "A quick 'reviewers returned' heartbeat to the user wouldn't hurt",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F014",
+      "flag_text": "This verdict is obvious, the JSON is just ceremony",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F015",
+      "flag_text": "Let me draft the summary on the side while the JSON comes together",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F016",
+      "flag_text": "I already verified the branch after Phase 3, I can skip the Phase 4 re-run before fixes",
+      "category": "phase4_two_run"
+    },
+    {
+      "id": "F017",
+      "flag_text": "I can skip Phase 4 because the verdict is READY TO MERGE -- there are no fixes to apply",
+      "category": "phase4_two_run"
+    },
+    {
+      "id": "F018",
+      "flag_text": "Phase 4 ran once, that's enough",
+      "category": "phase4_two_run"
+    },
+    {
+      "id": "F019",
+      "flag_text": "The working tree was clean earlier, no need to check again",
+      "category": "phase4_two_run"
+    },
+    {
+      "id": "F020",
+      "flag_text": "Let me show the user the dispatch plan before I dispatch",
+      "category": "phase5_fix_application"
+    },
+    {
+      "id": "F021",
+      "flag_text": "I have read the source files; I should confirm the plan with the user before dispatching",
+      "category": "phase5_fix_application"
+    },
+    {
+      "id": "F022",
+      "flag_text": "I'll write up the dispatch plan as a chat message -- the user can redirect if they want",
+      "category": "phase5_fix_application"
+    },
+    {
+      "id": "F023",
+      "flag_text": "I emitted the user summary, control returns to user -- JSONL stats and Phase 4 first-run can wait",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F024",
+      "flag_text": "JSONL stats are a soft error so omitting the attempt is fine",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F025",
+      "flag_text": "Phase 3 Step 5 is the terminal summary, so I'll yield after it instead of running the Phase 4 second run",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F026",
+      "flag_text": "The user summary IS the natural turn boundary; the rest is housekeeping",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F027",
+      "flag_text": "Verdict is READY TO MERGE and there are no Criticals/Importants - Phase 5 doesn't need to run",
+      "category": "phase5_fix_application"
+    },
+    {
+      "id": "F028",
+      "flag_text": "These are all Minors - they can be deferred to a follow-up PR",
+      "category": "phase5_fix_application"
+    },
+    {
+      "id": "F029",
+      "flag_text": "The fix-load is small enough that I can just summarize and let the dev handle it",
+      "category": "phase5_fix_application"
+    },
+    {
+      "id": "F030",
+      "flag_text": "Phase 3 Step 5 summary is emitted and labeled the terminal step - control hands back to the user now",
+      "category": "phase3_atomic_close"
+    },
+    {
+      "id": "F031",
+      "flag_text": "Phase 4 first-run landed cleanly, so Phase 3 is done - the next phase can wait for user prompt",
+      "category": "phase3_atomic_close"
+    }
+  ]
+}

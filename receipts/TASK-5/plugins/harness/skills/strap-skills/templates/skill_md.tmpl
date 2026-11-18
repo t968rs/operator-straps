@@ -1,0 +1,62 @@
+---
+name: $name
+description: "$description"
+argument-hint: "<document name> [-- <guidance>]"
+---
+
+# $name: $title
+
+Arguments: `$$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `$${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: the document name. After it: guidance for this run, applied to the session's own writing. It never reaches
+a command: no command below carries the guidance.
+
+TODO(fill): one paragraph on what the skill produces, who reads it, and why its rules exist.
+
+Every command below is written out in full and runs with the Bash tool from the project checkout. Every API
+refusal is one `problem:` line and exit 1.
+
+## Rules
+
+- **The document changes only through the API.** Never use Edit or Write on the document file: the API
+  validates every change before it writes, and `validate` refuses a file edited by hand.
+- **A refusal is information.** Read the `problem:` line, fix the input it names and run the same heredoc
+  again. Never work around a refusal by changing the file another way.
+- TODO(fill): the skill's own rules, one bold claim per bullet.
+
+## Steps
+
+1. **Resolve the document name** from the arguments before the `--` token. TODO(fill): how the name is chosen
+   when none is given.
+2. **Build the document through the API.** Run the heredoc in the API section with the document name in place
+   of `<name>`. It creates the document on first use and adds one entry per call.
+3. TODO(fill): the skill's next step.
+4. **Hand off.** Give the developer the document path the API printed and anything left unresolved.
+
+## API
+
+The heredoc runs with the names of the API module's `__all__` bound, plus `name`. Its delimiter is quoted, so
+the shell expands nothing inside it.
+
+```
+sh "$${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "$${CLAUDE_PLUGIN_ROOT}/scripts/skill_api.py" ${snake}_api <name> <<'PY'
+if not document_path(name).is_file():
+    create(name)
+document = add_entry(name, new_entry(kind="first", text="<entry text>"))
+print(f"{document_path(name).as_posix()}: {len(document.entries)} entries")
+PY
+```
+
+## Judgment
+
+| Situation | Call |
+|---|---|
+| A `problem:` line names a field | Fix that field in the heredoc and run it again; never edit the document by hand. |
+| The arguments name no document | Ask the developer for the name; never invent one. |
+| TODO(fill): a case the steps leave open | TODO(fill): the call and its reason. |
+
+## Related
+
+- `$${CLAUDE_PLUGIN_ROOT}/scripts/skill_api.py`: the launcher that binds the API names for the heredoc.
+- `$${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the `--` guidance split.

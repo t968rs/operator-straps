@@ -1,0 +1,25 @@
+{
+  "plan_id": "2024",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "2dd1d5431557f37b1fa1e1d1c4889b4a417b7427"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_plan_relink_counterpart.py::test_relink_without_a_counterpart_names_the_off_history_end_state"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_relink_counterpart.py::test_relink_without_a_counterpart_names_the_off_history_end_state"
+    }
+  },
+  "evidence": "staged tree 2dd1d54: 1 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "5350ff10c1260236613e6294913d60d5c747cf6bdd9157bc191640b3b5ee9ddb"
+}

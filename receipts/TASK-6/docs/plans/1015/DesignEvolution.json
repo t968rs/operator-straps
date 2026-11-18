@@ -1,0 +1,200 @@
+{
+  "plan_id": "1015",
+  "feature": "freeze tags and locking",
+  "branch_lineage": "main-->1151-commit-tagging",
+  "primary_documents": {
+    "plan": "docs/plans/1015_freeze_tags_and_locking_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-11-freeze-tags-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "str-1 lane",
+      "phase": "post-exec-start",
+      "items": [
+        "STR-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "STR-1 files",
+        "indicated": "only strap.py, strap_lock.py, strap_api.py and the planned test change"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "an existing test outside the item's files pins the freeze output",
+        "why_free_form": "tests/scripts/test_strap_reopen.py:268 asserts the whole freeze output ends with '| was <hash12>'; the spec adds tag: and push: lines after the status line, and test_strap_driver.py:492 pins the status line first, so both pins cannot hold"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "STR-1 also narrows test_strap_reopen.py:268 to the status line (the first output line ends with '| was <hash12>')"
+      },
+      "why_new_outcome": {
+        "category": "review-pin-update",
+        "free_form": "the pin keeps its intent (the refreeze names the old hash) on the status line, where the driver test already requires it"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "main session (wave 4 setup)",
+      "phase": "post-exec-start",
+      "items": [
+        "DOC-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "DOC-1 files",
+        "indicated": "release notes in docs/RELEASES/v1.1.0.md (the name moves with gh release list)"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "the next release's notes file already exists under another version",
+        "why_free_form": "gh release list --limit 1 gives v0.7.0; docs/RELEASES/v1.0.0.md is the proposed, uncut next release since v0.7.0, and a harness minor bump does not move it past 1.0.0"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "DOC-1 extends docs/RELEASES/v1.0.0.md (harness row to 0.69.0, change lines) instead of creating v1.1.0.md"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "one notes file per release, created by the first branch that suggests the version and extended by later ones"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "doc-1 lane",
+      "phase": "post-exec-start",
+      "items": [
+        "DOC-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "DOC-1 files",
+        "indicated": "plugins/harness/README.md documents the ledger and the guard dispatchers"
+      },
+      "issue": {
+        "category": "path-arithmetic",
+        "why_categorical": "the planned file does not exist",
+        "why_free_form": "the harness plugin has no README; its skill rows (write-plan, strap-skills) and hook notes live in the repository root README.md"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "DOC-1 updates the root README.md: the write-plan and strap-skills rows and the hook note name the ledger, lock and the guard dispatchers"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the content goes where the harness tables actually are"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "EX4",
+      "discovered_by": "pln-1 lane; main session",
+      "phase": "post-exec-start",
+      "items": [
+        "LED-1",
+        "PLN-1",
+        "STR-1"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Relink; Lock; States",
+        "indicated": "relink re-points the base and writes a relink entry with no tree; the lock gate and drift compare the last freeze's and the lock's files"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "relink changes a file the freeze and lock recorded, and ends a strap lock",
+        "why_free_form": "relink rewrites the plan JSON (base_commit) and SkillSpec.json (base): check then reports drift on a relinked Locked subject and plan.py lock refuses a relinked Frozen plan until a refreeze. strap_lock.is_locked read 'top entry is a lock', so a relink silently unlocked a spec, and freeze_ledger.locked_files kept a lock after reopen, so the guard denied a reopened spec's files"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the relink entry carries the held files (lock when Locked, else last freeze) with the subject file's new blob; freeze_ledger.held picks the newest such entry; the plan lock gate, lock (tree rebuilt from them) and both drift checks read it; relink saves before it writes its entry; is_locked reads state() over the current round; locked_files binds a lock to its own round"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the developer chose this (relink entry carries files): relink after a rebase needs no unlock/refreeze cycle, and reopen stays the way into a Locked spec"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "EX5",
+      "discovered_by": "SKL-1 main session",
+      "phase": "post-exec-start",
+      "items": [
+        "SKL-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "SKL-1 files",
+        "indicated": "SKL-1 changes only the write-plan and strap-skills SkillSpec.json files"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the strap rounds write files the item does not list",
+        "why_free_form": "write-plan SKILL.md lacked the EX4 fact that a relink keeps a Frozen or Locked plan without drift, and adding it after the greens would stale them again; strap-skills had 0 behaviors, and its judgment scenarios need demo-spec fixtures under its strap folder; each freeze writes ledger entries under docs/plans/freezes/skill/"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "SKL-1 also edits plugins/harness/skills/write-plan/SKILL.md before the greens, adds docs/plans/strap/strap-skills/fixtures/ (four demo specs generated by strap.py in a throwaway tree at the spec base) and writes the write-plan and strap-skills ledger folders"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "the refreeze proves the SKILL.md as it ships, and the strap-skills first freeze needs behaviors whose scenarios run on those fixtures"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "CX1",
+      "discovered_by": "PR 271 review (M5)",
+      "phase": "post-exec-start",
+      "items": [],
+      "original": {
+        "doc": "plan",
+        "location": "values: 'plan id pattern refused as a skill name'",
+        "indicated": "a skill name matching ^plan-[0-9]{4}$ is refused (source: spec, Tags; plan_models.py:402)"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the plan value names a rule the final spec dropped and no item builds",
+        "why_free_form": "the final spec's Tags section namespaces tag stems as plan/<no>-<slug> and skill/<name>, so a skill named like a plan id cannot collide with a plan tag; no file under plugins/ holds the ^plan-[0-9]{4}$ pattern"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the plan-[0-9]{4} skill-name refusal is moot under the plan/ and skill/ stems and was not built; the values row stays as frozen history"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the delivered code follows the final spec's namespaced stems, which make the refusal unnecessary"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "CX2",
+      "discovered_by": "PR 271 review (M7)",
+      "phase": "post-exec-start",
+      "items": [
+        "SKL-1"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Non-goals; Tree scope",
+        "indicated": "planned tests, strap contract tests and .py fixtures (docs/plans/**/*.py) stay uncommitted and unpublished, so they always land in a freeze entry's ignored map"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the delivered .gitignore re-includes strap fixture Python files",
+        "why_free_form": ".gitignore:242-243 adds !docs/plans/strap/*/fixtures/**/*.py after the docs/plans/**/*.py ignore (.gitignore:241), so strap fixture .py files are tracked and the strap-skills r3.2 freeze lists the fixtures' test_memo_guard_skill_contract.py under files, where r1.1 had them under ignored; EX5 adds the fixtures but not the re-include"
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "strap scenario fixtures are tracked tree content: their .py files enter a freeze entry's files, not ignored; planned tests under docs/plans/ stay ignored"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "the strap-skills judgment scenarios run on the fixtures, so the fixture Python files must be part of the tree the freeze proves"
+      },
+      "date": "2026-11-11"
+    }
+  ]
+}

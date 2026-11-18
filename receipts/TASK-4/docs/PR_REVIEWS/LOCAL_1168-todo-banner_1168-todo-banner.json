@@ -1,0 +1,317 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": "local-1168-todo-banner",
+  "pr_title": "1168-todo-banner",
+  "branch": "1168-todo-banner",
+  "base_branch": "main",
+  "base_sha": "0235b5700722589a9ab5bd6071e139395f50433b",
+  "head_sha": "f6bd86be2891b35e8bba6e4abae1d075bb4f0382",
+  "review_date": "2026-11-18",
+  "verdict": "READY TO MERGE - 6 of 6 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1153,
+    "deletions": 0,
+    "files_changed": 4,
+    "source": {
+      "additions": 1150,
+      "deletions": 0,
+      "files_changed": 3
+    }
+  },
+  "reviewers": [
+    "docs (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/local-1168-todo-banner/local-1168-todo-banner_20261118T075224Z/findings/docs.json",
+    "docs/_scratch/pr_review/local-1168-todo-banner/local-1168-todo-banner_20261118T075224Z/findings/roast.json",
+    "docs/_scratch/pr_review/local-1168-todo-banner/local-1168-todo-banner_20261118T075224Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every anchor checked (plan_models.py:414-417, ids.py:89, plan_doc.py:227-228, add_note.py:21/38, plan.py:285-304/1097-1098, status.ts:155, checks.ts:249-251, band.tsx:12/25-26, SKILL.md:58, defaults.json:38, marketplace.json:39) holds its expected text at the base.",
+    "Red expectations match plan_red's base-tree capture: ImportError where the test imports harness_lib.working_refs first, AssertionError where the mirror file assertion fires first.",
+    "D6 (split overrides.json and line.txt, one writer each) and D7 (fill issues at write time) are recorded as plan-level deviations from the spec with rationale, rather than silently diverging.",
+    "TASK-1 reasons the digest correctly: refs is not Mutable and plan_dict dumps with exclude_unset, so frozen plans without refs keep their digest.",
+    "The planned setup-statusline contract test extends the existing file rather than replacing it, and the mirror contract test spells mirror.ts's path in source so select_tests picks it up.",
+    "The PIP page renders the JSON faithfully: items, decisions, values, formats and sweeps match field for field.",
+    "D6 and D7 record each deviation from the spec (split files, write-time issue fill) with a concrete rationale instead of drifting silently.",
+    "Anchors check out at the head: plan_models.py:414-417, plan.py:285-304 and 1097-1098, band.tsx:12 and 25-26, status.ts:155, checks.ts:249-251, marketplace.json:39 and the setup-statusline SKILL.md:58 all hold the quoted text.",
+    "Adding refs as an optional field with plan_dict's exclude_unset keeps every frozen plan's digest stable, and a planned test pins that a plan without refs dumps no refs key.",
+    "Planned tests import inside each test function, so the recorded red reasons (ImportError vs AssertionError) match the order in which each test fails.",
+    "Version values match the manifests (harness 0.78.1, band-line 0.1.1, banner-status 0.2.1) and the existing v1.0.0.md harness row (0.65.1).",
+    "Anchors spot-checked at the head hold: marketplace.json:39 band-line, git-status status.ts:155 process.run with GIT_TIMEOUT_MS, todo-watch checks.ts:250 fs.stat, plan_doc.py:25-27 suffixes, plan_models.py:414-417",
+    "Archive-tag format (archive/plan/<id>-<slug>/r1) matches plan_lock.stem_of and freeze_git.archive_tag, so tag-derived archived ids parse cleanly",
+    "PlanRefs stays out of a refs-less plan's digest: plan_dict dumps with exclude_unset (plan_doc.py:203), and ActionPlan is extra='allow', so older drivers keep a refs key",
+    "TODO ids always contain a letter (ids.py ID_RE), so parse_refs reading all-digit tokens as issues never shadows an id",
+    "TASK-2 and TASK-3 planned reds (argparse refusal, missing script) stay AssertionError before and after TASK-1"
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "TASK-3 adds a harness skill without the guidance-tail contract it must pass",
+        "file": "docs/plans/2025_banner_refs_ActionPlan.json",
+        "files": [
+          "docs/plans/2025_banner_refs_ActionPlan.json",
+          "docs/plans/2025_banner_refs_PIP.html",
+          "tests/skills/test_skill_guidance_tail_contract.py"
+        ],
+        "lines": "148-166",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "tests/skills/test_skill_guidance_tail_contract.py:50-52 fails when a skill folder under plugins/harness/skills/ is in neither _INVOCABLE nor _KNOWLEDGE, and every _INVOCABLE skill must end its argument-hint in the `-- <guidance>` tail (line 58) and cite ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md in its body (line 63). TASK-3 creates plugins/harness/skills/working/ with argument-hint '<todo-id|#issue>... | --clear | --list' (no tail), does not list the test file, and runs no command. The test walks plugins/harness/skills/ (WALK_ROOTS), so the pull request that lands TASK-3 fails it.\n\nAlso (roast): tests/skills/test_skill_guidance_tail_contract.py:50-52 fails when a skill folder is in neither _INVOCABLE nor _KNOWLEDGE, and every invocable skill needs an argument-hint ending in the `-- <guidance>` tail (line 57) and a body citing ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md (line 62). TASK-3 plans the hint '<todo-id|#issue>... | --clear | --list' with no tail, no pointer, and does not list the contract test among its files. The lane goes green on its own tests and red on someone else's.",
+        "fix": [
+          "In TASK-3: add tests/skills/test_skill_guidance_tail_contract.py to files with 'working' joined to _INVOCABLE; make the argument-hint '-- <todo-id|#issue>... | --clear | --list' (the add-bookmark shape, SKILL.md:4) and have the body cite `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`; add the command `python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q` expecting passed. Re-render the PIP.",
+          "Add tests/skills/test_skill_guidance_tail_contract.py to TASK-3 files with `working` joined to _INVOCABLE; end the argument-hint with the `-- <guidance>` tail and cite the skill_arguments.md pointer in the SKILL.md body; add that test to TASK-3 commands."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "The new mod's unit tests never run in CI",
+        "file": "docs/plans/2025_banner_refs_ActionPlan.json",
+        "files": [
+          "docs/plans/2025_banner_refs_ActionPlan.json",
+          ".github/workflows/ci.yml",
+          "docs/plans/2025_banner_refs_PIP.html",
+          "docs/superpowers/specs/2026-11-17-working-refs-banner-design.md",
+          "plugins/harness/lib/harness_lib/branch_capture.py",
+          "tests/contract/test_parallel2_lanes_registration.py",
+          "CLAUDE.md"
+        ],
+        "lines": "197,259-268,443-457",
+        "reviewer": "docs, roast, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The CI mod-test step enumerates mods by path (.github/workflows/ci.yml:128: agent-watcher, git-status, band-line, session-bookmark, pytest-scope, todo-watch, bubble-stamp, parallel2-lanes). TASK-4 and TASK-5 add plans.test.ts, overrides.test.ts, line.test.ts and watch.test.ts under plugins/working-refs/, but no task edits ci.yml, so those tests run only by hand; validate --strict globs plugins/*/ and would cover the manifest, not the tests.\n\nAlso (docs): TASK-5 rescans on 'a newer mtime of the plans folder'. A directory's mtime moves on entry create, delete or rename, not when a file inside is rewritten in place, and plan_doc.save_plan rewrites the ActionPlan with Path.write_text (plan_doc.py:214-216), as plan_api.write and render do for the page. A rewrite that changes branch, base_commit or refs (including the plan-2025 refs write the values table schedules after TASK-1) is not seen until a branch move, a HEAD move or a new session. The spec (Section 2) says a new or rewritten *_PIP.html triggers a check.\n\nAlso (docs): TASK-5 stores the line in the atom 'only when it changed' and writes line.txt 'after each change'. The atom starts at its default (null) in each session, so a session whose first scan finds nothing (another branch, a plan archived between sessions) sees no change and never rewrites line.txt; ccstatusline then keeps printing the previous branch's plan link. That is the spec's first anti-goal (a line showing another branch's plan). The listed watch.test.ts cases do not cover it.\n\nAlso (docs): plan.py new records base_commit with branch_capture.resolve_merge_base (branch_capture.py:76-87): the merge base of HEAD with the furthest-forward of <base> and origin/<base>. TASK-4/TASK-5 compute rule 2 as `git merge-base HEAD <base_branch>` on the local branch. When local main lags origin/main (branches cut from origin/main, merges done on GitHub), the two merge bases differ and rule 2 never matches; in a detached d-w worktree, where rule 1 cannot match, the line then shows no plan.\n\nAlso (roast): plan.py new records base_commit through branch_capture.resolve_merge_base (plugins/harness/lib/harness_lib/branch_capture.py:76-87), which takes the merge base against the furthest-forward of the local base and origin/<base>. TASK-4's qualifies() and TASK-5's scan compare it with `git merge-base HEAD <base_branch>`, local base only. With local main behind origin/main (the usual state after a PR merges on GitHub), the two never match, so rule 2 fails for exactly the case it exists for: a detached harness:d-w worktree where rule 1 cannot match. Two halves of one rule, computed two different ways; they will disagree on the first stale main.\n\nAlso (roast): The mod test step in .github/workflows/ci.yml:128 is a hard-coded plugin list (validate at line 124 globs, the test loop does not). TASK-5 registers working-refs in marketplace.json, CLAUDE.md and README but never touches ci.yml, so plans.test.ts, overrides.test.ts, line.test.ts and watch.test.ts run only on a developer's machine. The parallel2-lanes precedent pins this in tests/contract/test_parallel2_lanes_registration.py:41.\n\nAlso (roast): TASK-5 rescans on 'a newer mtime of the plans folder'. A directory's mtime moves when an entry is added, removed or renamed, not when an existing file is rewritten, and plan_doc.save_plan writes the JSON in place with write_text (plugins/harness/lib/harness_lib/plan_doc.py:214-216). The spec trigger is 'a new or rewritten *_PIP.html' (spec line 78). So plan_api.write adding refs to plan 2025 (the plan's own 'plan 2025 refs' value) leaves the line stale until HEAD moves, the branch changes or the session restarts. No decision records the narrowed trigger.\n\nAlso (adv_code): CI runs mod tests from a hard-coded list (.github/workflows/ci.yml:128: agent-watcher, git-status, band-line, session-bookmark, pytest-scope, todo-watch, bubble-stamp, parallel2-lanes). TASK-5 registers the mod in marketplace.json, CLAUDE.md and README but its files list omits ci.yml, so plans.test.ts, overrides.test.ts, line.test.ts and watch.test.ts never run in CI; validate --strict (ci.yml:124 loops plugins/*/) is the only CI check the mod gets. Plan 0005 registered parallel2-lanes with the same CI loop edit.\n\nAlso (adv_code): plan.py new records base_commit via resolve_merge_base (plugins/harness/lib/harness_lib/branch_capture.py:76-87), which takes the merge base with origin/<base> whenever local <base> does not contain it. TASK-5 has the mod run `git merge-base HEAD <base_branch>` against the bare local branch name and TASK-4's qualifies compares that to baseCommit. When local main lags origin/main and the plan branch was cut from origin/main, the two merge bases differ, so the D2 sibling-worktree clause never matches and the banner drops the plan in every sibling checkout (only the branch-name clause still works). A clone without a local main branch makes the merge-base call fail outright.\n\nAlso (docs): CLAUDE.md's 'A new config key' rule lists where each mod mirrors harness defaults and which test checks it (config.ts mirrors, session-bookmark's notes.ts with its contract test). working-refs mirrors state_dir and artifacts.plans in hooks/mirror.ts, checked by tests/mods/test_working_refs_contract.py, but TASK-5's CLAUDE.md edit covers only the mod count (S1).\n\nAlso (roast): CLAUDE.md's new-config-key rule lists where each mod mirrors harness defaults (agent-watcher, todo-watch, bubble-stamp config.ts; session-bookmark notes.ts). working-refs mirrors state_dir and artifacts.plans in hooks/mirror.ts with test_working_refs_contract.py, but TASK-5 edits CLAUDE.md only for the mod count, so the next default change misses the mirror until the test catches it.\n\nAttack: Execute the plan as written, then break plugins/working-refs/hooks/line.ts (e.g. render 'plan' for two plans) so line.test.ts fails locally under `claude plugin test plugins/working-refs`; push a PR: the CI 'mod tests' step (ci.yml:125-128) loops the eight listed mods only and passes green.\n\nAttack: Repo with origin/main at C2 and local main at its ancestor C1. `git switch -c feat origin/main`, `plan.py new` there: base_commit = merge-base(origin/main, HEAD) = C2. `git worktree add ../sib -b feat-lane feat`. In ../sib the mod runs `git merge-base HEAD main` = C1, C1 != C2 and branch 'feat-lane' != 'feat', so qualifies returns false and line.txt is empty although the plan's sibling clause (D2) was meant to show it.",
+        "fix": [
+          "Add .github/workflows/ci.yml to TASK-5's files and its action: append plugins/working-refs to the `claude plugin test` loop at line 128.",
+          "In TASK-5: track the mtime of each *_ActionPlan.json and *_PIP.html in the folder (a name-to-mtime map, or the max plus the file count) instead of the folder's own mtime, and add a watch.test.ts case: rewriting an existing plan's refs updates the line.",
+          "Keep the folder mtime for new and deleted files and add the per-file stat of the paired ActionPlan files to the same check.",
+          "In TASK-5: write line.txt unconditionally after the session.start scan (empty when nothing shows), or compare the rendered text against the file's contents rather than the atom; add a watch.test.ts case where a pre-existing non-empty line.txt is emptied when nothing qualifies at session start.",
+          "In TASK-5: resolve the comparison tip as resolve_merge_base does without fetching (origin/<base> when it exists and local <base> does not contain it, else <base>), one extra `git merge-base --is-ancestor` per distinct base branch; add a watch.test.ts case with a lagging local main.",
+          "In TASK-5 (and qualifies() in TASK-4), resolve the merge base the way resolve_merge_base does: use origin/<base> when it exists and the local base does not contain it, else the local base; add a watch.test.ts case with local main behind origin/main.",
+          "Or qualify when base_commit equals the merge base with either <base> or origin/<base>, and say so in D2's rationale.",
+          "Add .github/workflows/ci.yml to TASK-5 files and append plugins/working-refs to the `claude plugin test` loop.",
+          "Optionally add a registration test in the test_parallel2_lanes_registration.py shape (marketplace entry, ci.yml, README install line, CLAUDE.md name).",
+          "Track a signature of the plans folder: the names and mtimes of each *_ActionPlan.json (a handful of stats), and rescan when it changes; add a watch.test.ts case that rewrites an existing plan in place.",
+          "Add .github/workflows/ci.yml to TASK-5's files and its action: append plugins/working-refs to the `for p in ...; do claude plugin test` loop at ci.yml:128",
+          "In TASK-5, compute the merge base the way resolve_merge_base does: use origin/<base_branch> when it exists and local <base_branch> does not contain it, else the local branch",
+          "Let qualifies accept baseCommit equal to either `git merge-base HEAD <base>` or `git merge-base HEAD origin/<base>` (two git calls per distinct base branch)",
+          "Extend TASK-5's CLAUDE.md edit with one sentence: working-refs mirrors state_dir and artifacts.plans in hooks/mirror.ts, checked by tests/mods/test_working_refs_contract.py.",
+          "Add to TASK-5: name working-refs' hooks/mirror.ts and tests/mods/test_working_refs_contract.py in CLAUDE.md's config-key mirror sentence."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "overrides.json field shape is not pinned across Python and TypeScript",
+        "file": "docs/plans/2025_banner_refs_ActionPlan.json",
+        "files": [
+          "docs/plans/2025_banner_refs_ActionPlan.json",
+          "docs/plans/2025/tests/tests/mods/test_working_refs_contract.py",
+          "docs/superpowers/specs/2026-11-17-working-refs-banner-design.md",
+          "docs/plans/2025_banner_refs_PIP.html"
+        ],
+        "lines": "197-254,311",
+        "reviewer": "docs, roast, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The spec's cost note for approach A (Approaches, lines 59-61) requires a contract test that pins the shared file's shape on both sides. Under D6 the shared file is overrides.json: working_refs.set_override writes {version, branches: {<branch>: {todo_ids, issues, set_at}}} and hooks/overrides.ts reads it. The planned test_working_refs_contract.py pins only the paths, version, detached key, defaults and suffixes; the field names (branches, todo_ids, issues) are checked by the Python unit test alone and by overrides.test.ts against its own fixtures, so a camelCase reader (todoIds, the atom's spelling) passes every test and silently reads no override.\n\nAlso (roast): The spec names the cost of approach A and its mitigation: the override written by Python and the data the mod reads meet in one file, 'so a contract test pins that shape on both sides' (spec lines 59-61). D6 splits the file, but the planned test_working_refs_contract.py pins only paths, the store version, the detached key and the file suffixes. Nothing pins the overrides.json field names (branches, todo_ids, issues) or the ActionPlan fields the mod parses (branch, base_branch, base_commit, documentation, refs.todo_ids, refs.issues). Rename one on the Python side and the mod quietly reads 'no override' forever.\n\nAlso (docs): TASK-6 has band-line rebuild the plain text from the atom fields ('line.ts's format copied or reimplemented'). Two copies of the 'plan 2025 · todo-k69m (301)' rule in two mods, with no shared test, drift on the first format change.\n\nAlso (roast): TASK-4 writes hooks/hooks.json with modules ['./register.ts'] and gates on `claude plugin test plugins/working-refs`, but register.ts is in TASK-5's files. If the test command loads the declared modules, TASK-4's own gate fails on a dangling path.\n\nAlso (roast): TASK-4 says mirror.ts exports every name, STORE_VERSION included, as `export const NAME = '...'`; the planned contract test reads it with ts_number and compares it with the integer STORE_VERSION = 1. Follow the text literally and the test fails.\n\nAlso (adv_code): TASK-4 says mirror.ts exports OVERRIDES_PATH ... STORE_VERSION ... as `export const NAME = '...'` literals. The planned contract test reads STORE_VERSION with ts_number (tests/mods/_mods_helpers.py:29-34), which only matches an unquoted number at end of line, and Python writes version 1 as a JSON number, so a quoted '1' in overrides.ts's version check would read every overrides.json as malformed.\n\nAttack: Follow TASK-4 literally: mirror.ts holds `export const STORE_VERSION = '1'`. tests/mods/test_working_refs_contract.py::test_store_version_and_detached_key_match fails with 'AssertionError: STORE_VERSION not found' from ts_number, and overrides.ts comparing `data.version === STORE_VERSION` gets 1 === '1' false, so an override written by /harness:working never shows.",
+        "fix": [
+          "Have mirror.ts export the field names (e.g. BRANCHES_KEY, TODO_IDS_KEY, ISSUES_KEY) and add a contract test that writes an override with working_refs.set_override and asserts those names are the keys of the written entry.",
+          "Commit one overrides.json fixture written by set_override and have both a Python test and overrides.test.ts parse it.",
+          "Have mirror.ts export the field names it reads as string literals and extend the TASK-4 contract test to compare them with PlanRefs/ActionPlan field names and the keys set_override writes.",
+          "Or commit a shared fixture overrides.json that a Python test regenerates through set_override and overrides.test.ts parses.",
+          "Add a `text` field (the plain form line.ts renders) to the working-refs.line atom in TASK-4 and have TASK-6 draw it verbatim.",
+          "Move hooks/hooks.json into TASK-5's files, or have TASK-4 create a stub register.ts that TASK-5 fills.",
+          "Say STORE_VERSION is a number literal (`export const STORE_VERSION = 1`) and the rest are string literals.",
+          "Reword TASK-4: string constants as `export const NAME = '...'`, STORE_VERSION as `export const STORE_VERSION = 1`"
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Planned refs refreeze after TASK-1 fails red on three ImportError nodes",
+        "file": "docs/plans/2025_banner_refs_ActionPlan.json",
+        "files": [
+          "docs/plans/2025_banner_refs_ActionPlan.json",
+          "docs/plans/2025/tests/tests/mods/test_working_refs_contract.py",
+          "docs/plans/2025/tests/tests/skills/test_setup_statusline_contract.py",
+          "docs/plans/2025_banner_refs_PIP.html"
+        ],
+        "lines": "237-245,380-383,612-616",
+        "reviewer": "adv_code, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The value 'plan 2025 refs' schedules plan_api.write plus `freeze --refreeze` once TASK-1 is recorded. cmd_freeze runs red_problems on every open item at HEAD (plugins/harness/scripts/plan.py:604, red_results at HEAD plan.py:410-417). Three nodes planned red 'ImportError' get that red only because harness_lib.working_refs is missing: TASK-4 test_store_paths_match and test_store_version_and_detached_key_match, and TASK-7 test_defaults_print_the_working_refs_line_on_a_line_of_its_own each import working_refs inside the test body before asserting on files TASK-4/TASK-7 create. Once TASK-1 lands, the import succeeds and the nodes fail with AssertionError, so plan_red.red_problems reports 'expected ImportError, got AssertionError' and the refreeze is refused. Any other mid-plan refreeze after TASK-1 ('freeze as needed') hits the same wall.\n\nAlso (docs): The 'plan 2025 refs' value (lines 612-616) defers writing refs until TASK-1 is recorded, then a main-session plan_api.write plus freeze --refreeze; no item owns that step, yet TASK-8's live check expects 'plan 2025 · todo-k69m (301, 315)'. ActionPlan is extra='allow' (plan_models.py:37,407), so a top-level refs key validates today and is dumped identically once TASK-1 types it.\n\nAttack: Probe docs/_scratch/pr_review/local-1168-todo-banner/local-1168-todo-banner_20261118T075224Z/probes/red_after_task1.py stubs harness_lib.working_refs (the state after TASK-1 is recorded) and runs the planned nodes: 'TASK-4 test_store_paths_match planned ImportError, got AssertionError', 'TASK-4 test_store_version_and_detached_key_match planned ImportError, got AssertionError', 'TASK-7 test_defaults_print_the_working_refs_line_on_a_line_of_its_own planned ImportError, got AssertionError'. Reproduce end to end: freeze plan 2025, record TASK-1, plan_api.write the refs, run `plan.py freeze 2025 --refreeze`: it exits 1 with 'red: TASK-4 tests/mods/test_working_refs_contract.py::test_store_paths_match: expected ImportError, got AssertionError' (plus the other two).",
+        "fix": [
+          "Write plan 2025's refs ({todo_ids: ['todo-k69m'], issues: [301, 315]}) before the first freeze: ActionPlan is extra='allow' (plugins/harness/lib/harness_lib/plan_models.py:407), so the published driver keeps the key, and drop the post-TASK-1 refreeze from the 'plan 2025 refs' value",
+          "Reorder the three planned tests so the file assertion (_mirror(...) / _custom_commands() length) runs before the working_refs import, and set their red to AssertionError, which then holds both at the base and after TASK-1",
+          "Move the refs write and refreeze until after TASK-4 and TASK-7 are recorded",
+          "Write refs {todo_ids: ['todo-k69m'], issues: [301, 315]} now, before the first freeze, and drop the deferred-step value.",
+          "Or make the refs write and refreeze an explicit step in TASK-8's action ahead of the live check."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "band-line reads a non-dependency mod's atom on an unverified assumption",
+        "file": "docs/plans/2025_banner_refs_ActionPlan.json",
+        "files": [
+          "docs/plans/2025_banner_refs_ActionPlan.json",
+          "docs/plans/2025_banner_refs_PIP.html",
+          "plugins/band-line/README.md",
+          "plugins/band-line/hooks/band.tsx",
+          "plugins/band-line/types/index.d.ts"
+        ],
+        "lines": "311,393",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "TASK-6 has band-line read the working-refs `line` atom while working-refs stays out of band-line's dependencies, with the type declared locally. The only cross-mod state read in the repository is band-line's read of git-status, and plugins/band-line/README.md:20-21 and types/index.d.ts:1-3 tie that read to listing git-status under plugin.json dependencies. Nothing in the plan or spec checks that the engine allows (and types) a read of an unlisted plugin's state, and TASK-6 has no test of it against a real load; if it is refused, the second line never draws.\n\nAlso (roast): TASK-6 has band-line read the `working-refs.line` atom declared locally 'since working-refs is not a dependency'. Every cross-plugin read in the repo today (band-line's gitAtom, plugins/band-line/hooks/band.tsx:12) is backed by plugin.json `dependencies`, and band-line's own types comment says the git-status key is typed 'by that contract (plugin.json dependencies)'. Whether the engine returns the default for an undeclared, uninstalled plugin's key is unverified, band.test.tsx's world will answer whatever it is told, and TASK-8's live check covers ccstatusline only. If the engine refuses, band-line breaks for users who never install working-refs.",
+        "fix": [
+          "Add a check to TASK-6 (or the live check in TASK-8) that a band-line session without working-refs listed as a dependency reads the working-refs atom; state the fallback if it cannot (e.g. band-line reads <state_dir>/working-refs/line.txt with $.fs, as the widget does, or working-refs draws its own band).",
+          "Record the answer as a decision with its source in the engine's types or docs before freeze.",
+          "Add a band-line check to TASK-8: a session with band-line and without working-refs draws the banner unchanged, and one with both draws the second line.",
+          "Or cite the engine type or doc that allows reading a non-dependency plugin's state in TASK-6, as a value row."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "The spec's first-item spike became the last item",
+        "file": "docs/plans/2025_banner_refs_ActionPlan.json",
+        "files": [
+          "docs/plans/2025_banner_refs_ActionPlan.json",
+          "docs/superpowers/specs/2026-11-17-working-refs-banner-design.md",
+          "plugins/banner-status/skills/setup-statusline/SKILL.md",
+          "docs/RELEASES/v1.0.0.md",
+          "docs/plans/2025_banner_refs_PIP.html"
+        ],
+        "lines": "348,393,551-552,612-616",
+        "reviewer": "roast, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Spec Builder's calls (lines 157-162) make the widget-cwd and OSC 8 spike the plan's first item 'since its answer sets the widget path, the link format in both surfaces and the setup-statusline change'. The plan settles OSC 8 by source reading (D8, with a citation) but the cwd answer appears only as an aside in TASK-7 ('ccstatusline spawns the command with shell: true in its own cwd') with no decision, value or source line, and the only live check is TASK-8, after TASK-4 to TASK-7 have built on it. setup-statusline's own SKILL.md:71-73 warns the command can run from another folder, which is precisely when a relative line.txt path prints nothing.\n\nAlso (docs): docs/RELEASES/v1.0.0.md:3-5 opens with a sentence naming which plugins bumped (harness minor; agent-watcher, bubble-stamp, todo-watch minors; arc-straps patch). TASK-8 edits the table, the Unchanged line and the Changes lines but not that sentence, so it omits band-line, banner-status and the added working-refs plugin.\n\nAlso (roast): TASK-8 updates the Plugins table and the Unchanged line of docs/RELEASES/v1.0.0.md but not its summary paragraph (lines 3-5), which lists which plugins bumped; band-line and banner-status minors and the new working-refs plugin would be missing from it.\n\nAlso (roast): The 'plan 2025 refs' value says the main session writes refs with plan_api.write plus a refreeze once TASK-1 is recorded, but no item carries that step, and TASK-8's expected line 'plan 2025 · todo-k69m (301, 315)' depends on it. Under parallel lanes a value-table footnote is easy to walk past.",
+        "fix": [
+          "Record the cwd behavior as a value or decision with the ccstatusline 2.2.32 source location, as D8 does for OSC 8.",
+          "Or split the ccstatusline part of TASK-8's live check into an early spike item that TASK-4 and TASK-7 depend on.",
+          "Add to TASK-8's action: update the summary sentence at docs/RELEASES/v1.0.0.md:3-5 to name the band-line and banner-status minor bumps and the new working-refs plugin.",
+          "Add to TASK-8: update the v1.0.0.md summary sentence to name the band-line and banner-status minor bumps and the added working-refs plugin.",
+          "Add to TASK-8's action a precondition that plan 2025 carries refs {todo_ids: [todo-k69m], issues: [301, 315]} (written and refrozen after TASK-1), checked before the live check."
+        ]
+      }
+    ],
+    "minor": []
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "git rev-parse --verify --quiet HEAD^{commit}; git rev-parse --verify --quiet main^{commit}; git merge-base <base sha> <head sha>; git branch --show-current; git show-ref --verify --quiet refs/heads/HEAD; git rev-list --count <merge base>..<head sha>",
+        "stdout": "f6bd86be2891b35e8bba6e4abae1d075bb4f0382\n0235b5700722589a9ab5bd6071e139395f50433b\n1168-todo-banner\n1\n",
+        "result": "OK (state=LOCAL; no PR)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_docs",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (27 checked, 0 refuted, 4 code findings)",
+        "counts": {
+          "findings_checked": 27,
+          "findings_refuted": 0,
+          "findings_upheld": 27,
+          "code_findings": 4
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1168-todo-banner",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1168-todo-banner",
+        "head_ref_name": "1168-todo-banner",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "0235b5700722589a9ab5bd6071e139395f50433b",
+        "head_sha": "f6bd86be2891b35e8bba6e4abae1d075bb4f0382",
+        "base_ancestor_command": "git merge-base --is-ancestor 0235b5700722589a9ab5bd6071e139395f50433b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor f6bd86be2891b35e8bba6e4abae1d075bb4f0382 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "plan.json meta.base_branch",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "f6bd86b (working-tree snapshot; developer commits) - TASK-3 takes the -- tail argument-hint, the skill_arguments.md pointer, joins _INVOCABLE in test_skill_guidance_tail_contract.py and runs that test (plan_api write; plan JSON is never hand-edited) (outside fixer waves)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "f6bd86b (working-tree snapshot; developer commits) - TASK-5 adds ci.yml to the mod test loop, per-file plans signature, line.txt compared with file contents, D9 merge base by the resolve_merge_base rule, CLAUDE.md mirror sentence, four new watch.test.ts cases (outside fixer waves)"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "f6bd86b (working-tree snapshot; developer commits) - mirror.ts exports BRANCHES_KEY/TODO_IDS_KEY/ISSUES_KEY, new contract node test_override_and_refs_field_names_match pins them against set_override and PlanRefs; STORE_VERSION a number literal; hooks.json moved to TASK-5; atom carries text so band-line draws it verbatim (outside fixer waves)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "f6bd86b (working-tree snapshot; developer commits) - planned tests read the mirror/defaults before importing working_refs, reds now AssertionError (red ok, 24 nodes); value plan 2025 refs states the refreeze timing and why plan_api refuses a top-level refs key today (outside fixer waves)"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "f6bd86b (working-tree snapshot; developer commits) - D11 records the atom read with the engine source (value cross-mod state read); TASK-6 tests a world without working-refs; TASK-8 live check covers band-line with and without the mod (outside fixer waves)"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "f6bd86b (working-tree snapshot; developer commits) - D10: the widget resolves line.txt against workspace.project_dir from the stdin status payload (value ccstatusline custom-command input, ccstatusline 2.2.34 source); planned test pins project_dir; TASK-8 updates the v1.0.0.md summary sentence and carries the refs precondition (outside fixer waves)"
+    }
+  ]
+}

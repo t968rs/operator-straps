@@ -1,0 +1,90 @@
+{
+  "plan_id": "1019",
+  "feature": "serialize catalog writes",
+  "branch_lineage": "main-->1159-FEAT-serialize-catalog-writes",
+  "primary_documents": {
+    "plan": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "task-5 lane quality review",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-5 files",
+        "indicated": "only scripts/todo_sync.py, todo_sync/locking.py and the planned CLI test change"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "the lock file inside the project is visible to the retire/split reference scan",
+        "why_free_form": "lease acquire --owner stores free text in <state_dir>/locks/<catalog>.lock; retire.other_references (git grep --untracked) skips history_paths but not state_dir, so an owner naming an item id made that item's own retire report the lock file as a reference to fix by hand"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5 also adds state_dir to the skip list of retire.other_references and adds tests/scripts/test_todo_sync_lock_reference_scan.py, a git-backed test that a lease owner naming the retired id yields no locks/ reference line"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the skip a todo-editor retire under a lease can be told to hand-edit the lock body; the planned CLI tests run without git and cannot see it"
+      },
+      "date": "2026-11-15"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "pr-review 0292",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-6"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-6 action, triggers (b) and (c); TASK-6 files",
+        "indicated": "an async_launched todo-editor result records its agentId and only that agent's turn.complete starts a drain; a task-notification prompt waits for a drain up to DRAIN_TIMEOUT_MS; the task touches config.ts, inbox.ts, checks.ts, register.ts, their tests and the mirror test"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the built drain trigger and wait differ from TASK-6 and spec Decided 17",
+        "why_free_form": "checks.ts records no agentId: any subagent turn.complete drains whenever the inbox lists a queued *.json (drainQueued), and every hook wait is capped by waitCapMs (the hook budget less a margin, at most DRAIN_TIMEOUT_MS) rather than DRAIN_TIMEOUT_MS alone; band.test.tsx and summary.test.ts changed with the task though its receipt lists no extra files"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-6 drains at any subagent turn end when the inbox lists a queued file, caps each drain wait with waitCapMs(remainingMs), and adapts band.test.tsx and summary.test.ts to the new inbox context lines; the frozen spec stays as written"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "a queued file in the inbox is the drain condition for a foreground, a backgrounded and a left-over item alike, so no agentId bookkeeping is needed; a wait past the hook budget would let the engine give up on the hook before the summary attaches"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "pr-review 0292",
+      "phase": "post-exec-start",
+      "items": [],
+      "original": {
+        "doc": "plan",
+        "location": "every TASK's files",
+        "indicated": "no task touches plugins/harness/lib/harness_lib/todo_sync/gh.py"
+      },
+      "issue": {
+        "category": "fail-open-semantics",
+        "why_categorical": "a hung gh call holds the catalog lease",
+        "why_free_form": "add --spec --file-issue runs gh issue create while holding the catalog write lock, so a hung gh (stalled network, auth prompt) kept every other writer, the todo-watch inbox drain among them, waiting with no bound (issue 161)"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "gh.py times out each gh call after GH_TIMEOUT_SECONDS (120 s) and raises TodoSyncError; a test covers the timeout (commits 41d3ec0, 7168893), outside every TASK"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "a bounded gh call fails and releases the lock instead of blocking the serialized writers"
+      },
+      "date": "2026-11-16"
+    }
+  ]
+}

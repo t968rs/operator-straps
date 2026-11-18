@@ -1,0 +1,31 @@
+{
+  "plan_id": "1015",
+  "item": "DOC-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b820ae70a7c454dff0db03abd225d8fbbe9c88b8"
+    }
+  },
+  "evidence": "staged tree b820ae7",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "docs/RELEASES/v1.0.0.md",
+        "change": "EX2"
+      },
+      {
+        "path": "README.md",
+        "change": "EX3"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX2": "25fb5e1442538927aace1268805d7ecb776224985dd40907de6bc479cf8ae096",
+      "EX3": "118c7377485d37c96dba6625bde5252713a3f37b48e11241bd1117309110fa46"
+    }
+  },
+  "date": "2026-11-11",
+  "seal": "c9f1081f891f23335cda4022648e108ba9c87d3991e6cc412a1e5b1163ea4b09"
+}

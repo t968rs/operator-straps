@@ -1,0 +1,692 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 266,
+  "pr_title": "Feature(harness): `canned_messages` project sets and build folding",
+  "branch": "1150-canned-messages",
+  "base_branch": "main",
+  "base_sha": "5a8ef39a2515d95da028eef5d3e9e6a8e88149ad",
+  "head_sha": "b3fd7e01979e337af887ea159851a3ba1dafe8ca",
+  "review_date": "2026-11-11",
+  "verdict": "READY TO MERGE - 22 of 22 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 13114,
+    "deletions": 30266,
+    "files_changed": 168,
+    "source": {
+      "additions": 11573,
+      "deletions": 709,
+      "files_changed": 95
+    }
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/config.json",
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/tests.json",
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/docs.json",
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/overall.json",
+    "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/system_shape.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The canned_messages key lands in all four required places (defaults.json, harness.schema.json, CannedSet plus `_canned_messages` in config.py, README key row), and the loader re-checks the shape without jsonschema.",
+    "Receipt, ActionPlan, SkillSpec and DesignEvolutionCatalog schemas are generated from their pydantic models and guarded by byte-level drift tests, so the committed JSON cannot silently diverge from the models.",
+    "The breaking DesignEvolutionCatalog rewrite (closed levels, category_enums and summary tallies removed, id_conventions restructured) ships with a concrete migration paragraph in plugins/harness/schemas/README.md.",
+    "Schema descriptions state honestly what the JSON schema cannot enforce (Provenance commit/staged rule, SkillSpec plugin_dir/target exclusivity, DesignEvolution cross-record rules), pointing writers at the model APIs.",
+    "The ActionPlan `frozen` description matches `plan_doc.frozen_digest` exactly for both the receipts scheme (every field but `frozen`) and the sealed/unset schemes.",
+    "Every new suite is behavioral: drivers run in-process through `main` against make_project git repos, and no test stubs the function under test.",
+    "The test_config_canned_messages.py cases run each malformed set both with jsonschema and with it hidden (`sys.modules['jsonschema'] = None`), which reaches the builder's own check because config.py imports jsonschema lazily.",
+    "Receipt seal tests change one sealed field at a time and also cover the item's planned files, planned tests, plan id and item id, so each part of the seal input is pinned.",
+    "test_strap_rounds.py pins backward compatibility by recomputing the pre-rounds driver digest and checking that an empty `rounds` leaves it unchanged.",
+    "The sealed_first_freeze fixture patches plan_record.FIRST_SCHEME, which is read at call time. That keeps the older sealed and legacy suites on their scheme without forking them.",
+    "fold_canned unit tests cover appear, join, vanish, pending and input immutability, and integration tests add the negative case (a non-canned file still fails with `is in no commit`).",
+    "config._canned_set checks the canned_messages shape without jsonschema, with a json-path-style location per bad entry, so a load on the floor install still refuses a malformed set.",
+    "fold_canned copies its input, leaves globbed entries and every non-canned path to the existing coverage check, and keeps the pending one-commit shape by joining the first block.",
+    "The RecordBook protocol (SealedBook / ReceiptBook) lets check, freeze, red, lanes, record and verify read item states one way under either scheme instead of branching in each command.",
+    "pin_scheme checks receipts before sealed with the same three proofs (stored, digest, HEAD copy), so a hand-deleted scheme cannot downgrade a receipts plan on refreeze.",
+    "Receipt seals bind plan id, item id and the item's frozen files and tests, so a copied receipt or a refreeze that moves the item's files breaks the seal visibly.",
+    "The HTML PIP builds all live content with textContent and escapes the embedded config's '<', so receipt or catalog text cannot inject markup.",
+    "branch-commit-msg SKILL.md:167-170 describes build folding exactly as canned_fold.fold_canned implements it (join the block carrying the set's message, the one block of a pending skeleton, else a new block at the end; vanished paths drop with emptied blocks; any other late file still fails coverage).",
+    "The README canned_messages key row states the matching rule (a `/` pattern matches the whole path, any other the file name) and precedence (project sets first) in the same terms as canned_messages._matches and get_canned_message.",
+    "write-plan SKILL.md step 9 heredoc names real symbols throughout (evolution_api.next_id/add, ChangePhase.post_exec_start, IssueCategory.signature_mismatch, OutcomeCategory.execution_blocker and the five change models), so it runs as written.",
+    "The new write-plan README separates developer-facing lifecycle from the agent procedure and matches plan.py's render contract (render writes a frozen receipts plan's page only when missing).",
+    "strap-skills SKILL.md's reopen paragraph matches strap.py's _reopen_base_problems (ancestor of HEAD, descends from the previous base, parts identical to the working tree) and its printed `reopen [done]` line, and spells out the strip-and-restore base that rule forces.",
+    "Plan 1012 records its four decisions with rationales and four sealed receipts with no deviations, and v0.7.1.md is retitled so the superseded release cannot be cut by mistake.",
+    "merge_commit_msg.py:275 swaps in project_canned_message inside render, which runs only after main has called activate(load_config(...)) at line 475, so the new active() read never happens before activation.",
+    "strap-skills reopen prose (SKILL.md:242-263) matches strap.py exactly: the printed `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>` line (strap.py:937), the ancestor and descendant base rules and the parts-equal-to-base rule (_reopen_base_problems), red skipping earlier-round greens (_red_plan), and the tests/kind lock (strap_api._refuse_fields).",
+    "The write-plan step 9 heredoc names only symbols that exist: evolution_api.next_id/add, the ChangePhase/IssueCategory/OutcomeCategory members and the ChangeOriginal/ChangeIssue/NewOutcome/WhyNewOutcome fields. Its refusal claims (duplicate id, unknown item) match _duplicate_ids and evolution_doc.plan_problems.",
+    "The deviation-flag contract in write-plan SKILL.md:166-175 and README.md:75-87 (--also, --substitute, --cite binding the uncited deviations before it, --sha/--staged required) agrees with plan.py's record docstring and DEVIATION_FLAGS handling.",
+    "branch-commit-msg's build-folding paragraph (SKILL.md:167-170) matches canned_fold.fold_canned: pending joins the first block, otherwise the block whose message equals the canned message, otherwise a new block at the end, and a vanished entry drops along with any block it empties.",
+    "Every relative link in the new write-plan README (../../scripts/plan.py, ../../lib/harness_lib/*_models.py, ../parallel2/README.md) resolves at the head.",
+    "The canned_messages key touches all four required places (defaults.json, harness.schema.json, the CannedSet dataclass and _canned_messages builder in config.py, the README key table), and the builder check runs without jsonschema too, with parametrized tests for both paths.",
+    "Plan 1012 matches the code: D1-D4 (list shape, project sets first, fold, drop) are each implemented as decided, and `plan.py check` passes on plans 1012, 1013 and 1014 at the head.",
+    "fold_canned is a pure function on a copied CommitDict, tested alone and through run_build, including the case where a non-canned file that appeared still fails coverage.",
+    "run_build captures once and passes the same capture to the fold and to coverage_problems, which removes the second capture_branch call.",
+    "The receipts scheme keeps old plans valid: FIRST_SCHEME is read at call time, the existing sealed and legacy suites patch it to sealed, and pin_scheme checks receipts before sealed with the stored, digest and HEAD-copy rules.",
+    "The HTML PIP loader builds the DOM only with textContent and escapes `<` in the inline config, so plan and receipt text cannot inject markup.",
+    "SkillSpec.rounds stays out of the dump and the driver digest when empty, and test_strap_rounds pins the old digest byte for byte.",
+    "New tests are behavioural: driver suites run plan.py and strap.py against make_project repos, and the only monkeypatches change a config constant or stdin, never the function under test.",
+    "The canned_messages key touches all four required places together: defaults.json, harness.schema.json, the config.py CannedSet dataclass and builder, and the README row. The builder repeats the schema's shape check, so a load without jsonschema refuses the same malformed sets, and test_config_canned_messages.py runs every malformed case both with and without jsonschema.",
+    "The DesignEvolution migration steps are word-for-word the same in schemas/README.md Migration and the v1.0.0 Breaking changes, and they match the closed models: drop $schema, _comment and category_enums, move id_conventions prefixes, and drop the tallies that counts() now computes.",
+    "The receipts lifecycle reads the same way in the plan.py docstring, write-plan SKILL.md, the write-plan README and the schemas README: render on a frozen receipts page, the digest scope per scheme, refreeze tolerance with the 're-record after refreeze' line, and the deviation flags needing --sha or --staged on a receipts plan.",
+    "The strap reopen docs match the code. SKILL.md step 12, the strap.py docstring and the README row agree with cmd_reopen and _reopen_base_problems (ancestor of HEAD, descendant of the previous base, every part clean at the base), with _red_plan skipping GREEN behaviors, and with strap_api locking tests and kind after an earlier round.",
+    "Receipt.schema.json and the regenerated DesignEvolutionCatalog.schema.json both come from models through gen_plan_schema.py, and a contract test checks them for drift, so the schemas README 'generated, never edited' claims hold.",
+    "The new tests are behavioral, with no mock-chain wiring. canned_fold is tested as a pure function and again through run_build on a real cloned repository, and project canned sets are tested through capture and merge render under an activated make_project config."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "write-plan SkillSpec pins branch-only commits; a squash merge orphans them",
+        "file": "docs/plans/strap/write-plan/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/write-plan/SkillSpec.json",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "4,889,908",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "docs/plans/strap/write-plan/SkillSpec.json stores `base` 9368d9e (line 4) and round bases 84cc5bc (line 889) and b7c6209 (line 908). 9368d9e and b7c6209 exist only on 1150-canned-messages (b7c6209 is contained by no branch but this one and its backups). strap.py relies on these SHAs after the merge: `reopen` refuses unless `merge-base --is-ancestor <spec.base> <new base>` holds (strap.py:908-913), and an edit-mode baseline reads SKILL.md at `base`. A squash or rebase merge of this PR leaves both commits unreachable from main, so the next `strap.py reopen write-plan` fails with `does not descend from the previous base`, and baseline runs fail once the commits are pruned or on any clone without the branch. Plans 1012/1013/1014 also pin `frozen.commit` b4e8d6b, but nothing compares that SHA with HEAD, so only the strap spec breaks.",
+        "fix": [
+          "Merge PR 266 with a merge commit (no squash, no rebase), so 9368d9e and b7c6209 stay reachable from main.",
+          "If a squash merge is required: after the merge, reopen write-plan on a main commit and refreeze it, so `base` and the round bases name commits main keeps."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "write-plan strap fixtures carry the developer's absolute checkout path",
+        "file": "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_ActionPlan.json",
+        "files": [
+          "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_ActionPlan.json",
+          "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_PIP.html",
+          "docs/plans/strap/write-plan/fixtures/plan-1021/docs/plans/1021_strap_round_reopen_ActionPlan.json",
+          "docs/plans/strap/write-plan/fixtures/plan-1021/docs/plans/1021_strap_round_reopen_PIP.html",
+          "plugins/harness/agents/strap-scenario-runner.md"
+        ],
+        "lines": "196,232,236",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The frozen plan fixtures laid into scenario trees hold commands such as `sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" reopen write-plan ...` (plan-1014 JSON lines 196, 232, 236; its PIP lines 122, 134-135; plan-1021 JSON line 198 and PIP line 122). The live plan `docs/plans/1014_strap_reopen_ActionPlan.json` was since rewritten to repo-relative `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py ...` (lines 196, 232, 236), so the fixtures are the only tracked copies left with a machine path. They publish a local path in a public marketplace repo, and they point a scenario agent that follows the plan text at the developer's real checkout instead of `TREE`, the very leak the new strap-scenario-runner snapshot/`problem:` rule (strap-scenario-runner.md:42-55) and the 'a path ... outside TREE stands for the same repo-relative path under TREE' sentence were added to paper over.",
+        "fix": [
+          "Re-lay the plan-1014 fixture from the current frozen plan 1014 (repo-relative commands) and its page, and rewrite the plan-1021 fixture command to the repo-relative form, refreezing each fixture plan so its digest holds; rerun the affected write-plan scenarios if the SkillSpec pins the fixture content.",
+          "If the fixtures must stay byte-identical to what the frozen write-plan round ran against, record that decision in the write-plan SkillSpec or plan 1014 DesignEvolution and replace the drive letter path with a placeholder in a later round."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Project canned messages are never checked against the commit-message rules",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/lib/harness_lib/canned_messages.py",
+          "tests/lib/test_config_canned_messages.py",
+          "README.md"
+        ],
+        "lines": "109-121",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The `canned_messages` contract accepts any non-empty `message` (schema `minLength: 1`, harness.schema.json:118; `_canned_set` in config.py:374-383 checks only the shape). The built-in sets are pinned by `test_every_canned_message_passes_the_message_checks` (tests/lib/test_canned_messages.py:90-94) because `branch_commit_msg.py build` runs `commit_txt.message_problems` on every block: the strict subject rule `^(?:Feature|Fix|Refactor|Test|Build|Docs|Chore)(?:\\(...\\))?: \\S` (commit_txt.py:47), vendor names, filler, double quotes. A project set such as `{\"patterns\": [\"docs/TODO/*\"], \"message\": \"Update TODO files\"}` loads cleanly, is prefilled at capture as `message: canned`, and the c-msg / branch-commit-msg skills tell the agent to keep a canned message as it stands, so every build of a matching block fails on a message the agent was told not to change. Nothing in the schema description warns that the message must pass those checks, and no test covers a non-conforming project set.\n\nAlso (config): The description at harness.schema.json:111 says a pattern holding a `/` matches the whole repo-relative path with fnmatch, case-sensitive (`fnmatchcase`, canned_messages.py:50-53). fnmatch `*` also matches `/`, so `docs/TODO/*.json` matches `docs/TODO/archive/old.json` too, widening the set beyond what a glob reader expects. The sibling key `review.tracking_paths` (harness.schema.json:91) documents exactly this caveat; this one does not, nor does the README row (README.md:497).\n\nAlso (config): harness.schema.json:111 ends \"Read by branch-commit-msg, c-msg and merge-commit-msg.\" amend-commit-msg runs the same `branch_commit_msg.py` capture (which calls `project_canned_message`, branch_commit_msg.py:306,354) and its SKILL.md:63-64 now documents project sets under `canned_messages`. The README row (README.md:497) has the same three-skill list.",
+        "fix": [
+          "Validate each project message at config load: in `_canned_set` (config.py:374-383), or in a check `project_canned_message` runs once, build the entry with `commit_txt.entry_from_message` and raise `ConfigError(f\"{where}/message: ...\")` with the `message_problems` lines; add a test in tests/lib/test_config_canned_messages.py that a set with a non-conforming subject is refused.",
+          "If an import from config.py into commit_txt is unwanted, have `project_canned_message` skip (and report via a `problem:` line at capture) a project set whose message fails `message_problems`, and state in the harness.schema.json `canned_messages` description and the README key row that `message` must pass the commit subject rule (`Word(scope): summary` with Feature/Fix/Refactor/Test/Build/Docs/Chore), no double quotes and no vendor names.",
+          "Append to the `canned_messages` description at harness.schema.json:111 and the README row at README.md:497: \"fnmatch `*` crosses `/`, so `docs/*.md` also matches nested files.\"",
+          "Change the sentence at harness.schema.json:111 to \"Read by branch-commit-msg, amend-commit-msg, c-msg and merge-commit-msg.\" and add `amend-commit-msg` to the README.md:497 row."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Build folding is never run with a project canned set",
+        "file": "tests/scripts/test_branch_commit_msg_canned_fold.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg_canned_fold.py",
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/lib/harness_lib/canned_fold.py"
+        ],
+        "lines": "1-5,29-30,49-59,69-105,108-145",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The module docstring (lines 3-5) says a project set's regenerated file must not fail build. Every TestBuildFolds case uses the built-in TODO set, and the clone fixture has no `canned_messages` config. The unit cases pass `_canned` (lines 29-30), which calls get_canned_message without `extra`. If branch_commit_msg.py:554 passed get_canned_message instead of project_canned_message, every test here would still pass, and a project report written after capture would fail build with `is in no commit`. That project-set-plus-build-folding path is the headline feature of this PR.\n\nAlso (tests): fold_canned treats a captured path that an existing glob entry stands for as claimed (canned_fold.py:28, through expand_entry). `_drop_vanished` keeps a block whose file list was already empty (canned_fold.py:41, `kept or not files`). Neither case has a test, so a change that re-places glob-covered canned paths, or drops empty blocks, would go unnoticed.",
+        "fix": [
+          "Add a TestBuildFolds case on a clone whose upstream make_project config sets `canned_messages` (for example `{\"patterns\": [\"offlineTestReport.json\"], \"message\": \"Chore(tests): refresh the offline test report\"}`). Write `offlineTestReport.json` after `run_capture`, run `run_build`, and assert a new block with that file and the project message.",
+          "Or point `_canned` at project_canned_message under an activated config that holds a project set, and add a unit case where a project-set path appears.",
+          "Add a TestFoldCanned case with a block holding a glob entry (for example `docs/TODO/*.json` with CANNED_TODO), where TODO appears in `captured`, and assert the result is unchanged. Add a case with a `([], \"Feature: x\")` block and assert it survives."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Second-reopen test cannot tell the last round's hash from the first",
+        "file": "tests/scripts/test_strap_reopen.py",
+        "files": [
+          "tests/scripts/test_strap_reopen.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "248-266",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_second_reopen_appends_a_round never changes a part file between round 1 and round 2, and strap.py skill_hash (plugins/harness/scripts/strap.py:219-221) hashes only the part files. So `second` equals `frozen`, and the assertions at 262, 264 and 266 hold either way. A freeze that names rounds[0] instead of the last round, or a reopen that copies the wrong round's stamp, would still pass. The module docstring (line 5) says the next freeze names the last round's hash, and nothing here pins that.",
+        "fix": [
+          "After the first `reopen` and before its `freeze`, rewrite SKILL (for example body `Round two.`). Then add `assert second != frozen` after line 255 so lines 262-266 can tell the rounds apart. The `commit_all` at 257 already commits the edit before the second reopen."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README Canned messages section still describes only the built-in table",
+        "file": "README.md",
+        "lines": "296-322,497",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The README section that explains canned messages (README.md:296-322) says the entries live in `lib/harness_lib/canned_messages.py`, lists only the two built-in sets, and ends with 'a project that renames them drafts as usual'. It never mentions the new `canned_messages` key (project sets tried first, `canned_messages.py:61-70`) or that `branch_commit_msg.py build` now folds a canned file that appeared or vanished after capture (`canned_fold.py:18-32`). The key-table row (README.md:497) also names only `c-msg`, `branch-commit-msg` and `merge-commit-msg`, while `amend-commit-msg` captures through the same `project_canned_message` path and its SKILL.md:63-64 says project sets apply.",
+        "fix": [
+          "Add a bullet to the Canned messages section: a project adds its own sets under `canned_messages` in `.claude/harness.json`, tried in order before the built-in entries, and `build` folds a canned file that appeared or vanished since capture; change line 321-322 to say a project that renames the files can name them in a project set.",
+          "Add `amend-commit-msg` to the consumer list of the `canned_messages` key-table row."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "v1.0.0 release body: canned line lacks its PR number and the file carries working notes",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "63-73",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Every change line in docs/RELEASES/v1.0.0.md names its PR (#253, #255, #257, #261, #262) except the canned-messages line (line 63), which lands through #266; #261 and #262 were merged into this branch, so #266 is also the PR that brings them to main. The 'Notes for the release' section (lines 69-73) is branch bookkeeping (plan 1012's bump, the superseded v0.7.1 file); the project rule makes this file the GitHub release body verbatim, so those notes would ship in the published release.",
+        "fix": [
+          "Prefix line 63 with `#266` and drop the 'Notes for the release' section (or move its content to the PR description) before the release is cut."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "fold_canned matches a canned block by exact message while the receipt tag strips",
+        "file": "plugins/harness/lib/harness_lib/canned_fold.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/canned_fold.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "56",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_place joins an appeared canned path to a block only when folded[k][1] == canned([...files, path]) exactly, while branch_commit_msg._receipt_line tags a block [canned] on commit.message.strip() == canned.strip(). A canned block whose skeleton message carries a stray trailing newline or space is therefore recognised as canned in the receipt but not by the fold, which then appends a second block with the same canned header instead of joining the existing one.",
+        "fix": [
+          "Compare stripped messages in _place: `(folded[k][1] or '').strip() == (canned([*folded[k][0], path]) or '').strip()`, matching _receipt_line."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "canned_messages key docs omit that project sets also drive build-time folding",
+        "file": "plugins/harness/lib/harness_lib/canned_messages.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/canned_messages.py",
+          "plugins/harness/config/harness.schema.json",
+          "README.md"
+        ],
+        "lines": "15-18",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The canned_messages module docstring, the schema description and the README key row describe a project set only as a message source. Since run_build passes project_canned_message to fold_canned, every file a project set covers is also silently added to or dropped from the skeleton's blocks at build when it appeared or vanished after capture, bypassing the coverage check for those files. A project that writes a broad pattern (for example *.md) gets that behaviour without the key's documentation mentioning it; only the branch-commit-msg skill does.",
+        "fix": [
+          "Add one sentence to the canned_messages docstring, the schema description and the README row: files a set covers that appear or vanish between capture and build are folded into the blocks (harness_lib.canned_fold), so a set should cover generated files only."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "has_canned_message ignores the project's canned sets",
+        "file": "plugins/harness/lib/harness_lib/canned_messages.py",
+        "lines": "78-80",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "canned_messages.has_canned_message (canned_messages.py:78-80) calls get_canned_message without `extra`, so it answers False for a change that a project `canned_messages` set covers. Every driver call site moved to project_canned_message, so this public helper is now the only lookup that disagrees with the drivers. It is used only by tests today, but a future caller would get the built-in answer without warning.",
+        "fix": [
+          "Give has_canned_message an `extra: Sequence[CannedSet] = ()` parameter passed through to get_canned_message, and state in its docstring that it checks the built-in LOOKUP unless `extra` is given.",
+          "Or add project_has_canned_message beside project_canned_message."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "evolution_api writes live.js for an unfrozen plan, contradicting the plan.py and plan_render_html docstrings",
+        "file": "plugins/harness/lib/harness_lib/evolution_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/evolution_api.py",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "tests/lib/test_evolution_api.py",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "8-10,79-86",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "evolution_api._save (evolution_api.py:79-86) always calls plan_live.write_live, and also writes the plan folder's .gitignore. HARNESS_RULES and write-plan SKILL step 8 now send spec-review changes to `evolution_api.add` right after `plan.py new`, before the freeze, so an unfrozen plan gets a live.js. plan.py:28 says \"A plan not frozen yet has no ``live.js``\", plan_render_html.py:10-11 says \"Only a plan frozen with receipts has a sidecar\", and test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen pins that for write_pip. The unfrozen page has no loader, so the file does nothing, but the docstrings are wrong.\n\nAlso (system_shape): plan_render_html.py:10-11 states that only a plan frozen with receipts has a live.js sidecar, and that an unfrozen plan's page carries no loader. evolution_api._save (evolution_api.py:79-86) calls plan_live.write_live on every save, whatever the plan's scheme. Two documented paths reach it with no receipts freeze: write-plan SKILL.md step 8 and HARNESS_RULES.md enter a spec-review change once `plan.py new` has run (the plan is unfrozen), and they enter a post-freeze design change on a sealed plan 'under either scheme'. Both paths leave a `<plans>/<id>/live.js` plus a driver-written `.gitignore` in the plan folder. On a sealed plan nothing reads that file, because the sealed plan has a markdown PIP and no HTML page. tests/lib/test_evolution_api.py:87-90 pins the write on an unfrozen plan, so code and test agree with each other but not with the renderer's contract.",
+        "fix": [
+          "In evolution_api._save, call plan_live.write_live only when plan_receipts.uses_receipts(plan) is true, and say so in the module docstring (\"Each save rebuilds the live.js of a frozen receipts plan\").",
+          "Or reword plan.py:28 and plan_render_html.py:10-11 to say an evolution_api save also writes live.js on an unfrozen plan.",
+          "Guard the sidecar write in evolution_api._save with `if plan_receipts.uses_receipts(plan): plan_live.write_live(...)`. Change the module docstring (lines 9-10) to 'on a receipts plan each save rebuilds live.js', and change test_add_rebuilds_live_js to freeze the plan under receipts first, adding a test that a sealed or unfrozen plan gets no live.js. freeze already writes live.js through write_pip, so an unfrozen plan's catalog still reaches the page at freeze.",
+          "Keep the behavior and correct the contract instead: change plan_render_html.py:10-11 to say that evolution_api also writes live.js on any plan, and that only a frozen receipts page loads it."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "pip_document pattern now admits absolute and machine paths",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "tests/lib/test_receipt_models.py"
+        ],
+        "lines": "668-680",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The widened `pip_document` pattern `^.+_PIP\\.(md|html)$` (ActionPlan.schema.json:671, generated from plan_models.py:174) dropped the `docs/PLANS/` prefix, which correctly removes a project literal (plans live under the configurable `artifacts.plans`), but it also dropped the only thing that kept the value repo-relative. `C:/Users/x/proj/docs/plans/0001_T_PIP.html` or a backslash path now validates and can land in a tracked plan JSON. The harness config schema already pins relative paths with `relPath` (`^(?![/\\x5c])(?![A-Za-z]:)`, harness.schema.json:9); the plan model has no equivalent. Plan 1013 itself specified `^docs/PLANS/.+_PIP\\.(md|html)$` (docs/plans/1013_plan_receipts_ActionPlan.json:169), so the relative anchor was intended.",
+        "fix": [
+          "In plan_models.py:174 change the pattern to `r\"^(?![/\\\\])(?![A-Za-z]:)[^\\\\]+_PIP\\.(md|html)$\"` (relative, forward slashes only), regenerate ActionPlan.schema.json with tools/gen_plan_schema.py, and add a case to `test_a_pip_document_may_be_html` that an absolute path is refused."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Status rules say every item terminates COMPLETE, next to a rule that keeps receipts items PENDING",
+        "file": "plugins/harness/schemas/README.md",
+        "lines": "61-63,280",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "schemas/README.md:61 now says that on a receipts plan 'the item stays `PENDING` in the JSON' and the receipt is the proof, but line 63 still reads unqualified 'every item must terminate in COMPLETE or CLOSED_NO_ACTION'. On a receipts plan the JSON status never terminates; only the receipt outcome does. Line 280 likewise still points `markdown_section` at a Markdown section, while receipts plans render an HTML page.",
+        "fix": [
+          "Qualify line 63: 'every item must terminate in COMPLETE or CLOSED_NO_ACTION (in its receipt on a receipts plan, in the JSON on a plan frozen before receipts)', and scope line 280 to plans with a markdown PIP."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "schemas README calls the plan key of primary_documents a rule the schema cannot express",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/evolution_models.py"
+        ],
+        "lines": "202",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "In the new DesignEvolutionCatalog section, schemas/README.md:202 lists 'the `plan` key in `primary_documents`' first among the cross-record rules that 'the generated schema' cannot express. The generated catalogs/DesignEvolutionCatalog.schema.json:339-345 does express it: `primary_documents` carries `\"required\": [\"plan\"]` from evolution_models.py:141-143 (`json_schema_extra={\"required\": [\"plan\"]}`). A reader who trusts line 202 would wrongly expect a schema-only validator to accept a catalog without `plan`. The other three listed rules really are validator-only.",
+        "fix": [
+          "Delete 'the `plan` key in `primary_documents`, ' from schemas/README.md:202, so the list starts with 'unique change ids'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Workflow Step 2 says render after freeze writes the PIP; on a receipts plan it rebuilds only live.js",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "224",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The Step 2 flow in schemas/README.md:223-224 runs `plan.py render <id>` after `freeze` and annotates it '(writes the PIP from the JSON: HTML with live.js on a receipts plan, ...)'. The code does something narrower. plan_render_html.refresh_pip (lines 210-221) and the plan.py docstring (lines 25-29) both say that on a frozen receipts plan render rebuilds live.js and writes the page only when it is missing. The write-plan README (lines 20-22, 45) and the same file's Step 3 (line 239) say the same, so line 224 is the one place that contradicts them.",
+        "fix": [
+          "Reword the annotation at schemas/README.md:224 to '(a frozen receipts plan: rebuilds live.js, and the HTML page only when missing; a plan frozen before receipts: rewrites the markdown PIP)'."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "_folded_document re-implements document_from_payload, leaving the latter test-only",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "tests/scripts/test_branch_commit_msg.py",
+          "plugins/harness/lib/harness_lib/canned_fold.py"
+        ],
+        "lines": "509-514,547-556,612-616",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "run_build now builds its document through _folded_document, which repeats document_from_payload's parsing of commits, merge_base and pending. document_from_payload has no caller left under plugins/ (only tests/scripts/test_branch_commit_msg.py), so the two parsers can drift: a change to how the payload's merge_base or pending is read in one is not seen by the other, and the tests exercise the copy the build no longer uses.\n\nAlso (overall): run_build now adds a canned-set file that appeared after capture to a block, or removes one that vanished (branch_commit_msg.py:547-556, canned_fold.fold_canned). The receipt that the skill tells the agent to relay unchanged lists headers only (_receipt_line, branch_commit_msg.py:612). A developer who reads only that receipt is not told that the TXT now stages a file nobody reviewed at capture time, such as a regenerated TODO catalog. The SKILL.md paragraph documents the behaviour, but each run gives no sign of it.\n\nAlso (overall): run_build now builds its document through _folded_document (branch_commit_msg.py:547-556). That function repeats document_from_payload's merge_base normalization and pending flag, and adds the fold. document_from_payload (branch_commit_msg.py:509-514) is now called only by tests/scripts/test_branch_commit_msg.py:1168, so the two payload-to-document paths can drift apart.",
+        "fix": [
+          "Give document_from_payload an optional `captures` argument that applies fold_canned, and have run_build call it instead of _folded_document.",
+          "Or have document_from_payload delegate to _folded_document(payload, notes, None) so one parser remains.",
+          "Have fold_canned return the paths it placed and dropped, and add one receipt line per change (e.g. `folded: + docs/TODO/RepoToDo.json -> 3`, `folded: - <path>`) before the final line.",
+          "Give document_from_payload an optional `captures` argument that runs fold_canned, have run_build call it, and delete _folded_document.",
+          "Or have _folded_document call document_from_payload with the folded commits substituted into a copied payload."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Markdown-PIP detection differs between write_pip and the first freeze",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ],
+        "lines": "476-483",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "_keeps_markdown treats documentation as the markdown PIP when only its file name matches pip_path(plan_file).name, but move_documentation moves it only when the whole value equals rel(repo, pip_path(plan_file)). A plan whose documentation names the PIP by another spelling of the same file (folder case on Windows, a backslash path, a ./ prefix) keeps the markdown PIP before freeze, yet at the first receipts freeze documentation is not moved and the markdown PIP is not deleted: the HTML page is written beside a stale markdown PIP that documentation still points to, and P3 stays silent because that file exists.",
+        "fix": [
+          "Use one predicate in both places, for example a helper in plan_render_html that compares Path(doc).name to pip_path(plan_file).name, and call it from move_documentation."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "c-msg and merge-commit-msg skills name only the built-in canned table",
+        "file": "plugins/harness/skills/c-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/c-msg/SKILL.md",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "README.md",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+        ],
+        "lines": "38-41",
+        "reviewer": "docs, system_shape, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Both drivers now call `project_canned_message` (branch_commit_msg.py:306,354,614; merge_commit_msg.py:275), so a project set fills a c-msg block or a merge prose, and c-msg's pending build folds canned files. c-msg SKILL.md:39-41 still defines a canned message as 'entries in canned_messages.py' and merge-commit-msg SKILL.md:56-57 says the prose is canned only for 'entries in canned_messages.py'. Plan 1012 TASK-4 left them unchanged as frozen strap specs, claiming the text stays true; it is incomplete rather than false, but an agent reading it cannot tell where a non-built-in canned message came from. Commit 2698508's subject says the sets are documented 'in the skills'.\n\nAlso (system_shape): The config schema description (harness.schema.json:111) and the README key table (README.md:497) both say `canned_messages` is read by c-msg and merge-commit-msg, and merge_commit_msg.py:275 now calls project_canned_message. c-msg SKILL.md:39-41 still names only canned_messages.py as the source of canned messages. merge-commit-msg SKILL.md:56-57 does the same. c-msg also builds through run_build, which now folds a canned file that appears after capture into the one pending block. That puts a path into the commit whose diff the agent never saw, and c-msg SKILL.md:38 says 'do not add, drop or split paths' without mentioning the fold. Plan 1012 TASK-4 chose to leave these two SKILL.md files alone because their strap specs are frozen. The text is now incomplete, though not false. The README row also omits amend-commit-msg, whose SKILL.md (lines 63-64) now documents the key.\n\nAlso (skill_package): merge_commit_msg.py:275 now calls project_canned_message, which tries the project's `canned_messages` sets from .claude/harness.json before LOOKUP, but SKILL.md:56-57 still says the canned prose comes from 'entries in ${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py' only. The sibling skills amend-commit-msg (SKILL.md:63-64) and branch-commit-msg (SKILL.md:62-64) were updated in this PR to name the project sets; merge-commit-msg was not, though commit 2698508 says the change documents them in the skills. An agent reading this skill cannot tell why a PR made of a project-declared report file arrives with prefilled prose. The module docstring at merge_commit_msg.py:14-15 says the same thing, and c-msg SKILL.md:39-40 (outside this lens) has the same gap for the shared branch driver.",
+        "fix": [
+          "At the next strap round of c-msg and merge-commit-msg (part edit plus refreeze), add 'or a project set under the `canned_messages` key of `.claude/harness.json`' beside the canned_messages.py reference, matching branch-commit-msg SKILL.md:62-65 and amend-commit-msg SKILL.md:63-64.",
+          "Otherwise note in docs/RELEASES/v1.0.0.md that the two skills keep the built-in wording by design.",
+          "Reopen or refreeze the c-msg and merge-commit-msg strap specs. Add 'or a project set under the `canned_messages` key of `.claude/harness.json`, tried first' beside each canned_messages.py reference, and add one sentence to c-msg on build folding a regenerated canned file into the block. Add `amend-commit-msg` to README.md:497.",
+          "Keep the specs frozen: add `amend-commit-msg` to README.md:497, and record the deferred c-msg and merge-commit-msg wording as a TODO item for the next round of those specs.",
+          "In plugins/harness/skills/merge-commit-msg/SKILL.md:56-57, change '(entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`)' to '(entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`, plus the project's own sets under the `canned_messages` key of `.claude/harness.json`, tried first)', and make the same addition to the docstring at merge_commit_msg.py:14-15 ('harness_lib.canned_messages, the project's canned_messages sets first')."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "write-plan README lifecycle diagram routes a design change to evolution_api instead of a refreeze",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "files": [
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "31-34",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "The diagram at README.md:31-33 labels the loop 'design changed? evolution_api.add, cite it on the record'. SKILL.md:97-99 and 137-175, and README.md:67-70, separate two paths. A design change the developer asks for is a `write` plus `freeze --refreeze`, plus a catalog entry. Work found during execution to depart from its item (a deviation) goes to evolution_api.add and is cited with --also/--substitute/--cite. The diagram shows only the second path under the first one's name, so a reader could skip the refreeze for a real design change.",
+        "fix": [
+          "Relabel the loop at README.md:33 as 'deviation found? evolution_api.add, cite it on the record', and add a second arrow or a note: 'design change asked for? plan_api.write + freeze --refreeze (developer OK)'."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "write-plan README Render row disagrees with its own PIP paragraph",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "lines": "45",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "README.md:45 says `PLAN render <id>` writes '`live.js` (and the page if it is missing)'. README.md:20-22, and refresh_pip in plan_render_html.py:210-221, say that only holds for a frozen receipts plan. On any other plan, render calls write_pip and rebuilds the PIP, which is HTML for an unfrozen plan bound for receipts and markdown for a legacy plan. write_pip writes no live.js in either case, because uses_receipts is false until the freeze. A developer who reads only the lifecycle table expects an unfrozen plan's render to leave the page alone and to produce a live.js. Neither happens.",
+        "fix": [
+          "Change the Render row's Writes cell at README.md:45 to: 'the PIP; on a frozen receipts plan only `live.js` (and the page if it is missing)'."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "write-plan step 9 example shows only the EX/post-exec-start id prefix that step 8 defers to",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/evolution_models.py"
+        ],
+        "lines": "97-101,142-143",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:97-101 has a developer-requested design change after the freeze, and a spec-review change (phase `spec-review`), entered through evolution_api.add 'built as step 9 shows'. The step 9 example at SKILL.md:142-163 hardcodes `next_id(\"<id>\", \"EX\")` and `phase=ChangePhase.post_exec_start`, and the prose names only the `EX` prefix. The prefix map S=spec-review, P=plan-review, PR=pr-bot-review, EX/CX=post-exec-start appears only in DesignChange.id's field description (evolution_models.py:67-69). No validator ties prefix to phase, so an agent that copies the example for a spec-review change produces an EX id with phase spec-review, and the catalog accepts it silently.",
+        "fix": [
+          "In SKILL.md step 8 (line 97-101) or step 9 (line 142-143), name the prefix for each phase: '`S` with `ChangePhase.spec_review`, `P` with `plan_review`, `PR` with `pr_bot_review`, `EX` with `post_exec_start`', and tell the reader to pass the matching prefix to `next_id`.",
+          "Add a DesignChange validator that rejects an id prefix that does not match its phase, so the mismatch fails when the change is built."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Missing space after comma in a parametrize tuple",
+        "file": "tests/lib/test_receipt_models.py",
+        "lines": "73",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`(\"evidence\",\"commit aaaaaaa: 9 test node(s) passed\")` has no space after the comma, unlike every other row of the same parametrize list.",
+        "fix": [
+          "Change line 73 to `(\"evidence\", \"commit aaaaaaa: 9 test node(s) passed\"),`."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "out_of_scope",
+      "reason": "Only fix is the merge strategy, a developer action. Standing decision: merge commit, so 9368d9e and b7c6209 stay reachable; proposed: close, no action."
+    },
+    {
+      "id": "I2",
+      "classification": "architectural_ambiguity",
+      "reason": "Fixtures are the inputs the frozen write-plan round ran on: re-lay them repo-relative (changes what the runs played) or keep them byte-identical and record why."
+    },
+    {
+      "id": "M6",
+      "classification": "architectural_ambiguity",
+      "reason": "Every fix edits a write-plan strap part (evolution_api.py or plan_render_html.py); write-plan is fresh at 38d6a5a, so fixing now forces a strap round."
+    },
+    {
+      "id": "M7",
+      "classification": "architectural_ambiguity",
+      "reason": "Fix edits plan_models.py, a write-plan strap part; write-plan is fresh at 38d6a5a, so fixing now forces a strap round."
+    },
+    {
+      "id": "M12",
+      "classification": "architectural_ambiguity",
+      "reason": "Fix edits plan.py or plan_render_html.py, write-plan strap parts; write-plan is fresh at 38d6a5a, so fixing now forces a strap round."
+    },
+    {
+      "id": "M15",
+      "classification": "architectural_ambiguity",
+      "reason": "Fix edits write-plan/README.md, a write-plan strap part; write-plan is fresh at 38d6a5a, so fixing now forces a strap round."
+    },
+    {
+      "id": "M16",
+      "classification": "architectural_ambiguity",
+      "reason": "Fix edits write-plan/README.md, a write-plan strap part; write-plan is fresh at 38d6a5a, so fixing now forces a strap round."
+    },
+    {
+      "id": "M17",
+      "classification": "architectural_ambiguity",
+      "reason": "Fix edits write-plan SKILL.md or adds a validator to evolution_models; SKILL.md is a write-plan strap part, fresh at 38d6a5a, so it forces a strap round."
+    },
+    {
+      "id": "M13",
+      "classification": "architectural_ambiguity",
+      "reason": "Plan 1012 TASK-4 chose to leave c-msg and merge-commit-msg SKILL.md as is; both specs are already stale from this PR. Edit the prose now or log it for their next strap round."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 266 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":32,\"first_sha\":\"e6382ab59ca47b20231fc66b3aa86ce2c0513c8b\",\"headRefName\":\"1150-canned-messages\",\"headRefOid\":\"b3fd7e01979e337af887ea159851a3ba1dafe8ca\",\"last_sha\":\"b3fd7e01979e337af887ea159851a3ba1dafe8ca\",\"mergeCommit\":null,\"number\":266,\"state\":\"OPEN\",\"title\":\"Feature(harness): `canned_messages` project sets and build folding\",\"url\":\"https://github.com/t968rs/operator-straps/pull/266\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1150-canned-messages",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1150-canned-messages",
+        "head_ref_name": "1150-canned-messages",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e6382ab59ca47b20231fc66b3aa86ce2c0513c8b",
+        "head_sha": "b3fd7e01979e337af887ea159851a3ba1dafe8ca",
+        "base_ancestor_command": "git merge-base --is-ancestor e6382ab59ca47b20231fc66b3aa86ce2c0513c8b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b3fd7e01979e337af887ea159851a3ba1dafe8ca HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - README Canned messages section gains a bullet on project sets under canned_messages (tried first, load-checked) and build folding; the rename bullet now points to a project set; key row lists amend-commit-msg"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - canned_messages docstring, schema description and README key row state that files a project set covers are folded at build (harness_lib.canned_fold) without the coverage check, so a set should cover generated files only"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - has_canned_message takes extra: Sequence[CannedSet] = () passed to get_canned_message; docstring states only LOOKUP is checked unless extra is given"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - config.py _canned_set runs new _check_canned_message (commit_txt.message_problems on a built entry, local imports to avoid the cycle) and raises ConfigError at canned_messages/N/message; test covers three non-conforming messages; schema description and README row document the message rule, fnmatch * crossing /, and amend-commit-msg; canned_messages.py docstring notes the load check and the fnmatch caveat"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - _place now matches a block through new _same_canned, comparing stripped messages as _receipt_line does; trailing-newline unit case added; branch_commit_msg.py: _receipt_line already strips, cited only"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - document_from_payload takes optional captures and runs fold_canned; run_build calls it and the duplicate _folded_document is deleted, leaving one payload parser; canned_fold.py and test_branch_commit_msg.py: callers unchanged, no edit needed"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - added project_clone fixture (canned_messages offlineTestReport set) and a TestBuildFolds case writing the report after capture, plus TestFoldCanned cases for a glob-covered canned path and an empty-files block; branch_commit_msg.py and canned_fold.py: code under test, no edit needed"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - schemas/README.md:63 qualified the COMPLETE/CLOSED_NO_ACTION terminal rule per receipts vs pre-receipts plans; :280 scoped markdown_section to a plan with a Markdown PIP (frozen before receipts)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - schemas/README.md:202 dropped the 'the plan key in primary_documents' item from the validator-only list; the generated catalog schema already requires plan"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - schemas/README.md:224 reworded the plan.py render annotation to the frozen-receipts (live.js rebuild, HTML only when missing) and pre-receipts (markdown rewrite) behavior; no edit here: plan.py render docstring (lines 25-29) already states the frozen receipts behavior (rebuilds live.js, writes the HTML page only when missing); the wrong annotation at schemas/README.md:224 is fixed by the other part's fixer"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - docs/RELEASES/v1.0.0.md:63 canned-messages line prefixed with #266; the 'Notes for the release' section (branch bookkeeping) dropped"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - tests/lib/test_receipt_models.py:73 added the missing space after the comma in the evidence parametrize row"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - tests/scripts/test_strap_reopen.py: SKILL rewritten to 'Round two.' after the first reopen and before its freeze, and assert second != frozen added after the freeze read; strap.py skill_hash unchanged (fix lives in the test)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - Re-laid the plan-1014 fixture JSON and page from the live frozen plan 1014 (repo-relative strap.py commands, digest b3eedf7 verified); rewrote the plan-1021 fixture check command to repo-relative in JSON and page and refroze its receipts digest (281c185, recomputed with plan_doc.frozen_digest); no drive-letter path remains under the fixtures, and the SkillSpec does not pin fixture content. strap-scenario-runner.md: no edit, its TREE rule stays as a general guard for task paths."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - c-msg SKILL.md and merge-commit-msg SKILL.md name the project canned_messages sets (tried first) beside canned_messages.py, c-msg notes build folding a regenerated canned file into the block, merge_commit_msg.py capture docstring names the project sets first; README.md: amend-commit-msg already present in the canned_messages key row (README.md:501)"
+    },
+    {
+      "id": "I1",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - closed, no action: Merge strategy only: the developer merges PR 266 with a merge commit, so 9368d9e and b7c6209 stay reachable from main"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    }
+  ]
+}

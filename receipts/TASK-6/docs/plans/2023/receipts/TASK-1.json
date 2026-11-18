@@ -1,0 +1,31 @@
+{
+  "plan_id": "2023",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "ac0673e2e54cd12fff1f54d029484cf8b9312552"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_todo_sync_lease_wait.py::test_acquire_waits_past_the_default_for_a_lease_freed_meanwhile",
+        "tests/scripts/test_todo_sync_lease_wait.py::test_acquire_refuses_once_its_own_wait_runs_out",
+        "tests/scripts/test_todo_sync_lease_wait.py::test_lease_acquire_takes_a_wait_in_seconds",
+        "tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_defaults_to_the_lock_wait",
+        "tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[-1]",
+        "tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[soon]",
+        "tests/scripts/test_todo_sync_lease_wait.py::test_the_driver_waits_for_the_held_lease"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_todo_sync_lease_wait.py::test_acquire_waits_past_the_default_for_a_lease_freed_meanwhile tests/scripts/test_todo_sync_lease_wait.py::test_acquire_refuses_once_its_own_wait_runs_out tests/scripts/test_todo_sync_lease_wait.py::test_lease_acquire_takes_a_wait_in_seconds tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_defaults_to_the_lock_wait tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[-1] tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number[soon] tests/scripts/test_todo_sync_lease_wait.py::test_the_driver_waits_for_the_held_lease"
+    }
+  },
+  "evidence": "staged tree ac0673e: 7 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "ffa52571088c1ad0e1460e82838c5c75e889ccab9548b3c6de0dcfdbf313bca3"
+}

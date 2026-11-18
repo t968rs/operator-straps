@@ -1,0 +1,25 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 4,
+  "tree": "9ab1bfcc99b8587d1d5017874fe5447370b1aacf",
+  "files": {
+    "docs/plans/1020_Plan_page_formatting_ActionPlan.json": "26bf5337090794607a3c7ac455abdac8b47dc07c"
+  },
+  "ignored": {
+    "docs/plans/1020/tests/tests/lib/test_plan_page_assets.py": "961607a86225f1317c29e1d9f906453fb08b6e3143f3151cd5e78adc68c88199",
+    "docs/plans/1020/tests/tests/lib/test_plan_render_html_decisions.py": "7f56aca026f33989bfbade5d19b86d5d7470e1e4ab05584da1c34332057ba3af",
+    "docs/plans/1020/tests/tests/lib/test_plan_render_html_summary.py": "1fb8309604d6431477f26ec7858bf8dcc3ee8bbab122198a6951bd6b436e37ba"
+  },
+  "at": "2026-11-16T20:50:39+00:00",
+  "base": "eac1f255112c3243c4cb4d27c0cea52e6091adeb",
+  "history": false,
+  "digest": "6279fa9bea8e2cb83cbccc59f483410bf3ce063d08f9c9be13269b05f134a155",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

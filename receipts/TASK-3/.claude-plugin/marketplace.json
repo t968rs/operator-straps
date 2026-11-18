@@ -1,0 +1,72 @@
+{
+  "name": "operator-straps",
+  "description": "Agent harness: PR review and commit tooling, guard hooks, run-tracking and session mods",
+  "owner": {
+    "name": "Kevin Gabelman"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow"
+    },
+    {
+      "name": "arc-straps",
+      "source": "./plugins/arc-straps",
+      "description": "ArcGIS Pro toolbox skills: arc-meta checks and applies tool help in a project's .atbx archive; arc-help-pages builds and checks each tool's linked help page"
+    },
+    {
+      "name": "agent-watcher",
+      "source": "./plugins/agent-watcher",
+      "description": "Logs every agent dispatch and forked skill with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard"
+    },
+    {
+      "name": "session-bookmark",
+      "source": "./plugins/session-bookmark",
+      "description": "Compaction bookmark: git state, last prompts and /compact instructions kept in session state and appended to the compacted conversation"
+    },
+    {
+      "name": "git-status",
+      "source": "./plugins/git-status",
+      "description": "Git snapshot, per-prompt GIT_STATE context and a fallback git status line that gives way to ccstatusline or band-line"
+    },
+    {
+      "name": "banner-status",
+      "source": "./plugins/banner-status",
+      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window)"
+    },
+    {
+      "name": "band-line",
+      "source": "./plugins/band-line",
+      "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window); clears git-status's own status line"
+    },
+    {
+      "name": "pytest-scope",
+      "source": "./plugins/pytest-scope",
+      "description": "Routes bare pytest through the project interpreter and requires a test file or node-id per pytest run"
+    },
+    {
+      "name": "todo-watch",
+      "source": "./plugins/todo-watch",
+      "description": "The next TODO items and a live sync status line in a band above the prompt (kept until dismissed, or optionally one toast at session start), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks"
+    },
+    {
+      "name": "bubble-stamp",
+      "source": "./plugins/bubble-stamp",
+      "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION, REFUTED) into the bubble memo, PR_<N>_Bubbles.md"
+    },
+    {
+      "name": "parallel2-lanes",
+      "source": "./plugins/parallel2-lanes",
+      "description": "parallel2 lanes: a lane's Agent spawn starts with its brief inline, the plan's model and its worktree; a band lists each run's lane status"
+    },
+    {
+      "name": "superpowers-lt",
+      "source": {
+        "source": "github",
+        "repo": "t968rs/superpowers-lt"
+      },
+      "description": "Trimmed fork of the superpowers skills library, renamed so its skills do not collide with the upstream plugin"
+    }
+  ]
+}

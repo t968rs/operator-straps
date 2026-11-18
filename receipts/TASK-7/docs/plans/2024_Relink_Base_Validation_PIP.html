@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2024: Relink Base Validation</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2024: Relink Base Validation</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2024_Relink_Base_Validation_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2024</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2024</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-17</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1167-relink-tags -&gt; main</dd><dt>Base commit</dt><dd><code>26e2c29</code></dd><dt>Frozen</dt><dd>2026-11-17 at <code>681d9bf</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: relink checks anchors and sweeps at the candidate base before writing</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: patch-id miss names the off-history end state instead of inviting --to</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Relink paragraph in the write-plan SKILL.md and README</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: harness version bump and v1.0.0 release notes</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 When does relink run the anchor and sweep check at the candidate base? check reads them at base_commit once an item is done (claims_rev, plan.py:351-357), and freeze requires them at the base while no item is done (base_claim_problems, plan.py:456-467).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D1A</code> Always: a relinked base must satisfy both readers, so a base that breaks a later freeze --refreeze is refused as well as one that breaks check</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D1B</code> Only when an item is done (claims_rev of the book view is not None), as issue 313 proposes; with no item done the relink writes unchecked and a later refreeze reports the problems through base_claim_problems</li></ul><p class="why">Developer choice 2026-11-17: always check. freeze requires the anchors at the base while no item is done, so a relinked base must satisfy both readers.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Does relink get an override flag that writes the base despite failing claims?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D2A</code> No override: the refusal is final; a base with no valid counterpart stays off-history, which check only warns about</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D2B</code> --force: write anyway and print each at-base problem as a warn: line; the plan then fails check until a write plus freeze --refreeze re-anchors it (unlock first on a Locked plan); adds a test and a minor harness bump</li></ul><p class="why">Developer choice 2026-11-17: no override. The anchors quote the old base, which its tag keeps reachable; off-history: only warns.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 What does relink without --to print when patch-id finds no counterpart (a merge commit has no patch id, freeze_git.py:282-283)? Today it ends with &#x27;pass --to REF&#x27;, which invited the guessed --to in the plan 2023 incident.</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D3A</code> Reword: drop &#x27;pass --to REF&#x27;; say a base squashed or merged away has no counterpart and its off-history: warning is the end state, and that --to is only for a commit known to hold the base&#x27;s code</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D3B</code> D3A plus the cause: name &#x27;a merge commit has no patch id&#x27; when the base has two or more parents (git rev-list --parents -n 1); adds a test with a merge-commit base</li><li><code>D3C</code> Keep the message: TASK-1&#x27;s check already refuses a bad --to; TASK-2 is dropped</li></ul><p class="why">Developer choice 2026-11-17: drop the --to hint and name the off-history: end state.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 strap.py relink (strap_lock.py:465-483) has the same unchecked --to and the same &#x27;pass --to REF&#x27; hint; a strap edit spec&#x27;s base feeds its baseline SKILL.md (strap.py:706). Is it in scope?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D4A</code> Plan relink only; file a TODO for strap relink (it has no anchors or sweeps to check)</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D4B</code> Also make strap relink refuse a candidate base without the spec&#x27;s SKILL.md (edit mode) and reword its patch-id hint; adds an item over strap_lock.py and strap.py</li></ul><p class="why">Developer choice 2026-11-17: plan relink only; strap relink is tracked separately.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>harness plugin version</td><td>0.78.0 -&gt; 0.78.1 (patch: a fix, no new flag)</td><td>plugins/harness/.claude-plugin/plugin.json:3</td><td>D2A</td></tr>
+<tr><td>release notes file</td><td>docs/RELEASES/v1.0.0.md</td><td>gh release list --limit 1: v0.7.0 is the latest tag; v1.0.0.md is the proposed next release since v0.7.0, so this branch extends it</td><td>-</td></tr>
+<tr><td>refusal line prefix</td><td>at base &lt;sha7&gt;: </td><td>plugins/harness/scripts/plan.py:467 (base_claim_problems)</td><td>-</td></tr>
+</table>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>pk\.relink\(|def relink\(</code>: <code>plugins/harness/lib/harness_lib/plan_lock.py</code> (definition of relink; TASK-1 adds the vet parameter), <code>plugins/harness/scripts/plan.py</code> (the one caller, cmd_relink; TASK-1 passes the vet)</li>
+<li><strong>S2</strong> <code>pass --to REF</code>: <code>plugins/harness/lib/harness_lib/plan_lock.py</code> (relink_target&#x27;s patch-id refusal; TASK-2 rewords it (D3)), <code>plugins/harness/lib/harness_lib/strap_lock.py</code> (strap relink&#x27;s own hint; left as is under D4A)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: relink checks anchors and sweeps at the candidate base before writing <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_lock.py</code>, <code>plugins/harness/scripts/plan.py</code>, <code>tests/scripts/test_plan_relink_check.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:581-582</code> holds <code>def relink(repo: Path, plan_file: Path, plan: pm.ActionPlan, to: Optional[str], save: Callable[[Path, pm.ActionPlan], object])</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:593</code> holds <code>new, match = relink_target(repo, old, to)</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:599-601</code> holds <code>preflight(repo, tags) plan.base_commit = new save(plan_file, plan)</code></li>
+<li><code>plugins/harness/scripts/plan.py:1037-1040</code> holds <code>def cmd_relink(repo: Path, args: argparse.Namespace) -&gt; int: plan_file = locate(repo, args.plan) plan = pd.load_plan(plan_file) entry, lines = pk.relink(repo, plan_file, plan, args.to, save)</code></li>
+<li><code>plugins/harness/scripts/plan.py:357</code> holds <code>return (plan.base_commit or None) if any(i.status in DONE for i in plan.items) else None</code></li>
+<li><code>plugins/harness/scripts/plan.py:370</code> holds <code>return (claim_problems(repo, book.view())</code></li>
+<li><code>plugins/harness/scripts/plan.py:462-467</code> holds <code>base = plan.base_commit if not base or claims_rev(plan) is not None: return [] found = (pc.anchor_problems(plan, repo, base) + pc.sweep_problems(plan, repo, history_paths(active()), base)) return [f&quot;at base {base[:7]}: {p}&quot; for p in found]</code></li>
+<li><code>plugins/harness/scripts/plan.py:269-275</code> holds <code>def book_of(plan_file: Path, plan: pm.ActionPlan) -&gt; prt.RecordBook:</code></li>
+<li><code>plugins/harness/scripts/plan.py:132-136</code> holds <code>``relink PLAN [--to REF]``</code></li>
+<li><code>plugins/harness/scripts/plan.py:1109</code> holds <code>relink.add_argument(&quot;--to&quot;, metavar=&quot;REF&quot;, help=&quot;The new base (default: the patch-id match on HEAD).&quot;)</code></li>
+</ul>
+<p class="action">Issue 313. (1) plan_lock.relink gains a keyword-only, required parameter `vet: Callable[[str], List[str]]`. Right after `new, match = relink_target(repo, old, to)` and before `preflight`, `plan.base_commit = new`, `save`, the ledger entry and the tag, call `vet(new)`; a non-empty result raises `pd.PlanError(problems)`, so nothing is written. plan_lock stays free of plan_checks and history_paths, as it already takes `save` from the driver. Update the relink docstring to say the candidate is vetted first. (2) plan.py gains `relink_claim_problems(repo, plan_file, plan, candidate) -&gt; List[str]` (under 15 lines, beside base_claim_problems): view = book_of(plan_file, plan).view() (cmd_relink loads the plan with pd.load_plan, whose item statuses on a receipts plan are all PENDING because the statuses live in receipts; only the book view knows which items are done); run pc.anchor_problems(view, repo, candidate) + pc.sweep_problems(view, repo, history_paths(active()), candidate) and return each as `at base &lt;candidate[:7]&gt;: &lt;problem&gt;`, the base_claim_problems shape. It runs on every relink, whether or not an item is done (D1A). (3) cmd_relink passes `vet=lambda sha: relink_claim_problems(repo, plan_file, plan, sha)` (or a functools.partial). (4) The module docstring&#x27;s relink section (plan.py:132-136) and the --to help (plan.py:1109) say the candidate base must hold the plan&#x27;s anchors and sweeps, else relink refuses with at-base problem lines and writes nothing. Copy the planned test file docs/plans/2024/tests/tests/scripts/test_plan_relink_check.py to tests/scripts/ first. Existing relink tests keep passing: their anchor (src/calc.py:1, def add) holds at every base.</p>
+<ul>
+<li>Test <code>tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_once_an_item_is_done</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_missing_an_anchored_file_before_any_item_is_done</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_relink_check.py::test_relink_refuses_a_base_where_a_sweep_classification_goes_stale</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_plan_relink_check.py tests/scripts/test_plan_relink_lock.py tests/scripts/test_plan_lock.py tests/scripts/test_plan_archive_check.py -q</code>: passed, no failures</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/plan_lock.py plugins/harness/scripts/plan.py tests/scripts/test_plan_relink_check.py</code>: All checks passed!</li>
+<li>Record it: <code>plan.py record 2024 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: patch-id miss names the off-history end state instead of inviting --to <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_lock.py</code>, <code>tests/scripts/test_plan_relink_counterpart.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:551-555</code> holds <code>found = fg.patch_id_match(repo, base) if found is None: raise pd.PlanError([f&quot;no commit on HEAD&#x27;s history matches base {base[:12]} by patch-id; &quot; &quot;pass --to REF&quot;]) return found, &quot;patch-id&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_git.py:282-283</code> holds <code>None when nothing matches, ``old`` has no patch id (a merge or an empty commit) or a git step fails.</code></li>
+</ul>
+<p class="action">Per D3A. In plan_lock.relink_target, the refusal when fg.patch_id_match returns None keeps its first clause (&#x27;no commit on HEAD&#x27;s history matches base &lt;sha12&gt; by patch-id&#x27;) and replaces &#x27;; pass --to REF&#x27; with the end state, for example: &#x27;; a base squashed or merged away has no counterpart, and its off-history: warning in check is then the end state (--to only for a commit known to hold the base&#x27;s code)&#x27;. strap_lock.py keeps its own hint (D4A). Copy docs/plans/2024/tests/tests/scripts/test_plan_relink_counterpart.py to tests/scripts/ first.</p>
+<ul>
+<li>Test <code>tests/scripts/test_plan_relink_counterpart.py::test_relink_without_a_counterpart_names_the_off_history_end_state</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_plan_relink_counterpart.py tests/scripts/test_plan_lock.py -q</code>: passed, no failures</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/plan_lock.py tests/scripts/test_plan_relink_counterpart.py</code>: All checks passed!</li>
+<li>Record it: <code>plan.py record 2024 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Relink paragraph in the write-plan SKILL.md and README <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-1, TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/write-plan/SKILL.md</code>, <code>plugins/harness/skills/write-plan/README.md</code>, <code>tests/skills/test_write_plan_relink_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/write-plan/SKILL.md:186-191</code> holds <code>**Relink.** After the developer rebases or squashes, a plan base that left HEAD&#x27;s history shows as `off-history:` in `check`.</code></li>
+<li><code>plugins/harness/skills/write-plan/SKILL.md:193</code> holds <code>**Archive.**</code></li>
+<li><code>plugins/harness/skills/write-plan/README.md:67-69</code> holds <code>After a rebase or squash moves the base off HEAD&#x27;s history (`check` prints `off-history:`), `PLAN relink &lt;id&gt;` re-points `base_commit` on the developer&#x27;s request and leaves the plan Frozen or Locked.</code></li>
+</ul>
+<p class="action">Copy docs/plans/2024/tests/tests/skills/test_write_plan_relink_contract.py to tests/skills/ first. SKILL.md **Relink.** paragraph (step 8): after &#x27;or takes `--to`&#x27;, add that relink then runs the plan&#x27;s anchors and sweeps at that candidate base (the claims `check` reads there once an item is done, and that a freeze requires there before one is) and refuses with `at base &lt;sha7&gt;:` problem lines when any fails, writing nothing. Close the paragraph with: a base squashed inside another pull request (or a merge commit) has no counterpart on HEAD&#x27;s history; relink refuses it, and the `off-history:` warning is then the correct end state, so no `--to` is guessed. &#x27;That is the cue to offer a relink&#x27; becomes the cue when a counterpart exists. README.md (the Locked paragraph, lines 67-69): append &#x27;; it refuses a base where the plan&#x27;s anchors or sweeps fail, and a base squashed inside another pull request, which has no counterpart, stays off-history&#x27;. Keep both files clean for tests/lib/test_strap_lint.py (no first or second person).</p>
+<ul>
+<li>Test <code>tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_states_the_base_check</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_write_plan_relink_contract.py::test_the_relink_paragraph_names_the_off_history_end_state</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_write_plan_relink_contract.py::test_the_skill_readme_states_the_relink_refusal</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/skills/test_write_plan_relink_contract.py tests/lib/test_strap_lint.py tests/skills/test_write_plan_archive_contract.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2024 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: harness version bump and v1.0.0 release notes <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-1, TASK-2, TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.78.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:28</code> holds <code>| harness | 0.65.1 | 0.78.0 |</code></li>
+</ul>
+<p class="action">Bump plugins/harness/.claude-plugin/plugin.json version 0.78.0 -&gt; 0.78.1 (patch: a fix, no new flag under D2A). The latest release tag is v0.7.0 and docs/RELEASES/v1.0.0.md is the proposed next release, so extend it: the Plugins table harness row becomes &#x27;| harness | 0.65.1 | 0.78.1 |&#x27;, and the Changes list gains one line, e.g. &#x27;- Fix(write-plan): `plan.py relink` runs the plan&#x27;s anchors and sweeps at the candidate base and refuses with `at base &lt;sha7&gt;:` problem lines before it writes the base, the `relink` entry or the tag; a base with no patch-id counterpart is refused with the `off-history:` end state instead of a `--to REF` hint (issue #313, plan 2024).&#x27; No other plugin changes.</p>
+<ul>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: validation passes, exit 0</li>
+<li>Run <code>git grep -n -e &quot;0.78.1&quot; -- plugins/harness/.claude-plugin/plugin.json docs/RELEASES/v1.0.0.md</code>: the plugin.json version line and the harness row of the Plugins table</li>
+<li>Record it: <code>plan.py record 2024 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2024/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

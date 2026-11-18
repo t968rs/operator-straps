@@ -1,0 +1,52 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-9",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "4402cb50f3d58b6e45ab2a7c1051b1e3051f3bed"
+    }
+  },
+  "evidence": "staged tree 4402cb5",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/skills/pr-review/SKILL.md",
+        "change": "EX9"
+      },
+      {
+        "path": "plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json",
+        "change": "EX10"
+      },
+      {
+        "path": "plugins/harness/schemas/README.md",
+        "change": "EX10"
+      },
+      {
+        "path": "tests/schemas/test_pr_review_invocation_test_matrix_schema.py",
+        "change": "EX10"
+      },
+      {
+        "path": "tests/mods/test_agent_watcher_adversarial_mirror.py",
+        "change": "EX11"
+      },
+      {
+        "path": "plugins/agent-watcher/types/index.d.ts",
+        "change": "EX11"
+      },
+      {
+        "path": "plugins/harness/schemas/agent_usage.schema.json",
+        "change": "EX11"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX9": "38f7de9d79202f3a89eeac95a40e213107afde24deaa8eb77eae56ec6218aa5a",
+      "EX10": "859d65161be7d5ec6725c9997cc3aaf2d0300bdbc07d26648ad3476b906921bb",
+      "EX11": "c7b3a37476e19dadc88e781c3ee624a7ccb6ffa3de9ae243696cbfbfd6b744d0"
+    }
+  },
+  "date": "2026-11-12",
+  "seal": "a4ab4830c4c8940de81ab46347cca12d96bb976e9bbda0a6c21bb8e7a261f2a0"
+}

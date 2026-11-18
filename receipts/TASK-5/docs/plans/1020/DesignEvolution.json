@@ -1,0 +1,145 @@
+{
+  "plan_id": "1020",
+  "feature": "Plan page formatting",
+  "branch_lineage": "main-->1161-plan-html-improvements",
+  "primary_documents": {
+    "plan": "docs/plans/1020_Plan_page_formatting_ActionPlan.json"
+  },
+  "changes": [
+    {
+      "id": "PR1",
+      "discovered_by": "developer plan review",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 action and tests",
+        "indicated": "Chosen and Rejected labels before their option lists, in default text style"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the frozen plan missed the label wording and color the developer wants",
+        "why_free_form": "Developer: each decision shows Chosen and Unchosen on separate lines, Chosen bold green and Open bold red"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D5A: Chosen: and Unchosen: label lines; .pick.chosen bold var(--ok), .pick.open bold var(--bad); Rejected renamed Unchosen"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "matches the developer's direction for issue 278"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "PR2",
+      "discovered_by": "developer plan review",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "D5A and TASK-2 action and tests",
+        "indicated": "Chosen: and Unchosen: as bold text labels in .pick paragraphs"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the marker look the developer wants was not specified",
+        "why_free_form": "Developer: decision status markers should look like the task heading badge at /html/body/section[1]/h3/span"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "markers are span.mark pills sharing the .status badge rule; Chosen bold green, Open bold red, Unchosen muted"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "matches the developer's direction for issue 278"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "PR3",
+      "discovered_by": "pr-review of PR 294 (docs and overall reviewers)",
+      "phase": "pr-bot-review",
+      "items": [
+        "TASK-4"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-4 action; D3 question",
+        "indicated": "release line: a block with Chosen and Rejected lists; README: an existing page keeps its old layout until deleted and rendered; D3: Chosen and Rejected"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "PR1 renamed Rejected to Unchosen in TASK-2 only",
+        "why_free_form": "TASK-4 dictated a release line naming the Rejected list D5A removed, and its README sentence missed that plan_api.write and freeze rewrite an existing page; D3 still asked about a Rejected list"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-4 release line names Chosen and Unchosen (or Open) lists under pill markers; README sentence names plan_api.write, freeze --refreeze and delete-then-render; D3 asks about Chosen and Unchosen"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the release notes and README describe the page TASK-2 builds and the writers that actually rewrite it (plan.py save and freeze call write_pip)"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "EX1",
+      "discovered_by": "parallel2 quality review of lane task-2 (finding C3)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "items TASK-1 to TASK-4",
+        "indicated": "no item checks decision ids for uniqueness"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "TASK-2 derives a page element id from each decision id",
+        "why_free_form": "decision_problems checks option ids and chosen membership only; a plan with D1 twice renders two id=\"decision-D1\" elements"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5: decision_problems reports a repeated decision id"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "Developer, 2026-11-16, in session: fix C3 in this plan"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "parallel2 quality review of lane task-3 (finding C4)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 planned test test_the_loader_draws_every_badge_that_names_an_item",
+        "indicated": "asserts 'data-status-for' and 'querySelectorAll' in plan.js and 'data-status-for' in the page script"
+      },
+      "issue": {
+        "category": "tdd-discipline",
+        "why_categorical": "the assertions held before TASK-3",
+        "why_free_form": "querySelectorAll was already in plan.js and the page inlines plan.js, so the test passes on a loader that draws only the heading badge"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the test asserts the loader queries '.status[data-status-for=' and no longer reads querySelector(\".status\") per section"
+      },
+      "why_new_outcome": {
+        "category": "mechanical-fix",
+        "free_form": "Developer, 2026-11-16, in session: tighten C4 in this plan"
+      },
+      "date": "2026-11-16"
+    }
+  ]
+}

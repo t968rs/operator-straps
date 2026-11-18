@@ -1,0 +1,29 @@
+{
+  "plan_id": "2023",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "dea5b8bf3c2cf6b9a8dd9f239e027651183c0d88"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_todo_editor_split_lease_contract.py::test_split_writes_its_spec_before_it_takes_the_lease",
+        "tests/skills/test_todo_editor_split_lease_contract.py::test_split_takes_the_lease_right_before_its_dry_run",
+        "tests/skills/test_todo_editor_split_lease_contract.py::test_split_waits_for_a_lease_another_run_holds",
+        "tests/skills/test_todo_editor_split_lease_contract.py::test_a_one_deliverable_split_stops_without_a_release",
+        "tests/skills/test_todo_editor_split_lease_contract.py::test_the_rules_say_when_a_split_holds_the_lease"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_todo_editor_split_lease_contract.py::test_split_writes_its_spec_before_it_takes_the_lease tests/skills/test_todo_editor_split_lease_contract.py::test_split_takes_the_lease_right_before_its_dry_run tests/skills/test_todo_editor_split_lease_contract.py::test_split_waits_for_a_lease_another_run_holds tests/skills/test_todo_editor_split_lease_contract.py::test_a_one_deliverable_split_stops_without_a_release tests/skills/test_todo_editor_split_lease_contract.py::test_the_rules_say_when_a_split_holds_the_lease"
+    }
+  },
+  "evidence": "staged tree dea5b8b: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "9ad3ec212de0781ea2034558cd90540d3622cb8cb4adb09e1244b00e4e0343e5"
+}

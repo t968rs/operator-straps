@@ -1,0 +1,455 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 300,
+  "pr_title": "Feature(todo_sync): `render_snapshot` HTML page",
+  "branch": "1165-todo-snapshot-html",
+  "base_branch": "main",
+  "base_sha": "73dc11499bafbcde714ae10c7459007869f5c8c2",
+  "head_sha": "7d260cf155d2f542c972797197517d07e27a5e46",
+  "review_date": "2026-11-17",
+  "verdict": "READY TO MERGE - 11 of 11 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2561,
+    "deletions": 356,
+    "files_changed": 42,
+    "source": {
+      "additions": 2067,
+      "deletions": 356,
+      "files_changed": 39
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)",
+    "adhoc_1 (adhoc)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/config.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/tests.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/docs.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/overall.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0300/pr300_20261117T150145Z/findings/adhoc_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "snapshots.dir description now matches the code: render writes TODO_Snapshot.html and todo_live.js into it, T2 reads the page, and a null dir switches T2 and render off (todo_sync/__init__.py:74,161-177, sources.py:251-262).",
+    "snapshots.name_pattern is kept in the schema as legacy so existing configs still validate, and the description states the real remaining behavior: config.py:554 still requires the date group and nothing else reads it.",
+    "gh.repo description covers every consumer: render links via gh_repo (snapshot_html.py:111-126, with the item's gh_issue url taking precedence and plain text when null), plus issues.py:108,156 passing --repo to gh.",
+    "The edit is description-only with no change to types, patterns, defaults or additionalProperties, so no config-key checklist item (defaults.json, dataclass, mod mirror) is affected.",
+    "test_todo_snapshot_html.py runs the real todo.js under node with stubbed browser globals and checks the reload count across a stamp sequence ([0, 0, 1, 1, 2, 2]): a behavioral check of the reload-once contract, not a source grep.",
+    "test_stamp_is_read_from_the_trailing_script_not_the_body and test_a_title_quoting_the_loader_keeps_the_live_stamp use item titles that quote `var TODO_PAGE = {};`, so a first-match page_stamp would return None and fail them.",
+    "Escaping is checked for text, attribute values (`\" onclick=\"x`), code spans and non-https issue URLs (`javascript:`), which covers the injection paths the HTML page adds.",
+    "test_root_separation.py switches the render probe to todo_live.js and says why: _todo_project seeds TODO_Snapshot.html, so checking the page would pass even if render wrote nothing.",
+    "Driver tests drop every seeded snapshot under SNAP_DIR before rendering, so the page under test is the one render wrote, and the run also creates the default Snapshots folder.",
+    "The scaffold refusal test is parametrized over TodoSyncError and OSError and checks the caller's message and that the catalog is kept: fault injection with a behavioral assertion, not mock-chain wiring.",
+    "test_todo_sync_render_page.py declares `WALK_ROOTS = ()` for its glob/iterdir over the temp project, which keeps test selection accurate.",
+    "The new link_target assertion pins single-pass encoding (`%20` becomes `%2520`, `#` and `?` are encoded), so a double-encoding regression would fail it.",
+    "render_snapshot writes the page before todo_live.js, and todo.js reloads at most once per live stamp through sessionStorage, so a render that dies between the two writes cannot put an open page into a reload loop.",
+    "The stamp is the sha256 of the page rendered with an empty stamp, so an identical re-render leaves the stamp unchanged and triggers no reload, while any asset or catalog change does.",
+    "Every catalog-derived string in snapshot_html passes through html.escape (attributes quoted), the inlined TODO_PAGE JSON escapes '<', and issue links accept only https:// URLs or a URL built from todo.gh_repo.",
+    "link_target maps each character once, so the new '%' encoding cannot double-encode the escapes it adds, and '#'/'?' no longer turn a stub path into a fragment or query.",
+    "The Markdown renderer (snapshot_markdown, gh_cell, aligned_table, _escape_links, snapshot_name) and the name_pattern preflight are removed outright with no callers left behind; the config docstring records name_pattern as legacy and grep confirms nothing else reads it.",
+    "scaffold._first_snapshot now also wraps OSError (for example an unreadable pages asset), so an init that fails after writing the catalog still names the catalog left behind and render as the way on.",
+    "render_snapshot and _summary guard a non-list items value instead of iterating it, keeping the rendered hash consistent with T2's Sources.items().",
+    "The writer set (render, init, add --inbox, lease release) and the bare commands that leave the page (add --spec, retire, split, refresh, migrate-ids) read the same in README.md:410-412, the release note, and the snapshot_html.py docstring. They match the code: locking._settle and inbox._follow_up render only when todo.snapshots.dir is set.",
+    "The README key table rows for todo.snapshots.dir, name_pattern and gh.repo agree with the reworded schema descriptions and with snapshot_html._issue_url (source URL first, then a URL built from gh.repo, else plain #N).",
+    "todo-editor.md:246-248 and sync-gh-todo SKILL.md:40-41 now describe the page and keep the snapshots.dir condition and the 'stamp not listed' detail, matching locking.release and todo_sync.py:305-308.",
+    "The release bookkeeping is consistent: the harness row Now 0.76.0 matches plugin.json, and the change line cites issues 288/278/280 and plan 2022. It also tells projects that name_pattern is legacy and that old dated markdown snapshots must be deleted by hand.",
+    "The plan freeze records ActionPlan blob 9762acb, which is the blob at head. DesignEvolution EX1 documents the out-of-plan edits (stub_links.py, config.py, SKILL.md), and the TASK-2 and TASK-3 receipts carry matching extra_files deviations.",
+    "The new `init` prose in sync-gh-todo SKILL.md:40-41 matches `_init` in plugins/harness/scripts/todo_sync.py:304-310 exactly. It prints one `created` line for the catalog and one for the page only when `todo.snapshots.dir` is set, and leaves the `todo_live.js` stamp unlisted, as the `InitResult` docstring (scaffold.py:74-75) states.",
+    "The skill package stays consistent across its cross-references. README.md:453-457 and 466-480, the add-todo SKILL.md init hand-off, the scaffold module docstring and the todo_sync.py usage docstring all describe the same snapshot page and stamp, and none still refers to the old dated first snapshot.",
+    "render_snapshot writes the page before todo_live.js and refuses before any write when the rendered page carries no readable stamp, so an open page never reloads into a stale page.",
+    "The stamp is the sha256 of the page rendered with an empty stamp. It is deterministic (test_stamp_is_stable_and_follows_the_content), and page_stamp anchors on the trailing `<script>\\nvar TODO_PAGE` block, so a title quoting the assignment cannot spoof it (covered at unit and driver level).",
+    "Every catalog field read in snapshot_html tolerates malformed types (lists, numbers, None, bool-as-int) and escapes both text and attribute values. Issue source URLs must start with https://, which blocks javascript: hrefs. Each of these has a test.",
+    "The once-per-stamp sessionStorage guard in todo.js prevents a reload loop when a page still disagrees after reloading. It is tested behaviorally by running the real loader under node with stubbed browser globals.",
+    "link_target now percent-encodes %, # and ? in one pass per character, so a stub path cannot become a fragment, a query or a double-encoded escape in an href. The new assertion pins the %20 -> %2520 case.",
+    "D2A keeps todo.snapshots.name_pattern loadable as a legacy key. The schema, config docstring, README key table and release notes all describe it the same way, so no consuming config breaks.",
+    "Docs stay consistent across files. The writer list (render, init, add --inbox, lease release) and the T2 drift scope (ids, ranks, statuses, titles, matching rows_sha256) read the same in the module docstring, the driver docstring, README, release notes and the page intro.",
+    "Coverage of the removed Markdown render tests carries over to test_todo_sync_render_page.py, and the anchor-scan case is still covered in test_todo_sync_stub_links.py. WALK_ROOTS = () correctly marks the render-page test, which walks only tmp folders.",
+    "The root-separation contract checks todo_live.js rather than the pre-seeded page, with an inline comment explaining that a page check would pass vacuously.",
+    "The writer list (render, init, add --inbox, lease release rewrite the page; add --spec, retire, split, refresh, migrate-ids leave it) reads the same in the snapshot_html docstring, the page intro, the README TODO section and the release note, and matches the four render_snapshot call sites.",
+    "name_pattern's legacy status (D2A) is stated consistently in the schema, the TodoSnapshots docstring, the README key row and the release note, and the code agrees: only config load reads it.",
+    "PAGE_NAME is the single source for the page file name across the renderer, Sources.page_rel and the T2 finding text, so a rename cannot leave one reader behind.",
+    "render_snapshot documents and implements page-before-stamp write order, so an open page that sees a new stamp always reloads into the new page.",
+    "The root-separation contract targets todo_live.js with a comment explaining why a page check would be vacuous (the fixture pre-seeds the page).",
+    "render_snapshot renders and validates the stamp before any write, then writes the page before todo_live.js, so a failed render leaves nothing half-written and an open tab only ever reloads into a page at least as new as the stamp it read.",
+    "snapshot_html escapes every catalog value (ids, titles, badges, data attributes, hrefs) through html.escape(quote=True) and the inline config JSON escapes '<', so catalog prose such as '</script>' renders as text; a probe with non-string ids, list ranks, dict statuses, NaN and 1e308 scores, bool issue numbers and a javascript: source url rendered without error and never emitted the unsafe url.",
+    "todo.js reloads at most once per live stamp through a sessionStorage key, so a page that still disagrees with its stamp after one reload stops instead of looping.",
+    "link_target now percent-encodes '%', '#' and '?' in one pass, so a stub path can no longer become a fragment, a query or a double-encoded escape in the page's href.",
+    "Every render caller (scaffold init, inbox drain, lease release) already catches OSError alongside TodoSyncError, so a missing plugin asset or a failed write surfaces as a refusal rather than a traceback.",
+    "Sources.items() and render_snapshot filter a non-list 'items' the same way, so the T2 header hash and the rule's recomputed hash agree on malformed catalogs; the touched todo_sync, canned-message, config, stub-link and rules suites (597 tests) pass at the head.",
+    "All 212 tests in the scoped files pass at the PR head, and the node-backed loader test runs the real todo.js against a stubbed browser and checks reload counts [0, 0, 1, 1, 2, 2].",
+    "test_stamp_is_read_from_the_trailing_script_not_the_body and test_a_title_quoting_the_loader_keeps_the_live_stamp would fail if the `<script>\\n` anchor were dropped from _CONFIG, because the first match would then be the escaped body title.",
+    "test_root_separation now checks for todo_live.js instead of the page, because the fixture pre-seeds the page; the comment states why, so the check can still fail.",
+    "test_todo_snapshot_wiring spells the page name out as PAGE_REL instead of following the helper constant, so a rename of the page fails there even when SNAP_REL changes with it.",
+    "test_t2_reads_the_page_not_a_dated_markdown_snapshot seeds a valid legacy dated snapshot and asserts that T2 still names the missing page, which pins the removal of the newest-snapshot scan.",
+    "Earlier PR 300 review (docs/PR_REVIEWS/0300_todo_snapshot_html.json, READY TO MERGE, 12 of 12 resolved): every finding verified fixed at 7d260cf - I1 README T2 narrowed (README.md:412), I3 link_target encodings pinned (test_todo_sync_stub_links.py:157), M1 gh.repo row (README.md:546), M2 schema gh.repo description, M3 PAGE_NAME in rules_todo.py:87, M4 one-reload-per-stamp docstring (snapshot_html.py:16), M5 todo_sync.py under 110 columns, M6 SKILL.md init conditional, M7 root-separation comment, M8 node-run loader test, M9 OSError parametrized, M11 page_stamp reads."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "'T2 flags only when top-N ids, ranks, statuses or titles changed' leaves out a todo.top_n change",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py",
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "412-413",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The README (README.md:412-413), the snapshot_html module docstring (snapshot_html.py:6-7) and the release note (docs/RELEASES/v1.0.0.md:191-192) all say T2 flags the page *only* when the top-N ids, ranks, statuses or titles changed. rules_todo.t2_snapshot (rules_todo.py:91-95) also warns when the header's `top` differs from the configured `todo.top_n`, even with the same rows hashed. A project that changes top_n gets a T2 finding the three texts say cannot happen.",
+        "fix": [
+          "Add the top_n case to the three sentences, e.g. 'Rule T2 flags a stale page only when todo.top_n or the top-N ids, ranks, statuses or titles changed' in README.md:412-413, snapshot_html.py:6-7 and docs/RELEASES/v1.0.0.md:191-192."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "README init paragraph omits the snapshots.dir condition on the page and its created line",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "453-456",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:453-456 says `todo_sync.py init` writes 'the snapshot page with its `todo_live.js` stamp' and 'prints a `created <path>` line for the catalog and one for the page' with no condition. The code skips both when `todo.snapshots.dir` is null: scaffold._first_snapshot returns None without the dir, and plugins/harness/scripts/todo_sync.py:306-308 prints only non-None paths. The driver docstring (todo_sync.py:45-48) and sync-gh-todo SKILL.md:40-41 already state the condition, so the README is the one place that reads as unconditional.",
+        "fix": [
+          "In README.md:455-456, qualify the page clause, e.g. '... and, when `todo.snapshots.dir` is set, the snapshot page with its `todo_live.js` stamp; it prints a `created <path>` line for the catalog and one for the page (the stamp is not listed).'"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "DesignEvolution EX1 and the TASK-2 receipt leave out the stub_links test edit",
+        "file": "docs/plans/2022/DesignEvolution.json",
+        "files": [
+          "docs/plans/2022/DesignEvolution.json",
+          "docs/plans/2022/receipts/TASK-2.json",
+          "tests/lib/test_todo_sync_stub_links.py"
+        ],
+        "lines": "26-30",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Commit 40c8cda edits tests/lib/test_todo_sync_stub_links.py (a new `%`, `#`, `?` link_target case for the review fix M7), but no task's `files` list names that test and neither the EX1 entry (docs/plans/2022/DesignEvolution.json:26-30, 'TASK-2 also edits todo_sync/stub_links.py') nor the TASK-2 receipt's `deviations.extra_files` (docs/plans/2022/receipts/TASK-2.json:31-36) lists it. The plan record therefore under-reports the files that EX1 changed.\n\nAlso (system_shape): Plan 2022 records each departure from its item file lists: DesignEvolution EX1 (docs/plans/2022/DesignEvolution.json:9-35) and the TASK-2/TASK-3 receipts' extra_files add stub_links.py, config.py and sync-gh-todo/SKILL.md. The PR also changes tests/lib/test_todo_sync_stub_links.py (the new %/#/? encoding case at lines 155-157), which is in no item's files and in no EX entry or receipt extra_files. The plan's record of what the branch touched is incomplete for that file.",
+        "fix": [
+          "Extend EX1 `new_outcome.indicated` to 'TASK-2 also edits todo_sync/stub_links.py and tests/lib/test_todo_sync_stub_links.py' and re-record TASK-2 through `plan.py record` so its `extra_files` carries the test file cited to EX1.",
+          "If the record tool deliberately exempts test files from `extra_files`, add that test to the EX1 `why_free_form` text only, so the catalog names every file the review fix touched.",
+          "Extend EX1 (or add EX2) in docs/plans/2022/DesignEvolution.json so its new_outcome names tests/lib/test_todo_sync_stub_links.py under TASK-2, the item that owns stub_links.py.",
+          "Or re-record TASK-2 with the file listed in its deviations.extra_files, citing the EX entry."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Schema todo.gh.repo description omits inbox put --file-issue, which the README row names",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "202",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "harness.schema.json:202 (rewritten by this PR) lists the readers of todo.gh.repo as render, `todo_sync.py untracked` and `add --file-issue`. The README key row (README.md:546) also names `todo_sync.py inbox put --file-issue` (`add-todo --issue`), and the code agrees with the README: inbox.put (inbox.py:137-138) files through reshape._file_pending, the same path `add --file-issue` uses, which passes cfg.todo.gh_repo to gh as --repo (issues.py:156). The two documents describing one key now list different readers.",
+        "fix": [
+          "Extend the schema description at harness.schema.json:202 to read '... and by `todo_sync.py untracked`, `add --file-issue` and `inbox put --file-issue`, which pass it to gh as --repo, where null means the repository gh resolves for the checkout.'"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "canned_messages docstring says LOOKUP names come from defaults.json; the two new ones are code constants",
+        "file": "plugins/harness/lib/harness_lib/canned_messages.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/canned_messages.py",
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py"
+        ],
+        "lines": "8-13,39-40",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring states the entries use the plugin's default file names from config/defaults.json (the todo names) and that a project renaming those files gets no built-in message. TODO_Snapshot.html and todo_live.js are not config values at all: they are the fixed PAGE_NAME and LIVE_NAME constants in todo_sync/snapshot_html.py:31-32, which no project can rename. The docstring now misdescribes where two of the entry's patterns come from.",
+        "fix": [
+          "Extend the docstring paragraph at canned_messages.py:8-13 to say the snapshot page and stamp names are the fixed PAGE_NAME and LIVE_NAME of harness_lib.todo_sync.snapshot_html, not config values."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Stub href whose first segment holds a colon parses as a URL scheme",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/stub_links.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/stub_links.py",
+          "plugins/harness/lib/harness_lib/todo_sync/snapshot_html.py"
+        ],
+        "lines": "17-18,110-118",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "link_target now feeds an HTML href (snapshot_html._item_cell writes it into <a href>), but _ENCODE leaves ':' alone. _norm only rejects a colon in the first segment of the repo-relative path; relpath from the snapshot folder can still start with a colon-bearing segment when a stub sits in a subfolder of todo.snapshots.dir (POSIX filesystems allow it). The browser then reads that segment as a scheme (for example 'javascript:...', whose percent escapes it decodes) instead of a relative path. Contrived, since it needs a catalog-referenced stub under such a folder, but the page is a clickable document and the encoder is the one place that hardens it.",
+        "fix": [
+          "Add \":\": \"%3A\" to _ENCODE in stub_links.py (relative paths never need a literal colon), and extend the link_target docstring to name it.",
+          "Or prefix the result with './' when its first path segment contains ':'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Step 1 ends the run on a partial init whose catalog already exists",
+        "file": "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py"
+        ],
+        "lines": "40-44",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:42 says any `problem:` line from `init` ends the run. `_first_snapshot` (scaffold.py:109-117) writes the catalog first and, when the page render fails, raises `<reason>; <catalog> was created, finish with todo_sync.py render`. This PR widens that path to catch `OSError` as well. In that case the catalog exists, and `untracked` (which never reads the page) could continue, yet the skill stops the sync. The skill also gives no way to tell this partial outcome from the overwrite refusal. Step 3 already handles the equivalent partial-success line (`problem: inbox: added <ids>, then: <reason>`) explicitly, so Step 1 is the odd one out.",
+        "fix": [
+          "In plugins/harness/skills/sync-gh-todo/SKILL.md Step 1, add one sentence: a `problem:` line from `init` ending `was created, finish with todo_sync.py render` means the catalog landed and only the page failed. Relay it, then rerun the untracked command and continue (or run `todo_sync.py render` first).",
+          "Alternatively, state that this partial line also ends the run and that the developer finishes with `todo_sync.py render`, so the relayed instruction and the skill agree."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "test_root_separation departs from TASK-2 wording without a DesignEvolution entry",
+        "file": "tests/contract/test_root_separation.py",
+        "files": [
+          "tests/contract/test_root_separation.py",
+          "docs/plans/2022/DesignEvolution.json",
+          "docs/plans/2022_TODO_snapshot_as_one_HTML_page_ActionPlan.json"
+        ],
+        "lines": "329-335",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "Plan 2022 TASK-2 says `test_root_separation.py TODO_OUTPUTS names the page`. The head names `docs/RESEARCH/_TODO/Snapshots/todo_live.js` instead, with a comment explaining why: _todo_project pre-seeds TODO_Snapshot.html, so a check on the page passes even when render writes nothing. The code is the better choice. DesignEvolution.json records EX1 for the extra files, but this content departure from the frozen plan's action text is not recorded, so the plan and the code disagree for a reader of the plan.",
+        "fix": [
+          "Append a DesignEvolution change (category factual-correction) recording that TODO_OUTPUTS names todo_live.js because the helper seeds the page."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Source-text regex checks on todo.js break on harmless edits",
+        "file": "tests/lib/test_todo_snapshot_html.py",
+        "files": [
+          "tests/lib/test_todo_snapshot_html.py",
+          "plugins/harness/pages/components/todo.js"
+        ],
+        "lines": "275-282",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_the_loader_reloads_only_on_a_new_stamp checks the loader by matching regexes against the JS source and counting substrings (`loader.count(\"location.reload\") == 1`, `loader.count(\"reloadFor(\") == 2`). A comment that mentions `reloadFor(` or `location.reload`, a renamed local, or a reformatted `if` fails it even though behavior is unchanged. The node-run test at lines 285-293 already checks the same reload-once contract by running the loader, so the regex test mainly matters where node is missing.\n\nAlso (overall): test_the_loader_reloads_only_on_a_new_stamp asserts loader.count(\"location.reload\") == 1 and loader.count(\"reloadFor(\") == 2 on the raw text of pages/components/todo.js. Comments count too: todo.js already carries a comment block about reloading at lines 3-4, and a future comment naming `reloadFor(` or `location.reload` fails the test with no change in behavior. test_the_loader_reloads_once_per_new_stamp_when_run already checks the same contract by running todo.js under node, which the Ubuntu CI leg has. The text check matters only as the fallback when node is missing.",
+        "fix": [
+          "Keep the node-run test as the contract and mark the regex test `@pytest.mark.skipif(NODE is not None, ...)` so it runs only as a fallback when node is missing.",
+          "Remove the count assertions (lines 281-282) and keep only the LIVE_GUARD and RELOAD_ONCE searches, which state the guard without depending on how many times a name appears in comments.",
+          "Strip `//` and `/* */` comments from the loader text before the count and regex assertions (for example re.sub(r\"/\\*.*?\\*/|//[^\\n]*\", \"\", loader, flags=re.S)).",
+          "Drop the two count assertions and keep LIVE_GUARD / RELOAD_ONCE plus the node-run test as the behavioral check."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Wiring docstring misstates why the init case overlaps the scaffold test",
+        "file": "tests/lib/test_todo_snapshot_wiring.py",
+        "files": [
+          "tests/lib/test_todo_snapshot_wiring.py",
+          "tests/lib/test_todo_sync_scaffold.py",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "tests/scripts/test_todo_sync_render_page.py"
+        ],
+        "lines": "6-8,58-62",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring says the T2 and init cases overlap test_todo_sync_rules_todo.py and test_todo_sync_scaffold.py because 'those follow SNAP_REL from the helpers, while these spell the page name out'. That holds for the T2 cases, but test_todo_sync_scaffold.py:27 already spells the page name out (`SNAP_DIR / \"TODO_Snapshot.html\"`) and never uses SNAP_REL. So the stated reason does not apply to test_init_writes_the_page_and_its_stamp: its page assertion repeats scaffold line 27, and the only new check is the todo_live.js stamp at line 62.\n\nAlso (adv_code_tests): render_snapshot's docstring makes the order a contract: 'The page goes first, so an open page that reads the new stamp reloads into the new page.' If the stamp is written first, a browser poll between the two writes reads the new stamp, reloads into the old page and records that stamp in sessionStorage. The loader then never reloads for that stamp again, so the open page stays on stale content until the next render. No test checks the order. tests/scripts/test_todo_sync_render_page.py:63-74 and tests/lib/test_todo_snapshot_wiring.py:58-62 check only that both files exist and that their stamps agree after the call returns.\n\nAttack: Mutation: in plugins/harness/lib/harness_lib/todo_sync/__init__.py render_snapshot, swap the two write_atomic calls so that `write_atomic(folder / LIVE_NAME, live_script(stamp, rendered))` runs before `path = write_atomic(folder / PAGE_NAME, text)`. The function returns the same path and writes the same two files, so test_render_writes_the_page_and_its_stamp_and_t2_is_clean, test_a_second_render_rewrites_the_one_page, test_init_writes_the_page_and_its_stamp and the root-separation case 'todo_sync render' all still pass. Yet the documented race guarantee is gone: the loader in plugins/harness/pages/components/todo.js:6-11 marks the new stamp as reloaded-for, so a page that reloads into the old file is never retried.",
+        "fix": [
+          "Reword the docstring: the T2 cases spell out the name that rules_todo follows through SNAP_REL, and the init case adds the todo_live.js stamp check the scaffold test lacks.",
+          "Move the `todo_live.js` is_file assertion into test_init_writes_a_catalog_and_snapshot_that_check_clean (tests/lib/test_todo_sync_scaffold.py:23-30), delete the duplicate init case, and drop 'and init' from the docstring.",
+          "Add a test in tests/lib/test_todo_snapshot_wiring.py that monkeypatches harness_lib.todo_sync.write_atomic with a recorder that delegates to the real function, calls render_snapshot, and asserts the recorded names are ['TODO_Snapshot.html', 'todo_live.js'] in that order."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "render_snapshot's no-stamp refusal and gh_repo wiring are untested",
+        "file": "tests/scripts/test_todo_sync_render_page.py",
+        "files": [
+          "tests/scripts/test_todo_sync_render_page.py",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "tests/lib/test_todo_snapshot_html.py"
+        ],
+        "lines": "98-101",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "render_snapshot (plugins/harness/lib/harness_lib/todo_sync/__init__.py) refuses with 'rendered page carries no readable stamp; nothing written' and passes `gh_repo=todo.gh_repo` into SnapshotPage. No test in scope covers either one. The refusal's promise that nothing is written is never asserted. The configured-repo fallback is tested only at unit level in test_todo_snapshot_html.py:182-186, with gh_repo passed by hand, so a driver that dropped the config value would still pass.\n\nAlso (adv_code_tests): render_snapshot passes gh_repo=todo.gh_repo into SnapshotPage, and the schema description now says render links a bare gh issue number to https://github.com/<repo>/issues/N. Only the unit tests in tests/lib/test_todo_snapshot_html.py:182-186 pass gh_repo, and they call render_page directly. No driver or render_snapshot test configures todo.gh.repo: tests/scripts/test_todo_sync_render_page.py:98-101 checks #11, whose link comes from the fixture's gh_issue source url, and checks 'tracker #101' only as text. The only tests that set gh.repo are tests/lib/test_todo_sync_file_issue.py:81 and tests/lib/test_todo_sync_issues.py:107, and neither renders.\n\nAttack: Mutation: in plugins/harness/lib/harness_lib/todo_sync/__init__.py render_snapshot, change `gh_repo=todo.gh_repo` to `gh_repo=None` (or leave the keyword out). The configured repo then never reaches the page, so tracker and related numbers without a source url stop linking. Every test in scope still passes, 212 of them in a run of the PR's todo tests at head: test_gh_and_tracker_cells (tests/scripts/test_todo_sync_render_page.py:98-101) checks only the text 'tracker #101' and the source-url link for #11, and no other render or render_snapshot test sets todo.gh.repo (Grep of tests/ for '\"gh\": {' finds only test_todo_sync_file_issue.py:81 and test_todo_sync_issues.py:107).",
+        "fix": [
+          "Add a case to tests/scripts/test_todo_sync_render_page.py that sets `todo.gh.repo` in the config, removes the `url` from a gh_issue source, renders, and asserts the row links to `https://github.com/<repo>/issues/<n>`.",
+          "Add a lib test that monkeypatches `harness_lib.todo_sync.page_stamp` to return None, calls render_snapshot, and asserts TodoSyncError and that neither TODO_Snapshot.html nor todo_live.js exists.",
+          "Add a case to tests/scripts/test_todo_sync_render_page.py that renders with config(todo={\"folder\": TODO_DIR, \"gh\": {\"repo\": \"o/r\"}}) and asserts '<a href=\"https://github.com/o/r/issues/101\">#101</a>' in rows[1], since the fixture item todo-sp7t has tracker 101 and no gh_issue source url for it.",
+          "Add the matching negative case: without gh.repo, rows[1] holds 'tracker #101' and no '<a ' inside its GH cell."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 300 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"40c8cdabf3dc44e8c9a14ad4e69ab3724f91fb6a\",\"headRefName\":\"1165-todo-snapshot-html\",\"headRefOid\":\"7d260cf155d2f542c972797197517d07e27a5e46\",\"last_sha\":\"7d260cf155d2f542c972797197517d07e27a5e46\",\"mergeCommit\":null,\"number\":300,\"state\":\"OPEN\",\"title\":\"Feature(todo_sync): `render_snapshot` HTML page\",\"url\":\"https://github.com/t968rs/operator-straps/pull/300\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (15 checked, 0 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 15,
+          "findings_refuted": 0,
+          "findings_upheld": 15,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1165-todo-snapshot-html",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1165-todo-snapshot-html",
+        "head_ref_name": "1165-todo-snapshot-html",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " D docs/PR_REVIEWS/0300_todo_snapshot_html.json\n M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "40c8cdabf3dc44e8c9a14ad4e69ab3724f91fb6a",
+        "head_sha": "7d260cf155d2f542c972797197517d07e27a5e46",
+        "base_ancestor_command": "git merge-base --is-ancestor 40c8cdabf3dc44e8c9a14ad4e69ab3724f91fb6a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 7d260cf155d2f542c972797197517d07e27a5e46 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - T2 sentence now names todo.top_n as a flag condition in README.md (Rule T2 paragraph) and the snapshot_html module docstring; release note and rules_todo.py are the other part's; Release note T2 sentence now reads 'only when `todo.top_n` or the top-N ids, ranks, statuses or titles changed'; rules_todo.py: cited source of the top_n check (t2_snapshot), behavior is correct, no edit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - README init paragraph qualifies the snapshot page with its todo_live.js stamp and the page created line on todo.snapshots.dir being set; the stamp is noted as unlisted; No edit in this part: scaffold._first_snapshot docstring and the todo_sync.py init docstring already state the todo.snapshots.dir condition; the README wording belongs to the other part"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - README key row already names inbox put --file-issue; the schema description edit at harness.schema.json:202 is the other part's; Schema todo.gh.repo description now lists `inbox put --file-issue` with `untracked` and `add --file-issue` as gh --repo readers; inbox.py: cited, put already files through reshape._file_pending (inbox.py:137-138)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - PAGE_NAME and LIVE_NAME are defined in snapshot_html.py; the canned_messages.py docstring edit is the other part's; Module docstring now says TODO_Snapshot.html and todo_live.js are the fixed PAGE_NAME and LIVE_NAME of harness_lib.todo_sync.snapshot_html, not config values; paragraph reflowed to 110 columns"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - link_target href is written by _item_cell in snapshot_html.py; the ':' encoder fix belongs in stub_links.py, the other part's; Added ':' -> '%3A' to _ENCODE so a colon-bearing first segment never reads as a URL scheme; link_target docstring names it"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - test_the_loader_reloads_only_on_a_new_stamp strips // and /* */ comments (new _without_comments helper) before the needle, regex and count checks, so comments naming reloadFor( or location.reload no longer fail it; todo.js: cited only, no edit needed"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - Wiring docstring reworded (T2 cases spell out the name rules_todo follows via SNAP_REL; init case adds the todo_live.js check the scaffold test lacks); added test_render_writes_the_page_before_its_stamp, which records write_atomic calls and asserts page then stamp; scaffold test, __init__.py and render_page test: cited only, no edit needed"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - Added driver case rendering with todo.gh.repo=o/r that asserts the tracker #101 link, a negative check (no <a in the tracker cell without gh.repo), and a lib case in the wiring test that patches page_stamp to None and asserts TodoSyncError with neither file written; __init__.py and test_todo_snapshot_html.py: cited only, no edit needed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - SKILL.md Step 1 now treats a problem: line ending 'was created, finish with todo_sync.py render' as a partial init (catalog landed, page failed): relay it, rerun the untracked command and continue; scaffold.py: cited source of that message, no edit"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - Added DesignEvolution EX2 (TASK-2, reference-accuracy/factual-correction) naming tests/lib/test_todo_sync_stub_links.py as a file the EX1 review fix touched; EX1 left as is so its digest (cited by the TASK-2 and TASK-3 receipts) still holds; receipts/TASK-2.json: sealed receipt left alone, re-recording would rebind to a different staged tree; test_todo_sync_stub_links.py: cited, the edit under report already exists"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "7d260cf (working-tree snapshot; developer commits) - Added DesignEvolution EX3 (TASK-2, factual-correction) recording that TODO_OUTPUTS names todo_live.js because _todo_project seeds the page; test_root_separation.py: cited, code and comment already right; ActionPlan: frozen plan, departure recorded in the catalog instead"
+    }
+  ]
+}

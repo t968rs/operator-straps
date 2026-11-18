@@ -1,0 +1,19 @@
+{
+  "plan_id": "1020",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "3f8b109ec04c41bb7eb7660f3549f53c47adee70"
+    }
+  },
+  "evidence": "staged tree 3f8b109",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "0a17a28faf0e588d44f1f5276070d35c2e561231785e9165da89dc764ac5c2f9"
+}
