@@ -1,0 +1,38 @@
+{
+  "plan_id": "2026",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "9883c1a6c30e8004288916ce1f02e42f796fd6cf"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_add_note_script.py::test_a_full_file_refuses_another_note",
+        "tests/skills/test_add_note_script.py::test_list_numbers_the_notes",
+        "tests/skills/test_add_note_script.py::test_add_records_the_current_branch",
+        "tests/skills/test_add_note_script.py::test_add_standing_stores_no_branch",
+        "tests/skills/test_add_note_script.py::test_add_on_a_detached_head_stores_a_standing_note",
+        "tests/skills/test_add_note_script.py::test_list_marks_a_note_from_another_branch",
+        "tests/skills/test_add_note_script.py::test_remove_drops_one_note_and_prints_the_list",
+        "tests/skills/test_add_note_script.py::test_removing_the_last_note_says_none_are_left",
+        "tests/skills/test_add_note_script.py::test_remove_or_edit_out_of_range_changes_nothing",
+        "tests/skills/test_add_note_script.py::test_remove_on_an_absent_file_is_refused",
+        "tests/skills/test_add_note_script.py::test_edit_replaces_the_text_and_keeps_added_and_branch",
+        "tests/skills/test_add_note_script.py::test_edit_of_a_full_file_is_allowed",
+        "tests/skills/test_add_note_script.py::test_edit_refuses_blank_and_too_long_text",
+        "tests/skills/test_add_note_script.py::test_remove_and_edit_refuse_a_malformed_file"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_add_note_script.py::test_a_full_file_refuses_another_note tests/skills/test_add_note_script.py::test_list_numbers_the_notes tests/skills/test_add_note_script.py::test_add_records_the_current_branch tests/skills/test_add_note_script.py::test_add_standing_stores_no_branch tests/skills/test_add_note_script.py::test_add_on_a_detached_head_stores_a_standing_note tests/skills/test_add_note_script.py::test_list_marks_a_note_from_another_branch tests/skills/test_add_note_script.py::test_remove_drops_one_note_and_prints_the_list tests/skills/test_add_note_script.py::test_removing_the_last_note_says_none_are_left tests/skills/test_add_note_script.py::test_remove_or_edit_out_of_range_changes_nothing tests/skills/test_add_note_script.py::test_remove_on_an_absent_file_is_refused tests/skills/test_add_note_script.py::test_edit_replaces_the_text_and_keeps_added_and_branch tests/skills/test_add_note_script.py::test_edit_of_a_full_file_is_allowed tests/skills/test_add_note_script.py::test_edit_refuses_blank_and_too_long_text tests/skills/test_add_note_script.py::test_remove_and_edit_refuse_a_malformed_file"
+    }
+  },
+  "evidence": "staged tree 9883c1a: 14 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "a8ab3f6980a9f0b0360f1c1148d76732970c49135d6fd56961e27be78281298c"
+}
