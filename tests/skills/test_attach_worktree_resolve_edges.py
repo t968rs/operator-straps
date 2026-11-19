@@ -174,6 +174,8 @@ def _load_resolve(plugin_root: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.syspath_prepend(str(commands))
     spec = importlib.util.spec_from_file_location("attach_resolve_under_test", commands / "attach_resolve.py")
     module = importlib.util.module_from_spec(spec)
+    # Python 3.11 dataclasses resolve string annotations through sys.modules[cls.__module__].
+    monkeypatch.setitem(sys.modules, spec.name, module)
     spec.loader.exec_module(module)
     return module
 
