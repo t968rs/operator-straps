@@ -102,12 +102,14 @@ developer, who runs it. While a stop is pending, a plain run refuses.
 
 - **0**: moved (the worktree is removed), or aborted.
 - **1**: refused or failed; `attach_worktree: <reason>` on stderr. A refusal never changes the target. Outside
-  the resolution loop it leaves the worktree's files and index as they were. Inside the loop some refusals
-  leave the worktree rebased:
-  - the error says the attach state is kept: the way out is `--continue` or `--abort`, as it names;
-  - the error says the attach is dropped and the worktree kept (a resolution or a `--committed` rebase that
-    leaves nothing to move, say): the worktree HEAD may sit at the rebased commit and `--abort` no longer
-    applies, so report it to the developer and stop.
+  the resolution loop it leaves the worktree's files and index as they were. Inside the loop a refusal either
+  keeps the attach state or drops it:
+  - the error says the attach state is kept: the worktree may sit at a rebased commit, and the way out is
+    `--continue` or `--abort`, as it names;
+  - the error says the attach is dropped (a rebase that never starts, or a resolution or a `--committed`
+    rebase that leaves nothing to move): the worktree is back at its HEAD before the attach and `--abort` no
+    longer applies, so report it to the developer and stop. A recovery command the error names is the
+    developer's to run.
 
   A usage error also exits 1. If the move succeeded but the worktree removal failed, the report prints and the
   error names the removal command.

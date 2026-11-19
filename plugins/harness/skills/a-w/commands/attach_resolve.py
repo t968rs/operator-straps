@@ -196,8 +196,8 @@ def unstarted(worktree: Path, state: State, done: subprocess.CompletedProcess) -
                            "nothing moved")
     lost = ""
     if head != state.original_head:
-        lost = (f"; the resolved HEAD {head} is no longer checked out: recover it with git -C {wt} reset "
-                f"--hard {head}")
+        lost = (f"; the resolved HEAD {head} is no longer checked out: the developer can recover it with "
+                f"git -C {wt} reset --hard {head}")
     return AttachError(f"git rebase could not start in the worktree ({stderr_of(done)}); the attach is "
                        f"dropped and the worktree is back at {state.original_head[:7]}{lost}; nothing moved")
 
@@ -264,16 +264,25 @@ def check_resolved(worktree: Path, state: State) -> None:
 
 
 def check_moves_something(worktree: Path, target: Path, state: State, head: str, final: str) -> None:
-    """Drop an attach whose resolution kept the branch's copy of every path; nothing is left to land."""
+    """Drop an attach whose resolution kept the branch's copy of every path; nothing is left to land.
+
+    The resolved HEAD holds nothing beyond the target, so the worktree goes back to its original HEAD
+    before the state goes; a failed reset keeps the state, so ``--abort`` can still finish the job.
+    """
     if state.mode == "committed":
         empty = head == state.target_head
     else:
         empty = not merge.diff_paths(target, state.target_head, final)
-    if empty:
-        clear_state(worktree)
-        raise AttachError(f"the resolution kept the branch's copy of every path, so nothing moves; the "
-                          f"attach is dropped and the worktree {worktree.as_posix()} is kept at {head[:7]} "
-                          f"(its HEAD before the attach was {state.original_head[:7]})")
+    if not empty:
+        return
+    nothing = "the resolution kept the branch's copy of every path, so nothing moves"
+    try:
+        restore(worktree, state)
+    except AttachError as exc:
+        raise AttachError(f"{nothing}; resetting the worktree to {state.original_head[:7]} failed ({exc}), "
+                          "so the attach state is kept: run --abort once that is fixed") from exc
+    raise AttachError(f"{nothing}; the attach is dropped and the worktree {worktree.as_posix()} is back at "
+                      f"{state.original_head[:7]}, its HEAD before the attach")
 
 
 def land_resolved(worktree: Path, target: Path, state: State) -> List[str]:
@@ -317,7 +326,8 @@ def dropped_work(worktree: Path, state: State) -> List[str]:
     head = git(worktree, "rev-parse", "HEAD")
     notes: List[str] = []
     if head != state.original_head:
-        notes.append(f"the worktree HEAD {head} is dropped: recover it with git -C {wt} reset --hard {head}")
+        notes.append(f"the worktree HEAD {head} is dropped: the developer can recover it with git -C {wt} "
+                     f"reset --hard {head}")
     edits = saved_edits(worktree, wt)
     return notes + ([edits] if edits else [])
 

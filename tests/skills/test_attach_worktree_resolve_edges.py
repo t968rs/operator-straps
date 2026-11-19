@@ -138,7 +138,7 @@ def test_a_usage_error_exits_1_not_the_resolution_code(script_path: Path, repos:
 
 def test_a_resolution_that_keeps_the_branch_copy_clears_the_state(script_path: Path, repos: dict) -> None:
     main, wt = repos["main"], repos["wt"]
-    _, moved = _conflict(repos)
+    original, moved = _conflict(repos)
     assert _run(script_path, repos, "feature").returncode == 2
     _write(wt, "shared.txt", _TARGET)
     _git(wt, "add", "shared.txt")
@@ -147,6 +147,22 @@ def test_a_resolution_that_keeps_the_branch_copy_clears_the_state(script_path: P
     assert "branch's copy" in done.stderr and "--continue" not in done.stderr
     assert not _state_file(wt).exists()
     assert wt.exists()
+    assert _git(wt, "rev-parse", "HEAD") == original
+    _untouched(main, moved)
+
+
+def test_committed_whose_commits_the_target_already_holds_restores_the_worktree(script_path: Path,
+                                                                                repos: dict) -> None:
+    main, wt = repos["main"], repos["wt"]
+    original = _commit(wt, "shared.txt", _WT, "worktree edit")
+    _commit(main, "other.txt", "other\n", "target edit")
+    moved = _commit(main, "shared.txt", _WT, "same edit, landed on the target")
+    done = _run(script_path, repos, "feature", "--committed")
+    assert done.returncode == 1, done.stdout + done.stderr
+    assert "nothing moves" in done.stderr and "--continue" not in done.stderr
+    assert original[:7] in done.stderr
+    assert _git(wt, "rev-parse", "HEAD") == original
+    assert not _state_file(wt).exists()
     _untouched(main, moved)
 
 
@@ -190,6 +206,7 @@ def test_a_restart_that_cannot_start_names_the_discarded_resolution(script_path:
     _refusing_pre_rebase_hook(main)
     done = _run(script_path, repos, "--continue")
     assert done.returncode == 1, done.stdout + done.stderr
+    assert "the developer can recover it with git -C" in done.stderr, done.stderr
     assert f"reset --hard {resolved}" in done.stderr, done.stderr
 
 
