@@ -3,7 +3,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { Engine } from 'claude-code/testing'
 
-import type { GitSnapshot, SessionFigures } from '../types'
+import type { GitSnapshot, SessionFigures, WorkingLine } from '../types'
 import { ctxLabel, formatBanner, modelLabel, needsAttention, NO_FIGURES, TICK_MS } from './banner'
 
 const ROOT = '/repo'
@@ -25,7 +25,7 @@ type World = {
   /** git-status's snapshot as its state holds it; null before its first run. Unset is a clean `dev`. */
   git?: GitSnapshot | null
   /** working-refs's `line` value as its state holds it; unset means working-refs never wrote the key. */
-  refs?: { text: string } | null
+  refs?: WorkingLine | null
   /** `$.session.model()` and `$.session.usage()` refuse. */
   isSessionBroken?: boolean
   /** `$.session.model()`'s answer; unset is Sonnet 5.5. */
@@ -268,6 +268,62 @@ describe('the oStraps band', () => {
   })
 
   test('a working line from working-refs draws as a second line under the banner', async ($, on) => {
+    world(on, { refs: { text: 'plan 2025 · todo-k69m (301)' } })
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE, 'plan 2025 · todo-k69m (301)'])
+  })
+
+  test('a working line with other-branch segments draws head, then each segment in order', async ($, on) => {
+    world(on, {
+      refs: {
+        text: 'todo-k69m · [ other todo-zz99 ] [ b #5 ]',
+        head: 'todo-k69m',
+        others: [{ branch: 'other', refs: 'todo-zz99' }, { branch: 'b', refs: '#5' }],
+        more: 0,
+      },
+    })
+    await $.prompt.submit(submit)
+    // the outer Text holds the whole plain line; each branch name is a nested Text after it
+    expect(await texts($)).toEqual([SONNET_LINE, 'todo-k69m · [ other todo-zz99 ] [ b #5 ]', 'other', 'b'])
+  })
+
+  test('other-branch names draw dim, the rest of the line plain', async ($, on) => {
+    world(on, {
+      refs: {
+        text: 'todo-k69m · [ other todo-zz99 ] [ b #5 ]',
+        head: 'todo-k69m',
+        others: [{ branch: 'other', refs: 'todo-zz99' }, { branch: 'b', refs: '#5' }],
+        more: 0,
+      },
+    })
+    await $.prompt.submit(submit)
+    const ui = await $.ui.mount({ plugin: 'band-line', surface: 'terminal', ...BAND })
+    const dim = (await ui.findAll({ type: 'Text' })).filter(t => t.props.dimColor === true).map(t => t.text)
+    await ui.unmount()
+    expect(dim).toEqual(['other', 'b'])
+  })
+
+  test('segments left out by the cap show as +N after the head, no separator before it', async ($, on) => {
+    world(on, { refs: { text: 'todo-k69m +1', head: 'todo-k69m', others: [], more: 1 } })
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE, 'todo-k69m +1'])
+  })
+
+  test('an empty head leaves the first segment first, with no leading separator', async ($, on) => {
+    world(on, {
+      refs: { text: '[ a todo-aaaa ] +1', head: '', others: [{ branch: 'a', refs: 'todo-aaaa' }], more: 1 },
+    })
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE, '[ a todo-aaaa ] +1', 'a'])
+  })
+
+  test('an empty head and no segments draws no second line', async ($, on) => {
+    world(on, { refs: { text: '', head: '', others: [], more: 0 } })
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE])
+  })
+
+  test('a line from an older working-refs, with text alone, draws that text', async ($, on) => {
     world(on, { refs: { text: 'plan 2025 · todo-k69m (301)' } })
     await $.prompt.submit(submit)
     expect(await texts($)).toEqual([SONNET_LINE, 'plan 2025 · todo-k69m (301)'])
