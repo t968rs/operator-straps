@@ -36,6 +36,13 @@ hand during a stop owns what that brings in.
 The worktree is removed once the move succeeds. Files its ignore rules match never move and are discarded
 with it. A refusal changes nothing in the target and says why; a successful move prints the backup and an
 undo that matches the mode (path-scoped for a staged move, ``reset --keep`` for ``--committed``).
+
+One ignored file is rebuilt instead of lost: a receipts plan's ``live.js`` (``harness_lib.plan_live``), which
+its HTML page reloads. After a successful move, and before the worktree goes, every frozen receipts plan with
+a page whose receipts, freeze ledger entries, plan JSON or DesignEvolution the move landed in the target's
+``artifacts.plans`` gets its ``live.js`` rebuilt there, one ``live: rebuilt <plans>/<id>/live.js`` line each
+(paths the target already held staged count as landed). A rebuild that fails prints a ``live: warning:`` line
+naming ``plan.py render <id>`` and leaves the exit code 0.
 """
 from __future__ import annotations
 
@@ -63,6 +70,14 @@ MIN_GIT = (2, 40)
 class Checkout(NamedTuple):
     path: Path
     branch: Optional[str]
+
+
+class Moved(NamedTuple):
+    """A landed move: the target checkout, its HEAD before the move, and the move's report lines."""
+
+    target: Path
+    before: str
+    lines: List[str]
 
 
 def check_git_version(version_output: str) -> None:
@@ -316,19 +331,20 @@ def check_resume(args: argparse.Namespace, state: Optional[State], entries: List
     return state
 
 
-def resume(worktree: Path, entries: List[Checkout], state: State) -> List[str]:
+def resume(worktree: Path, entries: List[Checkout], state: State) -> Moved:
     """``--continue``: finish a stopped rebase and land, or restart the flow from the resolved HEAD."""
     target = target_checkout(entries, state.target_branch, worktree)
+    before = git(target, "rev-parse", "HEAD")
     if resolve.rebasing(worktree):
         resolve.continue_rebase(worktree, state)
-        return resolve.land_resolved(worktree, target, state)
+        return Moved(target, before, resolve.land_resolved(worktree, target, state))
     resolve.check_resolved(worktree, state)
     move = move_committed if state.mode == "committed" else move_staged
-    return move(worktree, target, state.target_branch, state.rules, prior=state)
+    return Moved(target, before, move(worktree, target, state.target_branch, state.rules, prior=state))
 
 
 def start(args: argparse.Namespace, worktree: Path, entries: List[Checkout],
-          state: Optional[State]) -> List[str]:
+          state: Optional[State]) -> Moved:
     """A plain run: refuse while an attach is stopped or another rebase is in progress, else move."""
     if state is not None:
         raise AttachError(f"an attach to {state.target_branch} is stopped for resolution in this worktree; "
@@ -337,8 +353,65 @@ def start(args: argparse.Namespace, worktree: Path, entries: List[Checkout],
     branch = resolve_branch(entries, args.target)
     target = target_checkout(entries, branch, worktree)
     rules = load_rules(target, args.auto_resolve)
+    before = git(target, "rev-parse", "HEAD")
     move = move_committed if args.committed else move_staged
-    return move(worktree, target, branch, rules)
+    return Moved(target, before, move(worktree, target, branch, rules))
+
+
+def landed_paths(target: Path, before: str) -> List[str]:
+    """Each path the target's index differs on from ``before``, the target HEAD the move started from.
+
+    That is every path the move wrote, staged or fast-forwarded, plus any the target already held staged.
+    """
+    return merge.zsplit(merge.git_bytes(target, "diff-index", "--cached", "--no-renames", "--name-only", "-z",
+                                        before))
+
+
+def plans_folder(target: Path) -> str:
+    """The project's ``artifacts.plans`` as a POSIX path relative to the target checkout."""
+    cfg = activate(load_config(config_root(target)))
+    return cfg.artifacts.plans.replace("\\", "/").strip("/")
+
+
+def moved_plans(target: Path, before: str) -> Tuple[str, List[str]]:
+    """The target's plans folder and the ids of the plans whose ``live.js`` sources the move landed.
+
+    The plan library is imported here, on use: it needs pydantic, which the rest of a-w does not.
+    """
+    plans = plans_folder(target)
+    paths = [path for path in landed_paths(target, before) if path.startswith(f"{plans}/")]
+    if not paths:
+        return plans, []
+    from harness_lib import plan_live
+    return plans, plan_live.sourced_plans(paths, plans)
+
+
+def refresh_line(target: Path, plans: str, plan_id: str) -> Optional[str]:
+    """Rebuild one plan's ``live.js`` in the target; its report line, None for a plan no page reloads."""
+    from harness_lib import plan_doc, plan_live
+    try:
+        written = plan_live.refresh_live(target / plans, plan_id)
+    except (plan_doc.PlanError, ValueError, OSError) as exc:
+        reason = "; ".join(getattr(exc, "problems", None) or [str(exc)])
+        return (f"live: warning: plan {plan_id} not rebuilt ({reason}); run plan.py render {plan_id} in "
+                "the target")
+    return None if written is None else f"live: rebuilt {plans}/{plan_id}/{written.name}"
+
+
+def live_lines(target: Path, before: str) -> List[str]:
+    """Rebuild ``live.js`` in the target for each receipts plan whose files the move landed; the report lines.
+
+    ``live.js`` is gitignored, so it never moves and goes with the worktree. A failure is a ``live:
+    warning:`` line, never a refusal: the move has already landed.
+    """
+    try:
+        plans, plan_ids = moved_plans(target, before)
+    except (ConfigError, AttachError, ImportError) as exc:
+        reason = str(exc).replace("\n", "; ")
+        return [f"live: warning: live.js not rebuilt ({reason}); run plan.py render <id> in the target for "
+                "each receipts plan the move landed"]
+    lines = (refresh_line(target, plans, plan_id) for plan_id in plan_ids)
+    return [line for line in lines if line is not None]
 
 
 def attach(args: argparse.Namespace) -> List[str]:
@@ -355,11 +428,11 @@ def attach(args: argparse.Namespace) -> List[str]:
         if args.abort:
             return resolve.abort(worktree, state)
     try:
-        lines = resume(worktree, entries, state) if args.resume else start(args, worktree, entries, state)
+        moved = resume(worktree, entries, state) if args.resume else start(args, worktree, entries, state)
     except AttachError as exc:
         raise resolve.keep_hint(worktree, exc) from exc
     resolve.clear_state(worktree)
-    return finish(lines, worktree, main)
+    return finish([*moved.lines, *live_lines(moved.target, moved.before)], worktree, main)
 
 
 class Parser(argparse.ArgumentParser):

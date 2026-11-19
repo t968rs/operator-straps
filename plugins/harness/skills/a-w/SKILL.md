@@ -52,6 +52,11 @@ branch then.
 - On success the command removes the worktree without asking. It sets no timer: the move is the trigger.
   Files the worktree's `.gitignore` rules ignore (local env files, caches, build outputs) never move and are
   deleted with the worktree; copy any worth keeping before the attach.
+- **Plan `live.js` is rebuilt, not lost.** A receipts plan's `live.js`, the ignored file its HTML page
+  reloads, is rebuilt in the target for every frozen receipts plan whose receipts, freeze ledger entries, plan
+  JSON or DesignEvolution the move landed under `artifacts.plans` (staged, `--committed` or `--continue`), one
+  `live: rebuilt <plans>/<id>/live.js` line each. A rebuild that fails prints a `live: warning:` line naming
+  `plan.py render <id>`, which the developer runs in the target; the move still exits 0.
 - Staging applies the exact result to the target's index and working tree; the worktree's own staged and
   unstaged split is never changed.
 
