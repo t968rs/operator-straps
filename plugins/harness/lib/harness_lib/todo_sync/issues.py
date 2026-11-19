@@ -9,11 +9,15 @@ the text of the PR reviews it links.
 
 ``file_issue`` runs the other direction for ``add --file-issue``: it files a new issue for an added item and
 returns its number and URL, which become the item's ``gh_issue`` source.
+
+``find_untracked`` also leaves every open issue number in ``<state_dir>/OPEN_ISSUES_REL``; the working-refs
+mod reads it to tell which of a branch's issues are still open without a ``gh`` call of its own.
 """
 from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -25,11 +29,25 @@ from harness_lib.todo_sync.sources import Sources
 
 LIST_LIMIT = 1000
 LIST_FIELDS = "number,title,url,labels,body,comments"
+#: The open-issue list ``find_untracked`` leaves under ``state_dir`` for the working-refs mod.
+OPEN_ISSUES_REL = "todo-sync/open_issues.json"
 
 
 def untracked_path(cfg: HarnessConfig) -> Path:
     """Where ``untracked`` writes its rows: ``<state_dir>/todo-sync/untracked.json``."""
     return cfg.path(cfg.state_dir) / "todo-sync" / "untracked.json"
+
+
+def open_issues_path(cfg: HarnessConfig) -> Path:
+    """Where ``find_untracked`` writes the open-issue numbers: ``<state_dir>/OPEN_ISSUES_REL``."""
+    return cfg.path(cfg.state_dir) / OPEN_ISSUES_REL
+
+
+def write_open_issues(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> Path:
+    """Write ``{version, fetched_at, open}`` (the sorted numbers of ``rows``) to ``open_issues_path``."""
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data = {"version": 1, "fetched_at": stamp, "open": sorted(r["number"] for r in rows)}
+    return write_atomic(open_issues_path(cfg), json.dumps(data) + "\n")
 
 
 def as_number(value: Any) -> Optional[int]:
@@ -118,6 +136,8 @@ def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
 def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
     """The open issues no catalog record mentions, sorted by number.
 
+    After a complete listing it writes every open number to ``<state_dir>/todo-sync/open_issues.json``
+    (``write_open_issues``), untracked or not; a listing that reaches ``LIST_LIMIT`` raises and writes none.
     Refuses a catalog still holding rank-tied ``TODO-NNN`` ids, naming ``migrate-ids``.
     """
     _require_folder(cfg)
@@ -126,6 +146,7 @@ def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
         ids.require_stable(src.todo.data, "untracked")
     tracked = tracked_numbers(src)
     rows = open_issues(cfg)
+    write_open_issues(cfg, rows)
     fresh = sorted((r for r in rows if r["number"] not in tracked), key=lambda r: r["number"])
     for row in fresh:
         attach_reviews(cfg, row)

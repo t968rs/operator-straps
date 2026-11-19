@@ -2,7 +2,9 @@
 
 The override file is ``<state_dir>/OVERRIDES_REL``: ``{"version": 1, "branches": {<branch>: {"todo_ids":
 [...], "issues": [...], "set_at": "<UTC ISO 8601>"}}}``. Only the harness writes it; the working-refs mod
-reads it and writes the rendered line to ``<state_dir>/LINE_REL``, so each file has one writer.
+reads it and writes the rendered line to ``<state_dir>/LINE_REL`` and, stamped with the branch it was built
+for, to ``<state_dir>/LINE_JSON_REL`` (``{"version": 1, "branch": <branch>, "text": <line>}``), so each file
+has one writer.
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from harness_lib.todo_sync.sources import read_json
 
 OVERRIDES_REL = "working-refs/overrides.json"
 LINE_REL = "working-refs/line.txt"
+LINE_JSON_REL = "working-refs/line.json"
 STORE_VERSION = 1
 DETACHED = "(detached)"
 

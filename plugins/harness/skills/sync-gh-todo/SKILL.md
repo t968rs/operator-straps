@@ -27,7 +27,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.
 
 Run it from the project root. `untracked: none` ends the run: report that line. Otherwise the output is
 `untracked: <n> open issue(s) in no catalog record`, one `#<number> <title>` line per issue and
-`wrote <path>`; the issue numbers feed Step 2.
+`wrote <path>`; the issue numbers feed Step 2. Either way the command also refreshes
+`<state_dir>/todo-sync/open_issues.json`, the open-issue list the working-refs mod reads to hide closed issues;
+it prints no line for it.
 
 A `problem:` line ending `: file not found` that names the configured `todo.catalog` (default `RepoToDo.json`)
 means `todo.folder` is set but the project has no catalog yet. Create the starter one, then rerun the command
