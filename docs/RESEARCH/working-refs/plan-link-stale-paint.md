@@ -16,11 +16,12 @@ A plan drops only when it is archived (`archive/plan/<id>-*` tag), the same rule
 it is in the catalog's `retired_ids`. Until then a link that no longer qualifies stays, painted as a warning.
 
 1. `types/index.d.ts`: `PlanLink` gains `stale: boolean`.
-2. `hooks/watch.ts` `runScan`: read the previous `line.json` (the branch-stamped line file the cross-branch
-   refs work adds) and carry over each plan link it holds that is not archived and not qualifying now, as
-   `stale: true`. The plan must still read from the plans folder (`readPlans`); a deleted plan or page drops.
-   The carry-over is the only new state, and it lives in the file the mod already writes, so it survives a
-   session restart without a new store.
+2. `hooks/watch.ts` `runScan`: `line.json` (the branch-stamped line file the cross-branch refs work adds)
+   gains a `plans` field, `[{id, page}]`, written beside `text` (a `line.json` version bump; `text` alone holds
+   only rendered output). The scan reads the previous file's `plans` and carries over each link that is not
+   archived and not qualifying now, as `stale: true`. The plan must still read from the plans folder
+   (`readPlans`); a deleted plan or page drops. The carry-over is the only new state, and it lives in the file
+   the mod already writes, so it survives a session restart without a new store.
 3. `hooks/line.ts` `statusText`: wrap a stale plan number in the warning SGR (yellow, `\x1b[33m` ...
    `\x1b[39m`) outside its OSC 8 link; `buildLine` keeps the plain `text` unchanged so band-line's atom
    readers see the same string.

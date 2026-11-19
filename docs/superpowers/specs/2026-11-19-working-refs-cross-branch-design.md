@@ -23,7 +23,8 @@ read as the current branch's.
   override follows as `[ <branch> <refs> ]`, the branch name dark, most recently set first.
 - **A length cap.** The line stops at a configured total length (`working_refs.max_chars`); other-branch
   segments that do not fit are dropped from the end and counted as ` +N`. The own segment and the plan links
-  are never dropped.
+  are never dropped. The cap applies to the line the mod builds; the widget's stale-branch stamp (below) is
+  added on top of it.
 - **TODO ids hide when retired.** A TODO id listed in the catalog's `retired_ids` is hidden from the line.
 - **Issues hide when closed.** An issue GitHub reports as closed is hidden from the line. TODO ids and issues
   hide independently: `todo-k69m (301)` becomes `#301` when the item is retired and `todo-k69m` when the issue
@@ -31,7 +32,8 @@ read as the current branch's.
 - **Issue state from two feeds.** The mod checks the issues it shows with `gh issue view <n> --json state`,
   cached and refreshed past `todo.gh.max_age_hours`; `todo_sync.py untracked` (the `sync-gh-todo` skill) also
   writes the complete open-issue list it already fetches, which the mod reads. The fresher answer per issue
-  wins.
+  wins. Absence from the open list answers CLOSED only for numbers up to the highest number it lists: issue
+  numbers only grow, so an issue opened after the fetch has no answer from the list and is checked by `gh`.
 - **A branch-stamped line file.** The mod writes `<state_dir>/working-refs/line.json` (`version`, `branch`,
   `text`) beside `line.txt`; the ccstatusline command reads `line.json`, reads the checkout's current branch
   from the git HEAD file, and when the two differ prints the stamped branch dark before the text.
@@ -48,7 +50,8 @@ read as the current branch's.
 
 ## Anti-goals
 
-- A status-line command that spawns a process on every repaint: the ccstatusline command reads files only.
+- A status-line command that runs git or another child process on every repaint: the widget's node one-liner
+  reads files only.
 - A `gh` call on a prompt or tool call path: issue checks run after the dispatch (`later`), at most once per
   issue per `todo.gh.max_age_hours`.
 - An issue hidden because `gh` failed: an issue with no known state shows.

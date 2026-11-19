@@ -1,0 +1,615 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": "local-1171-banner-todo-fixup",
+  "pr_title": "1171-banner-todo-fixup",
+  "branch": "1171-banner-todo-fixup",
+  "base_branch": "1170-a-w-attach-state",
+  "base_sha": "aab47d741cc8c9216386ca9ab87681e34eeb353a",
+  "head_sha": "0a9059e8a1336b9ba7eef3f1811ed089957be97a",
+  "review_date": "2026-11-19",
+  "verdict": "NOT READY TO MERGE - important: I4, I5, I6",
+  "stats": {
+    "additions": 1241,
+    "deletions": 0,
+    "files_changed": 5,
+    "source": {
+      "additions": 1241,
+      "deletions": 0,
+      "files_changed": 5
+    }
+  },
+  "reviewers": [
+    "docs (opus)",
+    "overall (opus)",
+    "ultracode_plan_review (adhoc)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/local-1171-banner-todo-fixup/local-1171-banner-todo-fixup_20261119T202619Z/findings/docs.json",
+    "docs/_scratch/pr_review/local-1171-banner-todo-fixup/local-1171-banner-todo-fixup_20261119T202619Z/findings/overall.json",
+    "docs/_scratch/pr_review/local-1171-banner-todo-fixup/local-1171-banner-todo-fixup_20261119T202619Z/findings/ultracode_plan_review.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every spec Goal and Decided entry traces to a plan item or decision (D1-D5), and the spec's Left-to-the-builder max_chars default is settled as D5 with its rationale.",
+    "Sweeps S1 and S2 match the repository at the PR head exactly: re-running both patterns returns the same file sets the plan maps to tasks.",
+    "Spot-checked anchors (README.md:599, watch.ts:23-24 and 297-303, ccstatusline.defaults.json:33, defaults.json:88, plugin versions 0.1.0/0.2.0/0.3.0) all hold at the head.",
+    "TASK-1 follows the four-place config-key checklist (defaults.json, schema, config.py dataclass and builder, README row) plus the mod mirror in TASK-3, as the project rules require.",
+    "The spec states the reversal of the 2026-11-17 goal explicitly and confines it to overrides, and the deferred plan-link idea is recorded in a research note rather than silently dropped.",
+    "The freeze entry's plan blob (912720d) matches the ActionPlan at the PR head, and every anchor checked (config.py, defaults.json, schema, README:599, working_refs.py, issues.py, todo_sync.py, mirror.ts, config.ts, line.ts, overrides.ts, watch.ts, band.tsx, the ccstatusline command lines and SKILL.md) holds its expected text.",
+    "Sweep S1/S2 hit lists match a repo-wide search for line.txt, LINE_REL, LINE_PATH, lineFileOf and WorkingLine outside history folders; no consumer is missed.",
+    "The plan follows the CLAUDE.md config-key checklist: defaults, schema, config.py builder and README in TASK-1; mirrored defaults in mirror.ts, pinned by test_working_refs_contract.py, in TASK-3.",
+    "D1-D5 each trace to a spec section or a dated developer decision, and the deferred stale plan-link work is recorded both in deferred_to_future_plans and in a standalone research note.",
+    "The plugin version bumps in TASK-8 start from the current plugin.json values (working-refs 0.1.0, band-line 0.2.0, banner-status 0.3.0) and extend the existing v1.0.0 release notes instead of creating a parallel file.",
+    "The one-writer rule is kept: the harness owns overrides.json and open_issues.json, and the mod owns line.txt, line.json and issues.json."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Open-list absence hides an issue newer than the list, and the age rule blocks the recheck",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+          "plugins/working-refs/hooks/line.ts"
+        ],
+        "lines": "217,258",
+        "reviewer": "overall, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "TASK-4 makes `isClosed` take the fresher known answer from the open list (`open_issues.json`) and the gh cache, and TASK-5 rechecks only issues whose freshest answer is older than `ghMaxAgeHours`. An issue opened after the last `untracked` run, or set in an override after it, is absent from the list, so the list answers CLOSED as of `fetched_at`. That inferred answer is fresh, so TASK-5 skips the gh recheck and the issue stays hidden until the list ages past `todo.gh.max_age_hours` (up to 24 h by default). A PR number stored as an override issue never appears in `gh issue list`, so it stays hidden for good. The spec's anti-goal (an issue is never hidden without a known state) assumes absence means closed, and that does not hold for numbers newer than the list. No planned test covers it: the TASK-4 cases cover a fresher list against an older CLOSED cache entry and the reverse, not an issue missing from an older list.\n\nAlso (docs): TASK-4 says 'own refs = own override filtered by visibleRefs, else the plan union unfiltered (D4)'. It does not say whether 'else' fires only when no override exists, or also when the override exists but every ref is hidden. The spec says a segment with every ref hidden is not drawn (design.md:30), which suggests an empty own part, while the 'else' reading would show the plan union instead. The builder (opus) has to pick, and the tests listed for TASK-4 do not pin either reading.\n\nAlso (overall): TASK-4 gives own refs as 'own override filtered by visibleRefs, else the plan union unfiltered (D4)'. When an own override exists but every ref is hidden (item retired and issue closed), the action does not say whether the head falls back to the plan union or shows plan links only. Today `override ?? union` (line.ts:41) would keep the empty filtered refs, and the plan names no test for this case.",
+        "fix": [
+          "TASK-4: absence from the open list counts as CLOSED only when the override entry's `set_at` is older than the list's `fetched_at` (an issue set later has no answer from the list), with a line.test/hide.test case for an override set after the list.",
+          "TASK-4/TASK-5: let the open list answer only OPEN (presence) and leave CLOSED to the gh cache, and update spec Goals 'Issue state from two feeds' and D2's rationale to match.",
+          "TASK-2: `open_issues.json` also records the highest issue number listed, and TASK-4 treats absence as CLOSED only for numbers up to it, with a test for a number above it.",
+          "State in TASK-4's action that an own override whose refs are all hidden yields an empty own part (no fallback to the plan union), and add that case to the line.test.ts list; or state the opposite explicitly.",
+          "TASK-4: state that a fully hidden own override leaves the head with the plan links only (no fallback, matching 'an override replaces the plan refs'), or that it falls back to the plan union, and add a line.test case for the chosen behavior."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Overlapping gh recheck passes break the once-per-age bound",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "plugins/working-refs/hooks/watch.ts",
+          "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json"
+        ],
+        "lines": "258,333",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "TASK-5 schedules a recheck with `later` after every scan. Scans come close together at session start, on the snapshot write, at the first prompt and after a tool call (watch.ts:372, 381, 393, 399). Each recheck reads `issues.json`, calls gh for every stale issue and writes the cache once at its end. Nothing marks a pass as in flight: `pacing.isBusy` (watch.ts:307-316) serializes scans but not the rechecks they queue, so two passes started before the first one writes run the same `gh issue view` calls and race on `issues.json`. With gh missing, each call waits up to `GIT_TIMEOUT_MS` (10 s), so the overlap is likely. Spec anti-goals limit checks to 'at most once per issue per `todo.gh.max_age_hours`', and the planned test 'one gh call per stale issue' covers only a single pass.\n\nAlso (overall): TASK-5 runs `gh issue view <n> --json state`, adding `--repo` only when `ghRepo` is set, and `todo.gh.repo` defaults to null (defaults.json:88). Every process the mod runs today pins the checkout with `git -C root` (watch.ts:175), and no mod passes a working directory to `$.process.run`. gh has no `-C`, so with a null repo it resolves the repository from the host process's working directory, not from `w.root`. The Python side runs gh with `cwd=project_root` (todo_sync/gh.py:31), so the two feeds can answer for different repositories. A session started outside the project, or a worktree of another clone, would then check, cache and hide issues from the wrong repository.\n\nAlso (overall): TASK-5 drops the `branch === null` guard (watch.ts:297) and writes `{version: 1, branch, text}`. Before git-status writes its first snapshot, `branch` is null. TASK-7's widget prints the stamped branch dark plus ` · ` whenever it differs from HEAD, so a null branch (or a '' text from 'text '' for no line') prints `null · ` or a bare dark branch with a trailing separator. Neither task says what the stamp holds or what the widget prints in these cases, and none of the five planned widget tests covers them. Without a snapshot, `buildLine('')` also labels the current branch's own override as another branch (`[ <current> refs ]`) until the snapshot scan runs.",
+        "fix": [
+          "TASK-5: hold a module-level recheck guard (a busy flag, or a set of issue numbers in flight) so a recheck requested while one runs is skipped or owed, as `pacing` does for scans; add a watch.test case where two scans in a row produce one gh call per stale issue.",
+          "TASK-5: when `ghRepo` is null, resolve `owner/name` once per session from `git -C <root> remote get-url origin` and pass it as `--repo`; skip the recheck, leaving the state unknown, when that fails. Add a watch.test case asserting the `--repo` argument.",
+          "TASK-5: run gh with the project root as its working directory, if the engine's `process.run` accepts one, and say so in the action with a test that asserts it.",
+          "TASK-5: write `branch` as null when no snapshot exists. TASK-7: the widget prints nothing when `text` is empty and prints `text` without a stamp when `branch` is not a non-empty string. Add both cases to the planned test_setup_statusline_contract.py.",
+          "TASK-5: skip writing line.json and line.txt until the first snapshot gives a branch, and say so in the action and README."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "TASK-7 planned red ImportError stops holding once its own dependency TASK-2 is recorded",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/plans/2027_working_refs_cross_branch_PIP.html"
+        ],
+        "lines": "341-343,367-388",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "TASK-7 depends on TASK-2 (ActionPlan.json:341-343), and TASK-2 adds LINE_JSON_REL to harness_lib.working_refs. The five TASK-7 nodes plan red 'ImportError' (ActionPlan.json:367-388) because the planned tests/skills/test_setup_statusline_contract.py imports LINE_JSON_REL inside each test. plan.py red_results (plugins/harness/scripts/plan.py:430-437) runs the open items' nodes at HEAD, so recorded items are in the tree: once TASK-2 is recorded, those nodes fail with AssertionError (commandPath still names line.txt) and any later `plan.py red` or refreeze reports a red mismatch on TASK-7. The red holds only at the base commit the freeze ran on.",
+        "fix": [
+          "Make the planned TASK-7 tests stop importing LINE_JSON_REL (spell 'working-refs/line.json' as a literal, or import it once and fall back to the literal), so the nodes fail with AssertionError both before and after TASK-2, and change their planned red to AssertionError through plan_api plus a refreeze.",
+          "Move the LINE_JSON_REL addition from TASK-2 into TASK-7 (and the TASK-3 contract test's dependency accordingly), so ImportError stays the true red until TASK-7 itself lands."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "U1 TASK-4 gate cannot pass: buildLine/Overrides change without watch.ts and watch.test.ts",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "TASK-4 adds a required view argument to buildLine and changes Overrides to {refs, setAt}, but its files omit watch.ts and watch.test.ts; watch.ts:297-298 still calls buildLine with three arguments and watch.test.ts:287, :449, :461-466 fail, so TASK-4's command cannot pass in serial order.",
+        "fix": [
+          "Move the call-site change (an empty view) and the watch.test.ts rewrites into TASK-4, or give view a default that hides nothing."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "U2 Absence from the open list still hides PR numbers and issues gh never reported closed",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md"
+        ],
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "The open list (gh issue list --state open, issues.py:109-115) never holds PR numbers, and working_refs.py:57-63 accepts any number; the r1.2 highest-number bound still reads an absent PR number below the bound as CLOSED, against the intent that only gh reporting closed hides an issue.",
+        "fix": [
+          "The open list answers only OPEN; absence makes an issue due for gh issue view, and only a gh CLOSED hides it; staleness comes from cache answers alone; hide.test cases for an issue newer than fetched_at and a PR number; contract test docstring updated."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "U3 A gh failure overwrites a known CLOSED with UNKNOWN",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md"
+        ],
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "TASK-5 stores UNKNOWN with the time on a failure, so a failed recheck of a CLOSED issue shows it again and blocks a retry for another max_age_hours.",
+        "fix": [
+          "On failure keep the last known state and checkedAt and pace the retry with a separate triedAt; watch.test case: CLOSED, then a gh failure, stays hidden."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Deferred research reads plan links back from line.json, which holds only rendered text",
+        "file": "docs/RESEARCH/working-refs/plan-link-stale-paint.md",
+        "files": [
+          "docs/RESEARCH/working-refs/plan-link-stale-paint.md",
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md"
+        ],
+        "lines": "19-23",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plan-link-stale-paint.md step 2 says runScan reads the previous line.json and carries over 'each plan link it holds', and calls line.json the store that survives a restart. The spec (design.md:35-37) and plan TASK-5 (ActionPlan.json:258) fix line.json as {version, branch, text}, with text the ANSI statusText form; it holds no structured plan links, only OSC 8 escapes inside a string. The recorded 'smallest change' therefore needs either a new line.json field or parsing escapes, which the note does not say.\n\nAlso (overall): plan-link-stale-paint.md step 2 carries over 'each plan link it holds' from the previous line.json. TASK-5 writes line.json as `{version, branch, text}`, where `text` is the ccstatusline form with OSC 8 escapes, so it holds no structured plan links to carry over without parsing the escapes.",
+        "fix": [
+          "Reword step 2 to state that line.json gains a `plans` field ([{id, page}]) written beside `text` (a line.json version bump), and that the carry-over reads that field.",
+          "Or name a separate mod-owned file for the carried links and drop the 'no new store' claim.",
+          "Say in step 2 that line.json would gain a `plans` field (id and page) for the carry-over, or carry the links from the `line` atom (WorkingLine.plans) instead."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Schema descriptions of todo.gh.max_age_hours and todo.gh.repo not in any task",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "21",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "TASK-1 extends the README row for `todo.gh.max_age_hours` with the working-refs recheck age, but no task touches the schema descriptions. harness.schema.json:203 says the key is read only by G5 and the /todo summary, and harness.schema.json:202 lists every reader of `todo.gh.repo` (render, untracked, add and inbox) but not the working-refs mod. Both go stale once TASK-5 lands.",
+        "fix": [
+          "TASK-1: also update the `max_age_hours` and `repo` descriptions in plugins/harness/config/harness.schema.json to name the working-refs mod's issue recheck."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "find_untracked docstring left without its new write",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "107",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "TASK-2 makes `find_untracked` call `write_open_issues`, but its docstring (todo_sync/issues.py:119-122) still describes a pure query ('The open issues no catalog record mentions, sorted by number'). The action documents the file in todo_sync.md and SKILL.md but not in the function that writes it.",
+        "fix": [
+          "TASK-2: update `find_untracked`'s docstring to state that it writes `<state_dir>/todo-sync/open_issues.json` after a complete listing (none when the listing reaches LIST_LIMIT)."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Length cap does not count the ccstatusline branch stamp",
+        "file": "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+        "files": [
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json"
+        ],
+        "lines": "24-26",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The spec says the line stops at max_chars total (design.md:24-26) and D5 sizes 120 to one status line. TASK-4 measures the cap on the plain text only, and TASK-7 prepends '<branch> · ' in the widget when the stamped branch differs, outside the cap, so the printed ccstatusline line can exceed max_chars by a branch name plus three characters.",
+        "fix": [
+          "State in the spec Goals that max_chars caps the line the mod builds and that the widget's branch stamp is added on top; or have TASK-7 note the overflow as accepted."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "'Spawns no process' contradicts the widget, which is a node process per repaint",
+        "file": "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+        "files": [
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json"
+        ],
+        "lines": "51",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The spec anti-goal (design.md:51) rules out 'a status-line command that spawns a process on every repaint', and TASK-7 (ActionPlan.json:333) says 'no process is spawned'. The widget is itself `node -e ...` (ccstatusline.defaults.json:33), launched by ccstatusline on every repaint, and the planned tests run it that way. The intended rule is that the command starts no further child process (no git call) and reads files only.",
+        "fix": [
+          "Reword design.md:51 to 'A status-line command that runs git or another child process on every repaint: the widget's node one-liner reads files only.' and TASK-7's 'no process is spawned' to 'it starts no child process (no git call)'."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "U19 Widget tests lack cross_os; no quoting constraints for the one-liner",
+        "file": "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py",
+        "files": [
+          "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py",
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json"
+        ],
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "The widget tests run a shell command (cmd.exe on Windows) but Windows CI runs only -m cross_os; the one-liner quoting rules are not stated.",
+        "fix": [
+          "Mark the widget tests cross_os and state the one-liner constraints in TASK-7 (no inner double quote, backtick, $, %; ESC and the middle dot as JS escapes)."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "U27 Worktree widget test does not prove the gitdir file is followed",
+        "file": "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "HEAD points at another branch and the test asserts only the prefix, so a widget that treats an unread HEAD as different also passes.",
+        "fix": [
+          "Point HEAD at the stamped branch and assert the bare text."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "U28 No drift test for .claude/ccstatusline.json",
+        "file": "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "TASK-7 edits .claude/ccstatusline.json, but no test compares its commandPath with the defaults.",
+        "fix": [
+          "Add a repo-root-anchored equality test of the two commandPath values."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "U10 Five existing watch tests broken or inverted, none named",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "watch.test.ts:326-333, :431-441, :461-466, :470-476, :478-490 change expectations under TASK-5, and line.json would be written even with no line and no file.",
+        "fix": [
+          "Name the five tests with their new expectations and decide whether line.json is written for no line."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "U11 No snapshot: own override labeled as another branch; null stamp",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "Dropping the branch === null guard renders the checkout's own override bracketed before git-status's first snapshot, and line.json is stamped branch null.",
+        "fix": [
+          "Write nothing until a snapshot exists (keep the guard for the whole line); the widget skips the prefix when the stamp is not a non-empty string; watch.test and widget test."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "U12 No periodic recheck in an idle session",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "A recheck runs only after a scan; onPrompt rescans only on moves, so a cached OPEN is never refreshed past max_age_hours in an idle session.",
+        "fix": [
+          "Keep the oldest checkedAt in memory and have onPrompt start a recheck (inside later) once it is past the age."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "U14 watch.test list leaves recheck rules untested",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "--repo, the gh timeout, one cache write per pass, a rescan on a state change and override issues only can each be dropped without failing a listed test.",
+        "fix": [
+          "Add a watch.test case for each rule in TASK-5."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "U17 Widget prints a bare dark prefix for empty text",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "TASK-5 writes text '' for no line and TASK-7 prefixes the stamped branch whenever it differs, so the status line can read '<branch> · ' alone.",
+        "fix": [
+          "Print nothing when text is empty or not a string; widget test."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "U18 Relative gitdir unspecified; a HEAD failure blanks the line",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py"
+        ],
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "A gitdir: ../ file (git worktree.useRelativePaths, submodules) has no rule, and any HEAD read failure prints nothing although line.json read.",
+        "fix": [
+          "Resolve a relative gitdir against the .git file's folder; on a HEAD failure print text without a prefix; widget test with a relative gitdir."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "U21 Widget goes blank while installed working-refs is 0.1.0",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py"
+        ],
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "The swapped widget reads only line.json, which working-refs 0.1.0 (this repo's own published install) never writes.",
+        "fix": [
+          "Fall back to line.txt when line.json is absent; widget test."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "U22 Root README and working SKILL still say current branch only",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "README.md:36, :46, :191 and plugins/harness/skills/working/SKILL.md:3 describe the override as the current branch's; no item covers them.",
+        "fix": [
+          "Add these lines to TASK-5's files and action."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "U23 Another branch's override cannot be cleared",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "working clear acts only on the current branch (working.py:54-58), so a deleted branch's or (detached) entry stays on every line until its refs retire or close.",
+        "fix": [
+          "Add clear --branch <name> to the working command",
+          "Record it under deferred or Non-goals"
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "U24 todo_sync.md still says untracked: none writes nothing",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "TASK-2 makes untracked write open_issues.json on untracked: none, but plugins/harness/scripts/todo_sync.md:160 says it writes nothing.",
+        "fix": [
+          "Require that sentence reworded in TASK-2."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "U25 CLAUDE.md working-refs mirror sentence goes stale",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "CLAUDE.md:33 says working-refs mirrors only state_dir and artifacts.plans; TASK-3 adds more mirrors without listing CLAUDE.md.",
+        "fix": [
+          "Add CLAUDE.md to TASK-3."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "U26 filesMoved needs memo fields the plan does not name",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "The new catalog and open-list mtimes need memo fields set in runScan and cleared in resetMemo, or every probe rescans.",
+        "fix": [
+          "Name memo.catalogMtime and memo.openIssuesMtime; test that an unmoved catalog causes no rescan."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "U5 Config tests never run the builder checks without jsonschema",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "Every planned bad-value test runs with jsonschema installed, whose message comes first (config.py:317-328), so a builder with no checks passes them.",
+        "fix": [
+          "Add _without_jsonschema variants with monkeypatch.setitem(sys.modules, 'jsonschema', None), as tests/lib/test_config_attach.py does, and list them in TASK-1."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "U6 todo.folder and todo.gh.repo defaults not mirrored or pinned",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "The spec requires mirrored, pinned defaults for todo.folder and todo.gh.repo; TASK-3 adds neither.",
+        "fix": [
+          "Add DEFAULT_TODO_FOLDER and DEFAULT_GH_REPO = null to mirror.ts and pin both with ts_optional_string."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "U7 todoIds and issues of WorkingLine not stated as the visible own refs",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "statusText rebuilds refs from line.todoIds and line.issues (line.ts:70-74); the plan never says these hold the visible refs, so line.txt and line.json could show retired ids; the union-only-without-an-override rule needs a test.",
+        "fix": [
+          "State that the union applies only when no override entry exists and that todoIds and issues are the visible own refs; line.test cases for both."
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "U8 No test for D4 (plan refs never hidden) or an uncut head",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "mechanical",
+        "summary": "No planned test puts a retired id or closed issue in a qualifying plan's refs, and none uses a head longer than maxChars.",
+        "fix": [
+          "Add both line.test.ts cases to TASK-4."
+        ]
+      },
+      {
+        "id": "M25",
+        "name": "U9 Separator and overflow form unspecified at the cap edges",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "When the head alone fills max_chars, or the head is empty and the first segment is oversized, line.ts and band.tsx can render different forms.",
+        "fix": [
+          "Specify head +N, and always draw the first other segment when the head is empty; line.test and band.test cases."
+        ]
+      },
+      {
+        "id": "M26",
+        "name": "U15 retired_ids follow the checked-out branch's catalog",
+        "file": "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+        "files": [
+          "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json"
+        ],
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "catalogFileOf reads the tracked catalog in the current checkout, so an id retired on one branch shows again after switching; the spec does not say which catalog counts.",
+        "fix": [
+          "State the checked-out catalog in the spec and README."
+        ]
+      },
+      {
+        "id": "M27",
+        "name": "U16 Every branch covers one checkout only; worktrees not addressed",
+        "file": "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
+        "reviewer": "ultracode_plan_review",
+        "fix_kind": "judgment",
+        "summary": "Overrides, open_issues.json and issues.json live under each checkout's state_dir, so a worktree session never sees the main checkout's overrides; the new every-branch intent never restates the per-checkout choice of the 2026-11-17 design.",
+        "fix": [
+          "Anchor the files at the main worktree, as the sentinel rule does",
+          "Record same checkout only as a spec Non-goal and in the README"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "git rev-parse --verify --quiet HEAD^{commit}; git rev-parse --verify --quiet 1170-a-w-attach-state^{commit}; git merge-base <base sha> <head sha>; git branch --show-current; git show-ref --verify --quiet refs/heads/HEAD; git rev-list --count <merge base>..<head sha>",
+        "stdout": "0a9059e8a1336b9ba7eef3f1811ed089957be97a\naab47d741cc8c9216386ca9ab87681e34eeb353a\n1171-banner-todo-fixup\n1\n",
+        "result": "OK (state=LOCAL; no PR)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [],
+        "refute_slots": [
+          "adv_refute_docs",
+          "adv_refute_overall"
+        ],
+        "result": "OK (13 checked, 0 refuted, 0 code findings)",
+        "counts": {
+          "findings_checked": 13,
+          "findings_refuted": 0,
+          "findings_upheld": 13,
+          "code_findings": 0
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1171-banner-todo-fixup",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1171-banner-todo-fixup",
+        "head_ref_name": "1171-banner-todo-fixup",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "aab47d741cc8c9216386ca9ab87681e34eeb353a",
+        "head_sha": "0a9059e8a1336b9ba7eef3f1811ed089957be97a",
+        "base_ancestor_command": "git merge-base --is-ancestor aab47d741cc8c9216386ca9ab87681e34eeb353a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 0a9059e8a1336b9ba7eef3f1811ed089957be97a HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "plan.json meta.base_branch",
+        "value": "1170-a-w-attach-state",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - spec Goals and TASK-4: open-list absence answers CLOSED only up to the highest listed number; own override with every ref hidden leaves the own part empty; hide.test and line.test cases; plan refrozen r1.2 (outside fixer waves)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - TASK-5: in-flight recheck guard owed like pacing, gh runs with cwd w.root, watch.test cases for one gh call per stale issue and the cwd and --repo; plan refrozen r1.2 (outside fixer waves)"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - planned TASK-7 tests spell working-refs/line.json as a literal; planned red AssertionError; plan red passes at r1.2 (outside fixer waves)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - research note: line.json gains a plans field written beside text for the carry-over (outside fixer waves)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - TASK-1 also updates the todo.gh.max_age_hours and todo.gh.repo schema descriptions; plan refrozen r1.2 (outside fixer waves)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - TASK-2 also updates the find_untracked docstring; plan refrozen r1.2 (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - spec Goals: max_chars caps the line the mod builds; the widget stamp is added on top (outside fixer waves)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "0a9059e (working-tree snapshot; developer commits) - spec anti-goal and TASK-7: the widget starts no child process (no git call); plan refrozen r1.2 (outside fixer waves)"
+    }
+  ]
+}
