@@ -3,7 +3,7 @@
   "plan_created": "2026-11-19",
   "source_document": "docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md",
   "documentation": "docs/plans/2027_working_refs_cross_branch_PIP.html",
-  "branch": "1171-banner-todo-fixup",
+  "branch": "2171-banner-todo-fixup",
   "base_branch": "main",
   "refs": {
     "todo_ids": [
