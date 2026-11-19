@@ -20,12 +20,29 @@ export type WorkingLine = {
   branch: string
   /** The qualifying plans, by id. */
   plans: PlanLink[]
-  /** The override's TODO ids when one is set, else the union of the plans' ids. */
+  /**
+   * The own TODO ids: the branch's override entry's ids that are not retired when it has one, else the union of
+   * the plans' ids (plan refs never hide).
+   */
   todoIds: string[]
-  /** The override's issues when one is set, else the union of the plans' issues. */
+  /** The own issues: the override entry's issues not reported closed when it has one, else the plans' union. */
   issues: number[]
-  /** The plain form (`plan 2025 · todo-k69m (301)`), drawn verbatim by band-line. */
+  /** The plans part and the own refs, plain (`plan 2025 · todo-k69m (301)`); '' when both are empty. */
+  head: string
+  /** The other branches' override segments drawn, most recently set first; each `refs` is the formatted text. */
+  others: OtherSegment[]
+  /** How many other-branch segments did not fit within `working_refs.max_chars`; 0 when all fit. */
+  more: number
+  /** The full plain form (`head · [ b1 refs ] [ b2 refs ] +N`), drawn verbatim by band-line. */
   text: string
+}
+
+/** One other branch's override, drawn as `[ <branch> <refs> ]`. */
+export type OtherSegment = {
+  /** The branch name, or `(detached)`. */
+  branch: string
+  /** Its visible refs, formatted (`todo-k69m (301)`). */
+  refs: string
 }
 
 declare module 'claude-code' {

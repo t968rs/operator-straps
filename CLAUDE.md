@@ -30,7 +30,8 @@ plugin (ArcGIS Pro toolbox skills) plus nine TypeScript mods (`agent-watcher`, `
   `hooks/layers/pr-review/config.ts`.
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
-  `working-refs` mirrors `state_dir` and `artifacts.plans` in `hooks/mirror.ts`, checked by
+  `working-refs` mirrors `state_dir`, `artifacts.plans`, `todo.folder`, `todo.catalog`, `todo.gh.repo`,
+  `todo.gh.max_age_hours` and `working_refs.max_chars` in `hooks/mirror.ts`, checked by
   `tests/mods/test_working_refs_contract.py`.
   The four places are not a cost to weigh against the key. A setting a driver can read and act on belongs in a
   config key and the driver, never in skill prose the agent must remember to follow; the key is the cheaper

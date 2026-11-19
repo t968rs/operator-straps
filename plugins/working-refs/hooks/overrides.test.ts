@@ -8,16 +8,19 @@ const file = (branches: unknown, version: unknown = STORE_VERSION): string => JS
 const entry = (todo_ids?: unknown, issues?: unknown) => ({ todo_ids, issues, set_at: SET_AT })
 
 describe('parseOverrides', () => {
-  test('each branch\'s refs, set_at ignored', async () => {
+  test('each branch\'s refs and set_at', async () => {
     const text = file({ topic: entry(['todo-k69m'], [301]), [DETACHED_KEY]: entry([], [7]) })
     expect([...parseOverrides(text)]).toEqual([
-      ['topic', { todoIds: ['todo-k69m'], issues: [301] }],
-      [DETACHED_KEY, { todoIds: [], issues: [7] }],
+      ['topic', { refs: { todoIds: ['todo-k69m'], issues: [301] }, setAt: SET_AT }],
+      [DETACHED_KEY, { refs: { todoIds: [], issues: [7] }, setAt: SET_AT }],
     ])
   })
 
-  test('a missing field reads as empty', async () => {
-    expect(parseOverrides(file({ topic: { issues: [5] } })).get('topic')).toEqual({ todoIds: [], issues: [5] })
+  test('a missing field reads as empty; a missing or wrong-typed set_at as empty text', async () => {
+    expect(parseOverrides(file({ topic: { issues: [5] } })).get('topic')).toEqual({
+      refs: { todoIds: [], issues: [5] }, setAt: '',
+    })
+    expect(parseOverrides(file({ topic: { issues: [5], set_at: 7 } })).get('topic')?.setAt).toBe('')
   })
 
   test('an absent file, malformed JSON, another version or no branches object hold none', async () => {

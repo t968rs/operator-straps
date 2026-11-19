@@ -1,6 +1,6 @@
 ---
 name: working
-description: Use when asked to set, show or clear the TODO ids and issue numbers the working-refs banner line shows for the current branch, overriding the refs of the plans that qualify for the branch. Triggers on "/harness:working", "working on todo-k69m", "set the working refs", "banner refs override". The override is stored per branch in the checkout's state folder.
+description: Use when asked to set, show or clear the TODO ids and issue numbers the working-refs banner line shows for the current branch, overriding the refs of the plans that qualify for the branch; the line shows every branch's override, other branches bracketed after the current one's. Triggers on "/harness:working", "working on todo-k69m", "set the working refs", "banner refs override". The override is stored per branch in the checkout's state folder.
 argument-hint: "<todo-id|#issue>... | --clear | --list [-- <guidance>]"
 ---
 
