@@ -3,11 +3,13 @@
 The file is ``window.PLAN_LIVE = <PlanLive JSON>;``. It is derived, so ``write_live`` also keeps the plan
 folder's ``.gitignore`` listing it (D9); no project has to add an ignore line. Being ignored, it never moves
 with a worktree's work: ``sourced_plans`` names the plans a set of moved paths feeds and ``refresh_live``
-rebuilds one the way ``plan.py render`` does, for the a-w attach.
+rebuilds one as ``plan.py render`` does for a frozen receipts plan whose HTML page exists, for the a-w
+attach.
 """
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,11 +26,13 @@ from harness_lib.receipt_models import Receipt
 
 LIVE_NAME = "live.js"
 LIVE_HEAD = "window.PLAN_LIVE = "
-# Paths under the plans folder that a plan's live.js derives from, or that make a plan a receipts plan.
+# Paths under the plans folder that a plan's live.js derives from, that make a plan a receipts plan, or the
+# HTML page whose presence decides whether refresh_live writes live.js at all.
 _SOURCES = tuple(re.compile(pattern) for pattern in (
     rf"^(\d+)/{prt.RECEIPTS_DIR}/[^/]+\.json$",
     rf"^(\d+)/{re.escape(ed.CATALOG_NAME)}$",
     rf"^(\d+)_[^/]*{re.escape(pd.PLAN_SUFFIX)}$",
+    rf"^(\d+)_[^/]*{re.escape(pd.PIP_HTML_SUFFIX)}$",
     rf"^{fl.FREEZES_DIR}/plan/(\d+)-[^/]+/[^/]+$",
 ))
 
@@ -77,10 +81,11 @@ def write_live(plans_dir: Path, plan_id: str) -> Path:
 def sourced_plans(paths: Iterable[str], plans_rel: str) -> List[str]:
     """The plan ids, sorted, whose ``live.js`` the repo-relative POSIX ``paths`` feed.
 
-    A path counts when it is a receipt, the DesignEvolution catalog, the plan JSON or a ``plan/`` freeze
-    ledger entry under ``plans_rel`` (the project's ``artifacts.plans``).
+    A path counts when it is a receipt, the DesignEvolution catalog, the plan JSON, the HTML page or a
+    ``plan/`` freeze ledger entry under ``plans_rel`` (the project's ``artifacts.plans``, normalized so
+    ``./work/plans`` and ``work//plans`` match the paths git reports).
     """
-    prefix = plans_rel.replace("\\", "/").strip("/") + "/"
+    prefix = posixpath.normpath(plans_rel.replace("\\", "/")).strip("/") + "/"
     found = set()
     for path in paths:
         if not path.startswith(prefix):
@@ -92,10 +97,11 @@ def sourced_plans(paths: Iterable[str], plans_rel: str) -> List[str]:
 
 
 def refresh_live(plans_dir: Path, plan_id: str) -> Optional[Path]:
-    """Rebuild ``live.js`` when ``plan.py render`` would: a frozen receipts plan whose HTML page exists.
+    """Rebuild ``live.js`` as ``plan.py render`` does for a frozen receipts plan whose HTML page exists.
 
-    None, and nothing written, for any other plan and for a plan whose file is gone; a plan file that does
-    not load is the ``PlanError`` ``plan_doc.load_plan`` raises.
+    None, and nothing written, for any other plan, for a plan without a page (left for render to write) and
+    for a plan whose file is gone; a plan file that does not load is the ``PlanError`` ``plan_doc.load_plan``
+    raises.
     """
     if not any(plans_dir.glob(f"{plan_id}_*{pd.PLAN_SUFFIX}")):
         return None

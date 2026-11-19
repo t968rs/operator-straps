@@ -87,13 +87,19 @@ def test_the_plan_folder_ignores_live_js(tmp_path: Path) -> None:
     ("work/plans/0002/DesignEvolution.json", "0002"),
     ("work/plans/0003_Add_operators_ActionPlan.json", "0003"),
     ("work/plans/freezes/plan/0004-add_operators/r1.1-freeze.json", "0004"),
+    ("work/plans/0005_Add_operators_PIP.html", "0005"),
 ])
 def test_each_live_source_names_its_plan(path: str, plan_id: str) -> None:
     assert pl.sourced_plans([path], "work/plans") == [plan_id]
 
 
+@pytest.mark.parametrize("plans_rel", ["./work/plans", "work//plans", "work/plans/.", "work\\plans\\"])
+def test_an_unnormalized_plans_folder_still_matches(plans_rel: str) -> None:
+    assert pl.sourced_plans(["work/plans/0001/receipts/TASK-1.json"], plans_rel) == ["0001"]
+
+
 @pytest.mark.parametrize("path", [
-    "work/plans/0001/tests/tests/test_calc.py", "work/plans/0001_Add_operators_PIP.html",
+    "work/plans/0001/tests/tests/test_calc.py", "work/plans/0001_Add_operators_PIP.md",
     "work/plans/0001/live.js", "work/plans/freezes/skill/retry/r1.1-freeze.json",
     "docs/plans/0001/receipts/TASK-1.json", "work/plans/0001/receipts/nested/TASK-1.json", "src/calc.py",
 ])
