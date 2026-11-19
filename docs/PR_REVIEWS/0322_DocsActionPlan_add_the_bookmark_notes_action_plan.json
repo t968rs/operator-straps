@@ -1,0 +1,600 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 322,
+  "pr_title": "Docs(ActionPlan): add the bookmark notes action plan",
+  "branch": "1169-bookmark-removes",
+  "base_branch": "main",
+  "base_sha": "8325e212aa076ea8b39c67cc1bdebcc17d9133ac",
+  "head_sha": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+  "review_date": "2026-11-19",
+  "verdict": "READY TO MERGE - 15 of 16 findings resolved, 0 bubbled, 1 refuted",
+  "stats": {
+    "additions": 3094,
+    "deletions": 114,
+    "files_changed": 37,
+    "source": {
+      "additions": 3055,
+      "deletions": 114,
+      "files_changed": 35
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/tests.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/docs.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/overall.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/roast.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0322/pr322_20261119T075116Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The compaction-fallback suite in bookmark.test.ts is purely behavioral: it drives real session.append, prompt.submit, session.end and command.run dispatches and asserts the owed/installed lifecycle, covering a dropped prompt, slash-command submissions, subagent rows, other doors and a failing clock.",
+    "test_add_note_script.py's `_run` turns an argparse SystemExit into an AssertionError, so a renamed subcommand or flag fails loudly instead of aborting pytest.",
+    "Branch semantics are pinned on both sides with matching cases (standing, same branch, other branch, unknown/detached current, non-text or blank branch): notes.test.ts for the mod, test_add_note_script.py for the script. The contract test pins NOTE_BRANCH_KEY and OTHER_BRANCH_MARK across them.",
+    "The unborn-branch and detached-HEAD tests run real git rather than stubbing current_branch, exercising the rev-parse then symbolic-ref fallback.",
+    "The UNREADABLE cases verify that `/session-bookmark notes` reports an unreadable file instead of showing it as empty, matching the script's read_notes refusal contract.",
+    "The out-of-range, malformed-file and blank/too-long edit tests compare the notes file byte for byte afterwards, proving refusals leave the file untouched.",
+    "The script's note_body/note_line and the mod's noteBody/noteLine agree case by case (standing, same branch, unknown current, other branch), and detached HEAD maps to null on both sides via current_branch and markingBranch.",
+    "parseNotesOrNull lets `/session-bookmark notes` report a file the script would refuse instead of showing it as empty, while compaction keeps the never-throw empty fallback through parseNotes.",
+    "asStoredNote reads string notes from a bookmark an earlier mod version stored as standing notes, so a reload across the type change cannot crash formatBookmark.",
+    "The prompt.submit fallback respects an abandoned dispatch (asReceived) and clears `owed` only once the context provably entered (recordDelivered), so a dropped or aborted prompt keeps the bookmark owed.",
+    "strap.py computes `passed` before `_grade_problems` and limits the unclear-grade exemption to green runs on an older hash whose scenario has since passed on the current hash; baseline and current-hash unclear grades and ungraded items still block.",
+    "SKILL.md, the root README and the session-bookmark README describe add_note.py's forms, receipts and branch markers exactly as the code prints them (note_body / noteBody agree on bare, `[b]` and `[b; now on c]`).",
+    "The SKILL's new `NOTE add -- '<line>'` / `NOTE edit N -- '<line>'` shape is correct: argparse at the head stores a dash-leading note as text for add, add --standing and edit.",
+    "Every blob the add-bookmark r1.1 freeze and the plan r1.1 freeze pin (SKILL.md, add_note.py, the contract test, both fixtures, the ActionPlan) matches the PR head.",
+    "The `/session-bookmark notes` Command row matches bookmark.ts verbatim: NOTES_USAGE, NOTES_UNREADABLE_TEXT, the hint-first listing and the no-notes reply.",
+    "Release notes update the intro, the version table (harness 0.80.0, session-bookmark 0.3.0, todo-watch 0.5.2) and the Unchanged line consistently with the three plugin.json bumps.",
+    "The fallback documentation in both mod READMEs states its limits (next-prompt delivery, no recent prompts, two compactions in one turn) rather than overpromising, matching the installed/owed bookkeeping in bookmark.ts.",
+    "Every skill form now passes the note after a standalone `--` (`NOTE add -- '<line>'`, `NOTE edit N -- '<line>'`), so the documented `-- --list` note no longer reaches argparse as a flag.",
+    "BRANCH_KEY and OTHER_BRANCH_MARK are module constants, and test_session_bookmark_notes_contract.py pins them against the mod's NOTE_BRANCH_KEY and OTHER_BRANCH_MARK, so the `[<branch>; now on <current>]` format cannot drift between the two sides.",
+    "edit calls checked_text(words, 0) and copies the note with `{**old, ...}`, so an edit works on a full file and keeps `added` and the branch, as SKILL.md and README promise.",
+    "The `add --standing` and `clear` paths return before current_branch runs, so they need no git call.",
+    "The argument-hint, the arguments table, the first-word dispatch table, the usage line and the README form table all list the same six forms, and the contract test pins each NOTE subcommand.",
+    "The r1.1 freeze records blob ids for SKILL.md (b9ffeaa) and add_note.py (2b6fdc4) that match the PR head.",
+    "add_note.py and notes.ts treat an absent, non-text or blank branch identically as a standing note, so old notes files and detached-HEAD notes keep working without a NOTES_VERSION bump.",
+    "current_branch falls back to `symbolic-ref` for an unborn branch and maps a detached HEAD to None, matching the mod's gitBranch plus markingBranch; both sides have tests for each case.",
+    "The compaction fallback clears the owed bookmark only after a prompt enters carrying it, and the tests cover slash-command lines, dropped prompts, subagent rows, other doors, /clear and resume, and a clock failure.",
+    "parseNotesOrNull lets `/session-bookmark notes` report a file the script refuses instead of showing it as empty, while the compaction bookmark keeps the old degrade-to-no-notes path.",
+    "formatBookmark reads string notes from a bookmark an earlier mod version stored as standing notes, so a reload across the upgrade does not break the command.",
+    "remove and edit refuse out-of-range numbers and malformed files without touching the file, and edit skips the full-file check, all pinned by behavioral tests.",
+    "The strap freeze change is narrow (earlier-hash greens whose scenario re-passed on the current hash) and has one test for the settled case and one for the still-blocking case.",
+    "Version bumps, release notes table and change lines, and the skill and plan freeze hashes all match the head blobs.",
+    "Cross-language names are pinned: test_session_bookmark_notes_contract.py now checks BRANCH_KEY/NOTE_BRANCH_KEY, OTHER_BRANCH_MARK and NOTES_ARG (against the mod README) on both sides.",
+    "parseNotesOrNull mirrors the script's read_notes refusals, so `/session-bookmark notes` reports an unreadable file instead of showing it as empty, and the README documents both behaviors.",
+    "The docs moved together with the code: SKILL.md, the root README form table, the session-bookmark README, the todo-watch M2 rule and Hooks table, types/index.d.ts (`detected` trigger, StoredNote) and the release-note rows all match the new code.",
+    "The session-bookmark README states the compaction fallback's limits plainly: next-prompt delivery, no prompts or instructions, and the two-compactions-in-one-turn miss. Each matches the installed/owed logic in bookmark.ts.",
+    "Version bumps follow the policy: harness and session-bookmark minor, todo-watch patch. The v1.0.0 table, intro and Unchanged line are all updated, and the strap.py rule change has its own release line.",
+    "The contract test pins BRANCH_KEY, OTHER_BRANCH_MARK and NOTES_ARG across add_note.py, notes.ts and the mod README, so the two halves cannot drift silently.",
+    "parseNotesOrNull keeps a refused file apart from an empty one, so `/session-bookmark notes` reports a corrupt file instead of claiming there are no notes.",
+    "The fallback tests are behavioral: dropped prompts, slash-command lines, /clear and resume, a failing clock, subagent rows and other doors each run through the real hooks.",
+    "Bookmarks stored as plain strings by an earlier load are read as standing notes, so a hot reload after the upgrade does not break formatBookmark.",
+    "current_branch falls back to symbolic-ref for an unborn branch and is tested against a real `git init -b trunk`, not a stub.",
+    "The README states the two-compactions-in-one-turn miss plainly instead of hiding it.",
+    "The add_note test runner turns an argparse SystemExit into an assertion, so an unknown subcommand fails loudly instead of surfacing as a confusing exit.",
+    "add_note.py current_branch falls back from rev-parse to symbolic-ref so an unborn branch still tags, and maps a detached HEAD to None, matching the mod's markingBranch.",
+    "notes.ts noteBody/noteLine and add_note.py note_body/note_line produce the same three forms (bare, [b], [b; now on c]) with the same trim and null rules for branch.",
+    "parseNotesOrNull lets /session-bookmark notes report an unreadable file instead of showing it as empty, mirroring read_notes raising NoteError.",
+    "edit calls checked_text(words, 0), so editing a note in a full 20-note file is not refused by the add-only capacity check.",
+    "strap.py _settled limits the unclear-grade waiver to GREEN runs on an earlier hash whose scenario passed on the current hash; current-hash and baseline unclear grades still block.",
+    "The prompt.submit fallback returns the prompt unchanged on an aborted dispatch and keeps the bookmark owed after a dropped prompt or a slash-command line, with tests for each.",
+    "All in-scope suites pass at the PR head: 84 pytest tests across the four Python files, 91 session-bookmark mod tests and 139 todo-watch mod tests.",
+    "_run now turns an argparse SystemExit into an AssertionError, so an unknown subcommand or flag fails the test and cannot hide behind a return-code check.",
+    "Out-of-range, absent-file, malformed-file and blank/too-long edit cases each check that the notes file stays byte-identical, not just the exit code.",
+    "Contract tests pin NOTE_BRANCH_KEY and OTHER_BRANCH_MARK between notes.ts and add_note.py, and pin the NOTES_ARG against the mod README.",
+    "The detached-HEAD and unborn-branch tests use real git repositories, so current_branch's rev-parse/symbolic-ref fallback runs for real.",
+    "The compaction-fallback tests cover subagent rows, rows through another door, slash commands, dropped prompts, session end and build failure, each checking that the bookmark is delivered exactly once.",
+    "The strap gate tests cover both sides of the unclear-green rule: settled when the green is repassed on the current hash, refused when it is not."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "The `--` command forms the skill now emits are never exercised against add_note.py",
+        "file": "tests/skills/test_add_note_script.py",
+        "files": [
+          "tests/skills/test_add_note_script.py",
+          "plugins/harness/skills/add-bookmark/SKILL.md",
+          "plugins/harness/skills/add-bookmark/commands/add_note.py"
+        ],
+        "lines": "34-39,429-441,509-519",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "This PR changes SKILL.md to run `NOTE add -- '<line>'`, `NOTE add --standing -- '<line>'` and `NOTE edit N -- '<line>'` (base ran `NOTE add '<line>'`), and states the standalone `--` keeps a note beginning with `-` as text. No test in test_add_note_script.py passes `--` through `main`: every add/edit call uses bare words. `_run` was rewritten to turn an argparse SystemExit into a test failure, yet no call drives the one argv shape the only production caller sends. argparse's `--` handling inside subparsers (and before a `nargs='+'` positional after another positional, as in `edit N -- text`) has shifted across 3.12/3.13 point releases, so a regression in that shape would ship with the suite green, and the skill would get an argparse refusal on every note.\n\nAlso (tests): test_add_records_the_current_branch and test_add_standing_stores_no_branch compare against the literal `note 1/20: ...`, while the rest of the module reads `script.MAX_NOTES`. Changing the limit (pinned to the mod by the contract test) breaks these two tests for no behavioral reason.\n\nAlso (overall): SKILL.md changed every store to `NOTE add -- '<line>'`, `NOTE add --standing -- '<line>'` and `NOTE edit N -- '<line>'` so a note starting with `-` is stored as text. Nothing in tests/skills/test_add_note_script.py runs `add`, `add --standing` or `edit N` with a `--` before the text, so the argparse subparser handling of `--` (which has shifted between Python releases) and a leading-dash note are never exercised.",
+        "fix": [
+          "Add a parametrized test that runs `add -- -x leading dash`, `add --standing -- -y`, and `edit 1 -- -z` through `_run`, asserting exit 0 and that the stored texts are `-x leading dash`, `-y` (no branch key) and `-z` (branch kept).",
+          "Use `f\"note 1/{script.MAX_NOTES}: [main] keep it\"` and `f\"note 1/{script.MAX_NOTES}: every branch\"`.",
+          "Add a test that runs `_run(script, project, 'add', '--', '-x', 'note')`, `_run(script, project, 'add', '--standing', '--', '-y')` and `_run(script, project, 'edit', '1', '--', '-z')` and asserts the stored texts are `-x note`, `-y` and `-z`."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Root README makes the other-branch confirmation unconditional; SKILL.md limits it to relevant notes",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/add-bookmark/SKILL.md"
+        ],
+        "lines": "177-180",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "README.md:177-180 says the list marks a note from another branch and `the session confirms such a note with the developer before applying or skipping it`, with no condition. The skill this PR froze (SKILL.md:85-88 and 104-106) requires the question only `when such a note bears on the note being stored or on the work the developer asks for next`. A reader of the README expects a question for every marked note, which the skill does not ask for.",
+        "fix": [
+          "Reword README.md:178-180 to follow SKILL.md: `when such a note bears on the note being stored or the work asked for next, the session asks the developer whether it still applies before acting on it or setting it aside`."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "B2's 'never frees a slot itself' froze without a red",
+        "file": "docs/plans/strap/add-bookmark/SkillSpec.json",
+        "lines": "68-147,300-323,501-507",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The only drawn B2 scenario (SC-3) has a baseline (R-2) graded `absent` on the judged item 'freeing a slot by removing or clearing notes'. The base SKILL.md already said 'for a full file, relay the message and stop', so the discipline half of B2 never showed the failure it claims to prevent. Only the reply_matches `--remove N` check went red, and it is trivially absent from a base skill that has no `--remove` form. SC-4 was never drawn. The frozen spec therefore claims B2 as a red-to-green discipline when it has only been shown as a text check.",
+        "fix": [
+          "On the next add-bookmark reopen, cut B2's statement to the observable part ('the full-file reply names --remove N and --clear') and keep 'never frees a slot itself' out of strap claims, since the base rule already covers it.",
+          "Or draw SC-4 (or add more pressure to SC-3) until a baseline frees a slot, then record that red before refreezing."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "notes20 strap fixture has added timestamps that run backwards",
+        "file": "docs/plans/strap/add-bookmark/fixtures/notes20/.claude/state/harness/session-bookmark/notes.json",
+        "files": [
+          "docs/plans/strap/add-bookmark/fixtures/notes20/.claude/state/harness/session-bookmark/notes.json",
+          "docs/plans/freezes/skill/add-bookmark/r1.1-freeze.json"
+        ],
+        "lines": "21-82",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The 20-note fixture is meant to be an oldest-first notes file (add_note.py appends, so `added` rises down the list), but its timestamps go backwards five times: checkpoint 5 at 09:52 precedes checkpoint 6 at 09:05, 10 (10:57) precedes 11 (10:10), 14 (11:49) precedes 15 (11:02), 18/19 (12:41, 12:54) precede 20 (12:07). The minute step of 13 wrapped without carrying the hour. Nothing reads the order today, so behavior is unaffected, but the fixture no longer looks like a file the script could have written. The freeze freeze/skill/add-bookmark/r1.1 pins this blob (307f145), so a fix needs a refreeze.",
+        "fix": [
+          "Regenerate the timestamps as 08:00 plus 13 minutes per checkpoint with the hour carried (08:00, 08:13, 08:26, 08:39, 08:52, 09:05, ...), then refreeze the add-bookmark skill (r1.2) so the freeze record pins the new blob."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Exit-1 guidance skips the new out-of-range error from --remove/--edit",
+        "file": "plugins/harness/skills/add-bookmark/SKILL.md",
+        "files": [
+          "plugins/harness/skills/add-bookmark/SKILL.md",
+          "plugins/harness/skills/add-bookmark/commands/add_note.py"
+        ],
+        "lines": "90-91,101-102",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The exit-1 paragraph (SKILL.md:90-91) names only the too-long note and the full file, and Reply (SKILL.md:101-102) says the add_note line is relayed 'after the one retry'. `--remove N` and `--edit N` add a new exit-1 cause, `no note N; K stored` (add_note.py:158), and the unreadable-file error says `run clear to reset it` in script vocabulary. Neither gets guidance. A session could read 'after the one retry' as a reason to retry with another N. It could also relay `run clear` without the skill form `--clear`, which is the form the full-file case now spells out.",
+        "fix": [
+          "Add to SKILL.md after line 91: 'For `no note N` or an unreadable file, relay the message without a retry; for an unreadable file, add one line naming `--clear`.'",
+          "Reword Reply line 101 to 'On exit 1 (after the one retry for a too-long note), the `add_note:` line verbatim.'"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "PR title and description describe a plan-only change",
+        "file": "plugins/harness/skills/add-bookmark/commands/add_note.py",
+        "files": [
+          "plugins/harness/skills/add-bookmark/commands/add_note.py",
+          "plugins/session-bookmark/hooks/bookmark.ts",
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "1-12",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The PR body says `Files Changed: 3`, `No source code changes; behavior is unchanged`, and lists only the plan JSON, its HTML page and the freeze. At head the PR changes 34 files: add_note.py (branch-scoped notes, remove, edit), the session-bookmark hooks (StoredNote, `/session-bookmark notes`, the compaction fallback), todo-watch checks.ts, the strap.py freeze rule, three plugin version bumps and the release notes. The title `Docs(ActionPlan): ...` also undersells the runtime change.",
+        "fix": [
+          "Regenerate the PR summary from the head diff (`/harness:pr-sum 322`) and retitle it as a feature change, for example `Feat(add-bookmark, session-bookmark): branch-scoped notes, remove/edit, notes view and compaction fallback`."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Mod view and --list number notes differently when the file holds more than 20",
+        "file": "plugins/harness/skills/add-bookmark/commands/add_note.py",
+        "files": [
+          "plugins/harness/skills/add-bookmark/commands/add_note.py",
+          "plugins/harness/skills/add-bookmark/SKILL.md",
+          "plugins/session-bookmark/hooks/notes.ts",
+          "plugins/session-bookmark/hooks/bookmark.ts",
+          "plugins/session-bookmark/README.md",
+          "tests/skills/test_add_note_script.py",
+          "tests/mods/test_session_bookmark_notes_contract.py"
+        ],
+        "lines": "57-74",
+        "reviewer": "skill_package, overall, system_shape, roast, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:29 says `/session-bookmark notes` prints 'the same numbered list' and suggests it as the view to use before `--remove N`/`--edit N`. The mod's parseNotesOrNull keeps only the newest MAX_NOTES (`kept.slice(-MAX_NOTES)`, notes.ts:85), while read_notes (add_note.py:74) returns every usable entry. A file with more than 20 usable notes can be produced by a hand edit or a copied fixture, though not by `add`. For such a file, note 1 in the mod view is a different note than note 1 in `--list`, so `--remove 1` taken from the mod view drops the wrong note.\n\nAlso (overall, system_shape): liveNotesText numbers the notes from `parseNotesOrNull`, which keeps only the newest MAX_NOTES (`kept.slice(-MAX_NOTES)`) and trims and cuts each text at 300 characters, while add_note.py `listing`/`remove`/`edit` number every usable note and print the text as stored. A notes file holding more than 20 usable notes (hand-edited or merged) makes `/session-bookmark notes` print `1.` for what `--list` calls note 3, so a `--remove N` read off the mod view drops a different note. The README's `same numbering ... as /harness:add-bookmark --list` only holds at 20 notes or fewer.\n\nAlso (system_shape): The session-bookmark README (line 55) and SKILL.md:29-31 promise `the same numbering ... as /harness:add-bookmark --list`. `liveNotesText` (bookmark.ts:266) reads through `parseNotesOrNull`, which keeps only the newest MAX_NOTES (notes.ts:85) and cuts each text at 300 characters. The script's `list` numbers every usable note uncut. A hand-edited file with more than 20 notes gets view number N pointing at script note N+k, so a `--remove N` copied from the mod's view deletes a different note. The script never writes more than 20, so only an edited file triggers this, but the numbering promise is new in this PR.\n\nAlso (roast): parseNotesOrNull keeps `kept.slice(-MAX_NOTES)`, while add_note.py read_notes returns every usable note unsliced. On a file holding more than 20 usable notes (hand-edited, or merged by hand from another checkout) `/session-bookmark notes` and the bookmark's Session Notes start counting at the fourth note, while `--list`, `--remove N` and `--edit N` count from the first. README.md, the mod README and add-bookmark SKILL.md:29 all promise the same numbering, and the skill recommends that view before a `--remove N`, so the number someone reads in the mod can remove a different note. The script never writes more than 20 notes, which keeps this rare, but 'same numbering' is a contract and only holds up to 20.\n\nAlso (adv_code_tests): The new tests check each side's numbering on its own, and nothing checks that the two agree. notes.ts parseNotes keeps only the newest MAX_NOTES (`kept.slice(-MAX_NOTES)`, plugins/session-bookmark/hooks/notes.ts:85). add_note.py read_notes keeps every usable entry (plugins/harness/skills/add-bookmark/commands/add_note.py:74), and remove/edit pick by that full list (add_note.py:155-159). For a file holding more than MAX_NOTES entries, the number `/session-bookmark notes` shows is not the note `remove N` or `edit N` acts on, so the documented view-then-remove flow drops the wrong note. The script refuses to write past MAX_NOTES, so this only hits hand-edited or older files.\n\nAttack: Write a version-1 notes.json with 23 standing notes n0..n22 under <state_dir>/session-bookmark/. `/session-bookmark notes` (parseNotes, notes.ts:85) prints `1. n3`. `add_note.py --repo <repo> list` prints `1. n0`, and `add_note.py --repo <repo> remove 1` prints `removed note 1: n0`, so the note the mod view numbered 1 (n3) stays. Reproduced by probe probes/probe_numbering.py in the run directory: its output contains `mod view (parseNotes slice(-MAX_NOTES)) note 1 = n3` and `removed note 1: n0`.",
+        "fix": [
+          "Make the two numberings agree for over-full files: number the mod view from the file's real index, or have read_notes report the excess so --list and the mod print the same numbers.",
+          "Or qualify SKILL.md:29-31 so `--remove`/`--edit` numbers always come from `--list`, and say the mod view shows only the newest 20.",
+          "Give liveNotesText the unsliced list (a parse variant without the MAX_NOTES cut) so its numbers match the script's, keeping the cut for the compaction bookmark only.",
+          "Or state the 20-note bound in the README Command row and in the liveNotesText doc comment.",
+          "Give the live view an unsliced parse (for example a `parseNotesOrNull(text, { all: true })` path, or slice only in `captureNotes`) so its numbers match `read_notes`.",
+          "Or qualify the README row: the numbering matches `--list` for a file of at most 20 notes.",
+          "Number the mod's lines by each note's index in the full usable list: have parseNotesOrNull return the unsliced list plus the count it dropped, and pass that offset to notesListing so line N matches the script's N.",
+          "Or make add_note.py read_notes apply the same newest-MAX_NOTES cut (and document that `remove`/`edit` address only those), so both sides number the same slice.",
+          "Make add_note.py read_notes keep the newest MAX_NOTES entries, as parseNotes does, and add a test in tests/skills/test_add_note_script.py that lists a 23-entry file and expects `1. n3`.",
+          "Or have remove/edit refuse a file holding more than MAX_NOTES entries, pointing to clear, and test that refusal."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "current_branch and _git_name docstrings misdescribe git's answers",
+        "file": "plugins/harness/skills/add-bookmark/commands/add_note.py",
+        "lines": "97-104,107-116",
+        "reviewer": "runtime, skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "`current_branch` says 'a detached HEAD fails both, and rev-parse names it HEAD' (add_note.py:110-111), but on a detached HEAD `git rev-parse --abbrev-ref HEAD` succeeds and prints `HEAD`, so `_git_name` returns 'HEAD', `symbolic-ref` never runs, and line 116 maps it to None; nothing fails. `_git_name` claims to return 'the first output line' (add_note.py:98) while line 104 returns the whole stripped stdout.\n\nAlso (skill_package): The current_branch docstring (add_note.py:110-111) says 'a detached HEAD fails both, and rev-parse names it HEAD'. On a detached HEAD, `git rev-parse --abbrev-ref HEAD` exits 0 and prints `HEAD`, so `_git_name` returns 'HEAD', `symbolic-ref` never runs, and line 116 maps 'HEAD' to None. The two halves of the sentence contradict each other, and neither describes the actual path through the code.\n\nAlso (skill_package): The docstring at add_note.py:98 promises 'The first output line of git -C repo ARGS'. Line 104 returns `done.stdout.strip()`, which is the whole stripped output. That output is a single line for the two calls made today, but the contract is wrong for any other caller. The return expression `done.stdout.strip() or None if done.returncode == 0 else None` is also correct only by operator precedence (`or` binds tighter than the conditional), so it is hard to check at a glance.\n\nAlso (system_shape): add_note.py:110-111 says `a detached HEAD fails both, and rev-parse names it HEAD`. On a detached HEAD `git rev-parse --abbrev-ref HEAD` exits 0 and prints `HEAD`, so `_git_name` returns `HEAD`, the `symbolic-ref` fallback never runs, and line 116 maps `HEAD` to None. The code is right, but the docstring describes a failure path that does not happen and contradicts itself.",
+        "fix": [
+          "add_note.py:110-111: 'An unborn branch (no commit yet) fails rev-parse, so symbolic-ref answers for it; on a detached HEAD rev-parse prints HEAD, which reads as None.' add_note.py:98: 'The stripped output of git -C repo ARGS; None on a failure, a timeout or empty output.'",
+          "Replace the sentence with: 'On a detached HEAD, rev-parse succeeds and prints `HEAD`, which reads as None; symbolic-ref runs only when rev-parse fails, as it does on an unborn branch.'",
+          "Return `(done.stdout.splitlines() or [''])[0].strip() or None` after an explicit `if done.returncode != 0: return None`, so the code matches the docstring.",
+          "Or change the docstring to 'The stripped output of ...' and split the return into an explicit returncode check followed by `return done.stdout.strip() or None`.",
+          "Replace the sentence with: `An unborn branch (no commit yet) fails rev-parse, so symbolic-ref answers for it; on a detached HEAD rev-parse prints HEAD, which reads as None.`"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "strap-skills freeze step still lists every unclear grade as blocking",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "69,226-229",
+        "reviewer": "overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "strap.py `_settled` now lets `freeze` pass an `unclear` grade on a green from an earlier skill hash once that scenario has passed a green on the current hash. The strap-skills SKILL.md freeze step still lists `an unclear or missing grade` among the problems without that exception, so a session reading the skill expects a block the driver no longer raises.\n\nAlso (system_shape): strap.py now lets freeze pass an `unclear` grade on a green from an earlier skill hash once that scenario has passed a green on the current hash (`_settled`, used by `_grade_problems`), and the release notes say so. The strap-skills SKILL.md freeze step still lists `an unclear or missing grade` as a blocking problem with no exception, so the driver and the skill that documents its gates no longer agree. The SkillSpec in this PR (R-6, an unclear grade on stale hash d72eb50) only froze because of the new exception.\n\nAlso (roast): strap.py freeze no longer counts an unclear grade on a green from an earlier skill hash once that scenario has passed a green on the current hash. strap-skills SKILL.md still lists 'an `unclear` or missing grade' among freeze problems (line 228) and says an honest `unclear` blocks the freeze (line 69). The skill is locked (freezes/skill/strap-skills/r3.4-lock), which probably explains why nobody touched it, but the doc a session follows now overstates the gate.",
+        "fix": [
+          "Amend the freeze step's problem list to `an unclear grade (except on an earlier-hash green whose scenario has since passed on the current hash) or a missing grade`, and refreeze the strap-skills spec if it is frozen.",
+          "In plugins/harness/skills/strap-skills/SKILL.md:228, change `an `unclear` or missing grade` to `an `unclear` or missing grade (an `unclear` on a green from an earlier hash no longer blocks once that scenario has passed a green on the current hash)`, and qualify the matching `an honest `unclear` blocks the freeze` rule at line 69 the same way.",
+          "Reopen strap-skills through its own flow and change line 228 to 'an `unclear` grade (one on a green from an earlier hash no longer counts once that scenario passes a green on the current hash) or a missing grade', then refreeze.",
+          "Or record the change in the next strap-skills reopen's notes so the wording is fixed in that round, and state the deferral in docs/RELEASES/v1.0.0.md next to the Fix(strap-skills) entry."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "session-bookmark README says the Branch line shows HEAD when the branch is unknown",
+        "file": "plugins/session-bookmark/README.md",
+        "files": [
+          "plugins/session-bookmark/README.md",
+          "plugins/session-bookmark/hooks/bookmark.ts",
+          "plugins/session-bookmark/hooks/notes.ts"
+        ],
+        "lines": "32-33",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new Session Notes bullet says 'With the branch unknown or a detached HEAD, no note is marked (the `- Branch:` line still shows `HEAD`).' The parenthetical holds only for a detached HEAD: formatBookmark (plugins/session-bookmark/hooks/bookmark.ts:159) prints `(unknown)` when gitBranch returns null, and markingBranch (hooks/notes.ts:98) maps only the literal `HEAD` to null. A reader of the unknown-branch case expects a `HEAD` line that never appears.",
+        "fix": [
+          "Reword README.md lines 32-33 to: 'With the branch unknown or a detached HEAD, no note is marked (on a detached HEAD the `- Branch:` line shows `HEAD`; with the branch unknown it shows `(unknown)`).'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Command-description test passes without the notes argument being named",
+        "file": "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/bookmark.test.ts",
+          "plugins/session-bookmark/hooks/bookmark.ts"
+        ],
+        "lines": "581-586",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test title says the registered description names the notes argument, but it asserts only `d.includes(NOTES_ARG)`, i.e. the substring `notes`. COMMAND_DESCRIPTION (bookmark.ts:81-82) also contains `stored session notes`, so dropping the backticked `notes` argument from the description leaves the test green.",
+        "fix": [
+          "Assert the backticked argument: `expect(seen.descriptions.some(d => d.includes(`\\`${NOTES_ARG}\\``))).toBe(true)`."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Test title claims no bookmark is read; nothing checks a read",
+        "file": "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "lines": "619-624",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`needs no compaction: no bookmark is read or stored` asserts only that no bookmark state was written (`saved(seen)` undefined) and that the notes file was read. Nothing checks that bookmark state was not read, so the `read` half of the title has no assertion behind it.",
+        "fix": [
+          "Rename the test to `needs no compaction: no bookmark is stored; the notes file is read live`.",
+          "Or record `state.get` events in `world` and assert that none targets the `bookmark` key."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Installed mark outlives its compaction within one turn",
+        "file": "plugins/session-bookmark/hooks/bookmark.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/bookmark.ts",
+          "plugins/session-bookmark/hooks/bookmark.test.ts",
+          "plugins/session-bookmark/README.md"
+        ],
+        "lines": "42-47,257,330-345,350-352",
+        "reviewer": "runtime, roast, adv_code_runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`compaction.installed` is reset only on `prompt.submit` (bookmark.ts:351), and the `session.append` hook reads it without consuming it (bookmark.ts:343). Two main-loop compactions inside one turn (two mid-turn auto-compactions) where the first installed a bookmark and the second did not (its build threw into the catch at bookmark.ts:334, or a mod ended the chain) compute `owed = !true = false` for the second row, so the fallback misses exactly the compaction it exists for. The docstring at bookmark.ts:42-46 ties `installed` to 'since the last prompt', which matches the code, but the fallback's contract at bookmark.ts:33-35 ('a main-loop compaction row ... while this mod's session.compact hook did not append a bookmark') is per compaction, not per prompt. The test at bookmark.test.ts:708 pins the per-prompt lifetime and does not cover two compactions in one turn.\n\nAlso (roast): compaction.installed goes true as soon as this mod's session.compact hook appended its message. A mod earlier in the chain that calls next and then replaces `messages` with its own (the 'reroutes' half of issue #204 and D5) discards the bookmark, yet the compaction row then sets owed = !installed = false, so no bookmark follows. The README's fallback bullet and Known limitations cover a mod that answers without calling next, and the two-compactions-in-one-turn case, but not this one.\n\nAlso (adv_code_runtime): compaction.installed is set by the session.compact hook and cleared only by prompt.submit. The session.append fallback reads it (owed = !installed) but never consumes it, so after one answered compaction every later compaction row in the same turn (no prompt in between, the mid-turn auto-compaction case the module doc names) reads installed=true and owes nothing, even when the session.compact hook never saw that second compaction. The fallback then misses exactly the case it exists for.\n\nAttack: Add to the 'compaction fallback' describe in plugins/session-bookmark/hooks/bookmark.test.ts: `world(on); await promptContext($); await $.session.compact({ trigger: 'auto', messages: HISTORY }); await appendRow($); await appendRow($); expect((await promptContext($)).length).toBe(1)`. The first appendRow is the answered compaction's row, the second simulates a later mid-turn compaction whose session.compact hook did not run. Trace: compact sets installed=true; row 1 sets owed=!true=false; row 2 sets owed=!true=false (installed was never cleared); prompt.submit sees owed=false and adds no context, so the test fails with length 0. Run with `claude plugin test plugins/session-bookmark`.",
+        "fix": [
+          "Consume the mark at the row: in the `session.append` hook set `compaction.owed = !compaction.installed` and then `compaction.installed = false` (main loop only), keep the reset in `prompt.submit`, update the `installed` docstring to 'since the last compaction row or prompt', and add a test with two rows in one turn where only the first was installed.",
+          "If the per-prompt lifetime is intended, narrow the module docstring at bookmark.ts:33-35 to say the fallback covers the first unanswered compaction after a prompt only.",
+          "Add a Known limitations bullet: a mod before this one that calls next and then replaces the result's messages drops the bookmark, and the fallback does not catch it.",
+          "Or, if the session.append compaction row carries the installed messages, decide owed from the row itself (no message starting with BOOKMARK_HEADER) instead of the per-load installed flag, and add a test where an outer session.compact hook calls next and discards the messages.",
+          "In the session.append hook (plugins/session-bookmark/hooks/bookmark.ts:343), consume the mark: `if (e.agentId === undefined) { compaction.owed = !compaction.installed; compaction.installed = false }`, and add a test for two rows with no prompt between.",
+          "Track the answered compaction per row (for example a counter incremented by session.compact and decremented by session.append) instead of a boolean cleared per prompt."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "notes.ts header claims the contract test pins the printed line format",
+        "file": "plugins/session-bookmark/hooks/notes.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/notes.ts",
+          "tests/mods/test_session_bookmark_notes_contract.py",
+          "plugins/harness/skills/add-bookmark/commands/add_note.py"
+        ],
+        "lines": "4-9",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring says the names, limits and the printed line format (the script's `note_line`) are copied here and that tests/mods/test_session_bookmark_notes_contract.py pins them. The contract test pins NOTE_BRANCH_KEY and OTHER_BRANCH_MARK (plus path, version, limits, state_dir) but never compares the line shape: `noteBody`'s `[${branch}; ${OTHER_BRANCH_MARK} ${current}]` template and the script's `note_body` f-string can drift (bracket, separator, order) with every Python and TS test still green, while the README promises `/session-bookmark notes` prints the same lines as `--list`. The PR body repeats the claim ('pins ... the line format shared by script and mod').\n\nAlso (system_shape): notes.ts:6-9 says the names, limits `and the printed line format (the script's note_line)` are copied and that tests/mods/test_session_bookmark_notes_contract.py pins them. The contract test pins NOTES_REL, the version, the limits, NOTE_BRANCH_KEY, OTHER_BRANCH_MARK, NOTES_ARG and state_dir. Nothing compares `noteBody`/`noteLine` with `note_body`/`note_line`. Each side has its own literal tests (notes.test.ts, test_add_note_script.py), so a change to the bracket or `; ` layout on one side would pass both suites while `/session-bookmark notes` and `--list` stop matching, even though both READMEs promise they match.",
+        "fix": [
+          "Reword the notes.ts header (and the PR body) so it says the contract test pins the names and limits, and that the line format is mirrored by hand and checked by the literal examples in notes.test.ts and test_add_note_script.py.",
+          "Add a contract test that reads the `noteBody` template literals from notes.ts and asserts they render, for one standing, one same-branch and one other-branch case, exactly what `script.note_line` returns.",
+          "Add a contract test that builds the three forms with the script's `note_line` (standing, same branch, other branch) and asserts that notes.ts holds each template, for example the `[${note.branch}; ${OTHER_BRANCH_MARK} ${current}]` literal.",
+          "Or reword notes.ts:6-9 so it says the line format is mirrored by hand and checked only by each side's own tests."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Compaction-row fallback added to two mods, not to the others that force a line on main compaction",
+        "file": "plugins/todo-watch/hooks/checks.ts",
+        "files": [
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/git-status/hooks/status.ts",
+          "plugins/agent-watcher/hooks/layers/pr-review/phase5Scan.ts"
+        ],
+        "lines": "699-705",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The PR adds a `session.append` door `compaction` fallback to todo-watch (checks.ts:699-705) and session-bookmark because a mod earlier in the `session.compact` chain can end it. git-status (status.ts:397-401) and the agent-watcher pr-review layer (phase5Scan.ts:93) re-force their context lines from the same `isMainCompaction` check on `session.compact` and keep the same blind spot, so after such a compaction the todo line comes back but the git-status line and PHASE5_PENDING do not.",
+        "fix": [
+          "Add the same `session.append` `{ door: 'compaction' }` main-loop fallback to git-status's `registerContextResets` and the phase5 context registration, with a test for each mirroring checks.test.ts:274.",
+          "Or record in the PR description why only todo-watch and session-bookmark need it."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "unclear_green_then_retest duplicates fail_green_then_retest and returns an unused value",
+        "file": "tests/scripts/test_strap_gate.py",
+        "files": [
+          "tests/scripts/test_strap_gate.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "452-485",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The new helper repeats fail_green_then_retest (lines 196-202) step for step, changing only the green grade from `absent` to `unclear`, then adds the fresh scenario's baseline and green that test_freeze_refuses_an_unrepassed_must_pass (lines 540-543) already spells out inline. Its third return value (`fresh`) is discarded by both callers.\n\nAlso (roast): _settled waives an unclear grade only for a green (`run.arm == Arm.GREEN`) on an earlier hash (`run.skill_hash != current`). The two new tests cover a stale green that was passed again and one that was not. The existing test_freeze_refuses_an_unclear_grade uses a current-hash baseline, which the hash check already rejects. So deleting the arm check, or waiving a current-hash green whose scenario passed in a second run, would fail no test. The release note and the PR body both say an unclear grade on a baseline or a current-hash green still blocks, but nothing enforces either claim.",
+        "fix": [
+          "Give fail_green_then_retest a `value: str = \"absent\"` parameter, call it with `\"unclear\"`, and capture the green run id from its `play` call. Then have unclear_green_then_retest return `(green, failed)` only, or drop it in favor of the parametrized helper plus the two inline `play` calls.",
+          "Add a test in tests/scripts/test_strap_gate.py where a baseline graded unclear on the old hash is followed by a retest and a passing green of the same scenario on the current hash, and assert freeze still reports `unclear grade on <baseline run>`.",
+          "Add a test where a current-hash green graded unclear sits beside a second passing green of the same scenario, and assert freeze still refuses it."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M17",
+      "classification": "out_of_scope",
+      "reason": "git-status status.ts and agent-watcher phase5Scan.ts are not touched by this PR; adding the session.append compaction fallback there is a change to two other mods."
+    },
+    {
+      "id": "M2",
+      "classification": "needs_follow_up",
+      "reason": "SkillSpec.json is driver-owned and frozen; narrowing B2 or drawing SC-4 for a real red needs an add-bookmark reopen (a new strap round), which needs the developer's OK."
+    },
+    {
+      "id": "M9",
+      "classification": "needs_follow_up",
+      "reason": "strap-skills is locked (r3.4-lock); its SKILL.md is a strap part, so the reword needs a reopen, green reruns and a refreeze the developer starts."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 322 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"cdf72e70f26d0d8e492ad55f314639e4dc76248f\",\"headRefName\":\"1169-bookmark-removes\",\"headRefOid\":\"06c19e4ebf1eca761eddb035549c3db8a730ed15\",\"last_sha\":\"06c19e4ebf1eca761eddb035549c3db8a730ed15\",\"mergeCommit\":null,\"number\":322,\"state\":\"OPEN\",\"title\":\"Docs(ActionPlan): add the bookmark notes action plan\",\"url\":\"https://github.com/t968rs/operator-straps/pull/322\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (31 checked, 1 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 31,
+          "findings_refuted": 1,
+          "findings_upheld": 30,
+          "code_findings": 2
+        },
+        "refuted_ids": [
+          "M6"
+        ],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1169-bookmark-removes",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1169-bookmark-removes",
+        "head_ref_name": "1169-bookmark-removes",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "cdf72e70f26d0d8e492ad55f314639e4dc76248f",
+        "head_sha": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+        "base_ancestor_command": "git merge-base --is-ancestor cdf72e70f26d0d8e492ad55f314639e4dc76248f HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 06c19e4ebf1eca761eddb035549c3db8a730ed15 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M6",
+      "status": "REFUTED",
+      "date": "2026-11-19",
+      "evidence": "plugins/harness/skills/add-bookmark/commands/add_note.py:1-12 shows the module docstring for add/list/remove/edit/clear, nothing about the PR text; the current PR 322 title is 'Feature(add-bookmark): branch-tagged session notes' and its body lists 37 files changed, including add_note.py, bookmark.ts, checks.ts and strap.py, with no plan-only or no-source-change claim"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - README Session Notes bullet now says a detached HEAD prints `HEAD` on the Branch line and an unknown branch prints `(unknown)`; bookmark.ts cited only (formatBookmark already prints `(unknown)`), no edit needed for M10; notes.ts markingBranch maps only the literal HEAD to null (notes.ts:98), the behavior the README reword describes; the README edit is the other part's"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - description test asserts the backticked notes argument instead of the bare substring; bookmark.ts cited only (COMMAND_DESCRIPTION already backticks it)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - renamed the test to 'needs no compaction: no bookmark is stored; the notes file is read live' to match its assertions"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - session.append consumes the installed mark per main-loop compaction row (owed = !installed, then installed = false); installed docstring says 'since the last compaction row or prompt'; added a two-compactions-in-one-turn test and retitled the one-row lifetime test; README fallback bullet updated, the obsolete two-compactions limitation replaced by one for an earlier mod that calls next and then replaces the messages"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - SKILL.md already limits the other-branch question to a note that bears on the note being stored or the work asked for next (SKILL.md:85-88, 104-106); the README reword is the other part's edit; README.md:177-180 now asks the developer about a note from another branch only when it bears on the note being stored or the work asked for next, matching SKILL.md:85-88; SKILL.md is the other part's file and was not edited here"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - contract test now pins the line format: renders the script's note_body/note_line from TS placeholders and asserts notes.ts holds the same-branch, other-branch and numbering template literals and the bare standing return, making the notes.ts header claim true; notes.ts and add_note.py cited only, no edit"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - added tests driving `add -- -x leading dash`, `add --standing -- -y` and `edit 1 -- -z` through _run (texts kept with leading dash, standing has no branch key, edit keeps branch); the two `note 1/20` literals now read script.MAX_NOTES; SKILL.md and add_note.py cited only, no edit"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - fail_green_then_retest takes value: str = \"absent\" for the green grade; unclear_green_then_retest now calls it with \"unclear\", takes the green run id from runs_of(spec, \"green\"), and returns (green, failed) without the unused fresh scenario; both callers unpack two values; strap.py: cited for _settled, no edit needed for the dedup option"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - parseNotesOrNull (live /session-bookmark notes view) now returns every usable note uncapped, as read_notes does, so view note N is the note remove N/edit N act on; parseNotes keeps the newest-MAX_NOTES cut for the compaction bookmark only; liveNotesText doc, mod README command row and SKILL.md:29 say the view lists every stored note; contract test pins no MAX_NOTES cut in parseNotesOrNull and an uncapped read_notes on a 23-note file. add_note.py: read_notes already numbers every usable note, no edit; test_add_note_script.py: coverage lives in the contract test"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - SKILL.md exit-1 paragraph now says no retry for `no note N` or an unreadable file, and names `--clear` for the unreadable file; Reply line reworded so the one retry applies only to a too-long note"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - current_branch docstring rewritten to the detached-HEAD path (rev-parse prints HEAD, reads as None); _git_name docstring now says stripped stdout, and the return is split into an explicit returncode check followed by `return done.stdout.strip() or None`"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - notes20 fixture timestamps regenerated as 08:00 plus 13 minutes per checkpoint with the hour carried (08:00 ... 12:07), now strictly rising; r1.1-freeze.json: write-once ledger entry for round 1, left as history - the spec was reopened (r2.1-reopen.json, mode edit), so a round-1 refreeze (r1.2) no longer exists and the next round-2 freeze pins the new fixture blob"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - strap-skills SKILL.md freeze step problem list and the honest-unclear rule now state that an unclear on a green from an earlier hash no longer blocks once that scenario has passed a green on the current hash (strap-skills is open in round 4, r4.1-reopen; refreeze runs through its own flow); strap.py: _settled/_grade_problems already implement the exception, no edit; docs/RELEASES/v1.0.0.md: the Fix(strap-skills) entry already describes it, no edit"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - Added the session.append door compaction main-loop fallback to git-status registerContextResets (forces isContextForced) and to registerPhase5Context (clears lastAttached), with a mirrored test of checks.test.ts:274 in new files statusAppend.test.ts and phase5Append.test.ts (the existing status.test.ts and phase5Scan.test.ts sit outside the file set; the git-status and agent-watcher READMEs were not updated for the same reason); checks.ts: the reference fallback, already present at checks.ts:699-705, needs no edit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "06c19e4 (working-tree snapshot; developer commits) - add-bookmark reopened as round 2 (base 06c19e4); B2 narrowed through strap.py api update_behavior to 'On a full notes file the reply relays the refusal and names --remove N and --clear', rationale notes the slot rule is a green expectation without a proven red (outside fixer waves)"
+    }
+  ]
+}

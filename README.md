@@ -175,8 +175,9 @@ drafts in the configured artifact folders. `/harness:c-msg <change>` rewrites th
   (`the current status of the banner options`, `what we built`) is stored as the branch, versions, ids and
   pending checks it refers to. Text that stands alone is stored as written, apart from quoting and length.
 - A note records the branch checked out when it is added (none on a detached HEAD or under `--standing`). The
-  list marks a note from another branch `[<branch>; now on <current>]` and never hides it; the session confirms
-  such a note with the developer before applying or skipping it.
+  list marks a note from another branch `[<branch>; now on <current>]` and never hides it; when such a note bears
+  on the note being stored or the work asked for next, the session asks the developer whether it still applies
+  before acting on it or setting it aside.
 - At most 20 notes; `--remove N` or `--clear` frees slots. A note over 300 characters, or a blank one, is
   refused.
 - Notes live in `session-bookmark/notes.json` under `state_dir` (default `.claude/state/harness`); gitignore that
