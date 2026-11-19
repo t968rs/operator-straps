@@ -61,6 +61,9 @@
   "attach": {
     "auto_resolve": []
   },
+  "working_refs": {
+    "max_chars": 120
+  },
   "runlogs": {
     "dir": null,
     "name_pattern": "(?:.*\\D)?(?P<date>\\d{4}-\\d{2}-\\d{2})(?:_(?P<time>\\d{6}))?\\.(?:txt|log)"

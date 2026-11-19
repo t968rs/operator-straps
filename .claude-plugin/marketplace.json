@@ -43,7 +43,7 @@
     {
       "name": "working-refs",
       "source": "./plugins/working-refs",
-      "description": "The plans, TODO ids and issues the current branch works on, as one line for the ccstatusline widget and band-line"
+      "description": "The plans, TODO ids and issues the current branch works on, then every other branch's override, as one line for the ccstatusline widget and band-line"
     },
     {
       "name": "pytest-scope",

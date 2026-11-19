@@ -1,6 +1,6 @@
 {
   "name": "banner-status",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window, and the working-refs line as an optional third line)",
   "author": {
     "name": "Kevin Gabelman"

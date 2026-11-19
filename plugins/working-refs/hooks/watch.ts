@@ -2,27 +2,40 @@ import type { EngineInterface, On } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
 import type { WorkingLine } from '../types'
-import { lineFileOf, overridesFileOf, plansFolderOf, readConfig, type WorkingRefsConfig } from './config'
-import { buildLine, statusText } from './line'
+import {
+  catalogFileOf, issuesCacheFileOf, lineFileOf, lineJsonFileOf, openIssuesFileOf, overridesFileOf, plansFolderOf,
+  readConfig, type WorkingRefsConfig,
+} from './config'
+import {
+  CACHE_VERSION, type CachedIssue, isClosed, issueCacheOf, type IssueState, type OpenList, openListOf, retiredIdsOf,
+} from './hide'
+import { buildLine, type LineView, statusText } from './line'
 import { PIP_HTML_SUFFIX, PLAN_SUFFIX } from './mirror'
-import { parseOverrides } from './overrides'
+import { type Overrides, parseOverrides } from './overrides'
 import { archivedIdsOf, type MergeBaseOf, pageOf, parsePlan, type PlanInfo, qualifies } from './plans'
 
 /**
  * Engine glue for working-refs: finds the project, scans its plans folder, runs git for the archive tags, HEAD
  * and the merge bases (plan 2025 D9), and stores the branch's working line in the `line` atom and the
- * ccstatusline form in `<state_dir>/working-refs/line.txt` (D6). Scans run at `session.start`, when
- * git-status's snapshot names another branch, when HEAD or the archive tags moved at a prompt, and when the
- * plans folder's signature or the override file's mtime moved after a file or shell tool call or at a prompt.
- * Every host failure degrades to an empty line; no hook throws into a tool call, a prompt or a session start.
+ * ccstatusline form in `<state_dir>/working-refs/line.txt` (D6) and, stamped with the branch, `line.json`
+ * (plan 2027). Override refs hide by the checked-out catalog's `retired_ids`, the open-issue list `todo_sync.py
+ * untracked` writes and the mod's own `gh issue view` cache, which a recheck pass refreshes past
+ * `todo.gh.max_age_hours`. Scans run at `session.start`, when git-status's snapshot names another branch, when
+ * HEAD or the archive tags moved at a prompt, when the plans folder's signature or the override file's, the
+ * catalog's or the open list's mtime moved after a file or shell tool call or at a prompt, and when a recheck
+ * changed whether an issue hides. Every host failure degrades to an empty line; no hook throws into a tool call, a
+ * prompt or a session start.
  * Functions taking `$` are function declarations: the engine follows `$` past an import only into one.
  */
 
 type Dollar = EngineInterface
 
-/** Longest one git call may take, in milliseconds. */
+/** Longest one git (or gh) call may take, in milliseconds. */
 export const GIT_TIMEOUT_MS = 10_000
-/** Tools whose calls may write a plan, its page or the override file. */
+/** The branch-stamped line file's version. */
+export const LINE_JSON_VERSION = 1
+const HOUR_MS = 3_600_000
+/** Tools whose calls may write a plan, its page, the override file, the TODO catalog or the open-issue list. */
 export const WATCH_TOOLS = /^(Bash|PowerShell|Edit|MultiEdit|Write)$/
 /** `<root>/.claude/harness.json`. */
 export const HARNESS_CONFIG_REL = '.claude/harness.json'
@@ -100,6 +113,52 @@ export const pairedPlans = (entries: readonly Listed[]): string[] => {
 }
 
 // ---------------------------------------------------------------------------
+// Pure: which override issues are due for a gh recheck
+
+/** Every issue any branch's override names, once each, in first-seen order. */
+export const overrideIssues = (overrides: Overrides): number[] =>
+  [...new Set([...overrides.values()].flatMap(o => o.refs.issues))]
+
+/**
+ * When issue `n` last got an answer: its last `gh` attempt (`triedAt`, which a failure also moves) or, when the
+ * open list holds it, the list's fetch time, whichever is later; -Infinity for neither.
+ */
+export const answeredAt = (n: number, list: OpenList | null, cache: ReadonlyMap<number, CachedIssue>): number =>
+  Math.max(cache.get(n)?.triedAt ?? -Infinity, list !== null && list.open.has(n) ? list.fetchedAt : -Infinity)
+
+/** The issues whose last answer is at least `maxAgeMs` old at `now`. */
+export const dueIssues = (
+  issues: readonly number[], list: OpenList | null, cache: ReadonlyMap<number, CachedIssue>, now: number, maxAgeMs: number,
+): number[] => issues.filter(n => answeredAt(n, list, cache) + maxAgeMs <= now)
+
+/** When the first of `issues` falls due; undefined for none. */
+export const dueAtOf = (
+  issues: readonly number[], list: OpenList | null, cache: ReadonlyMap<number, CachedIssue>, maxAgeMs: number,
+): number | undefined =>
+  issues.length === 0 ? undefined : Math.min(...issues.map(n => answeredAt(n, list, cache) + maxAgeMs))
+
+/**
+ * The cache entry after one `gh` attempt at `now`: the answer when gh gave one; a failure keeps the last known
+ * state and its check time and moves only `triedAt`, and with nothing known records UNKNOWN (shown).
+ */
+export const afterAttempt = (state: IssueState | undefined, prev: CachedIssue | undefined, now: number): CachedIssue => {
+  if (state !== undefined) return { state, checkedAt: now, triedAt: now }
+  return prev === undefined ? { state: 'UNKNOWN', checkedAt: now, triedAt: now } : { ...prev, triedAt: now }
+}
+
+const isoOf = (ms: number): string => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+/** The issue cache file text for the entries of `keep`. */
+export const cacheText = (cache: ReadonlyMap<number, CachedIssue>, keep: readonly number[]): string => {
+  const issues: Record<string, { state: IssueState; checked_at: string; tried_at: string }> = {}
+  for (const n of [...keep].sort((a, b) => a - b)) {
+    const c = cache.get(n)
+    if (c !== undefined) issues[String(n)] = { state: c.state, checked_at: isoOf(c.checkedAt), tried_at: isoOf(c.triedAt) }
+  }
+  return `${JSON.stringify({ version: CACHE_VERSION, issues }, null, 2)}\n`
+}
+
+// ---------------------------------------------------------------------------
 // Session memory (a reload starts afresh; its `session.start` fires again)
 
 /** What the last scan saw, which the probes compare with. */
@@ -112,12 +171,18 @@ const memo = {
   archived: undefined as string | undefined,
   signature: undefined as string | undefined,
   overridesMtime: undefined as number | undefined,
+  catalogMtime: undefined as number | undefined,
+  openIssuesMtime: undefined as number | undefined,
   /** Whether the last scan read any plan, so a prompt runs git only when a plan could move. */
   hasPlans: false,
+  /** When the first override issue falls due for a `gh` recheck (ms); undefined for none. */
+  recheckDueAt: undefined as number | undefined,
 }
 
 /** One scan at a time: a request while one runs is owed one more after it. */
 const pacing = { isBusy: false, isOwed: false }
+/** One recheck pass at a time, paced the same way. */
+const recheckPacing = { isBusy: false, isOwed: false }
 
 const resetMemo = (): void => {
   memo.isScanned = false
@@ -126,7 +191,10 @@ const resetMemo = (): void => {
   memo.archived = undefined
   memo.signature = undefined
   memo.overridesMtime = undefined
+  memo.catalogMtime = undefined
+  memo.openIssuesMtime = undefined
   memo.hasPlans = false
+  memo.recheckDueAt = undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -174,6 +242,25 @@ async function resolveWatch($: Dollar): Promise<Watch | undefined> {
 async function git($: Dollar, root: string, args: string[]): Promise<{ exitCode: number; stdout: string } | undefined> {
   const ran = await $.process.run(['git', '-C', root, ...args], { timeoutMs: GIT_TIMEOUT_MS }).catch(noop)
   return ran === undefined ? undefined : { exitCode: ran.exitCode, stdout: ran.stdout }
+}
+
+/** A gh `state` as an IssueState: a merged pull request (MERGED) counts as CLOSED; anything else is UNKNOWN. */
+function issueStateOf(state: unknown): IssueState {
+  if (state === 'MERGED') return 'CLOSED'
+  return state === 'OPEN' || state === 'CLOSED' ? state : 'UNKNOWN'
+}
+
+/** `gh issue view <n> --json state` in the checkout: OPEN, CLOSED (or MERGED) or UNKNOWN; undefined when gh failed. */
+async function ghStateOf($: Dollar, w: Watch, n: number): Promise<IssueState | undefined> {
+  const repo = w.cfg.ghRepo === null ? [] : ['--repo', w.cfg.ghRepo]
+  const argv = ['gh', 'issue', 'view', String(n), '--json', 'state', ...repo]
+  const ran = await $.process.run(argv, { cwd: w.root, timeoutMs: GIT_TIMEOUT_MS }).catch(noop)
+  if (ran === undefined || ran.exitCode !== 0) return undefined
+  try {
+    return issueStateOf((JSON.parse(ran.stdout) as { state?: unknown }).state)
+  } catch {
+    return 'UNKNOWN'
+  }
 }
 
 /** `git rev-parse HEAD`; undefined on any failure. */
@@ -279,7 +366,44 @@ async function writeLineFile($: Dollar, path: string, text: string): Promise<voi
   if (onDisk !== text) await $.fs.write(path, text)
 }
 
-/** One full scan: plans, git, overrides, then the atom and the line file. */
+/**
+ * Writes the branch-stamped line `{version, branch, text}` when it differs from the file; an absent file stays
+ * absent while there is no line.
+ */
+async function writeLineJson($: Dollar, path: string, branch: string, text: string): Promise<void> {
+  const onDisk = await readText($, path)
+  if (onDisk === undefined && text === '') return
+  const json = JSON.stringify({ version: LINE_JSON_VERSION, branch, text })
+  if (onDisk !== json) await $.fs.write(path, json)
+}
+
+/** What hides refs: the catalog's retired ids, the open list and the gh cache, with the mtimes the probes compare. */
+type HideState = {
+  retired: ReadonlySet<string>
+  list: OpenList | null
+  cache: ReadonlyMap<number, CachedIssue>
+  catalogMtime: number | undefined
+  openIssuesMtime: number | undefined
+}
+
+async function readHide($: Dollar, w: Watch): Promise<HideState> {
+  const catalog = catalogFileOf(w.root, w.cfg)
+  const catalogMtime = catalog === null ? undefined : await mtimeOf($, catalog)
+  const catalogText = catalog === null || catalogMtime === undefined ? undefined : await readText($, catalog)
+  const openPath = openIssuesFileOf(w.root, w.cfg)
+  const openIssuesMtime = await mtimeOf($, openPath)
+  const list = openListOf(openIssuesMtime === undefined ? undefined : await readText($, openPath))
+  const cache = issueCacheOf(await readText($, issuesCacheFileOf(w.root, w.cfg)))
+  return { retired: retiredIdsOf(catalogText), list, cache, catalogMtime, openIssuesMtime }
+}
+
+const viewOf = (h: HideState, maxChars: number): LineView => ({
+  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), maxChars,
+})
+
+const maxAgeOf = (w: Watch): number => w.cfg.ghMaxAgeHours * HOUR_MS
+
+/** One full scan: plans, git, overrides and what hides their refs, then the atom and the line files. */
 async function runScan($: Dollar, facts?: GitFacts): Promise<void> {
   const w = await resolveWatch($)
   if (w === undefined) return
@@ -294,13 +418,70 @@ async function runScan($: Dollar, facts?: GitFacts): Promise<void> {
   const archived = archivedIdsOf(tags ?? '')
   const qualifying = hasPlans ? await qualifyingPlans($, w.root, plans, branch, archived) : []
   const text = overridesMtime === undefined ? undefined : await readText($, overridesPath)
-  const overrides = branch === null ? new Map() : parseOverrides(text)
-  const line = buildLine(branch ?? '', qualifying, overrides)
+  const stored = parseOverrides(text)
+  // no snapshot: no override applies, so the own entry is never drawn as another branch's
+  const overrides: Overrides = branch === null ? new Map() : stored
+  const hide = await readHide($, w)
+  const line = buildLine(branch ?? '', qualifying, overrides, viewOf(hide, w.cfg.maxChars))
   Object.assign(memo, {
     isScanned: true, branch, head, archived: tags, signature: signatureOf(entries), overridesMtime, hasPlans,
+    catalogMtime: hide.catalogMtime, openIssuesMtime: hide.openIssuesMtime,
+    recheckDueAt: dueAtOf(overrideIssues(stored), hide.list, hide.cache, maxAgeOf(w)),
   })
   await storeLine($, line).catch(noop)
-  await writeLineFile($, lineFileOf(w.root, w.cfg), statusText(line)).catch(noop)
+  const status = statusText(line)
+  await writeLineFile($, lineFileOf(w.root, w.cfg), status).catch(noop)
+  if (branch !== null) await writeLineJson($, lineJsonFileOf(w.root, w.cfg), branch, status).catch(noop)
+  later($, async () => requestRecheck($))
+}
+
+/**
+ * One recheck pass: every override issue whose last answer is `todo.gh.max_age_hours` old gets one `gh issue view`;
+ * the cache is written once, and a scan follows when an issue's hiding changed. A failed cache write skips that
+ * scan and holds the next pass off for `todo.gh.max_age_hours`, so an unwritable cache cannot loop `gh` and scans.
+ */
+async function runRecheck($: Dollar): Promise<void> {
+  const w = await resolveWatch($)
+  if (w === undefined) return
+  const now = await $.clock.now()
+  const overrides = parseOverrides(await readText($, overridesFileOf(w.root, w.cfg)))
+  const issues = overrideIssues(overrides)
+  const hide = await readHide($, w)
+  const due = dueIssues(issues, hide.list, hide.cache, now, maxAgeOf(w))
+  if (due.length === 0) {
+    memo.recheckDueAt = dueAtOf(issues, hide.list, hide.cache, maxAgeOf(w))
+    return
+  }
+  const next = new Map(hide.cache)
+  for (const n of due) next.set(n, afterAttempt(await ghStateOf($, w, n), hide.cache.get(n), now))
+  const isWritten = await $.fs.write(issuesCacheFileOf(w.root, w.cfg), cacheText(next, issues)).then(
+    () => true,
+    () => false,
+  )
+  // an unwritten cache leaves the issues due on disk: a scan would queue the same recheck again
+  if (!isWritten) {
+    memo.recheckDueAt = now + maxAgeOf(w)
+    return
+  }
+  memo.recheckDueAt = dueAtOf(issues, hide.list, next, maxAgeOf(w))
+  if (due.some(n => isClosed(n, hide.list, hide.cache) !== isClosed(n, hide.list, next))) requestScan($)
+}
+
+/** Asks for a recheck pass and returns at once; one asked while a pass runs is owed after it. */
+function requestRecheck($: Dollar): void {
+  if (recheckPacing.isBusy) {
+    recheckPacing.isOwed = true
+    return
+  }
+  recheckPacing.isBusy = true
+  void runRecheck($)
+    .catch(noop)
+    .finally(() => {
+      recheckPacing.isBusy = false
+      if (!recheckPacing.isOwed) return
+      recheckPacing.isOwed = false
+      requestRecheck($)
+    })
 }
 
 /** Asks for a scan and returns at once; one asked while a scan runs is owed after it. */
@@ -325,14 +506,27 @@ function finishScan($: Dollar): void {
 // ---------------------------------------------------------------------------
 // Probes
 
-/** Whether the plans folder's signature or the override file's mtime moved since the last scan. */
+/** Whether the plans folder's signature or the override file's, the catalog's or the open list's mtime moved. */
 async function filesMoved($: Dollar, w: Watch): Promise<boolean> {
   const signature = signatureOf(await listOf($, plansFolderOf(w.root, w.cfg)))
   const overridesMtime = await mtimeOf($, overridesFileOf(w.root, w.cfg))
+  const catalog = catalogFileOf(w.root, w.cfg)
+  const catalogMtime = catalog === null ? undefined : await mtimeOf($, catalog)
+  const openIssuesMtime = await mtimeOf($, openIssuesFileOf(w.root, w.cfg))
   return signature !== memo.signature || overridesMtime !== memo.overridesMtime
+    || catalogMtime !== memo.catalogMtime || openIssuesMtime !== memo.openIssuesMtime
 }
 
-/** After a file or shell tool call: a scan when the plans folder or the override file moved. */
+/** Whether an override issue fell due for a `gh` recheck while the session sat idle. */
+async function isRecheckDue($: Dollar): Promise<boolean> {
+  const now = await $.clock.now().catch(noop)
+  return now !== undefined && memo.recheckDueAt !== undefined && now >= memo.recheckDueAt
+}
+
+/**
+ * After a file or shell tool call: a scan when the plans folder's signature or the override file's, the catalog's
+ * or the open list's mtime moved.
+ */
 async function afterToolCall($: Dollar): Promise<void> {
   if (!memo.isScanned) return requestScan($)
   const w = await resolveWatch($)
@@ -342,10 +536,12 @@ async function afterToolCall($: Dollar): Promise<void> {
 /**
  * At a prompt: the snapshot's branch (a write the `state.set` hook missed), HEAD and the archive tags (only
  * while a plan was read), then the files; a scan when any moved, handed the git facts already read. A failed
- * git call counts as no move.
+ * git call counts as no move. A `gh` recheck pass is queued as well when an override issue fell due
+ * (`isRecheckDue`).
  */
 async function onPrompt($: Dollar): Promise<void> {
   if (!memo.isScanned || (await branchNow($)) !== memo.branch) return requestScan($)
+  if (await isRecheckDue($)) later($, async () => requestRecheck($))
   const w = await resolveWatch($)
   if (w === undefined) return
   if (memo.hasPlans) {

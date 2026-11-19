@@ -157,9 +157,11 @@ Lists the open GitHub issues that no catalog record covers (no resolving item, t
 or research entry; `related_gh_issues` does not count), using `gh issue list` in `todo.gh.repo`, else the
 repository `gh` resolves for the checkout. Prints an `untracked: N open issue(s) in no catalog record` header,
 one `#N title` line per issue, then `wrote <path>` for the rows (issue text, comments, linked PR review text)
-at `<state_dir>/todo-sync/untracked.json`. Prints `untracked: none` and writes nothing when no issue is open
-outside the catalog. Refuses, exit 2, when `gh` fails, returns no JSON list or hits the
-listing limit. No options.
+at `<state_dir>/todo-sync/untracked.json`. Prints `untracked: none` and writes no rows when no issue is open
+outside the catalog. Either way, a complete listing also writes every open issue number to
+`<state_dir>/todo-sync/open_issues.json` (`{"version": 1, "fetched_at": <UTC>, "open": [...]}`), which the
+working-refs mod reads to hide closed issues. Refuses, exit 2, when `gh` fails, returns no JSON list or hits the
+listing limit, and then writes neither file. No options.
 
 ### `add`
 

@@ -18,10 +18,22 @@ oStraps: ⎇ feature/x ↑2 ↓1 · +3 ~3 ?2 · (R,L):1,2 | [Opus 5.5] · ctx:11
 ## Working line (optional)
 
 When `working-refs` holds a working line, it draws as a second line in the subtle color directly under the
-banner, verbatim (`plan 2025 · todo-k69m (301)`). The source is the `working-refs` mod's `line` state value
-(`$.state['working-refs'].line`, its `text` field), read as an atom so the line redraws when it changes.
+banner (`plan 2025 · todo-k69m (301) · [ other todo-zz99 ] +1`). The source is the `working-refs` mod's `line`
+state value (`$.state['working-refs'].line`), read as an atom so the line redraws when it changes.
 `working-refs` is optional and not listed under `dependencies`: while it is not installed, or its line is
 null or empty, only the banner draws, exactly as before.
+
+The second line's segments, in order, drawn from the `head`, `others` and `more` fields:
+
+- `head`: the plans part and the branch's own refs, plain (`plan 2025 · todo-k69m (301)`); left out when empty.
+- ` · ` between the head and the first other-branch segment, only when both exist.
+- One `[ <branch> <refs> ]` per other branch, most recent first, separated by a space; the branch name draws
+  dim (`dimColor`), the rest in the subtle color.
+- ` +N` when `more` segments did not fit under working-refs's cap: after the last segment or the head, with a
+  single space and no ` · `; with nothing before it, just `+N`.
+
+The characters are those of the line's `text`, which is what an older working-refs sends alone (no `others`);
+that `text` draws verbatim, with no dim names.
 
 ## Needs git-status
 
@@ -39,7 +51,7 @@ calls with an empty line, so the git state shows once.
 | `session.start` | Reads the session figures and starts a 60 s refresh of them. |
 | `turn.complete`, `prompt.submit` | Read the session figures; a write only when they moved. |
 | `ui.status` | Clears the line when git-status sets it; every other plugin's line passes. |
-| `ui.render` `AbovePrompt` | Draws the banner, then working-refs's working line when one is set, above whatever the hooks beneath drew (agent-watcher's band stays on screen); yields to a survey. |
+| `ui.render` `AbovePrompt` | Draws the banner, then working-refs's working line (other-branch names dim) when one is set, above whatever the hooks beneath drew (agent-watcher's band stays on screen); yields to a survey. |
 
 ## State
 

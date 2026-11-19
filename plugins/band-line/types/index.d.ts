@@ -26,13 +26,26 @@ export type SessionFigures = {
   ctxPercent: number | null
 }
 
+/** One other-branch segment of the working line, drawn `[ <branch> <refs> ]`. */
+export type OtherSegment = {
+  branch: string
+  /** The refs, already formatted by working-refs. */
+  refs: string
+}
+
 /**
- * The part of working-refs's working line this mod reads: the plain form it draws verbatim. A local copy of
- * the shape, so band-line does not depend on working-refs.
+ * The parts of working-refs's working line this mod reads. A local copy of the shape, so band-line does not
+ * depend on working-refs. A line from an older working-refs holds `text` alone.
  */
 export type WorkingLine = {
-  /** The plain form (`plan 2025 · todo-k69m (301)`). */
+  /** The full plain form (`plan 2025 · todo-k69m (301) · [ other todo-zz99 ] +1`). */
   text: string
+  /** The plans part and own refs, plain; empty when both are. */
+  head?: string
+  /** The drawn other-branch segments, most recent first. Absent from an older working-refs. */
+  others?: OtherSegment[]
+  /** Segments left out by the cap; 0 when all fit. */
+  more?: number
 }
 
 declare module 'claude-code' {

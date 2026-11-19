@@ -17,6 +17,12 @@ const ROOT = '/repo'
 const PLANS = `${ROOT}/docs/PLANS`
 const LINE_FILE = `${ROOT}/.claude/state/harness/working-refs/line.txt`
 const OVERRIDES_FILE = `${ROOT}/.claude/state/harness/working-refs/overrides.json`
+const LINE_JSON_FILE = `${ROOT}/.claude/state/harness/working-refs/line.json`
+const ISSUES_FILE = `${ROOT}/.claude/state/harness/working-refs/issues.json`
+const OPEN_ISSUES_FILE = `${ROOT}/.claude/state/harness/todo-sync/open_issues.json`
+const CATALOG_FILE = `${ROOT}/docs/TODO/RepoToDo.json`
+const TODO_CONFIG = JSON.stringify({ todo: { folder: 'docs/TODO' } })
+const HOUR = 3_600_000
 /** A second checkout (a worktree session's cwd) beside CLAUDE_PROJECT_DIR. */
 const WT = '/wt'
 const WT_LINE_FILE = `${WT}/.claude/state/harness/working-refs/line.txt`
@@ -63,6 +69,10 @@ type World = {
   timeouts: Array<number | undefined>
   /** Every `$.fs.write` path. */
   writes: string[]
+  /** Every gh argv, with the cwd and timeout it ran with. */
+  ghs: Array<{ argv: string[]; cwd: string | undefined; timeoutMs: number | undefined }>
+  /** What `gh issue view <n>` answers: a state, or 'fail' (a non-zero exit); absent numbers fail. */
+  gh: Record<number, string>
   /** The last value written to the `line` atom; undefined before one. */
   line: WorkingLine | null | undefined
   clock: MockClock
@@ -146,9 +156,19 @@ function answerGit(repo: Repo, args: readonly string[]): ProcessRunResult {
   return ran('', 128)
 }
 
+/** gh as the world answers it: `issue view <n> --json state`. */
+function answerGh(w: World, argv: readonly string[]): ProcessRunResult {
+  const answer = w.gh[Number(argv[3])]
+  return answer === undefined || answer === 'fail' ? ran('', 1) : ran(JSON.stringify({ state: answer }))
+}
+
 function gitHooks(on: On, w: World): void {
   on('process.run', (_$, e) => {
     const argv = [...e.argv]
+    if (argv[0] === 'gh') {
+      w.ghs.push({ argv, cwd: e.init?.cwd, timeoutMs: e.init?.timeoutMs })
+      return { value: answerGh(w, argv) }
+    }
     if (argv[0] !== 'git' || argv[1] !== '-C') return { value: ran('', 127) }
     w.gits.push(argv.slice(3))
     w.timeouts.push(e.init?.timeoutMs)
@@ -173,7 +193,7 @@ function bottoms(on: On): void {
 }
 
 /** `cwd` is the session's folder (default ROOT); CLAUDE_PROJECT_DIR stays ROOT. */
-type WorldOpts = { branch?: string | null; repo?: Partial<Repo>; config?: boolean; cwd?: string }
+type WorldOpts = { branch?: string | null; repo?: Partial<Repo>; config?: boolean | string; cwd?: string }
 
 function world(on: On, opts: WorldOpts = {}): World {
   const files = new Map<string, Rec>()
@@ -184,7 +204,7 @@ function world(on: On, opts: WorldOpts = {}): World {
       ...opts.repo,
     },
     git: opts.branch === null ? null : snapshot(opts.branch ?? 'feat'),
-    gitVersion: 1, gits: [], timeouts: [], writes: [], line: undefined,
+    gitVersion: 1, gits: [], timeouts: [], writes: [], ghs: [], gh: {}, line: undefined,
     clock: mock.clock(on, { now: NOW }),
     setFile: (path, text, mtimeMs) => files.set(keyOf(path), {
       text, mtimeMs: mtimeMs ?? w.clock.now(), path: files.get(keyOf(path))?.path ?? path,
@@ -195,7 +215,7 @@ function world(on: On, opts: WorldOpts = {}): World {
   fsHooks(on, w)
   gitHooks(on, w)
   bottoms(on)
-  if (opts.config !== false) w.setFile(configPathOf(ROOT), '{}', 1)
+  if (opts.config !== false) w.setFile(configPathOf(ROOT), typeof opts.config === 'string' ? opts.config : '{}', 1)
   return w
 }
 
@@ -206,6 +226,18 @@ const addPlan = (w: World, stem: string, text: string, mtimeMs = NOW - 60_000, f
 }
 
 const lineText = (w: World): string | undefined => w.files.get(keyOf(LINE_FILE))?.text
+const fileJson = (w: World, path: string): any => {
+  const text = w.files.get(keyOf(path))?.text
+  return text === undefined ? undefined : JSON.parse(text)
+}
+const iso = (ms: number): string => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')
+/** An issue cache file: `[n, state, checkedAt]` each. */
+const cacheJson = (...rows: Array<[number, string, number]>): string => JSON.stringify({
+  version: 1, issues: Object.fromEntries(rows.map(([n, state, at]) => [n, { state, checked_at: iso(at) }])),
+})
+const openJson = (fetchedAt: number, open: number[]): string =>
+  JSON.stringify({ version: 1, fetched_at: iso(fetchedAt), open })
+const ghIssues = (w: World): number[] => w.ghs.map(g => Number(g.argv[3]))
 
 async function start($: Engine, w: World): Promise<void> {
   await $.session.start({ cwd: ROOT, surface: null, isInteractive: false })
@@ -458,11 +490,12 @@ describe('overrides', () => {
     expect(w.line?.text).toBe('plan 2025 · todo-ab12')
   })
 
-  test('another branch\'s override is not this branch\'s', async ($, on) => {
+  test('another branch\'s override is not this branch\'s; it shows bracketed', async ($, on) => {
     const w = world(on)
     w.setFile(OVERRIDES_FILE, overridesJson('other', ['todo-ab12'], []), NOW - 5_000)
     await start($, w)
-    expect(w.line ?? null).toBeNull()
+    expect(w.line?.todoIds).toEqual([])
+    expect(w.line?.text).toBe('[ other todo-ab12 ]')
   })
 })
 
@@ -479,14 +512,14 @@ describe('line.txt', () => {
     const w = world(on)
     addPlan(w, '2025_banner_refs', planJson())
     await start($, w)
-    expect(w.writes.length).toBe(1)
+    expect(w.writes.map(keyOf)).toEqual([keyOf(LINE_FILE), keyOf(LINE_JSON_FILE)])
     const gitsBefore = w.gits.length
     // the same plan text at a newer mtime moves the signature, so the shell call rescans to the same line
     w.setFile(`${PLANS}/2025_banner_refs_ActionPlan.json`, planJson(), NOW - 1_000)
     await bash($, w)
     expect(w.gits.length).toBeGreaterThan(gitsBefore)
     expect(w.line?.text).toBe('plan 2025 · todo-k69m (301)')
-    expect(w.writes.length).toBe(1)
+    expect(w.writes.length).toBe(2)
   })
 
   test('a project without harness.json still scans the cwd with the default folders', async ($, on) => {
@@ -507,5 +540,169 @@ describe('line.txt', () => {
     expect(w.line?.text).toBe('plan 2025 · todo-k69m (301)')
     expect(w.files.get(keyOf(WT_LINE_FILE))?.text).toBe(statusText(w.line ?? null))
     expect(lineText(w)).toBeUndefined()
+  })
+})
+
+describe('line.json (plan 2027)', () => {
+  test('the line is written stamped with the branch it was built for', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson())
+    await start($, w)
+    expect(fileJson(w, LINE_JSON_FILE)).toEqual({ version: 1, branch: 'feat', text: statusText(w.line ?? null) })
+  })
+
+  test('no snapshot: line.json is not written', async ($, on) => {
+    const w = world(on, { branch: null })
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], []), NOW - 5_000)
+    await start($, w)
+    expect(fileJson(w, LINE_JSON_FILE)).toBeUndefined()
+  })
+
+  test('a line that empties rewrites an existing line.json with empty text', async ($, on) => {
+    const w = world(on)
+    w.setFile(LINE_JSON_FILE, JSON.stringify({ version: 1, branch: 'old', text: 'plan 1999' }), NOW - HOUR)
+    await start($, w)
+    expect(fileJson(w, LINE_JSON_FILE)).toEqual({ version: 1, branch: 'feat', text: '' })
+  })
+})
+
+describe('hidden refs (plan 2027)', () => {
+  test('a retire in the checked-out catalog rescans at the next prompt', async ($, on) => {
+    const w = world(on, { config: TODO_CONFIG })
+    addPlan(w, '2025_banner_refs', planJson())
+    w.setFile(CATALOG_FILE, JSON.stringify({ items: [], retired_ids: [] }), NOW - HOUR)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12', 'todo-cd34'], []), NOW - 5_000)
+    await start($, w)
+    expect(w.line?.text).toBe('plan 2025 · todo-ab12, todo-cd34')
+    w.setFile(CATALOG_FILE, JSON.stringify({ items: [], retired_ids: ['todo-ab12'] }), NOW - 1_000)
+    await prompt($, w)
+    expect(w.line?.text).toBe('plan 2025 · todo-cd34')
+  })
+
+  test('an unmoved catalog causes no rescan at a prompt', async ($, on) => {
+    const w = world(on, { config: TODO_CONFIG })
+    addPlan(w, '2025_banner_refs', planJson({ branch: 'other' }))
+    w.setFile(CATALOG_FILE, JSON.stringify({ items: [], retired_ids: [] }), NOW - HOUR)
+    await start($, w)
+    const before = mergeBaseRuns(w).length
+    await prompt($, w)
+    expect(mergeBaseRuns(w).length).toBe(before)
+  })
+
+  test('a sync whose open list is newer than a cached CLOSED shows the issue again', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], [9]), NOW - 5_000)
+    w.setFile(ISSUES_FILE, cacheJson([9, 'CLOSED', NOW - HOUR]), NOW - HOUR)
+    await start($, w)
+    expect(w.line?.text).toBe('todo-ab12')
+    w.setFile(OPEN_ISSUES_FILE, openJson(NOW - 1_000, [9]), NOW - 1_000)
+    await prompt($, w)
+    expect(w.line?.text).toBe('todo-ab12 (9)')
+    expect(w.ghs).toEqual([])
+  })
+
+  test('another branch\'s closed issue hides from its segment', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('other', ['todo-ab12'], [9]), NOW - 5_000)
+    w.setFile(ISSUES_FILE, cacheJson([9, 'CLOSED', NOW - HOUR]), NOW - HOUR)
+    await start($, w)
+    expect(w.line?.text).toBe('[ other todo-ab12 ]')
+  })
+})
+
+describe('gh rechecks (plan 2027)', () => {
+  const twoIssues = (w: World): void => {
+    w.setFile(OVERRIDES_FILE, JSON.stringify({
+      version: 1,
+      branches: {
+        feat: { todo_ids: [], issues: [9, 10], set_at: '2026-11-18T00:00:00Z' },
+        other: { todo_ids: [], issues: [11], set_at: '2026-11-17T00:00:00Z' },
+      },
+    }), NOW - 5_000)
+  }
+
+  test('one gh call per stale override issue, none inside the age, one cache write', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson())
+    twoIssues(w)
+    w.setFile(ISSUES_FILE, cacheJson([9, 'OPEN', NOW - HOUR]), NOW - HOUR)
+    w.gh = { 10: 'OPEN', 11: 'OPEN' }
+    await start($, w)
+    expect(ghIssues(w).sort()).toEqual([10, 11])
+    expect(w.writes.filter(p => keyOf(p) === keyOf(ISSUES_FILE)).length).toBe(1)
+    await prompt($, w)
+    await bash($, w)
+    expect(ghIssues(w).length).toBe(2)
+  })
+
+  test('only override issues are checked, never a plan\'s', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson())
+    await start($, w)
+    expect(w.ghs).toEqual([])
+  })
+
+  test('gh runs in the checkout with the git timeout, and --repo when todo.gh.repo is set', async ($, on) => {
+    const w = world(on, { config: JSON.stringify({ todo: { gh: { repo: 'o/r' } } }) })
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', [], [9]), NOW - 5_000)
+    w.gh = { 9: 'OPEN' }
+    await start($, w)
+    expect(w.ghs).toEqual([{
+      argv: ['gh', 'issue', 'view', '9', '--json', 'state', '--repo', 'o/r'], cwd: ROOT, timeoutMs: 10_000,
+    }])
+  })
+
+  test('a CLOSED answer rescans and hides the issue', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], [9]), NOW - 5_000)
+    w.gh = { 9: 'CLOSED' }
+    await start($, w)
+    expect(w.line?.text).toBe('todo-ab12')
+    expect(fileJson(w, ISSUES_FILE).issues['9'].state).toBe('CLOSED')
+  })
+
+  test('a MERGED answer (a pull request number) records CLOSED and hides it', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], [9]), NOW - 5_000)
+    w.gh = { 9: 'MERGED' }
+    await start($, w)
+    expect(w.line?.text).toBe('todo-ab12')
+    expect(fileJson(w, ISSUES_FILE).issues['9'].state).toBe('CLOSED')
+  })
+
+  test('a gh failure with nothing known records UNKNOWN and shows the issue', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', [], [9]), NOW - 5_000)
+    w.gh = { 9: 'fail' }
+    await start($, w)
+    expect(w.line?.text).toBe('#9')
+    expect(fileJson(w, ISSUES_FILE).issues['9'].state).toBe('UNKNOWN')
+  })
+
+  test('a CLOSED issue stays hidden after a gh failure; the retry waits the age from the try', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], [9]), NOW - 5_000)
+    w.setFile(ISSUES_FILE, cacheJson([9, 'CLOSED', NOW - 48 * HOUR]), NOW - 48 * HOUR)
+    w.gh = { 9: 'fail' }
+    await start($, w)
+    expect(w.ghs.length).toBe(1)
+    expect(w.line?.text).toBe('todo-ab12')
+    const entry = fileJson(w, ISSUES_FILE).issues['9']
+    expect(entry).toEqual({ state: 'CLOSED', checked_at: iso(NOW - 48 * HOUR), tried_at: iso(NOW) })
+    await prompt($, w)
+    expect(w.ghs.length).toBe(1)
+  })
+
+  test('an idle session rechecks at a prompt once the age has passed', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', [], [9]), NOW - 5_000)
+    w.setFile(ISSUES_FILE, cacheJson([9, 'OPEN', NOW - HOUR]), NOW - HOUR)
+    w.gh = { 9: 'CLOSED' }
+    await start($, w)
+    expect(w.ghs).toEqual([])
+    await w.clock.advance(24 * HOUR)
+    await prompt($, w)
+    expect(ghIssues(w)).toEqual([9])
+    expect(w.line ?? null).toBeNull()
   })
 })

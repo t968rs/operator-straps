@@ -144,6 +144,14 @@
         }
       }
     },
+    "working_refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Values of the working-refs mod, which draws the working line (the TODO ids and issues each branch works on).",
+      "properties": {
+        "max_chars": {"type": "integer", "exclusiveMinimum": 0, "description": "Total length of the working line: the current branch's refs, then one bracketed segment per other branch with an override; segments past the cap fold into a trailing +N."}
+      }
+    },
     "runlogs": {
       "type": "object",
       "additionalProperties": false,
@@ -199,8 +207,8 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name read by render, which links each item's gh issue number on the snapshot page to https://github.com/<repo>/issues/N (null: links come only from an item's gh_issue source url, else the number is plain text) and by `todo_sync.py untracked`, `add --file-issue` and `inbox put --file-issue`, which pass it to gh as --repo, where null means the repository gh resolves for the checkout."},
-            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start notice does not show it."}
+            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name read by render, which links each item's gh issue number on the snapshot page to https://github.com/<repo>/issues/N (null: links come only from an item's gh_issue source url, else the number is plain text) and by `todo_sync.py untracked`, `add --file-issue` and `inbox put --file-issue`, which pass it to gh as --repo, where null means the repository gh resolves for the checkout; also the repository the working-refs mod's `gh issue view` checks (null: the repository gh resolves for the checkout)."},
+            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start notice does not show it. The working-refs mod rechecks an override's issue with gh once its last answer (gh or the open-issue list) is older than this."}
           }
         },
         "rules": {

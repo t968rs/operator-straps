@@ -1,7 +1,7 @@
 {
   "name": "working-refs",
-  "version": "0.1.0",
-  "description": "The plans, TODO ids and issues the current branch works on, as one line for the ccstatusline widget and band-line",
+  "version": "0.2.0",
+  "description": "The plans, TODO ids and issues the current branch works on, then every other branch's override, as one line for the ccstatusline widget and band-line",
   "author": {
     "name": "Kevin Gabelman"
   },

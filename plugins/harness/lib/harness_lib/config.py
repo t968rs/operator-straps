@@ -192,6 +192,13 @@ class AttachConfig:
 
 
 @dataclass(frozen=True)
+class WorkingRefsConfig:
+    """Values of the working-refs mod: ``max_chars`` caps the total length of the working line."""
+
+    max_chars: int
+
+
+@dataclass(frozen=True)
 class HarnessConfig:
     """Merged, validated harness configuration for one project root."""
 
@@ -222,6 +229,7 @@ class HarnessConfig:
     strap: StrapConfig
     plugins: Tuple[Tuple[str, str], ...]
     attach: AttachConfig
+    working_refs: WorkingRefsConfig
     scratch_folder: str
     canned_messages: Tuple[CannedSet, ...] = ()
 
@@ -359,6 +367,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         strap=_strap(m["strap"]),
         plugins=_plugins(m["plugins"]),
         attach=_attach(m["attach"]),
+        working_refs=_working_refs(m["working_refs"]),
         scratch_folder=_rel_path(m["scratch_folder"], "scratch_folder"),
         canned_messages=_canned_messages(m["canned_messages"]),
     )
@@ -388,6 +397,19 @@ def _attach(a: Any) -> AttachConfig:
     if not isinstance(rules, list):
         raise ConfigError("attach/auto_resolve: must be a list")
     return AttachConfig(tuple(_auto_resolve(r, f"attach/auto_resolve/{n}") for n, r in enumerate(rules)))
+
+
+def _working_refs(w: Any) -> WorkingRefsConfig:
+    """``working_refs`` with ``max_chars`` a positive integer, also on a load without ``jsonschema``."""
+    if not isinstance(w, dict):
+        raise ConfigError("working_refs: must be an object")
+    unknown = sorted(set(w) - {"max_chars"})
+    if unknown:
+        raise ConfigError(f"working_refs: unknown keys {unknown}")
+    cap = w.get("max_chars")
+    if isinstance(cap, bool) or not isinstance(cap, int) or cap <= 0:
+        raise ConfigError(f"working_refs/max_chars: {cap!r} is not an integer above 0")
+    return WorkingRefsConfig(cap)
 
 
 def _auto_resolve(rule: Any, where: str) -> AutoResolve:

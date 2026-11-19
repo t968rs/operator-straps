@@ -20,7 +20,7 @@ approved by the user:
 | File | What |
 |---|---|
 | `.claude/settings.json` | `"statusLine": {"type": "command", "command": "ccstatusline --config <project>/.claude/ccstatusline.json", "padding": 0}` |
-| `.claude/ccstatusline.json` | ccstatusline's config, from `skills/setup-statusline/ccstatusline.defaults.json`; when present, only gains the working-refs line on a yes |
+| `.claude/ccstatusline.json` | ccstatusline's config, from `skills/setup-statusline/ccstatusline.defaults.json`; when present, only gains the working-refs line, or has an old `working-refs/line.txt` widget's `commandPath` replaced, on a yes |
 
 - **Optional dependency, not bundled:** installing this plugin does not install ccstatusline, and nothing
   changes on screen until the skill has run. It needs Node.js and npm and one global install,
@@ -41,8 +41,10 @@ approved by the user:
   the path to `path.resolve`, so a relative `state_dir` lands under the project and an absolute one is kept as
   given (and is then shared by every checkout).
 - **Working-refs line, opt-in for an existing file:** an existing `.claude/ccstatusline.json` keeps its tuning;
-  the skill asks, and on a yes appends only the working-refs `custom-command` line as a new last line. A new
-  file gets it with the other defaults. The widget needs the working-refs mod.
+  the skill asks, and on a yes appends only the working-refs `custom-command` line as a new last line. An
+  existing widget that still names the old `working-refs/line.txt` has its `commandPath` replaced on a yes,
+  and nothing else changes. A new file gets the line with the other defaults. The widget needs the
+  working-refs mod.
 - **Existing `statusLine`:** one that does not run ccstatusline is shown and kept unless the skill is run with
   `--replace`.
 - **Shared:** `.claude/settings.json` is committed, so the setting reaches every checkout. A checkout without
@@ -66,11 +68,14 @@ approved by the user:
 | 2 | `thinking-effort` | brightCyan | `Thinking: <level>` |
 | 2 | `context-length` | brightBlue | `Ctx: <tokens>`, `Ctx: 110.0k` |
 | 2 | `context-percentage` | default | the context window used, whole percent |
-| 3 | `custom-command` | the command's own | the working-refs line, read from `<state_dir>/working-refs/line.txt` |
+| 3 | `custom-command` | the command's own | the working-refs line, read from `<state_dir>/working-refs/line.json` |
 
 The third line is only useful with the working-refs mod, which writes that file. The command reads the status
 JSON that ccstatusline pipes to its stdin and resolves the file against `workspace.project_dir` (else `cwd`),
-so a session launched in a worktree prints that checkout's line. The mod picks the checkout from the session
+so a session launched in a worktree prints that checkout's line. The widget reads the branch the line was
+built for from `line.json` and the checkout's `HEAD` from `.git` (a worktree's `gitdir:` file is followed),
+with no git call; when the stamped branch differs from `HEAD`'s, it prints that branch dark before the line.
+When `line.json` is absent (working-refs 0.1.0 writes only `line.txt`), it falls back to `line.txt`. The mod picks the checkout from the session
 `cwd` first, so a session launched elsewhere whose `cwd` later moves into a worktree shows the launch folder's
 line here while band-line shows the worktree's. `customCommandCacheTtlSeconds` stays 0 so the line
 follows each refresh.
