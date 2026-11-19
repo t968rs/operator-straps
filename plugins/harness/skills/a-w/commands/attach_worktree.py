@@ -39,15 +39,16 @@ undo that matches the mode (path-scoped for a staged move, ``reset --keep`` for 
 
 One ignored file is rebuilt instead of lost: a receipts plan's ``live.js`` (``harness_lib.plan_live``), which
 its HTML page reloads. After a successful move, and before the worktree goes, every frozen receipts plan with
-a page whose receipts, freeze ledger entries, plan JSON or DesignEvolution the move landed in the target's
-``artifacts.plans`` gets its ``live.js`` rebuilt there, one ``live: rebuilt <plans>/<id>/live.js`` line each
-(paths the target already held staged count as landed). A rebuild that fails prints a ``live: warning:`` line
-naming ``plan.py render <id>`` and leaves the exit code 0.
+a page whose receipts, freeze ledger entries, plan JSON, DesignEvolution or HTML page the move landed in the
+target's ``artifacts.plans`` gets its ``live.js`` rebuilt there, one ``live: rebuilt <plans>/<id>/live.js``
+line each (paths the target already held staged count as landed). A rebuild that fails prints a
+``live: warning:`` line naming ``plan.py render <id>`` and leaves the exit code 0.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -368,9 +369,13 @@ def landed_paths(target: Path, before: str) -> List[str]:
 
 
 def plans_folder(target: Path) -> str:
-    """The project's ``artifacts.plans`` as a POSIX path relative to the target checkout."""
-    cfg = activate(load_config(config_root(target)))
-    return cfg.artifacts.plans.replace("\\", "/").strip("/")
+    """The project's ``artifacts.plans`` as a normalized POSIX path relative to the target checkout.
+
+    The config is read, not activated: ``load_rules`` activates it once, and the rebuild reads no
+    ``active()`` value. ``normpath`` drops ``./`` and doubled slashes, which git's reported paths never carry.
+    """
+    cfg = load_config(config_root(target))
+    return posixpath.normpath(cfg.artifacts.plans.replace("\\", "/")).strip("/")
 
 
 def moved_plans(target: Path, before: str) -> Tuple[str, List[str]]:
@@ -395,7 +400,7 @@ def refresh_line(target: Path, plans: str, plan_id: str) -> Optional[str]:
         reason = "; ".join(getattr(exc, "problems", None) or [str(exc)])
         return (f"live: warning: plan {plan_id} not rebuilt ({reason}); run plan.py render {plan_id} in "
                 "the target")
-    return None if written is None else f"live: rebuilt {plans}/{plan_id}/{written.name}"
+    return None if written is None else f"live: rebuilt {written.relative_to(target).as_posix()}"
 
 
 def live_lines(target: Path, before: str) -> List[str]:
@@ -406,7 +411,7 @@ def live_lines(target: Path, before: str) -> List[str]:
     """
     try:
         plans, plan_ids = moved_plans(target, before)
-    except (ConfigError, AttachError, ImportError) as exc:
+    except (ConfigError, AttachError, ImportError, OSError) as exc:
         reason = str(exc).replace("\n", "; ")
         return [f"live: warning: live.js not rebuilt ({reason}); run plan.py render <id> in the target for "
                 "each receipts plan the move landed"]
