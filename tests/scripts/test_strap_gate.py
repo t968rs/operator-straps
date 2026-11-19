@@ -449,6 +449,42 @@ def test_freeze_refuses_an_unclear_grade(gate: Callable[..., Dict[str, Any]], pl
     assert read_spec(project)["frozen"] is None
 
 
+def unclear_green_then_retest(play: Callable[..., str], strap: Strap,
+                              project: Path) -> Tuple[str, str, str]:
+    """Failing baseline, a green graded unclear, a SKILL.md change, a ``retest`` and the fresh scenario's
+    failing baseline and passing green; return (unclear green run, its scenario, fresh scenario)."""
+    play("baseline", BASELINE_REPLY, "absent", "ledger edited")
+    green = play("green", GREEN_FAIL_REPLY, "unclear", "Edited anyway")
+    write_skill(project, extra="Refuse ledger edits.\n")
+    ok(strap("retest", NAME, "B1"))
+    spec = read_spec(project)
+    failed, fresh = spec["draws"][0]["scenario"], spec["draws"][1]["scenario"]
+    play("baseline", BASELINE_REPLY, "absent", "ledger edited", scenario=fresh)
+    play("green", GREEN_PASS_REPLY, "present", "Refusing to edit ledger.md", scenario=fresh)
+    return green, failed, fresh
+
+
+@pytest.mark.cross_os
+def test_freeze_settles_an_unclear_stale_green_repassed_on_the_current_hash(
+        gate: Callable[..., Dict[str, Any]], play: Callable[..., str], strap: Strap, project: Path) -> None:
+    gate()
+    _, failed, _ = unclear_green_then_retest(play, strap, project)
+    play("green", GREEN_PASS_REPLY, "present", "Refusing to edit ledger.md", scenario=failed)
+    out = ok(strap("freeze", NAME))
+    assert re.search(rf"^freeze \[done\] \| {NAME} \| ", out, re.MULTILINE), out
+
+
+@pytest.mark.cross_os
+def test_freeze_refuses_an_unclear_stale_green_not_repassed(gate: Callable[..., Dict[str, Any]],
+                                                           play: Callable[..., str], strap: Strap,
+                                                           project: Path) -> None:
+    gate()
+    green, _, _ = unclear_green_then_retest(play, strap, project)
+    err = refused(strap("freeze", NAME))
+    assert has_problem(err, f"B1: unclear grade on {green}"), err
+    assert read_spec(project)["frozen"] is None
+
+
 @pytest.mark.cross_os
 def test_freeze_refuses_an_ungraded_judged_item(gate: Callable[..., Dict[str, Any]],
                                                play: Callable[..., str], strap: Strap,
