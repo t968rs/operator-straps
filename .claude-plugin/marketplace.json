@@ -33,12 +33,17 @@
     {
       "name": "banner-status",
       "source": "./plugins/banner-status",
-      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window)"
+      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window, and the working-refs line as an optional third line)"
     },
     {
       "name": "band-line",
       "source": "./plugins/band-line",
-      "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window); clears git-status's own status line"
+      "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window, and the working-refs line as a second band line when that mod is installed); clears git-status's own status line"
+    },
+    {
+      "name": "working-refs",
+      "source": "./plugins/working-refs",
+      "description": "The plans, TODO ids and issues the current branch works on, as one line for the ccstatusline widget and band-line"
     },
     {
       "name": "pytest-scope",

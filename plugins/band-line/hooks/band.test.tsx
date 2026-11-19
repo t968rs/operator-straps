@@ -24,6 +24,8 @@ const figures = (over: Partial<SessionFigures> = {}): SessionFigures => ({
 type World = {
   /** git-status's snapshot as its state holds it; null before its first run. Unset is a clean `dev`. */
   git?: GitSnapshot | null
+  /** working-refs's `line` value as its state holds it; unset means working-refs never wrote the key. */
+  refs?: { text: string } | null
   /** `$.session.model()` and `$.session.usage()` refuse. */
   isSessionBroken?: boolean
   /** `$.session.model()`'s answer; unset is Sonnet 5.5. */
@@ -34,11 +36,15 @@ type World = {
 
 /** Answers git-status's snapshot, the session figures, core's band and the session events from memory. */
 const world = (on: On, w: World = {}): void => {
-  on('state.get', (_$, e, next) =>
-    e.plugin === 'git-status' && e.key === 'git'
-      ? { value: { value: w.git === undefined ? snapshot() : w.git, version: 1 } }
-      : next(e),
-  )
+  on('state.get', (_$, e, next) => {
+    if (e.plugin === 'git-status' && e.key === 'git') {
+      return { value: { value: w.git === undefined ? snapshot() : w.git, version: 1 } }
+    }
+    if (e.plugin === 'working-refs' && e.key === 'line' && w.refs !== undefined) {
+      return { value: { value: w.refs, version: 1 } }
+    }
+    return next(e)
+  })
   on('ui.render', ($, e) => {
     const { Box } = $.ui.resolve(e)
     return <Box key="engine" />
@@ -67,6 +73,14 @@ const banner = async ($: Engine, columns = 120): Promise<string | undefined> => 
   const text = (await ui.find({ type: 'Text', text: /oStraps:/ }))?.text
   await ui.unmount()
   return text
+}
+
+/** Every Text the band draws now, top to bottom. */
+const texts = async ($: Engine): Promise<Array<string | undefined>> => {
+  const ui = await $.ui.mount({ plugin: 'band-line', surface: 'terminal', ...BAND })
+  const out = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  await ui.unmount()
+  return out
 }
 
 const turnEnd = ($: Engine, turnId: string) =>
@@ -251,6 +265,38 @@ describe('the oStraps band', () => {
     const ui = await $.ui.mount({ plugin: 'band-line', surface: 'terminal', ...BAND })
     expect((await ui.findAll({ type: 'Text' })).map(t => t.text)).toEqual([SONNET_LINE, 'PR #1526 · reviewers 0/1'])
     await ui.unmount()
+  })
+
+  test('a working line from working-refs draws as a second line under the banner', async ($, on) => {
+    world(on, { refs: { text: 'plan 2025 · todo-k69m (301)' } })
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE, 'plan 2025 · todo-k69m (301)'])
+  })
+
+  test('a null or empty working line draws no second line', async ($, on) => {
+    const w: World = { refs: null }
+    world(on, w)
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE])
+    w.refs = { text: '' }
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE])
+  })
+
+  test('working-refs never setting the key draws the banner exactly as before', async ($, on) => {
+    world(on)
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE])
+  })
+
+  test('another band still stays under the working line', async ($, on) => {
+    on('ui.render', { component: 'AbovePrompt' }, ($$, e) => {
+      const { Box, Text } = $$.ui.resolve(e)
+      return <Box><Text>PR #1526 · reviewers 0/1</Text></Box>
+    })
+    world(on, { refs: { text: 'plan 2025 · todo-k69m (301)' } })
+    await $.prompt.submit(submit)
+    expect(await texts($)).toEqual([SONNET_LINE, 'plan 2025 · todo-k69m (301)', 'PR #1526 · reviewers 0/1'])
   })
 
   test('no banner draws while a survey holds the band', async ($, on) => {

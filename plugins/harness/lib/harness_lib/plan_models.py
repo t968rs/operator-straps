@@ -398,6 +398,16 @@ def _no_default(schema: Dict[str, Any]) -> None:
     schema.pop("default", None)
 
 
+class PlanRefs(BaseModel):
+    """The TODO ids and GitHub issues a plan works on, set by `plan.py new --refs`."""
+
+    model_config = _CLOSED
+
+    todo_ids: List[str] = Field(default_factory=list, description="Canonical TODO ids (`todo-k69m`).")
+    issues: List[Annotated[StrictInt, Field(gt=0)]] = Field(
+        default_factory=list, description="GitHub issue numbers, each a positive integer.")
+
+
 class ActionPlan(BaseModel):
     """A unified execution plan: JSON is the source of truth for items, evidence and verification.
 
@@ -415,6 +425,10 @@ class ActionPlan(BaseModel):
     documentation: Optional[str] = None
     branch: Optional[str] = None
     base_branch: Optional[str] = None
+    refs: Optional[PlanRefs] = Field(default=None, description=(
+        "TODO ids and issues the plan works on; the working-refs banner shows them while the plan "
+        "qualifies for the branch. Hashed by the freeze digest; after the freeze a branch override covers "
+        "changes."))
     execution_model: str
     markdown_sync_status: Annotated[Optional[MarkdownSync], Mutable()] = None
     markdown_last_updated: Annotated[Optional[str], Mutable()] = Field(default=None, json_schema_extra=_DATE)

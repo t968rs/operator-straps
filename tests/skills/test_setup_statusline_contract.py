@@ -2,7 +2,9 @@
 
 The skill pins a ccstatusline version and writes a ``statusLine`` command; the defaults file must be the
 config schema that version reads; the git-status mod (``plugins/git-status/hooks/status.ts``) clears its own
-line only when that command names ccstatusline. All of it is prose or data, so the test pins the shared names.
+line only when that command names ccstatusline. The defaults' ``custom-command`` widget prints the line the
+working-refs mod writes (plan 2025), so its command names that file. All of it is prose or data, so the test
+pins the shared names.
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ _SKILL = _SKILL_DIR / "SKILL.md"
 _DEFAULTS = _SKILL_DIR / "ccstatusline.defaults.json"
 _README = _PLUGIN / "README.md"
 _STATUS_TS = _REPO / "plugins" / "git-status" / "hooks" / "status.ts"
+_HARNESS_DEFAULTS = _REPO / "plugins" / "harness" / "config" / "defaults.json"
 
 # ccstatusline 2.2.32 reads config schema version 4 (src/types/Settings.ts CURRENT_VERSION)
 _PINNED = "2.2.32"
@@ -28,7 +31,7 @@ _RANGE = f"~{_PINNED}"
 _SCHEMA_VERSION = 4
 _WIDGETS = {
     "separator", "git-branch", "git-ahead-behind", "git-clean-status", "git-conflicts", "git-sha", "model",
-    "thinking-effort", "context-length", "context-percentage",
+    "thinking-effort", "context-length", "context-percentage", "custom-command",
 }
 
 
@@ -48,6 +51,10 @@ def _frontmatter(path: Path) -> Dict[str, str]:
 def _items() -> List[Dict[str, Any]]:
     data = json.loads(_text(_DEFAULTS))
     return [item for line in data["lines"] for item in line]
+
+
+def _custom_commands() -> List[Dict[str, Any]]:
+    return [item for item in _items() if item["type"] == "custom-command"]
 
 
 def test_skill_name_matches_its_folder() -> None:
@@ -103,3 +110,26 @@ def test_statusline_command_starts_with_the_executable_the_mod_looks_for() -> No
     assert command, "SKILL.md shows no statusLine command"
     assert command.group(1).split()[0] == "ccstatusline"
     assert "ccstatusline" in _text(_STATUS_TS)
+
+
+def test_defaults_print_the_working_refs_line_on_a_line_of_its_own() -> None:
+    widgets = _custom_commands()
+    assert len(widgets) == 1, "the defaults hold no single custom-command widget"
+    from harness_lib.working_refs import LINE_REL
+    widget = widgets[0]
+    state_dir = json.loads(_text(_HARNESS_DEFAULTS))["state_dir"]
+    assert f"{state_dir}/{LINE_REL}" in widget["commandPath"]
+    # the path resolves against the session's project folder from the status payload on stdin, not the
+    # command's own working folder
+    assert "project_dir" in widget["commandPath"]
+    assert widget["preserveColors"] is True
+    line = next(line for line in json.loads(_text(_DEFAULTS))["lines"] if widget in line)
+    assert [item["type"] for item in line] == ["custom-command"]
+    assert json.loads(_text(_DEFAULTS))["lines"].index(line) == 2, "SKILL.md step 4 names the third line"
+
+
+def test_skill_resolves_state_dir_and_offers_the_widget_for_an_existing_config() -> None:
+    skill = _text(_SKILL)
+    assert "custom-command" in skill
+    assert "state_dir" in skill
+    assert "working-refs" in skill
