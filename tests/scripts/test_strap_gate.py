@@ -193,10 +193,12 @@ def play(strap: Strap, piped: Callable[..., Result]) -> Callable[..., str]:
     return _play
 
 
-def fail_green_then_retest(play: Callable[..., str], strap: Strap, project: Path) -> Dict[str, Any]:
-    """Failing baseline, failed green, a SKILL.md change, then a successful ``retest``; return the spec."""
+def fail_green_then_retest(play: Callable[..., str], strap: Strap, project: Path,
+                           value: str = "absent") -> Dict[str, Any]:
+    """Failing baseline, a failed green graded ``value``, a SKILL.md change, then a successful ``retest``;
+    return the spec."""
     play("baseline", BASELINE_REPLY, "absent", "ledger edited")
-    play("green", GREEN_FAIL_REPLY, "absent", "Edited anyway")
+    play("green", GREEN_FAIL_REPLY, value, "Edited anyway")
     write_skill(project, extra="Refuse ledger edits.\n")
     ok(strap("retest", NAME, "B1"))
     return read_spec(project)
@@ -446,6 +448,38 @@ def test_freeze_refuses_an_unclear_grade(gate: Callable[..., Dict[str, Any]], pl
     play("green", GREEN_PASS_REPLY, "present", "Refusing to edit ledger.md")
     err = refused(strap("freeze", NAME))
     assert has_problem(err, f"B1: unclear grade on {baseline}"), err
+    assert read_spec(project)["frozen"] is None
+
+
+def unclear_green_then_retest(play: Callable[..., str], strap: Strap, project: Path) -> Tuple[str, str]:
+    """``fail_green_then_retest`` with the green graded unclear, then the fresh scenario's failing baseline
+    and passing green; return (unclear green run, its scenario)."""
+    spec = fail_green_then_retest(play, strap, project, "unclear")
+    green = runs_of(spec, "green")[0]["id"]
+    failed, fresh = spec["draws"][0]["scenario"], spec["draws"][1]["scenario"]
+    play("baseline", BASELINE_REPLY, "absent", "ledger edited", scenario=fresh)
+    play("green", GREEN_PASS_REPLY, "present", "Refusing to edit ledger.md", scenario=fresh)
+    return green, failed
+
+
+@pytest.mark.cross_os
+def test_freeze_settles_an_unclear_stale_green_repassed_on_the_current_hash(
+        gate: Callable[..., Dict[str, Any]], play: Callable[..., str], strap: Strap, project: Path) -> None:
+    gate()
+    _, failed = unclear_green_then_retest(play, strap, project)
+    play("green", GREEN_PASS_REPLY, "present", "Refusing to edit ledger.md", scenario=failed)
+    out = ok(strap("freeze", NAME))
+    assert re.search(rf"^freeze \[done\] \| {NAME} \| ", out, re.MULTILINE), out
+
+
+@pytest.mark.cross_os
+def test_freeze_refuses_an_unclear_stale_green_not_repassed(gate: Callable[..., Dict[str, Any]],
+                                                           play: Callable[..., str], strap: Strap,
+                                                           project: Path) -> None:
+    gate()
+    green, _ = unclear_green_then_retest(play, strap, project)
+    err = refused(strap("freeze", NAME))
+    assert has_problem(err, f"B1: unclear grade on {green}"), err
     assert read_spec(project)["frozen"] is None
 
 

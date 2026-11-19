@@ -23,7 +23,14 @@ depends on no other plugin.
   `CLAUDE_PROJECT_DIR`; when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds
   a notes file is read. `state_dir` coming from `.claude/harness.json` (default
   `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
-  other-version file means no notes section; a note stays until `/harness:add-bookmark --clear`.
+  other-version file means no notes section; a note stays until it is removed or cleared with
+  `/harness:add-bookmark`.
+- Each note prints as the skill's `--list` does: a standing note as its text alone, a note added on the
+  bookmark's branch as `[<branch>] <text>`, and a note added on another branch as
+  `[<branch>; now on <current>] <text>`. When any note carries the `now on` marker, one hint line under
+  `## Session Notes` says such a note is confirmed with the developer before it is applied or skipped, never
+  dropped silently. With the branch unknown or a detached HEAD, no note is marked (on a detached HEAD the
+  `- Branch:` line shows `HEAD`; with the branch unknown it shows `(unknown)`).
 - Git is read from the session cwd when it is a repository (a worktree the session moved into), else
   from `CLAUDE_PROJECT_DIR`. Git runs beside the summarizer (`GIT_OPTIONAL_LOCKS=0`, 5 s timeout per
   command); when core reuses a precomputed summary, the git calls and the notes read are the compaction's only
@@ -31,12 +38,21 @@ depends on no other plugin.
   repository with no commits yet still reports its branch and status. When neither folder is a
   repository, or git is missing, the git fields are `null` and the prompts are still recorded.
 - Precompute and subagent compactions pass through untouched. A skipped compaction records nothing.
+- Fallback: a mod before this one can answer `session.compact` without calling `next`, so this mod's hook never
+  runs. The mod also watches `session.append` for the main loop's `compaction` row; when one arrives and this
+  mod appended no bookmark since the last such row or prompt, the next prompt carries the bookmark as context (trigger
+  `detected`, stored in state as usual). It covers a compaction whose row reaches `session.append` while this
+  mod's `session.compact` hook did not run. The engine types do not say whether a compaction a mod answers
+  itself with `{ messages }` still stores a `compaction` row, so it is not promised for every reroute. A
+  slash-command line (`/compact`, `/clear`, `/session-bookmark`) never carries it, and the bookmark stays owed
+  until a prompt enters with it: a dropped prompt leaves it for the next one. `/clear` and a resume forget it.
 
 ## Command
 
 | Name | Does |
 |------|------|
 | `/session-bookmark` | Prints the bookmark held in this session's state, or says none is held. `$.state` is promised to survive a reload, not a resume, so a resumed session can answer none while its transcript still carries a bookmark message. |
+| `/session-bookmark notes` | Reads the notes file live (no compaction needed) and prints every stored note (no 20-note cut, so a hand-edited file holding more still numbers as the script does) with the same numbering and branch markers as `/harness:add-bookmark --list`, the hint line first when a note is from another branch, or `no notes`. A file the script would refuse (not JSON, no notes list, another version) answers `notes file unreadable; /harness:add-bookmark --clear resets it`; the compaction bookmark still prints no notes section for it. Answers with text and no model turn. Any other argument prints `usage: /session-bookmark [notes]`. |
 
 ## State
 
@@ -44,7 +60,7 @@ depends on no other plugin.
 
 | Key | Type | Meaning |
 |-----|------|---------|
-| `bookmark` | `Bookmark \| null` | Latest compaction bookmark: time, trigger, root, branch, log, status, last prompts, notes, instructions. |
+| `bookmark` | `Bookmark \| null` | Latest compaction bookmark: time, trigger (`detected` for the fallback), root, branch, log, status, last prompts, notes, instructions. |
 
 ## Known limitations
 
@@ -63,6 +79,12 @@ depends on no other plugin.
   remove those hooks when enabling this mod.
 - A `CLAUDE_CODE_PLUGIN_DIRS` entry points at one checkout and replaces the marketplace copy, so with it
   set, which mod code loads follows that checkout's branch, not the session worktree's.
+- The compaction fallback waits for the next prompt: a mid-turn auto-compaction that another mod kept from
+  this mod's `session.compact` hook leaves the rest of that turn without a bookmark. The fallback bookmark
+  carries no recent prompts (the compacted ones are gone) and no `/compact` instructions.
+- A mod before this one that calls `next` and then replaces the result's `messages` with its own drops the
+  bookmark this mod appended, and the fallback does not catch it: the hook did run, so the compaction's row
+  owes nothing.
 - `claude plugin test` runs in a Linux sandbox; Windows paths are passed to git as given.
 
 ## Checks

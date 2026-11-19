@@ -1,0 +1,592 @@
+{
+  "plan_id": "2026",
+  "plan_created": "2026-11-18",
+  "source_document": null,
+  "documentation": "docs/plans/2026_Bookmark_Notes_PIP.html",
+  "branch": "1169-bookmark-removes",
+  "base_branch": "main",
+  "refs": {
+    "todo_ids": [
+      "todo-545g",
+      "todo-v8mh",
+      "todo-v62t",
+      "todo-ys3k"
+    ],
+    "issues": [
+      272,
+      279,
+      305,
+      204
+    ]
+  },
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "add_note.py: branch-scoped notes, remove N, edit N",
+      "action": "Copy the planned tests/skills/test_add_note_script.py over the repo file first. In add_note.py: (1) add BRANCH_KEY = \"branch\" and OTHER_BRANCH_MARK = \"now on\" beside NOTES_VERSION. (2) current_branch(repo) -> Optional[str]: `git -C <repo> rev-parse --abbrev-ref HEAD` through subprocess; None on a failure or the literal HEAD (detached). (3) note_body(note, current) -> str: the text alone for a note without a usable branch (absent, not a string, or blank after strip); `[<branch>] <text>` when the branch equals current or current is None; `[<branch>; now on <current>] <text>` otherwise (OTHER_BRANCH_MARK in the middle). note_line(i, note, current) = f\"{i}. {note_body(note, current)}\". (4) add(path, words, branch): stores {added, branch, text}, leaving the key out when branch is None; returns `note N/20: <note_body(note, branch)>`. checked_text's full-file message names both `remove` and `clear`. (5) remove(path, number, current) and edit(path, number, words, current): number counts the usable notes read_notes returns (1-based); out of range raises NoteError `no note N; K stored`. edit runs checked_text without the full-file check, and keeps added and branch. Each returns `removed note N: <body>` or `edited note N: <body>` then a newline and listing(path, current). (6) listing(path, current) uses note_line. (7) parse_args: `add [--standing] text...`, `remove number` (int), `edit number text...`; run() resolves current = current_branch(args.repo) and passes branch None for --standing. Update the module docstring and Usage line. read_notes keeps passing a non-string branch through; note_body treats it as standing. Keep functions under 50 lines; Optional, not X | None.",
+      "files": [
+        "plugins/harness/skills/add-bookmark/commands/add_note.py",
+        "tests/skills/test_add_note_script.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:91-96",
+          "expect": "def add(path: Path, words: List[str]) -> str:"
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:99-101",
+          "expect": "def listing(path: Path) -> str:"
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:86-87",
+          "expect": "raise NoteError(f\"{MAX_NOTES} notes are stored; run clear first\")"
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:118-121",
+          "expect": "sub.add_parser(\"add\", help=\"store one note\").add_argument(\"text\", nargs=\"+\")"
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:125-129",
+          "expect": "def run(args: argparse.Namespace) -> str:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_add_note_script.py::test_a_full_file_refuses_another_note",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_list_numbers_the_notes",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_add_records_the_current_branch",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_add_standing_stores_no_branch",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_add_on_a_detached_head_stores_a_standing_note",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_list_marks_a_note_from_another_branch",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_remove_drops_one_note_and_prints_the_list",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_removing_the_last_note_says_none_are_left",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_remove_or_edit_out_of_range_changes_nothing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_remove_on_an_absent_file_is_refused",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_edit_replaces_the_text_and_keeps_added_and_branch",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_edit_of_a_full_file_is_allowed",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_edit_refuses_blank_and_too_long_text",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_note_script.py::test_remove_and_edit_refuse_a_malformed_file",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "add-bookmark SKILL.md: --remove, --edit, --standing and the turn-free view",
+      "action": "Copy the planned tests/skills/test_add_bookmark_skill_contract.py over the repo file first. In SKILL.md: argument-hint becomes `-- <note text> | --standing <note text> | --list | --remove N | --edit N <note text> | --clear` (keep the leading `-- <` the guidance-tail contract reads). Arguments table and first-word table gain `--standing` (`NOTE add --standing '<line>'`), `--remove N` (`NOTE remove N`), `--edit N <text>` (write the new line by the note-writing rules, then `NOTE edit N '<line>'`); a missing or non-numeric N prints the usage line and stops. Update the usage line. In Writing the note: the script records the current branch, so the text need not spell out a branch scope; pass --standing for a note meant for every branch. State that a listed note marked `[<branch>; now on <current>]` was added on another branch (per D4: confirm it with the developer before applying or skipping it, never drop it silently). Name `/session-bookmark notes` (the session-bookmark mod) as the view that prints the same numbered list without a model turn. Reply section: add the `removed note N:` and `edited note N:` receipts followed by the list. Full-file exit: relay and stop, naming --remove. Also update the root README.md add-bookmark section (example block, form table, bullets) to match.",
+      "files": [
+        "plugins/harness/skills/add-bookmark/SKILL.md",
+        "tests/skills/test_add_bookmark_skill_contract.py",
+        "README.md"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/add-bookmark/SKILL.md:4",
+          "expect": "argument-hint: \"-- <note text> | --list | --clear\""
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/SKILL.md:38-45",
+          "expect": "| `--list` | `NOTE list` |"
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/SKILL.md:53-56",
+          "expect": "Replace each such reference with the concrete facts it stands"
+        },
+        {
+          "at": "plugins/harness/skills/add-bookmark/SKILL.md:65-66",
+          "expect": "for a full file,"
+        },
+        {
+          "at": "README.md:161-165",
+          "expect": "| `/harness:add-bookmark --clear`          | Drop every stored note                      |"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_add_bookmark_skill_contract.py::test_skill_hints_every_form",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_bookmark_skill_contract.py::test_skill_runs_the_script_through_the_launcher_with_each_subcommand",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_add_bookmark_skill_contract.py::test_skill_names_the_turn_free_notes_view",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "session-bookmark: parse the branch and mark notes from another branch in the bookmark",
+      "action": "Copy the planned tests/mods/test_session_bookmark_notes_contract.py over the repo file first. notes.ts: export NOTE_BRANCH_KEY = 'branch' and OTHER_BRANCH_MARK = 'now on' (single-quoted literals: the contract reads them with ts_string); export type StoredNote = { text: string; branch: string | null }; parseNotes returns StoredNote[] (branch null when absent, not a string or blank); export noteLine(i, note, current: string | null) producing exactly add_note.py's note_line format (`N. text`, `N. [b] text`, `N. [b; now on c] text`). types/index.d.ts: Bookmark.notes becomes StoredNote[] (import the type from hooks/notes or declare it there). bookmark.ts: noteLines uses noteLine with b.branch; formatBookmark accepts a bookmark held in $.state by an earlier load whose notes are strings (read a string as a standing note). Per D4, when any note's branch differs from b.branch, print one hint line under `## Session Notes` (exported constant NOTES_STALE_HINT) saying such a note was added on another branch and is confirmed with the developer before it is applied or skipped, never dropped silently. notes.test.ts and bookmark.test.ts: cover the branch parse (absent, non-string, blank), each line form, the hint shown only with a mismatch, a null current branch printing no mismatch, and an old string-notes bookmark. README: the Session Notes bullet names the branch marker and the hint.",
+      "files": [
+        "plugins/session-bookmark/hooks/notes.ts",
+        "plugins/session-bookmark/hooks/notes.test.ts",
+        "plugins/session-bookmark/hooks/bookmark.ts",
+        "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "plugins/session-bookmark/types/index.d.ts",
+        "plugins/session-bookmark/README.md",
+        "tests/mods/test_session_bookmark_notes_contract.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/session-bookmark/hooks/notes.ts:59-64",
+          "expect": "export const parseNotes = (text: string): string[] => {"
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/notes.ts:49-53",
+          "expect": "const noteText = (entry: unknown): string | null => {"
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.ts:85-91",
+          "expect": "const noteLines = (notes: readonly string[]): string[] => ["
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.ts:113-114",
+          "expect": "if (notes.length > 0) lines.push(...noteLines(notes))"
+        },
+        {
+          "at": "plugins/session-bookmark/types/index.d.ts:16-17",
+          "expect": "notes: string[]"
+        },
+        {
+          "at": "tests/mods/test_session_bookmark_notes_contract.py:67",
+          "expect": "assert [sorted(n) for n in stored[\"notes\"]] == [[\"added\", \"text\"]]"
+        },
+        {
+          "at": "plugins/session-bookmark/README.md:20-21",
+          "expect": "Notes added with the `harness:add-bookmark` skill print in a `## Session Notes` section"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/session-bookmark",
+          "expect": "0 fail"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_session_bookmark_notes_contract.py::test_branch_key_matches",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_session_bookmark_notes_contract.py::test_other_branch_mark_matches",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_session_bookmark_notes_contract.py::test_a_stored_note_has_the_shape_the_mod_parses",
+          "red": "AttributeError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "session-bookmark: `/session-bookmark notes` prints the stored notes with no model turn",
+      "action": "bookmark.ts: export NOTES_ARG = 'notes'. The command.run handler reads e.args trimmed: empty prints the saved bookmark as today; NOTES_ARG reads the notes live (captureGit for the branch and git top, then captureNotes) and prints the numbered list with noteLine against the current branch, or `no notes`, plus NOTES_STALE_HINT when a note carries another branch; any other argument prints `usage: /session-bookmark [notes]`. Register the command's description to mention notes. The handler never throws (keep the .catch). bookmark.test.ts: runCommand with args 'notes' (notes present, absent, other-branch note, a malformed file), an unknown argument, and bare command unchanged; extend runCommand to take args. README Command table: a `/session-bookmark notes` row (live read, same numbering as `add-bookmark --list`, no model turn).",
+      "files": [
+        "plugins/session-bookmark/hooks/bookmark.ts",
+        "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "plugins/session-bookmark/README.md"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.ts:240-243",
+          "expect": "on('command.run', { command: COMMAND }, async $ => {"
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.ts:233-236",
+          "expect": ".register({ name: COMMAND, description: 'Show the compaction bookmark saved in this session' })"
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.ts:172-184",
+          "expect": "const captureNotes = async ($: Dollar, top: string | null): Promise<string[]> => {"
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.test.ts:165",
+          "expect": "const runCommand = async ($: Engine, command: string): Promise<string> => {"
+        },
+        {
+          "at": "plugins/session-bookmark/README.md:39",
+          "expect": "| `/session-bookmark` | Prints the bookmark held in this session's state"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/session-bookmark",
+          "expect": "0 fail"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_session_bookmark_notes_contract.py::test_the_notes_argument_is_the_documented_one",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "session-bookmark: deliver the bookmark when another mod kept session.compact from reaching it",
+      "action": "Per D5 (fallback-next-prompt). bookmark.ts: a module-level record { installed: boolean; owed: boolean }. The session.compact handler sets installed = true once it appended the bookmark. A `session.append` hook with matcher { door: 'compaction' } on the main loop (e.agentId undefined) calls next first, then sets owed = !installed. A `prompt.submit` hook on the main loop: when owed, builds a bookmark (trigger 'detected', git and live notes, lastMessages [] since the compacted prompts are gone, instructions null), stores it in bookmarkState, and passes formatBookmark(b) in e.context to next; then resets installed and owed. Reset installed at each prompt.submit too, so the next compaction starts clean. Every hook passes through on any failure (.catch to next). types/index.d.ts: trigger gains 'detected' with a doc line. bookmark.test.ts: a world whose compaction row arrives with no session.compact dispatch through the mod (call session.append with door 'compaction', then a prompt) shows the bookmark in the prompt's context once; a normal compaction followed by its row and a prompt adds no context; a subagent's compaction row owes nothing. Check the engine type docs for session.append and prompt.submit context in a `.claude-plugin/types/claude-code/index.d.ts` generated beside another mod. README: what the fallback does and its limit (a mid-turn auto-compaction gets the bookmark only at the next prompt; the fallback bookmark carries no recent prompts).",
+      "files": [
+        "plugins/session-bookmark/hooks/bookmark.ts",
+        "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "plugins/session-bookmark/types/index.d.ts",
+        "plugins/session-bookmark/README.md"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/session-bookmark/hooks/bookmark.ts:220-231",
+          "expect": "on('session.compact', INSTALLING, async ($, e, next) => {"
+        },
+        {
+          "at": "plugins/session-bookmark/types/index.d.ts:5",
+          "expect": "trigger: 'manual' | 'auto' | 'plugin'"
+        },
+        {
+          "at": "plugins/session-bookmark/README.md:49",
+          "expect": "## Known limitations"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/session-bookmark",
+          "expect": "0 fail"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "todo-watch: re-force the TODO_SYNC line after a compaction its session.compact hook missed",
+      "action": "Per D5. checks.ts registerContext: add a `session.append` hook with matcher { door: 'compaction' } that calls next, then sets session.isContextForced = true for the main loop (e.agentId undefined); .catch passes to next. Keep the session.compact hook (it still covers the normal path). checks.test.ts: a compaction row with no session.compact dispatch makes the next prompt carry the TODO_SYNC line again; a subagent's compaction row does not. README: the Hooks table row for session.compact names session.append too, and M2's text says the line returns after a compaction another mod hid from session.compact.",
+      "files": [
+        "plugins/todo-watch/hooks/checks.ts",
+        "plugins/todo-watch/hooks/checks.test.ts",
+        "plugins/todo-watch/README.md"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/todo-watch/hooks/checks.ts:693-696",
+          "expect": "on('session.compact', async ($, e, next) => {"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/checks.ts:521-522",
+          "expect": "const isMainCompaction = (e: SessionCompactInput, result: SessionCompactResult): boolean =>"
+        },
+        {
+          "at": "plugins/todo-watch/README.md:133",
+          "expect": "| `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the line again. |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/todo-watch",
+          "expect": "0 fail"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "Versions and release notes",
+      "action": "Bump plugins/harness/.claude-plugin/plugin.json 0.79.1 -> 0.80.0, plugins/session-bookmark/.claude-plugin/plugin.json 0.2.1 -> 0.3.0, plugins/todo-watch/.claude-plugin/plugin.json 0.5.1 -> 0.5.2. docs/RELEASES/v1.0.0.md: the Plugins table rows harness `0.65.1 | 0.80.0`, todo-watch `0.4.1 | 0.5.2`, a new session-bookmark row `0.2.1 | 0.3.0`; drop session-bookmark from the Unchanged line and name its minor bump in the intro paragraph; add one Changes line each for #272 (add-bookmark remove and edit), #279 (branch-scoped notes and the now-on marker), #305 (`/session-bookmark notes`) and #204 (the compaction fallback in session-bookmark and todo-watch).",
+      "files": [
+        "plugins/harness/.claude-plugin/plugin.json",
+        "plugins/session-bookmark/.claude-plugin/plugin.json",
+        "plugins/todo-watch/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md"
+      ],
+      "dependencies": [
+        "TASK-2",
+        "TASK-5",
+        "TASK-6"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "docs/RELEASES/v1.0.0.md:30-34",
+          "expect": "Unchanged: git-status, parallel2-lanes, pytest-scope and session-bookmark."
+        },
+        {
+          "at": "plugins/session-bookmark/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.2.1\","
+        }
+      ],
+      "commands": [
+        {
+          "run": "git diff --stat {base} -- plugins/harness/.claude-plugin/plugin.json plugins/session-bookmark/.claude-plugin/plugin.json plugins/todo-watch/.claude-plugin/plugin.json docs/RELEASES/v1.0.0.md",
+          "expect": "4 files changed"
+        }
+      ]
+    }
+  ],
+  "base_commit": "8325e212aa076ea8b39c67cc1bdebcc17d9133ac",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "#272: what shape do single-note changes take?",
+      "options": [
+        {
+          "id": "remove-edit",
+          "summary": "add_note.py gains `remove N` and `edit N TEXT`; the skill gains `--remove N` and `--edit N <text>`; each prints the numbered list after the change"
+        },
+        {
+          "id": "remove-only",
+          "summary": "`remove N` / `--remove N` only; an edit is remove then add"
+        },
+        {
+          "id": "separate-skill",
+          "summary": "a new remove-bookmark skill over the same script"
+        }
+      ],
+      "chosen": "remove-edit",
+      "rationale": "Developer's answer, 2026-11-18."
+    },
+    {
+      "id": "D2",
+      "question": "#279: what branch scope does a new note get by default?",
+      "options": [
+        {
+          "id": "current-branch",
+          "summary": "add records the checked-out branch; `--standing` stores none; a note without a branch (old files, detached HEAD) is standing"
+        },
+        {
+          "id": "standing",
+          "summary": "notes apply on every branch unless `--branch` is passed"
+        }
+      ],
+      "chosen": "current-branch",
+      "rationale": "Developer's answer, 2026-11-18. The bookmark never hides a note, so a wrong default costs a marker, not a lost note; the field is optional, so NOTES_VERSION stays 1."
+    },
+    {
+      "id": "D3",
+      "question": "#305: how is the notes view that needs no model turn invoked?",
+      "options": [
+        {
+          "id": "bookmark-notes-command",
+          "summary": "a second mod command, `/bookmark-notes`"
+        },
+        {
+          "id": "session-bookmark-arg",
+          "summary": "an argument on the existing command: `/session-bookmark notes`; bare `/session-bookmark` keeps printing the saved bookmark"
+        }
+      ],
+      "chosen": "session-bookmark-arg",
+      "rationale": "Developer's answer, 2026-11-18. The mod's `command.run` handler answers with text and no model turn (bookmark.ts:240-243)."
+    },
+    {
+      "id": "D4",
+      "question": "#279 remedy (c): where does the rule 'a note from another branch is confirmed with the developer before it is applied or skipped, never dropped silently' live?",
+      "options": [
+        {
+          "id": "bookmark-header",
+          "summary": "one hint line under `## Session Notes` in the bookmark, printed only when a note carries another branch, plus the same sentence in the add-bookmark SKILL.md"
+        },
+        {
+          "id": "header-and-rules",
+          "summary": "the bookmark-header option plus a line in plugins/harness/rules/HARNESS_RULES.md, which every session reads at start"
+        },
+        {
+          "id": "none",
+          "summary": "the `now on` marker alone; no rule text"
+        }
+      ],
+      "chosen": "bookmark-header",
+      "rationale": "Developer's answer, 2026-11-18."
+    },
+    {
+      "id": "D5",
+      "question": "#204: what does a mod do when another mod ends or reroutes the session.compact chain before it?",
+      "options": [
+        {
+          "id": "fallback-next-prompt",
+          "summary": "session-bookmark and todo-watch also observe the compaction row on `session.append` (door `compaction`, main loop); session-bookmark then attaches the bookmark as context on the next prompt.submit when its own session.compact handler did not run for that compaction; todo-watch re-forces its TODO_SYNC line"
+        },
+        {
+          "id": "fallback-append-now",
+          "summary": "as fallback-next-prompt, but session-bookmark appends the bookmark at once through `$.session.append` (door `note`), so a mid-turn auto-compaction is covered before the next prompt"
+        },
+        {
+          "id": "document-only",
+          "summary": "no code change; each mod's README names the ordering limit"
+        }
+      ],
+      "chosen": "fallback-next-prompt",
+      "rationale": "Developer's answer, 2026-11-18."
+    }
+  ],
+  "values": [
+    {
+      "name": "MAX_NOTES",
+      "value": "20",
+      "source": "plugins/harness/skills/add-bookmark/commands/add_note.py:23"
+    },
+    {
+      "name": "MAX_NOTE_CHARS",
+      "value": "300",
+      "source": "plugins/harness/skills/add-bookmark/commands/add_note.py:24"
+    },
+    {
+      "name": "NOTES_VERSION",
+      "value": "1 (unchanged: the branch field is optional)",
+      "source": "plugins/harness/skills/add-bookmark/commands/add_note.py:22",
+      "assumes": [
+        "current-branch"
+      ]
+    },
+    {
+      "name": "BRANCH_KEY / NOTE_BRANCH_KEY",
+      "value": "branch",
+      "source": "new; pinned by tests/mods/test_session_bookmark_notes_contract.py",
+      "assumes": [
+        "current-branch"
+      ]
+    },
+    {
+      "name": "OTHER_BRANCH_MARK",
+      "value": "now on",
+      "source": "new; pinned by tests/mods/test_session_bookmark_notes_contract.py",
+      "assumes": [
+        "current-branch"
+      ]
+    },
+    {
+      "name": "NOTES_ARG",
+      "value": "notes",
+      "source": "new; pinned by tests/mods/test_session_bookmark_notes_contract.py",
+      "assumes": [
+        "session-bookmark-arg"
+      ]
+    },
+    {
+      "name": "harness version",
+      "value": "0.79.1 -> 0.80.0 (minor: new subcommands)",
+      "source": "plugins/harness/.claude-plugin/plugin.json"
+    },
+    {
+      "name": "session-bookmark version",
+      "value": "0.2.1 -> 0.3.0 (minor: notes argument, branch markers)",
+      "source": "plugins/session-bookmark/.claude-plugin/plugin.json"
+    },
+    {
+      "name": "todo-watch version",
+      "value": "0.5.1 -> 0.5.2 (patch: compaction fallback)",
+      "source": "plugins/todo-watch/.claude-plugin/plugin.json",
+      "assumes": [
+        "fallback-next-prompt"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "notes.json entry",
+      "example": "{\"added\": \"2026-11-18T04:59:36Z\", \"branch\": \"1169-bookmark-removes\", \"text\": \"...\"}  (no \"branch\" key: a standing note)",
+      "source": {
+        "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:94-95",
+        "expect": "write_notes(path, [*notes, {\"added\": added, \"text\": text}])"
+      }
+    },
+    {
+      "name": "numbered note line (add_note.py list, the bookmark's Session Notes, /session-bookmark notes)",
+      "example": "1. [1166-todo-snapshot-table-format; now on 1169-bookmark-removes] run amend-commit-msg | 2. [1169-bookmark-removes] keep the API frozen | 3. a standing note",
+      "source": {
+        "at": "plugins/session-bookmark/hooks/bookmark.ts:86-91",
+        "expect": "...notes.map((n, i) => `${i + 1}. ${n}`),"
+      }
+    },
+    {
+      "name": "add / remove / edit receipts",
+      "example": "note 3/20: [main] text | removed note 2: [main] text then the numbered list | edited note 1: text then the numbered list",
+      "source": {
+        "at": "plugins/harness/skills/add-bookmark/commands/add_note.py:96",
+        "expect": "return f\"note {len(notes) + 1}/{MAX_NOTES}: {text}\""
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "parseNotes|b\\.notes|notes: string\\[\\]",
+      "hits": {
+        "plugins/harness/skills/add-bookmark/commands/add_note.py": "docstring names the mod's parseNotes; read_notes keeps mirroring it (TASK-1)",
+        "plugins/session-bookmark/hooks/bookmark.ts": "consumer of parseNotes and b.notes; moves to StoredNote (TASK-3)",
+        "plugins/session-bookmark/hooks/notes.test.ts": "tests of parseNotes; updated for StoredNote (TASK-3)",
+        "plugins/session-bookmark/hooks/notes.ts": "definition of parseNotes; returns StoredNote[] (TASK-3)",
+        "plugins/session-bookmark/types/index.d.ts": "Bookmark.notes type; becomes StoredNote[] (TASK-3)",
+        "docs/TODO/RepoToDo.json": "catalog prose citing parseNotes; history, unchanged"
+      }
+    }
+  ],
+  "ledger": "plan/2026-bookmark-notes"
+}

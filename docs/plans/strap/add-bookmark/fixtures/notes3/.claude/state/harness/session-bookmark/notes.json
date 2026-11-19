@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "notes": [
+    {
+      "added": "2026-11-17T14:02:11Z",
+      "text": "PR 318 squash-merges; keep the receipts commit 4e1a9c2 separate until then"
+    },
+    {
+      "added": "2026-11-17T15:40:03Z",
+      "text": "TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback"
+    },
+    {
+      "added": "2026-11-18T09:12:45Z",
+      "text": "never bump todo-watch past 0.5.2 on this branch"
+    }
+  ]
+}

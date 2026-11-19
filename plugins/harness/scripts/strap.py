@@ -881,12 +881,18 @@ def cmd_retest(args: argparse.Namespace) -> int:
 
 # --- freeze -----------------------------------------------------------------------------------------------
 
-def _grade_problems(spec: SkillSpec, behavior: Behavior) -> List[str]:
-    """An unclear grade or an ungraded judged item on any recorded run of the behavior."""
+def _settled(run: Run, current: str, passed: Set[str]) -> bool:
+    """A green on an earlier hash whose scenario has since passed a green on the current hash."""
+    return run.arm == Arm.GREEN and run.skill_hash != current and run.scenario in passed
+
+
+def _grade_problems(spec: SkillSpec, behavior: Behavior, current: str, passed: Set[str]) -> List[str]:
+    """An unclear grade or an ungraded judged item on any recorded run of the behavior; an unclear grade
+    on a settled green (``_settled``) no longer blocks."""
     problems: List[str] = []
     for run in _runs(spec, behavior=behavior.id, recorded=True):
         values = [grade.value for grade in spec.grades if grade.run == run.id]
-        if GradeValue.UNCLEAR in values:
+        if GradeValue.UNCLEAR in values and not _settled(run, current, passed):
             problems.append(f"{behavior.id}: unclear grade on {run.id}")
         if _ungraded(spec, run):
             problems.append(f"{behavior.id}: ungraded judged item on {run.id}")
@@ -904,11 +910,11 @@ def _judgment_gate(spec: SkillSpec, behavior: Behavior, current: str) -> List[st
         return [f"{ident}: fewer than {sm.MIN_SCENARIOS} scenarios"]
     if not _draws_of(spec, ident):
         return [f"{ident}: never drawn"]
-    problems = _grade_problems(spec, behavior)
+    passed = _passed_greens(spec, behavior, current)
+    problems = _grade_problems(spec, behavior, current, passed)
     baselines = _runs(spec, behavior=ident, arm=Arm.BASELINE, recorded=True)
     failed = {r.scenario for r in baselines
               if sr.baseline_failed(_scenario(behavior, r.scenario), r, spec.grades)}
-    passed = _passed_greens(spec, behavior, current)
     if not baselines:
         problems.append(f"{ident}: no recorded baseline")
     elif not failed:

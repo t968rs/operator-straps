@@ -409,6 +409,14 @@ const registerContextResets = (on: Parameters<Register>[0]): void => {
     if (isMainCompaction(e, result)) pacing.isContextForced = true
     return result
   }).catch((_$, e, next) => next(e))
+
+  // Fallback for a compaction whose row reaches session.append while the session.compact hook above did not
+  // run (for example a mod before it ended the chain): the main loop's line is re-forced from the row too.
+  on('session.append', { door: 'compaction' }, async ($, e, next) => {
+    const result = await next(e)
+    if (e.agentId === undefined) pacing.isContextForced = true
+    return result
+  }).catch((_$, e, next) => next(e))
 }
 
 // ---------------------------------------------------------------------------

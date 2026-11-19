@@ -263,6 +263,30 @@ describe('M2: the TODO_SYNC context line', () => {
     expect(await prompt($, w)).toEqual([])
   })
 
+  test('a compaction row with no session.compact dispatch re-forces the line; a subagent row does not', async ($, on) => {
+    const w = world(on)
+    w.engine.drift = 2
+    w.engine.byRule = { T2: 1, P1: 1 }
+    await $.session.start({ cwd: w.root, surface: null, isInteractive: false })
+    expect(await prompt($, w)).toEqual([])
+    expect(await prompt($, w)).toEqual(['TODO_SYNC drift=2 P1=1 T2=1'])
+    expect(await prompt($, w)).toEqual([])
+    const row = (agentId?: string, door: 'compaction' | 'note' = 'compaction') => ({
+      message: { type: 'user' as const, role: 'user' as const, content: [{ type: 'text' as const, text: 'summary' }] },
+      door,
+      origin: { kind: 'engine' as const },
+      uuid: `u-${agentId ?? 'main'}-${door}`,
+      ...(agentId === undefined ? {} : { agentId }),
+    })
+    await $.session.append(row('sub-1'))
+    expect(await prompt($, w)).toEqual([])
+    await $.session.append(row(undefined, 'note'))
+    expect(await prompt($, w)).toEqual([])
+    await $.session.append(row())
+    expect(await prompt($, w)).toEqual(['TODO_SYNC drift=2 P1=1 T2=1'])
+    expect(await prompt($, w)).toEqual([])
+  })
+
   test('todo.inject_context false attaches nothing', async ($, on) => {
     const w = world(on, { config: { todo: { ...CONFIG.todo, inject_context: false } } })
     w.engine.drift = 1
