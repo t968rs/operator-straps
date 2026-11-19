@@ -95,20 +95,22 @@ def checked_text(words: List[str], stored: int) -> str:
 
 
 def _git_name(repo: Path, *args: str) -> Optional[str]:
-    """The first output line of ``git -C repo ARGS``; ``None`` on a failure, a timeout or empty output."""
+    """The stripped stdout of ``git -C repo ARGS``; ``None`` on a failure, a timeout or empty output."""
     from harness_lib.project import run_git
     try:
         done = run_git(["git", "-C", str(repo), *args])
     except OSError:
         return None
-    return done.stdout.strip() or None if done.returncode == 0 else None
+    if done.returncode != 0:
+        return None
+    return done.stdout.strip() or None
 
 
 def current_branch(repo: Path) -> Optional[str]:
     """The checked-out branch of ``repo``; ``None`` for a detached HEAD or when git cannot say.
 
-    An unborn branch (no commit yet) fails ``rev-parse``, so ``symbolic-ref`` answers for it; a detached
-    HEAD fails both, and ``rev-parse`` names it ``HEAD``.
+    An unborn branch (no commit yet) fails ``rev-parse``, so ``symbolic-ref`` answers for it; on a detached
+    HEAD ``rev-parse`` prints ``HEAD``, which reads as ``None``.
     """
     name = _git_name(repo, "rev-parse", "--abbrev-ref", "HEAD")
     if name is None:

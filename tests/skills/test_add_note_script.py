@@ -2,8 +2,8 @@
 
 The script keeps the session notes the session-bookmark mod prints in its bookmark. Each test runs it against
 a throwaway project built by ``make_project`` (a git repository on branch ``main``) and reads the notes file
-the mod reads. A note records the branch it was added on, unless it is standing; ``remove`` and ``edit`` change
-one note by its listed number.
+the mod reads. A note records the branch it was added on, unless it is standing; ``remove`` and ``edit``
+change one note by its listed number.
 """
 from __future__ import annotations
 
@@ -200,14 +200,26 @@ def test_add_records_the_current_branch(script, make_project, capsys) -> None:
     project = make_project(config={})
     assert _run(script, project, "add", "keep", "it") == 0
     assert _notes(project)[0].get(script.BRANCH_KEY) == "main"
-    assert capsys.readouterr().out.strip() == "note 1/20: [main] keep it"
+    assert capsys.readouterr().out.strip() == f"note 1/{script.MAX_NOTES}: [main] keep it"
 
 
 def test_add_standing_stores_no_branch(script, make_project, capsys) -> None:
     project = make_project(config={})
     assert _run(script, project, "add", "--standing", "every", "branch") == 0
     assert [sorted(n) for n in _notes(project)] == [["added", "text"]]
-    assert capsys.readouterr().out.strip() == "note 1/20: every branch"
+    assert capsys.readouterr().out.strip() == f"note 1/{script.MAX_NOTES}: every branch"
+
+
+@pytest.mark.parametrize(("args", "text", "branch"), [
+    (("add", "--", "-x", "leading", "dash"), "-x leading dash", "main"),
+    (("add", "--standing", "--", "-y"), "-y", None),
+], ids=["add", "add-standing"])
+def test_add_after_a_double_dash_keeps_a_leading_dash(script, make_project, args, text, branch) -> None:
+    project = make_project(config={})
+    assert _run(script, project, *args) == 0
+    stored = _notes(project)[0]
+    assert stored["text"] == text
+    assert stored.get(script.BRANCH_KEY) == branch
 
 
 def test_add_on_a_detached_head_stores_a_standing_note(script, make_project) -> None:
@@ -286,6 +298,13 @@ def test_edit_replaces_the_text_and_keeps_added_and_branch(script, make_project,
     mark = script.OTHER_BRANCH_MARK
     assert capsys.readouterr().out.splitlines() == [
         f"edited note 1: [other; {mark} main] new words", f"1. [other; {mark} main] new words", "2. b"]
+
+
+def test_edit_after_a_double_dash_stores_a_leading_dash_and_keeps_the_branch(script, make_project) -> None:
+    first = _entry("old", "other")
+    project = make_project(config={}, files={_NOTES_REL: _file(first)})
+    assert _run(script, project, "edit", "1", "--", "-z") == 0
+    assert _notes(project) == [{**first, "text": "-z"}]
 
 
 def test_edit_of_a_full_file_is_allowed(script, make_project) -> None:

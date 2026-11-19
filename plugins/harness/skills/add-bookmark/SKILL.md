@@ -26,8 +26,8 @@ The note text is the whole value, so a leading `--` is dropped, per
 `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. After a leading `--` the rest is always a note, even when it
 begins with a flag: `-- --list` stores the note `--list`.
 
-`/session-bookmark notes` (the session-bookmark mod) prints the same numbered list without a model turn; it is
-the view to suggest when the developer only wants to look at the notes. A `--list` given here always runs
+`/session-bookmark notes` (the session-bookmark mod) prints the same numbered list without a model turn, every
+stored note included; it is the view to suggest when the developer only wants to look at the notes. A `--list` given here always runs
 `NOTE list`.
 
 ## Running the script
@@ -88,7 +88,8 @@ the developer whether it still applies before acting on it or setting it aside; 
 question goes in the reply (see Reply), and the work waits for the answer.
 
 Exit 1 prints `add_note: <reason>`: for a too-long note, shorten it and rerun the same command, with the same
-flags, `--standing` included; for a full file, relay the message and stop.
+flags, `--standing` included; for a full file, relay the message and stop. For `no note N` or an unreadable
+file, relay the message without a retry; for an unreadable file, add one line naming `--clear`.
 
 ## Reply
 
@@ -98,7 +99,7 @@ numbered list or `no notes`; `cleared N note(s)`; or `reset a notes file that co
 line carries the same branch tag the list prints, `[<branch>] <line>`; a standing note, or a note stored on a
 detached HEAD, has none.
 
-On exit 1 after the one retry, the `add_note:` line verbatim. For a full file, add one line after it naming the
+On exit 1 (after the one retry for a too-long note), the `add_note:` line verbatim. For a full file, add one line after it naming the
 skill forms that free a slot: `--remove N` and `--clear`.
 
 When a note marked `[<branch>; now on <current>]` bears on the note just stored or on the work asked for next,

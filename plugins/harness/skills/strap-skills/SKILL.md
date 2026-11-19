@@ -66,7 +66,8 @@ writes land where `record-run` looks.
   same scenario instead; see step 12).
 - **Quotes are verified.** Every grade carries words copied verbatim from the reply, and `grade` refuses a
   quote the reply does not hold. Grade what the reply says, never what the expectation wants; an honest
-  `unclear` blocks the freeze until a new run settles it.
+  `unclear` blocks the freeze until a new run settles it (an `unclear` on a green from an earlier hash no
+  longer blocks once that scenario has passed a green on the current hash).
 - **Mechanical where validation can decide it.** A behavior a model, the API or a driver can enforce is
   mechanical and tested by planned pytest nodes. Only what no file state or model can decide is judgment and
   tested by scenarios. A driver wrapped around a pure-judgment skill for form's sake is a defect.
@@ -225,7 +226,8 @@ writes land where `record-run` looks.
 
     It runs every gate and prints one `problem:` line per unmet condition: a behavior never drawn, a baseline
     that did not fail, no passing green on the current hash, a failed green scenario that has not passed since,
-    an `unclear` or missing grade, a mechanical behavior whose red was not recorded or whose planned tests fail,
+    an `unclear` or missing grade (an `unclear` on a green from an earlier hash no longer blocks once that
+    scenario has passed a green on the current hash), a mechanical behavior whose red was not recorded or whose planned tests fail,
     a listed part whose file is missing (take it off with `remove_part` or restore it). Fix each through the step it names. Clean, it prints `freeze [done] | <name> | <hash12> | grader <grader>`.
 
     **Refreeze after a part change.** Short of `reopen` (below), a frozen spec refuses every change but
