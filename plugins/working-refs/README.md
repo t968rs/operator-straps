@@ -16,7 +16,7 @@ plan 2027 · todo-k69m (301) · [ 1168-todo-banner todo-48q2 ] [ (detached) #315
   branch name dark in the line file and dim in band-line. Segments past `working_refs.max_chars` fold into a
   trailing ` +N`; the plans and the own refs are never cut, and with no own part the first segment always
   shows.
-- Nothing qualifies and no override: the line is empty, and the widget prints nothing.
+- Nothing qualifies and no branch has a visible override: the line is empty, and the widget prints nothing.
 
 ## What hides
 
@@ -26,7 +26,8 @@ them); plan refs never hide, since a plan leaves through its archive tag.
 - **A TODO id** hides when the checked-out catalog (`todo.folder` / `todo.catalog`) lists it in `retired_ids`.
   The catalog is the one in this checkout, so an id retired on one branch shows again on a branch whose
   catalog has not retired it.
-- **An issue** hides only when `gh issue view <n> --json state` answered CLOSED. Two feeds answer: the mod's
+- **An issue** hides only when `gh issue view <n> --json state` answered CLOSED (or MERGED, for a pull
+  request number, recorded as CLOSED). Two feeds answer: the mod's
   own cache (`working-refs/issues.json`) and the open-issue list `todo_sync.py untracked` (`sync-gh-todo`)
   writes (`todo-sync/open_issues.json`), which answers OPEN for the numbers it holds. The fresher answer wins.
   An issue missing from the list (filed after the fetch, or a PR number) is no answer: it shows until `gh`
@@ -38,7 +39,8 @@ them); plan refs never hide, since a plan leaves through its archive tag.
 - A segment whose refs all hide is not drawn.
 
 Every branch means every branch of one checkout: `overrides.json` and both issue files live under the
-checkout's own `state_dir`, so a `d-w` worktree session does not see the main checkout's overrides.
+checkout's own `state_dir` (with a relative `state_dir`; an absolute one is shared, and every checkout then sees
+the same overrides), so a `d-w` worktree session does not see the main checkout's overrides.
 
 ## Which plans show
 
@@ -92,7 +94,7 @@ hides requests a scan.
 
 | Key | Meaning |
 |-----|---------|
-| `line` | The branch's working line (plans, own refs, `head`, the drawn `others` segments, `more`, plain `text`); null before the first scan and while nothing qualifies or overrides. Written only when it changed. |
+| `line` | The branch's working line (plans, own refs, `head`, the drawn `others` segments, `more`, plain `text`); null before the first scan and while nothing qualifies and no branch's override shows. Written only when it changed. |
 
 ## Files
 
@@ -105,10 +107,12 @@ hides requests a scan.
 | `<state_dir>/todo-sync/open_issues.json` | `todo_sync.py untracked` only | `{ "version": 1, "fetched_at", "open": [...] }`: every open issue at the last complete listing. |
 
 The files live under the checkout's own `state_dir`, so each worktree has its own line; an absolute `state_dir`
-is kept as given, so every checkout then shares them. After every scan the
-rendered text is compared with each line file's contents (not with the atom, which starts null in each session)
-and the file is rewritten on any difference: the `session.start` scan empties a line another branch or an
-earlier session left. An absent file is not created for an empty line.
+is kept as given, so every checkout then shares them. After every scan the rendered text is compared with
+`line.txt`'s contents (not with the atom, which starts null in each session) and rewritten on any difference,
+so the `session.start` scan empties a `line.txt` another branch or an earlier session left. `line.json` follows
+the same rule only after a scan that has a git-status snapshot; before the first snapshot an earlier session's
+`line.json` stays as it was, and its branch stamp tells the widget it is stale. An absent file is not created
+for an empty line.
 
 ## Checks
 

@@ -33,7 +33,10 @@ export type WorkingLine = {
   others: OtherSegment[]
   /** How many other-branch segments did not fit within `working_refs.max_chars`; 0 when all fit. */
   more: number
-  /** The full plain form (`head · [ b1 refs ] [ b2 refs ] +N`), drawn verbatim by band-line. */
+  /**
+   * The full plain form (`head · [ b1 refs ] [ b2 refs ] +N`); band-line draws its characters from head, others and
+   * more, and draws it verbatim only from an older working-refs.
+   */
   text: string
 }
 

@@ -19,7 +19,7 @@ export type OpenList = { fetchedAt: number; open: ReadonlySet<number> }
 
 /** The issue cache's file version. */
 export const CACHE_VERSION = 1
-/** The open-issue list's file version (`todo_sync.issues.write_open_issues`). */
+/** The open-issue list's file version (`todo_sync.issues.OPEN_ISSUES_VERSION`, pinned by the contract test). */
 export const OPEN_LIST_VERSION = 1
 
 type Json = Readonly<Record<string, unknown>>

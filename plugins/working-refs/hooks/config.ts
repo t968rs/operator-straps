@@ -18,9 +18,12 @@ import {
  * harness plugin's `config/defaults.json` (./mirror). Pure: no `$`.
  */
 
-/** Project-relative (or absolute) POSIX paths the mod reads and writes under. */
+/** The harness values the mod reads: paths (project-relative or absolute POSIX), the gh settings and the line cap. */
 export type WorkingRefsConfig = {
-  /** `state_dir`: the override file and the line file live under it. */
+  /**
+   * `state_dir`: the override, line and issue-cache files live under `<state_dir>/working-refs/`, the open-issue
+   * list under `<state_dir>/todo-sync/`.
+   */
   stateDir: string
   /** `artifacts.plans`: the folder the mod scans for plans and their pages. */
   plansDir: string
@@ -43,12 +46,8 @@ const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null 
 /** Forward slashes, no surrounding blanks, no trailing slash. */
 export const cleanPath = (p: string): string => p.trim().replace(/\\/g, '/').replace(/\/+$/, '')
 
-/** A non-blank string value, cleaned; else the fallback. */
-const pathOr = (v: unknown, fallback: string): string =>
-  typeof v === 'string' && cleanPath(v) !== '' ? cleanPath(v) : fallback
-
 /** A non-blank string value, cleaned; else the fallback (which may be null). */
-const optionalPathOr = (v: unknown, fallback: string | null): string | null =>
+const pathOr = <T extends string | null>(v: unknown, fallback: T): string | T =>
   typeof v === 'string' && cleanPath(v) !== '' ? cleanPath(v) : fallback
 
 /** A non-blank string value, trimmed; else the fallback. */
@@ -86,7 +85,7 @@ export const readConfig = (text: string | undefined): WorkingRefsConfig => {
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
     plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
-    todoFolder: optionalPathOr(todo.folder, DEFAULT_TODO_FOLDER),
+    todoFolder: pathOr(todo.folder, DEFAULT_TODO_FOLDER),
     todoCatalog: pathOr(todo.catalog, DEFAULT_TODO_CATALOG),
     ghRepo: textOr(gh.repo, DEFAULT_GH_REPO),
     ghMaxAgeHours: positiveOr(gh.max_age_hours, DEFAULT_GH_MAX_AGE_HOURS),

@@ -23,7 +23,7 @@ import { archivedIdsOf, type MergeBaseOf, pageOf, parsePlan, type PlanInfo, qual
  * `todo.gh.max_age_hours`. Scans run at `session.start`, when git-status's snapshot names another branch, when
  * HEAD or the archive tags moved at a prompt, when the plans folder's signature or the override file's, the
  * catalog's or the open list's mtime moved after a file or shell tool call or at a prompt, and when a recheck
- * changed an issue's state. Every host failure degrades to an empty line; no hook throws into a tool call, a
+ * changed whether an issue hides. Every host failure degrades to an empty line; no hook throws into a tool call, a
  * prompt or a session start.
  * Functions taking `$` are function declarations: the engine follows `$` past an import only into one.
  */
@@ -35,7 +35,7 @@ export const GIT_TIMEOUT_MS = 10_000
 /** The branch-stamped line file's version. */
 export const LINE_JSON_VERSION = 1
 const HOUR_MS = 3_600_000
-/** Tools whose calls may write a plan, its page or the override file. */
+/** Tools whose calls may write a plan, its page, the override file, the TODO catalog or the open-issue list. */
 export const WATCH_TOOLS = /^(Bash|PowerShell|Edit|MultiEdit|Write)$/
 /** `<root>/.claude/harness.json`. */
 export const HARNESS_CONFIG_REL = '.claude/harness.json'
@@ -244,15 +244,20 @@ async function git($: Dollar, root: string, args: string[]): Promise<{ exitCode:
   return ran === undefined ? undefined : { exitCode: ran.exitCode, stdout: ran.stdout }
 }
 
-/** `gh issue view <n> --json state` in the checkout: OPEN, CLOSED or UNKNOWN; undefined when gh failed. */
+/** A gh `state` as an IssueState: a merged pull request (MERGED) counts as CLOSED; anything else is UNKNOWN. */
+function issueStateOf(state: unknown): IssueState {
+  if (state === 'MERGED') return 'CLOSED'
+  return state === 'OPEN' || state === 'CLOSED' ? state : 'UNKNOWN'
+}
+
+/** `gh issue view <n> --json state` in the checkout: OPEN, CLOSED (or MERGED) or UNKNOWN; undefined when gh failed. */
 async function ghStateOf($: Dollar, w: Watch, n: number): Promise<IssueState | undefined> {
   const repo = w.cfg.ghRepo === null ? [] : ['--repo', w.cfg.ghRepo]
   const argv = ['gh', 'issue', 'view', String(n), '--json', 'state', ...repo]
   const ran = await $.process.run(argv, { cwd: w.root, timeoutMs: GIT_TIMEOUT_MS }).catch(noop)
   if (ran === undefined || ran.exitCode !== 0) return undefined
   try {
-    const state: unknown = (JSON.parse(ran.stdout) as { state?: unknown }).state
-    return state === 'OPEN' || state === 'CLOSED' ? state : 'UNKNOWN'
+    return issueStateOf((JSON.parse(ran.stdout) as { state?: unknown }).state)
   } catch {
     return 'UNKNOWN'
   }
@@ -432,7 +437,8 @@ async function runScan($: Dollar, facts?: GitFacts): Promise<void> {
 
 /**
  * One recheck pass: every override issue whose last answer is `todo.gh.max_age_hours` old gets one `gh issue view`;
- * the cache is written once, and a scan follows when an issue's hiding changed.
+ * the cache is written once, and a scan follows when an issue's hiding changed. A failed cache write skips that
+ * scan and holds the next pass off for `todo.gh.max_age_hours`, so an unwritable cache cannot loop `gh` and scans.
  */
 async function runRecheck($: Dollar): Promise<void> {
   const w = await resolveWatch($)
@@ -442,10 +448,21 @@ async function runRecheck($: Dollar): Promise<void> {
   const issues = overrideIssues(overrides)
   const hide = await readHide($, w)
   const due = dueIssues(issues, hide.list, hide.cache, now, maxAgeOf(w))
-  if (due.length === 0) return
+  if (due.length === 0) {
+    memo.recheckDueAt = dueAtOf(issues, hide.list, hide.cache, maxAgeOf(w))
+    return
+  }
   const next = new Map(hide.cache)
   for (const n of due) next.set(n, afterAttempt(await ghStateOf($, w, n), hide.cache.get(n), now))
-  await $.fs.write(issuesCacheFileOf(w.root, w.cfg), cacheText(next, issues)).catch(noop)
+  const isWritten = await $.fs.write(issuesCacheFileOf(w.root, w.cfg), cacheText(next, issues)).then(
+    () => true,
+    () => false,
+  )
+  // an unwritten cache leaves the issues due on disk: a scan would queue the same recheck again
+  if (!isWritten) {
+    memo.recheckDueAt = now + maxAgeOf(w)
+    return
+  }
   memo.recheckDueAt = dueAtOf(issues, hide.list, next, maxAgeOf(w))
   if (due.some(n => isClosed(n, hide.list, hide.cache) !== isClosed(n, hide.list, next))) requestScan($)
 }
@@ -506,7 +523,10 @@ async function isRecheckDue($: Dollar): Promise<boolean> {
   return now !== undefined && memo.recheckDueAt !== undefined && now >= memo.recheckDueAt
 }
 
-/** After a file or shell tool call: a scan when the plans folder or the override file moved. */
+/**
+ * After a file or shell tool call: a scan when the plans folder's signature or the override file's, the catalog's
+ * or the open list's mtime moved.
+ */
 async function afterToolCall($: Dollar): Promise<void> {
   if (!memo.isScanned) return requestScan($)
   const w = await resolveWatch($)
@@ -516,7 +536,8 @@ async function afterToolCall($: Dollar): Promise<void> {
 /**
  * At a prompt: the snapshot's branch (a write the `state.set` hook missed), HEAD and the archive tags (only
  * while a plan was read), then the files; a scan when any moved, handed the git facts already read. A failed
- * git call counts as no move.
+ * git call counts as no move. A `gh` recheck pass is queued as well when an override issue fell due
+ * (`isRecheckDue`).
  */
 async function onPrompt($: Dollar): Promise<void> {
   if (!memo.isScanned || (await branchNow($)) !== memo.branch) return requestScan($)

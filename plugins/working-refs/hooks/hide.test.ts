@@ -92,7 +92,7 @@ describe('isClosed', () => {
     expect(isClosed(512, list(T0 + HOUR, [301]), cache([[512, 'CLOSED', T0]]))).toBe(true)
   })
 
-  test('a PR number in an override shows until gh answers CLOSED', async () => {
+  test('a PR number in an override shows until gh answers CLOSED (watch records MERGED as CLOSED)', async () => {
     const pr = 330
     expect(isClosed(pr, list(T0, [301]), cache([[pr, 'OPEN', T0]]))).toBe(false)
     expect(isClosed(pr, list(T0, [301]), cache([[pr, 'CLOSED', T0 + HOUR]]))).toBe(true)

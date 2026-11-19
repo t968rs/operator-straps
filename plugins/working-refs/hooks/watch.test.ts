@@ -661,6 +661,15 @@ describe('gh rechecks (plan 2027)', () => {
     expect(fileJson(w, ISSUES_FILE).issues['9'].state).toBe('CLOSED')
   })
 
+  test('a MERGED answer (a pull request number) records CLOSED and hides it', async ($, on) => {
+    const w = world(on)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], [9]), NOW - 5_000)
+    w.gh = { 9: 'MERGED' }
+    await start($, w)
+    expect(w.line?.text).toBe('todo-ab12')
+    expect(fileJson(w, ISSUES_FILE).issues['9'].state).toBe('CLOSED')
+  })
+
   test('a gh failure with nothing known records UNKNOWN and shows the issue', async ($, on) => {
     const w = world(on)
     w.setFile(OVERRIDES_FILE, overridesJson('feat', [], [9]), NOW - 5_000)
