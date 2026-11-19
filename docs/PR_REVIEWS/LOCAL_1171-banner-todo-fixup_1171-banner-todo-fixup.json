@@ -8,7 +8,7 @@
   "base_sha": "aab47d741cc8c9216386ca9ab87681e34eeb353a",
   "head_sha": "0a9059e8a1336b9ba7eef3f1811ed089957be97a",
   "review_date": "2026-11-19",
-  "verdict": "NOT READY TO MERGE - important: I4, I5, I6",
+  "verdict": "READY TO MERGE - 33 of 33 findings resolved, 0 bubbled",
   "stats": {
     "additions": 1241,
     "deletions": 0,
@@ -494,7 +494,18 @@
       }
     ]
   },
-  "bubble_up": [],
+  "bubble_up": [
+    {
+      "id": "M27",
+      "classification": "architectural_ambiguity",
+      "reason": "Overrides and issue caches are per checkout, so worktrees never see main's overrides; anchor at the main worktree (changes working) or record same-checkout-only?"
+    },
+    {
+      "id": "M17",
+      "classification": "architectural_ambiguity",
+      "reason": "A deleted branch's override shows everywhere until its refs retire or close; add working clear --branch NAME (wider scope) or defer it?"
+    }
+  ],
   "verification_log": {
     "dispatch_time": {
       "pr_metadata_check": {
@@ -610,6 +621,156 @@
       "status": "RESOLVED",
       "date": "2026-11-19",
       "evidence": "0a9059e (working-tree snapshot; developer commits) - spec anti-goal and TASK-7: the widget starts no child process (no git call); plan refrozen r1.2 (outside fixer waves)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-4 owns the watch.ts call site (a view that hides nothing) and the watch.test.ts:461-466 change; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - open list answers only OPEN; a missing issue or PR number is due for gh and shown until gh reports CLOSED; spec Goals and TASK-4/5; hide.test cases; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - a gh failure keeps the last known state and checkedAt, retries paced by triedAt; spec Decided; watch.test case; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - widget tests marked cross_os; TASK-7 states the one-liner quoting rules (outside fixer waves)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-5 names the changed watch.test cases; line.json written only for non-empty text or an existing file; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-5 keeps the branch null guard; widget skips the prefix without a non-empty stamp; widget tests; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-5 onPrompt starts a recheck once the oldest answer passes the age; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-5 watch.test cases for --repo, timeout, one write per pass, rescan on change, override issues only; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - widget prints nothing for empty text; TASK-7 and widget test; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - relative gitdir resolves against the .git file folder; HEAD failure prints text without prefix; widget tests; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - widget falls back to line.txt without line.json; TASK-7 and a guard test; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-5 updates README.md:36, :46, :191 and working SKILL.md:3; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-2 rewords todo_sync.md:160; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-3 updates the CLAUDE.md mirror sentence; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-5 names memo.catalogMtime and memo.openIssuesMtime with a no-rescan test; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - planned config tests gain without-jsonschema variants; TASK-1 nodes; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-3 mirrors DEFAULT_TODO_FOLDER and DEFAULT_GH_REPO; contract test pins both with ts_optional_string; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-4: union only without an override entry; todoIds and issues are the visible own refs; line.test cases; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-4 line.test cases for D4 and an uncut head; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M25",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - TASK-4 and TASK-6 fix the head +N and empty-head forms with tests; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M26",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - spec: the checked-out catalog counts; TASK-5 README; r1.3 (outside fixer waves)"
+    },
+    {
+      "id": "M7",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - closed, no action: fixed in the gitignored planned test docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py (HEAD at the stamped branch, bare text asserted, absolute and relative gitdir); its sha256 is in freeze entry r1.3; closeout cannot see ignored files"
+    },
+    {
+      "id": "M8",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - closed, no action: fixed in the gitignored planned test (test_project_config_widget_matches_the_defaults, run by the TASK-7 command); its sha256 is in freeze entry r1.3; closeout cannot see ignored files"
+    },
+    {
+      "id": "M27",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (working-tree snapshot; developer commits) - developer chose same checkout only: spec Non-goal and TASK-5 README sentence; plan refrozen r1.4 (outside fixer waves)"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "fb89624 (developer-confirmed defer) - developer deferred clearing another branch's override; todo-yu6v (local), plan 2027 deferred_to_future_plans, spec Non-goal"
     }
   ]
 }

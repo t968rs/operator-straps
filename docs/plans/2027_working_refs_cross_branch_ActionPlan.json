@@ -98,13 +98,29 @@
         {
           "node": "tests/lib/test_config_working_refs.py::test_readme_documents_the_key",
           "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[zero]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[text]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[bool]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_working_refs.py::test_an_unknown_key_raises_without_jsonschema",
+          "red": "AssertionError"
         }
       ]
     },
     {
       "id": "TASK-2",
       "title": "Harness: line.json name and the open-issue list from untracked",
-      "action": "working_refs.py: add `LINE_JSON_REL = \"working-refs/line.json\"` beside LINE_REL and name it in the module docstring (the mod writes it: version, branch, text). todo_sync/issues.py: add `OPEN_ISSUES_REL = \"todo-sync/open_issues.json\"`, `open_issues_path(cfg)` (`cfg.path(cfg.state_dir) / OPEN_ISSUES_REL`) and `write_open_issues(cfg, rows)` writing `{\"version\": 1, \"fetched_at\": <UTC %Y-%m-%dT%H:%M:%SZ>, \"open\": <sorted numbers>}` through `write_atomic`; `find_untracked` calls it right after `rows = open_issues(cfg)` (so `untracked: none` still writes it; a listing at LIST_LIMIT raises before it). Document the file in plugins/harness/scripts/todo_sync.md (untracked outputs) and in sync-gh-todo SKILL.md Step 1 (the working-refs mod reads it to hide closed issues). Copy the planned test file first. Update the `find_untracked` docstring: after a complete listing it writes `<state_dir>/todo-sync/open_issues.json` (none when the listing reaches LIST_LIMIT).",
+      "action": "working_refs.py: add `LINE_JSON_REL = \"working-refs/line.json\"` beside LINE_REL and name it in the module docstring (the mod writes it: version, branch, text). todo_sync/issues.py: add `OPEN_ISSUES_REL = \"todo-sync/open_issues.json\"`, `open_issues_path(cfg)` (`cfg.path(cfg.state_dir) / OPEN_ISSUES_REL`) and `write_open_issues(cfg, rows)` writing `{\"version\": 1, \"fetched_at\": <UTC %Y-%m-%dT%H:%M:%SZ>, \"open\": <sorted numbers>}` through `write_atomic`; `find_untracked` calls it right after `rows = open_issues(cfg)` (so `untracked: none` still writes it; a listing at LIST_LIMIT raises before it). Document the file in plugins/harness/scripts/todo_sync.md (untracked outputs) and in sync-gh-todo SKILL.md Step 1 (the working-refs mod reads it to hide closed issues). Copy the planned test file first. Update the `find_untracked` docstring: after a complete listing it writes `<state_dir>/todo-sync/open_issues.json` (none when the listing reaches LIST_LIMIT). Also reword plugins/harness/scripts/todo_sync.md:160, which says `untracked: none` writes nothing.",
       "files": [
         "plugins/harness/lib/harness_lib/working_refs.py",
         "plugins/harness/lib/harness_lib/todo_sync/issues.py",
@@ -162,12 +178,13 @@
     {
       "id": "TASK-3",
       "title": "Mod mirror and config: new names and keys",
-      "action": "mirror.ts: add LINE_JSON_PATH 'working-refs/line.json', OPEN_ISSUES_PATH 'todo-sync/open_issues.json', ISSUES_CACHE_PATH 'working-refs/issues.json' (mod-only, one writer), SET_AT_KEY 'set_at', DEFAULT_TODO_CATALOG 'RepoToDo.json', DEFAULT_GH_MAX_AGE_HOURS = 24, DEFAULT_MAX_CHARS = 120, and extend its header comment. config.ts: WorkingRefsConfig gains todoFolder (string|null), todoCatalog, ghRepo (string|null), ghMaxAgeHours, maxChars, read by readConfig with the mirrored defaults (a wrong type keeps the default, as today); add lineJsonFileOf, openIssuesFileOf, issuesCacheFileOf and catalogFileOf (null when todoFolder is null). config.test.ts covers each key and fallback. Copy the planned tests/mods/test_working_refs_contract.py over the repo file.",
+      "action": "mirror.ts: add LINE_JSON_PATH 'working-refs/line.json', OPEN_ISSUES_PATH 'todo-sync/open_issues.json', ISSUES_CACHE_PATH 'working-refs/issues.json' (mod-only, one writer), SET_AT_KEY 'set_at', DEFAULT_TODO_CATALOG 'RepoToDo.json', DEFAULT_GH_MAX_AGE_HOURS = 24, DEFAULT_MAX_CHARS = 120, and extend its header comment. config.ts: WorkingRefsConfig gains todoFolder (string|null), todoCatalog, ghRepo (string|null), ghMaxAgeHours, maxChars, read by readConfig with the mirrored defaults (a wrong type keeps the default, as today); add lineJsonFileOf, openIssuesFileOf, issuesCacheFileOf and catalogFileOf (null when todoFolder is null). config.test.ts covers each key and fallback. Copy the planned tests/mods/test_working_refs_contract.py over the repo file. Also mirror DEFAULT_TODO_FOLDER and DEFAULT_GH_REPO (both null) in mirror.ts, pinned with ts_optional_string, and update the working-refs mirror sentence in CLAUDE.md (it mirrors the todo keys and working_refs.max_chars too).",
       "files": [
         "plugins/working-refs/hooks/mirror.ts",
         "plugins/working-refs/hooks/config.ts",
         "plugins/working-refs/hooks/config.test.ts",
-        "tests/mods/test_working_refs_contract.py"
+        "tests/mods/test_working_refs_contract.py",
+        "CLAUDE.md"
       ],
       "dependencies": [
         "TASK-1",
@@ -214,7 +231,7 @@
     {
       "id": "TASK-4",
       "title": "Mod: segments, hide rules and the length cap",
-      "action": "types/index.d.ts: WorkingLine gains `head: string` (plans part and the own refs, plain), `others: {branch: string; refs: string}[]` and `more: number`; `text` stays the full plain form (`head · [ b1 refs ] [ b2 refs ] +N`). overrides.ts: Overrides becomes a map of branch to `{refs, setAt}` (setAt '' when absent or not a string). New hooks/hide.ts (pure): retiredIdsOf(catalog text) from `retired_ids`; openListOf(text) -> {fetchedAt ms, open Set} or null (version 1 only); issueCacheOf(text) -> Map n -> {state 'OPEN'|'CLOSED'|'UNKNOWN', checkedAt ms}; isClosed(n, list, cache): the fresher known answer wins, UNKNOWN or no answer is open (shown); visibleRefs(refs, retired, isClosed). line.ts buildLine(branch, qualifying, overrides, view {retired, isClosed, maxChars}): own refs = own override filtered by visibleRefs, else the plan union unfiltered (D4); others = every other branch's override, filtered, empty ones dropped, by setAt descending then branch name; add others while the plain text plus the ` +N` it would need stays within maxChars; the head is never cut. statusText wraps each other branch name in DARK '\\x1b[38;5;240m' ... '\\x1b[39m' and keeps the plan OSC 8 links. Tests in line.test.ts, overrides.test.ts and a new hide.test.ts: retired id hidden with its issue kept (`#301`), closed issue hidden with the id kept, an all-hidden segment dropped, order by set_at, the cap and `+N`, the dark SGR in statusText only, UNKNOWN shown, a fresher open list overriding an older CLOSED cache entry and the reverse. Absence from the open list answers CLOSED only for an issue number up to the highest number the list holds (issue numbers only grow, so an issue opened after the fetch has no answer from the list and stays open until gh answers); hide.test covers a number above the highest listed. An own override whose refs are all hidden leaves the own refs part empty; the plan union does not stand in for it (line.test case).",
+      "action": "types/index.d.ts: WorkingLine gains `head: string` (plans part and the own refs, plain), `others: {branch: string; refs: string}[]` and `more: number`; `text` stays the full plain form (`head · [ b1 refs ] [ b2 refs ] +N`). overrides.ts: Overrides becomes a map of branch to `{refs, setAt}` (setAt '' when absent or not a string). New hooks/hide.ts (pure): retiredIdsOf(catalog text) from `retired_ids`; openListOf(text) -> {fetchedAt ms, open Set} or null (version 1 only); issueCacheOf(text) -> Map n -> {state 'OPEN'|'CLOSED'|'UNKNOWN', checkedAt ms}; isClosed(n, list, cache): only a cached gh CLOSED hides; an open list fetched after that answer unhides a number it lists (OPEN); absence from the list is no answer, and UNKNOWN or no answer is open (shown); visibleRefs(refs, retired, isClosed). line.ts buildLine(branch, qualifying, overrides, view {retired, isClosed, maxChars}): own refs = own override filtered by visibleRefs, else the plan union unfiltered (D4); others = every other branch's override, filtered, empty ones dropped, by setAt descending then branch name; add others while the plain text plus the ` +N` it would need stays within maxChars; the head is never cut. statusText wraps each other branch name in DARK '\\x1b[38;5;240m' ... '\\x1b[39m' and keeps the plan OSC 8 links. Tests in line.test.ts, overrides.test.ts and a new hide.test.ts: retired id hidden with its issue kept (`#301`), closed issue hidden with the id kept, an all-hidden segment dropped, order by set_at, the cap and `+N`, the dark SGR in statusText only, UNKNOWN shown, a fresher open list overriding an older CLOSED cache entry and the reverse. hide.test covers an issue missing from the list (shown, due for gh) and a PR number in an override (shown until gh answers CLOSED). The plan union applies only when the branch has no override entry; an own override whose refs are all hidden leaves the own refs part empty (line.test case). WorkingLine.todoIds and issues hold the visible own refs, which statusText and line.txt read; update their comments in types/index.d.ts. line.test also covers D4 (a qualifying plan's retired id and closed issue still show) and a head longer than maxChars (drawn whole, every other segment folded into ` +N`). Edge forms: when no other segment fits the line is `head +N` (no ` · ` before `+N`); with an empty head the first other segment is always drawn, then the cap applies. TASK-4 also changes the watch.ts call site, passing a view that hides nothing (empty retired set, nothing closed, maxChars from the config), and the watch.test.ts expectations its new behavior changes (watch.test.ts:461-466, another branch's override is now shown bracketed), so its command passes before TASK-5.",
       "files": [
         "plugins/working-refs/types/index.d.ts",
         "plugins/working-refs/hooks/overrides.ts",
@@ -222,7 +239,9 @@
         "plugins/working-refs/hooks/hide.ts",
         "plugins/working-refs/hooks/hide.test.ts",
         "plugins/working-refs/hooks/line.ts",
-        "plugins/working-refs/hooks/line.test.ts"
+        "plugins/working-refs/hooks/line.test.ts",
+        "plugins/working-refs/hooks/watch.ts",
+        "plugins/working-refs/hooks/watch.test.ts"
       ],
       "dependencies": [
         "TASK-3"
@@ -255,11 +274,13 @@
     {
       "id": "TASK-5",
       "title": "Mod watch: feeds, gh recheck and line.json",
-      "action": "watch.ts runScan: read the catalog (catalogFileOf; absent or no folder -> nothing retired), open_issues.json and working-refs/issues.json, build the view and pass it to buildLine; drop the `branch === null ? new Map()` guard so others show without a snapshot. Write line.txt as today and line.json `{version: 1, branch, text: statusText(line)}` (text '' for no line) through writeLineFile's compare-then-write. After storing, `later` a recheck: every issue in any override whose freshest answer is older than ghMaxAgeHours runs `gh issue view <n> --json state` (plus `--repo` when ghRepo is set) with GIT_TIMEOUT_MS; a failure stores UNKNOWN with the time, so a missing gh retries once per age; the cache is written once per pass and a changed state requests a scan. filesMoved also compares the catalog and open_issues.json mtimes, so a retire or a sync rescans at the next prompt or tool call. watch.test.ts: line.json written and stamped, others shown on a branch without its own override, a retire and a sync each rescanning, one gh call per stale issue, none inside the age, UNKNOWN on a gh failure. README: the cross-branch line, the hide rules, line.json, the keys read. A recheck pass in flight blocks another: a module-level guard like `pacing` marks the pass busy and a request during it is owed once after it, so two scans in a row make one gh call per stale issue (watch.test case). gh runs with `cwd: w.root` (`$.process.run` init `cwd`, ProcessRunInit), so with a null `todo.gh.repo` it resolves the checkout's repository as todo_sync's gh.py does (`cwd=project_root`); watch.test asserts the cwd and the `--repo` argument when ghRepo is set.",
+      "action": "watch.ts runScan: read the catalog (catalogFileOf; absent or no folder -> nothing retired), open_issues.json and working-refs/issues.json, build the view and pass it to buildLine; keep the `branch === null` guard: with no git-status snapshot there is no line and line.json is not rewritten, so the own override is never drawn as another branch's. Write line.txt as today and line.json `{version: 1, branch, text: statusText(line)}` (written when the text is non-empty or the file exists, so an absent file stays absent for no line) through writeLineFile's compare-then-write. After storing, `later` a recheck: every issue in any override whose freshest answer is older than ghMaxAgeHours runs `gh issue view <n> --json state` (plus `--repo` when ghRepo is set) with GIT_TIMEOUT_MS; a failure keeps the last known state and its checkedAt and records `triedAt`, and the next try waits max_age from triedAt (watch.test: a CLOSED issue stays hidden after a gh failure); an issue is due when neither a cache answer nor an open-list OPEN is younger than max_age; only override issues are checked; the cache is written once per pass and a changed state requests a scan. filesMoved also compares the catalog and open_issues.json mtimes, so a retire or a sync rescans at the next prompt or tool call. watch.test.ts: line.json written and stamped, others shown on a branch without its own override, a retire and a sync each rescanning, one gh call per stale issue, none inside the age, UNKNOWN on a gh failure. README: the cross-branch line, the hide rules, line.json, the keys read. A recheck pass in flight blocks another: a module-level guard like `pacing` marks the pass busy and a request during it is owed once after it, so two scans in a row make one gh call per stale issue (watch.test case). gh runs with `cwd: w.root` (`$.process.run` init `cwd`, ProcessRunInit), so with a null `todo.gh.repo` it resolves the checkout's repository as todo_sync's gh.py does (`cwd=project_root`); watch.test asserts the cwd and the `--repo` argument when ghRepo is set. onPrompt also starts a recheck (inside `later`) once the oldest checkedAt or triedAt held in memo is past the age, so an idle session still refreshes. memo gains catalogMtime and openIssuesMtime, set in runScan and cleared in resetMemo; a watch.test case shows an unmoved catalog causes no rescan. Existing watch.test.ts cases whose expectations change: :326-333 and :470-476 and :478-490 (the writes list gains line.json when text is non-empty), :431-441 (no snapshot still gives null). watch.test also covers `--repo` when ghRepo is set, the GIT_TIMEOUT_MS timeout on gh, one cache write per pass, a rescan when a state changes and that only override issues are checked. The checked-out catalog is the one that counts (README says so). Update the current-branch wording at README.md:36, :46 and :191 and plugins/harness/skills/working/SKILL.md:3 (an override shows on every branch, other branches bracketed). The README also states that every branch means every branch of one checkout: overrides.json and the issue caches stay under each checkout's state_dir, so a d-w worktree session does not see the main checkout's overrides.",
       "files": [
         "plugins/working-refs/hooks/watch.ts",
         "plugins/working-refs/hooks/watch.test.ts",
-        "plugins/working-refs/README.md"
+        "plugins/working-refs/README.md",
+        "README.md",
+        "plugins/harness/skills/working/SKILL.md"
       ],
       "dependencies": [
         "TASK-4"
@@ -296,7 +317,7 @@
     {
       "id": "TASK-6",
       "title": "band-line draws the other-branch segments",
-      "action": "types/index.d.ts: the local WorkingLine copy gains optional head, others and more. band.tsx: when `others` is present, draw `head`, then ` · ` when both parts exist, then each `[ ` + branch with dimColor + ` refs ]` separated by a space, then ` +N` when more > 0, all inside the subtle Text; without `others` draw `text` as today (an older working-refs). band.test.tsx covers both shapes. README: the second line's segments.",
+      "action": "types/index.d.ts: the local WorkingLine copy gains optional head, others and more. band.tsx: when `others` is present, draw `head`, then ` · ` when both parts exist, then each `[ ` + branch with dimColor + ` refs ]` separated by a space, then ` +N` when more > 0, all inside the subtle Text; without `others` draw `text` as today (an older working-refs). band.test.tsx covers both shapes. README: the second line's segments. Draw the edge forms TASK-4 fixes: `head +N` with no ` · ` before `+N`, and the first other segment with an empty head (band.test cases).",
       "files": [
         "plugins/band-line/types/index.d.ts",
         "plugins/band-line/hooks/band.tsx",
@@ -330,7 +351,7 @@
     {
       "id": "TASK-7",
       "title": "ccstatusline widget reads line.json and stamps another branch",
-      "action": "ccstatusline.defaults.json: the custom-command reads `<state_dir>/working-refs/line.json`, resolves the checkout's HEAD file from `<root>/.git` (a `gitdir:` file followed), reads the branch (`ref: refs/heads/<b>`, a bare sha is `(detached)`), and prints `text`, preceded by `\\x1b[38;5;240m<branch>\\x1b[39m \\u00b7 ` when the stamped branch differs; it starts no child process (no git call); any failure prints nothing. Apply the same command to the project's .claude/ccstatusline.json. SKILL.md step 4 names line.json; step 5 treats an existing widget naming `working-refs/line.txt` as the old line and offers to replace its commandPath. README: the widget reads line.json. The planned tests spell `working-refs/line.json` as a literal, so they fail on the widget whether or not TASK-2 landed. Copy the planned tests/skills/test_setup_statusline_contract.py over the repo file.",
+      "action": "ccstatusline.defaults.json: the custom-command reads `<state_dir>/working-refs/line.json`, resolves the checkout's HEAD file from `<root>/.git` (a `gitdir:` file followed), reads the branch (`ref: refs/heads/<b>`, a bare sha is `(detached)`), and prints `text` (nothing when `text` is empty or not a string), preceded by `\\x1b[38;5;240m<branch>\\x1b[39m \\u00b7 ` when the stamped branch is a non-empty string that differs; a relative `gitdir:` resolves against the .git file's folder; when HEAD does not read, `text` prints without a prefix; when line.json is absent the widget prints line.txt as today (an installed working-refs 0.1.0 writes only that); it starts no child process (no git call); any failure prints nothing. Apply the same command to the project's .claude/ccstatusline.json. SKILL.md step 4 names line.json; step 5 treats an existing widget naming `working-refs/line.txt` as the old line and offers to replace its commandPath. README: the widget reads line.json. The planned tests spell `working-refs/line.json` as a literal, so they fail on the widget whether or not TASK-2 landed. Copy the planned tests/skills/test_setup_statusline_contract.py over the repo file. The one-liner holds no inner double quote, backtick, `$` or `%`, and writes ESC and the middle dot as JS escapes (`\\x1b`, `\\u00b7`), so cmd.exe and /bin/sh pass it unchanged; the widget tests are marked cross_os. The planned file also pins .claude/ccstatusline.json's commandPath to the defaults' (test_project_config_widget_matches_the_defaults) and the line.txt fallback; both pass before the work, so they are guards run by the TASK-7 command, not planned reds.",
       "files": [
         "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json",
         "plugins/banner-status/skills/setup-statusline/SKILL.md",
@@ -362,6 +383,10 @@
         {
           "run": "claude plugin validate --strict plugins/banner-status",
           "expect": "passes"
+        },
+        {
+          "run": "python -m pytest tests/skills/test_setup_statusline_contract.py -q",
+          "expect": "passed, no failures"
         }
       ],
       "tests": [
@@ -378,11 +403,31 @@
           "red": "AssertionError"
         },
         {
-          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file",
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_reads_a_detached_head_as_detached",
           "red": "AssertionError"
         },
         {
-          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_reads_a_detached_head_as_detached",
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[absolute]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[relative]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_when_head_does_not_read",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[null]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[empty]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_setup_statusline_contract.py::test_widget_prints_nothing_for_an_empty_line",
           "red": "AssertionError"
         }
       ]
@@ -620,6 +665,15 @@
         "plugins/working-refs/hooks/watch.ts",
         "plugins/working-refs/hooks/line.ts",
         "plugins/band-line/hooks/band.tsx"
+      ]
+    },
+    {
+      "topic": "Clear another branch's override (/harness:working --clear --branch NAME)",
+      "rationale": "Developer decision 2026-11-19 (review M17): overrides now show on every branch, so a deleted branch's entry stays until its refs retire or close; tracked as a TODO item",
+      "affected_sites": [
+        "plugins/harness/skills/working/commands/working.py",
+        "plugins/harness/lib/harness_lib/working_refs.py",
+        "plugins/harness/skills/working/SKILL.md"
       ]
     }
   ],
