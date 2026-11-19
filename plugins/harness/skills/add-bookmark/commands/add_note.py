@@ -1,10 +1,14 @@
 """Keep the session notes the session-bookmark mod prints in its compaction bookmark.
 
-Usage: add_note.py [--repo PATH] add TEXT... | list | clear
+Usage: add_note.py [--repo PATH] add [--standing] TEXT... | list | remove N | edit N TEXT... | clear
 
 The notes live in ``<state_dir>/session-bookmark/notes.json`` under the project root: ``{"version": 1,
-"notes": [{"added": "<UTC ISO 8601>", "text": "..."}]}``. A note stays until ``clear``. The mod reads the file
-at every compaction; ``tests/mods/test_session_bookmark_notes_contract.py`` pins the names both sides share.
+"notes": [{"added": "<UTC ISO 8601>", "branch": "<name>", "text": "..."}]}``. ``add`` records the checked-out
+branch; the key is left out under ``--standing`` and on a detached HEAD, and a note without a usable branch
+applies on every branch. ``list`` marks a note added on another branch as ``[<branch>; now on <current>]``.
+``remove`` and ``edit`` address a note by its ``list`` number. A note stays until ``remove`` or ``clear``. The
+mod reads the file at every compaction; ``tests/mods/test_session_bookmark_notes_contract.py`` pins the names
+both sides share.
 """
 from __future__ import annotations
 
@@ -20,6 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
 NOTES_REL = "session-bookmark/notes.json"
 NOTES_VERSION = 1
+BRANCH_KEY = "branch"
+OTHER_BRANCH_MARK = "now on"
 MAX_NOTES = 20
 MAX_NOTE_CHARS = 300
 
@@ -84,21 +90,89 @@ def checked_text(words: List[str], stored: int) -> str:
     if len(text) > MAX_NOTE_CHARS:
         raise NoteError(f"note is {len(text)} characters; the limit is {MAX_NOTE_CHARS}")
     if stored >= MAX_NOTES:
-        raise NoteError(f"{MAX_NOTES} notes are stored; run clear first")
+        raise NoteError(f"{MAX_NOTES} notes are stored; run remove N or clear first")
     return text
 
 
-def add(path: Path, words: List[str]) -> str:
+def _git_name(repo: Path, *args: str) -> Optional[str]:
+    """The first output line of ``git -C repo ARGS``; ``None`` on a failure, a timeout or empty output."""
+    from harness_lib.project import run_git
+    try:
+        done = run_git(["git", "-C", str(repo), *args])
+    except OSError:
+        return None
+    return done.stdout.strip() or None if done.returncode == 0 else None
+
+
+def current_branch(repo: Path) -> Optional[str]:
+    """The checked-out branch of ``repo``; ``None`` for a detached HEAD or when git cannot say.
+
+    An unborn branch (no commit yet) fails ``rev-parse``, so ``symbolic-ref`` answers for it; a detached
+    HEAD fails both, and ``rev-parse`` names it ``HEAD``.
+    """
+    name = _git_name(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    if name is None:
+        name = _git_name(repo, "symbolic-ref", "--short", "HEAD")
+    return None if name in (None, "HEAD") else name
+
+
+def _note_branch(note: Note) -> Optional[str]:
+    """The note's branch; ``None`` for a note without a usable one (absent, not text, or blank)."""
+    branch = note.get(BRANCH_KEY)
+    return branch.strip() if isinstance(branch, str) and branch.strip() else None
+
+
+def note_body(note: Note, current: Optional[str]) -> str:
+    """The note as printed: bare for a standing note, branch-tagged otherwise, marked when elsewhere."""
+    branch = _note_branch(note)
+    if branch is None:
+        return note["text"]
+    if current is None or branch == current:
+        return f"[{branch}] {note['text']}"
+    return f"[{branch}; {OTHER_BRANCH_MARK} {current}] {note['text']}"
+
+
+def note_line(number: int, note: Note, current: Optional[str]) -> str:
+    return f"{number}. {note_body(note, current)}"
+
+
+def add(path: Path, words: List[str], branch: Optional[str]) -> str:
     notes = read_notes(path)
     text = checked_text(words, len(notes))
     added = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    write_notes(path, [*notes, {"added": added, "text": text}])
-    return f"note {len(notes) + 1}/{MAX_NOTES}: {text}"
+    note: Note = {"added": added, "text": text}
+    if branch is not None:
+        note = {"added": added, BRANCH_KEY: branch, "text": text}
+    write_notes(path, [*notes, note])
+    return f"note {len(notes) + 1}/{MAX_NOTES}: {note_body(note, branch)}"
 
 
-def listing(path: Path) -> str:
+def listing(path: Path, current: Optional[str]) -> str:
     notes = read_notes(path)
-    return "\n".join(f"{i}. {n['text']}" for i, n in enumerate(notes, 1)) or "no notes"
+    return "\n".join(note_line(i, n, current) for i, n in enumerate(notes, 1)) or "no notes"
+
+
+def _pick(notes: List[Note], number: int) -> Note:
+    """The note at the 1-based ``number``, or ``NoteError`` when none is stored there."""
+    if not 1 <= number <= len(notes):
+        raise NoteError(f"no note {number}; {len(notes)} stored")
+    return notes[number - 1]
+
+
+def remove(path: Path, number: int, current: Optional[str]) -> str:
+    notes = read_notes(path)
+    gone = _pick(notes, number)
+    write_notes(path, [n for n in notes if n is not gone])
+    return f"removed note {number}: {note_body(gone, current)}\n{listing(path, current)}"
+
+
+def edit(path: Path, number: int, words: List[str], current: Optional[str]) -> str:
+    """Replace the text of one note; ``added`` and the branch stay."""
+    notes = read_notes(path)
+    old = _pick(notes, number)
+    new: Note = {**old, "text": checked_text(words, 0)}
+    write_notes(path, [new if n is old else n for n in notes])
+    return f"edited note {number}: {note_body(new, current)}\n{listing(path, current)}"
 
 
 def clear(path: Path) -> str:
@@ -116,17 +190,32 @@ def parse_args(argv: Optional[list]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="project to write under (default: cwd)")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("add", help="store one note").add_argument("text", nargs="+")
-    sub.add_parser("list", help="print the stored notes")
+    add_cmd = sub.add_parser("add", help="store one note on the current branch")
+    add_cmd.add_argument("--standing", action="store_true", help="store the note with no branch")
+    add_cmd.add_argument("text", nargs="+")
+    sub.add_parser("list", help="print the stored notes, numbered")
+    sub.add_parser("remove", help="drop one note by its listed number").add_argument("number", type=int)
+    edit_cmd = sub.add_parser("edit", help="replace the text of one note by its listed number")
+    edit_cmd.add_argument("number", type=int)
+    edit_cmd.add_argument("text", nargs="+")
     sub.add_parser("clear", help="drop every stored note")
     return parser.parse_args(argv)
 
 
 def run(args: argparse.Namespace) -> str:
     path = notes_path(args.repo)
+    if args.command == "clear":
+        return clear(path)
+    if args.command == "add" and args.standing:
+        return add(path, args.text, None)
+    current = current_branch(args.repo)
     if args.command == "add":
-        return add(path, args.text)
-    return listing(path) if args.command == "list" else clear(path)
+        return add(path, args.text, current)
+    if args.command == "remove":
+        return remove(path, args.number, current)
+    if args.command == "edit":
+        return edit(path, args.number, args.text, current)
+    return listing(path, current)
 
 
 def main(argv: Optional[list] = None) -> int:
