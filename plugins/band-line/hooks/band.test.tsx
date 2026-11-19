@@ -303,6 +303,23 @@ describe('the oStraps band', () => {
     expect(dim).toEqual(['other', 'b'])
   })
 
+  test('a text the pieces do not join to draws verbatim, plain, with no dim branch name', async ($, on) => {
+    world(on, {
+      refs: {
+        text: 'todo-k69m · [ other todo-zz99 ] [ b #5 ] (composed)',
+        head: 'todo-k69m',
+        others: [{ branch: 'other', refs: 'todo-zz99' }, { branch: 'b', refs: '#5' }],
+        more: 0,
+      },
+    })
+    await $.prompt.submit(submit)
+    const ui = await $.ui.mount({ plugin: 'band-line', surface: 'terminal', ...BAND })
+    const dim = (await ui.findAll({ type: 'Text' })).filter(t => t.props.dimColor === true).map(t => t.text)
+    await ui.unmount()
+    expect(dim).toEqual([])
+    expect(await texts($)).toEqual([SONNET_LINE, 'todo-k69m · [ other todo-zz99 ] [ b #5 ] (composed)'])
+  })
+
   test('segments left out by the cap show as +N after the head, no separator before it', async ($, on) => {
     world(on, { refs: { text: 'todo-k69m +1', head: 'todo-k69m', others: [], more: 1 } })
     await $.prompt.submit(submit)

@@ -21,7 +21,7 @@ const refsAtom = atom({ plugin: 'working-refs', key: 'line' } as const, null)
  */
 type Part = string | { dim: string }
 
-const workingParts = (line: WorkingLine): Part[] => {
+const workingPieces = (line: WorkingLine): Part[] => {
   const { others, head = '', more = 0 } = line
   if (!others) return [line.text]
   const parts: Part[] = []
@@ -33,6 +33,16 @@ const workingParts = (line: WorkingLine): Part[] => {
   })
   if (more > 0) parts.push(`${head || others.length > 0 ? ' ' : ''}+${more}`)
   return parts
+}
+
+/**
+ * The pieces to draw. Their plain join must equal the producer's `text`, which is the one copy of the format;
+ * when it does not, the line draws `text` as it is, plain, so the band never shows different characters.
+ */
+const workingParts = (line: WorkingLine): Part[] => {
+  const parts = workingPieces(line)
+  const joined = parts.map(p => (typeof p === 'string' ? p : p.dim)).join('')
+  return joined === line.text ? parts : [line.text]
 }
 
 export const registerBand = (on: On): void => {
