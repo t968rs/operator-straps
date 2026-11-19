@@ -1,0 +1,221 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 323,
+  "pr_title": "Fix(a-w): `check_moves_something` worktree restore",
+  "branch": "1170-a-w-attach-state",
+  "base_branch": "main",
+  "base_sha": "1043312d7a73a1515a45c333ab340a4e4fa72430",
+  "head_sha": "1e8a23ef096bdd7dfcb22393589dd4217fb2cf78",
+  "review_date": "2026-11-19",
+  "verdict": "READY TO MERGE - 4 of 4 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 419,
+    "deletions": 151,
+    "files_changed": 10,
+    "source": {
+      "additions": 416,
+      "deletions": 151,
+      "files_changed": 9
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0323/pr323_20261119T150345Z/findings/tests.json",
+    "docs/_scratch/pr_review/0323/pr323_20261119T150345Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0323/pr323_20261119T150345Z/findings/docs.json",
+    "docs/_scratch/pr_review/0323/pr323_20261119T150345Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0323/pr323_20261119T150345Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_committed_whose_commits_the_target_already_holds_restores_the_worktree is a real regression test for the committed-mode empty case: it runs the actual script against throwaway git repos and pins the exit code, the 'nothing moves' text, the original short SHA, the restored worktree HEAD, the cleared state file and the untouched target.",
+    "The branch-copy test now asserts the worktree HEAD returns to the original commit (line 150), which pins the behavior the fix restores rather than only the cleared state.",
+    "Line 209 pins the recovery wording ('the developer can recover it with git -C') next to the reset --hard SHA, so the restart refusal keeps telling the agent how to recover the discarded resolution.",
+    "check_moves_something now restores through the same restore() helper that unstarted() and abort() use, so the worktree return, rebase quit and state removal stay in one place and the order (reset first, state last) matches its docstring.",
+    "A failed reset keeps the state and the error names --abort, which keep_hint and the SKILL.md exit-code section already treat as the way out; the docstring states that contract.",
+    "The dropped-attach message no longer implies the worktree stays at the resolved HEAD: it reports the original HEAD, matching SKILL.md lines 109-112, and the updated tests assert the actual HEAD.",
+    "Recovery-command wording now says the developer runs it, consistent in unstarted() and dropped_work() with the SKILL.md rule that a named recovery command is the developer's to run.",
+    "The freeze entry r1.1 pins the SKILL.md blob 65f60df and the attach_resolve.py blob c613dee, which match the PR head's diff indexes, so the frozen tree is the code that ships.",
+    "The SkillSpec scenario texts SC-1 and SC-2 reproduce the exact refusal formats of unstarted() and check_moves_something() at head, so the judged scenarios test the real driver output.",
+    "B4 is dropped with a concrete reason: baseline R-1 already redirected the reset to the developer. It is not left drawn and unproven.",
+    "The RepoToDo.json retirement of todo-7nb9 is consistent: counts drop by one in items, OPEN, runtime_failure, S and note; ranks close up; the id joins the retired list; and todo-dx3b's cross-reference now points at the landing commit instead of the retired id.",
+    "The harness row in the release table (0.80.1) matches plugins/harness/.claude-plugin/plugin.json at head.",
+    "The reworded SKILL.md dropped bullet matches the code: unstarted() and check_moves_something() both restore() to original_head before clearing the state, and a failed reset keeps the state and names --abort, which the kept bullet covers.",
+    "check_moves_something now restores the worktree before dropping the state, and a failed reset keeps the state so --abort still reaches it; the error names --abort, so keep_hint does not stack a second hint.",
+    "SKILL.md exit-1 bullets now match the code: the drop cases (unstarted rebase, empty resolution, empty --committed rebase) all leave the worktree at its original HEAD, and the 'recovery command is the developer's' line agrees with the reworded unstarted and dropped_work messages and the existing rule at SKILL.md:97-99.",
+    "Every a-w cross-reference checked (d-w SKILL.md:68, docs/RELEASES/v1.0.0.md:300-304, the SkillSpec statements) agrees with the new behavior; no reference to the old 'worktree kept at the rebased commit' wording survives.",
+    "The a-w freeze record pins the head blobs of SKILL.md (65f60df) and attach_resolve.py (c613dee), so the frozen package is exactly what this PR ships.",
+    "The fix reuses the existing restore() helper instead of hand-rolling a second reset path, and orders it right: reset first, clear the state last, so a failed reset still leaves --abort usable.",
+    "The new resolve_edges test drives the real driver against real git repos and asserts the worktree HEAD, the missing state file and an untouched target, so it is behavioral rather than wiring.",
+    "SKILL.md's exit-1 bullets, the release note, the 0.80.0 -> 0.80.1 patch bump and the v1.0.0 table row all move together with the driver change, and the closed todo-7nb9 leaves RepoToDo.json with consistent counts and ranks.",
+    "The a-w r1.1 freeze pins SKILL.md, attach_resolve.py, attach_merge.py, attach_worktree.py and the contract test at exactly the blobs the head carries.",
+    "The recovery lines in unstarted() and dropped_work() now name the developer as the one who runs reset --hard, matching SKILL.md's rule that a named reset goes to the developer, and a test pins the wording."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Four of six a-w contract tests always skip, and the docstring claims coverage that does not exist",
+        "file": "tests/skills/test_a_w_skill_contract.py",
+        "files": [
+          "tests/skills/test_a_w_skill_contract.py",
+          "docs/plans/freezes/skill/a-w/r1.1-freeze.json",
+          "docs/plans/strap/a-w/SkillSpec.json"
+        ],
+        "lines": "1-5,18-25,38-60",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The file comes from the strap-skills contract_test.tmpl, but a-w has no API or models module: harness_lib.a_w_api and harness_lib.a_w_models are not in the tree (the skill ships only commands/attach_worktree.py, attach_merge.py, attach_resolve.py). So pytest.importorskip skips test_api_heredoc_launches_the_skill_api, test_api_exports_existing_names, test_models_forbid_extra_keys and test_document_round_trips_through_its_dump on every run. They are dead tests: they cannot fail, and they never will unless someone adds modules with exactly those names. The LAUNCHER literal 'scripts/skill_api.py\" a_w_api' would fail anyway, because SKILL.md launches its command through hpy and commands/attach_worktree.py. The module docstring (lines 1-4) says the file covers 'its API launcher and its models', which a-w does not have, so the commit's 'add skill contract coverage' amounts to the two frontmatter checks.\n\nAlso (roast): tests/skills/test_a_w_skill_contract.py is the strap scaffold template left unedited: test_api_heredoc_launches_the_skill_api, test_api_exports_existing_names, test_models_forbid_extra_keys and test_document_round_trips_through_its_dump all start with pytest.importorskip on harness_lib.a_w_api / harness_lib.a_w_models, and neither module exists (a-w is a commands/ driver skill with no API or models). They can never run, so they can never fail; the commit 'add skill contract coverage' really adds two frontmatter checks (name and a 'Use when' prefix). No other *_skill_contract.py in tests/skills uses this skip-template, so it is not a repo convention either. Four green-looking skips are coverage theatre with extra steps.",
+        "fix": [
+          "Delete MODELS, API, LAUNCHER, _module and the four API/models tests (lines 18-25, 38-60), and change the docstring to cover only the frontmatter checks that remain.",
+          "Swap the four tests for checks that fit a-w: the SKILL.md body holds the hpy launch line for ${CLAUDE_SKILL_DIR}/commands/attach_worktree.py, and every commands/*.py file that SKILL.md names exists under plugin_root()/skills/a-w/commands.",
+          "Delete the four importorskip tests together with MODELS, API, LAUNCHER and _module, and reword the module docstring to say the file checks the SKILL.md frontmatter; refreeze a-w (the r1.1 freeze pins this file's blob 8a3b87b).",
+          "Replace them with assertions on what a-w actually has: SKILL.md launches commands/attach_worktree.py through hpy, and the exit-code section's 'attach is dropped' bullet names --abort as no longer applying; refreeze a-w afterwards."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note line stacks two 'before' clauses",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "300-302",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.0.0.md:301-302 reads 'now resets the worktree to its HEAD before the attach before it drops the attach state'. The double 'before' is hard to parse: it can read as a reset that happens before the attach.",
+        "fix": [
+          "Rephrase as 'now resets the worktree to the HEAD it had before the attach, then drops the attach state'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "SKILL.md kept/dropped split misses the ambiguous-rule refusal, which drops the state without saying so",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/a-w/commands/attach_resolve.py"
+        ],
+        "lines": "105-112",
+        "reviewer": "docs, skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The reworded exit-1 bullet (SKILL.md:105-112) now states that inside the loop a refusal either keeps the attach state or drops it, and keys the agent's next step on the error saying 'the attach state is kept' or 'the attach is dropped'. settle_stop (attach_resolve.py:155-158) calls restore(), which clears the state, but its refusal reads '<rules error>; the attach stopped and the worktree is back at <sha>', so it says neither. An agent that cannot match it to a bullet falls back to step 3 of the resolution loop (SKILL.md:89-90) and runs --abort, which refuses because no attach is stopped. The old text said only that 'some refusals' left the worktree rebased, so the new, stronger either/or claim is what exposes the gap.\n\nAlso (skill_package, roast): SKILL.md:104-112 now says a refusal inside the resolution loop 'either keeps the attach state or drops it' and keys the agent's next step on the error text ('the error says the attach state is kept' / 'the error says the attach is dropped'). settle_stop (attach_resolve.py:155-158) is a third drop path: rules naming both sides for a conflicted path at a rebase stop call restore(), which clears the state, and the error reads '...; the attach stopped and the worktree is back at <sha>'. That wording says neither 'kept' nor 'dropped', and the state file is gone so keep_hint adds nothing. An agent following SKILL.md has no bullet to match; 'stopped' even suggests the exit-2 stop, so a --continue rerun that refuses with 'no attach is stopped' is the likely next move. The SKILL parenthetical list of drop cases also leaves this one out.\n\nAlso (roast): The rewritten exit-1 section now says a refusal inside the loop 'either keeps the attach state or drops it', and tells the agent to classify by whether the error says 'the attach state is kept' or 'the attach is dropped'. settle_stop's ambiguous-rule refusal restores the worktree and clears the state but says 'the attach stopped and the worktree is back at <sha>', which matches neither phrase, so an agent following the two bullets has no rule for it. Rare path, but the PR is the one that made the split read as exhaustive.",
+        "fix": [
+          "Reword the settle_stop refusal at plugins/harness/skills/a-w/commands/attach_resolve.py:157-158 to '...; the attach is dropped and the worktree is back at <sha>, its HEAD before the attach', so it matches the dropped bullet.",
+          "Or list the ambiguous-rule refusal in the dropped bullet at SKILL.md:109-110 (for example 'rules that name both sides for a conflicted path') and add the 'dropped' wording to the error.",
+          "Reword the settle_stop error to the shared drop phrasing, e.g. f\"{exc}; the attach is dropped and the worktree is back at {state.original_head[:7]}\", and add 'rules that name both sides for a path at a rebase stop' to the drop list in SKILL.md:109-110 (both files are frozen in docs/plans/freezes/skill/a-w/r1.1-freeze.json, so the edit needs a refreeze).",
+          "Reword settle_stop's message to '...; the attach is dropped and the worktree is back at <sha>' so it lands in the second bullet.",
+          "Or add 'a rule conflict at a rebase stop' to the parenthetical list in SKILL.md's 'attach is dropped' bullet and accept 'stopped' as a synonym there."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Failed-restore branch of check_moves_something has no test",
+        "file": "plugins/harness/skills/a-w/commands/attach_resolve.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_resolve.py",
+          "tests/skills/test_attach_worktree_resolve_edges.py",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "267,272-285",
+        "reviewer": "runtime, docs, skill_package, roast, tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "check_moves_something now has two outcomes when nothing moves: restore succeeds (dropped message, covered by the two updated tests) or restore raises AttachError (state kept, message names --abort and the failed reset). The second branch, whose contract is that the state file survives so --abort can finish, is not exercised by any test in tests/skills; a regression that clears the state before the reset, or drops the --abort hint that keep_hint relies on, would pass the suite.\n\nAlso (docs): The bug this PR fixes is mostly hit by a --committed attach with no conflict: every worktree commit is already patch-equivalent in the target, so the rebase drops them all (attach_worktree.py:210-212 goes straight to land_resolved). The docstring (attach_resolve.py:267) and refusal (attach_resolve.py:278) still say 'the resolution kept the branch's copy of every path', which misdescribes that case. SKILL.md:109-110, the release note (v1.0.0.md:300-301) and SkillSpec SC-2 all describe it correctly as 'a --committed rebase that leaves nothing to move'.\n\nAlso (skill_package): When restore() fails in check_moves_something (attach_resolve.py:279-283) the error says the reset to the original HEAD failed and the state is kept, but not where the worktree now is. The parallel failure branch in unstarted (attach_resolve.py:192-196) names it ('the worktree is left at <head[:7]>'), and SKILL.md:107-108 tells the agent the worktree 'may sit at a rebased commit' in this case. The two messages for the same failure shape read differently; the head sha is already in scope as the `head` parameter.\n\nAlso (roast): check_moves_something uses one message for both modes: 'the resolution kept the branch's copy of every path, so nothing moves'. In the case this PR targets and the new test drives (a --committed attach whose commits the target already holds), git rebase drops the patch-equivalent commits with no conflict and no resolution at all, so the refusal describes something nobody did. The release note (docs/RELEASES/v1.0.0.md:135-136) and SKILL.md:109-110 describe the case correctly; only the driver text is off, and the new test asserts only 'nothing moves', so it would not notice.\n\nAlso (roast): The new except AttachError branch (reset to original_head fails, state is kept, the message names --abort) is the safety half of the fix: it is what keeps --abort reachable when restore() cannot finish. No test drives it; the sibling branch in unstarted() (attach_resolve.py:190-196) is untested too, so a regression that clears the state before a failed reset would pass CI.\n\nAlso (tests): The fix adds a second outcome to check_moves_something (attach_resolve.py:279-283): when restore() raises, the attach state is kept and the message tells the agent to run --abort. The new and tightened tests (test_a_resolution_that_keeps_the_branch_copy_clears_the_state, test_committed_whose_commits_the_target_already_holds_restores_the_worktree) cover only the path where the reset succeeds. A regression that clears the state before the reset, or that drops the --abort hint, would pass the suite.",
+        "fix": [
+          "Add a test beside test_committed_whose_commits_the_target_already_holds_restores_the_worktree that makes the reset fail (for example a refusing hook or a locked index.lock in the worktree git dir) on a resolution that keeps the branch copy, then asserts exit 1, 'resetting the worktree to' and '--abort' in stderr, and that the state file still exists.",
+          "Branch the message on state.mode at attach_resolve.py:278: for 'committed', say 'every worktree commit is already in the target, so nothing moves'. Widen the docstring at line 267 to cover a --committed rebase that drops every commit.",
+          "Add the location to the message, matching unstarted: f\"{nothing}; resetting the worktree to {state.original_head[:7]} failed ({exc}); the worktree is left at {head[:7]} and the attach state is kept: run --abort once that is fixed\" (refreeze the a-w freeze afterwards).",
+          "Pick the reason by mode: for state.mode == 'committed' say 'every worktree commit is already in the target, so nothing moves'; keep the current wording for staged mode. Optionally assert the committed wording in test_committed_whose_commits_the_target_already_holds_restores_the_worktree.",
+          "Add a test that makes restore() raise during check_moves_something (for example, call check_moves_something in-process with a restore patched to raise AttachError, or a worktree whose reset fails), then assert the state file still exists and the error names --abort.",
+          "Add an in-process test that imports attach_resolve, builds a State for a repos fixture whose resolved HEAD equals target_head, monkeypatches attach_resolve.restore to raise AttachError, calls check_moves_something, and asserts the raised message holds 'so the attach state is kept' and '--abort' and that the state file written beforehand still exists."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 323 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"450c116f63ac900acf2e5500eaa2b931a0b82d86\",\"headRefName\":\"1170-a-w-attach-state\",\"headRefOid\":\"1e8a23ef096bdd7dfcb22393589dd4217fb2cf78\",\"last_sha\":\"1e8a23ef096bdd7dfcb22393589dd4217fb2cf78\",\"mergeCommit\":null,\"number\":323,\"state\":\"OPEN\",\"title\":\"Fix(a-w): `check_moves_something` worktree restore\",\"url\":\"https://github.com/t968rs/operator-straps/pull/323\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1170-a-w-attach-state",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1170-a-w-attach-state",
+        "head_ref_name": "1170-a-w-attach-state",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "450c116f63ac900acf2e5500eaa2b931a0b82d86",
+        "head_sha": "1e8a23ef096bdd7dfcb22393589dd4217fb2cf78",
+        "base_ancestor_command": "git merge-base --is-ancestor 450c116f63ac900acf2e5500eaa2b931a0b82d86 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 1e8a23ef096bdd7dfcb22393589dd4217fb2cf78 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "1e8a23e (working-tree snapshot; developer commits) - settle_stop refusal now reads '...; the attach is dropped and the worktree is back at <sha>, its HEAD before the attach' (attach_resolve.py:157-158), and SKILL.md's dropped bullet lists 'rules that name both sides for a conflicted path at a rebase stop'; both files are pinned by the a-w r1.1 freeze, so a-w needs a refreeze"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "1e8a23e (working-tree snapshot; developer commits) - check_moves_something picks its reason by mode through a new nothing_moves() (committed: 'the rebase left no worktree commit beyond the target (the target already holds them, or the resolution kept the branch's copy)'), docstring widened to the --committed case, and the failed-reset refusal now names where the worktree is left ('the worktree is left at <head>'); new in-process test test_nothing_to_move_with_a_failed_reset_keeps_the_state_for_abort patches restore to raise and asserts the --abort hint, the location and the surviving state file, and the committed test asserts the committed wording; SKILL.md: already describes the case correctly at the dropped/kept bullets, no edit for M4"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "1e8a23e (working-tree snapshot; developer commits) - replaced the four importorskip API/models tests (and MODELS, API, LAUNCHER, _module) with checks a-w can fail: the body launches commands/attach_worktree.py through hpy, and every ${CLAUDE_SKILL_DIR}/commands/*.py the body names exists; docstring reworded; r1.1-freeze.json and SkillSpec.json: not edited, the freeze pins this file's old blob and needs a developer-approved freeze --refreeze, which is the orchestrator's step"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "1e8a23e (working-tree snapshot; developer commits) - Rephrased the double 'before' clause in the a-w release note to 'resets the worktree to the HEAD it had before the attach, then drops the attach state'"
+    }
+  ]
+}

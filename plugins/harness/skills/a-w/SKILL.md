@@ -106,10 +106,10 @@ developer, who runs it. While a stop is pending, a plain run refuses.
   keeps the attach state or drops it:
   - the error says the attach state is kept: the worktree may sit at a rebased commit, and the way out is
     `--continue` or `--abort`, as it names;
-  - the error says the attach is dropped (a rebase that never starts, or a resolution or a `--committed`
-    rebase that leaves nothing to move): the worktree is back at its HEAD before the attach and `--abort` no
-    longer applies, so report it to the developer and stop. A recovery command the error names is the
-    developer's to run.
+  - the error says the attach is dropped (a rebase that never starts, rules that name both sides for a
+    conflicted path at a rebase stop, or a resolution or a `--committed` rebase that leaves nothing to move):
+    the worktree is back at its HEAD before the attach and `--abort` no longer applies, so report it to the
+    developer and stop. A recovery command the error names is the developer's to run.
 
   A usage error also exits 1. If the move succeeded but the worktree removal failed, the report prints and the
   error names the removal command.

@@ -154,8 +154,8 @@ def settle_stop(worktree: Path, state: State) -> List[str]:
         sides: Dict[str, str] = merge.rule_sides(conflicts, state.rules)
     except AttachError as exc:
         restore(worktree, state)
-        raise AttachError(f"{exc}; the attach stopped and the worktree is back at "
-                          f"{state.original_head[:7]}") from exc
+        raise AttachError(f"{exc}; the attach is dropped and the worktree is back at "
+                          f"{state.original_head[:7]}, its HEAD before the attach") from exc
     for path, side in sides.items():
         take_side(worktree, path, side)
     return [path for path in conflicts if path not in sides]
@@ -263,11 +263,20 @@ def check_resolved(worktree: Path, state: State) -> None:
                           f"worktree to {state.original_head[:7]}, then rerun the attach")
 
 
-def check_moves_something(worktree: Path, target: Path, state: State, head: str, final: str) -> None:
-    """Drop an attach whose resolution kept the branch's copy of every path; nothing is left to land.
+def nothing_moves(mode: str) -> str:
+    """Why an attach in ``mode`` leaves nothing to land once its rebase has finished."""
+    if mode == "committed":
+        return ("the rebase left no worktree commit beyond the target (the target already holds them, or the "
+                "resolution kept the branch's copy), so nothing moves")
+    return "the resolution kept the branch's copy of every path, so nothing moves"
 
-    The resolved HEAD holds nothing beyond the target, so the worktree goes back to its original HEAD
-    before the state goes; a failed reset keeps the state, so ``--abort`` can still finish the job.
+
+def check_moves_something(worktree: Path, target: Path, state: State, head: str, final: str) -> None:
+    """Drop an attach whose finished rebase leaves nothing to land.
+
+    That is a resolution that kept the branch's copy of every path, or a ``--committed`` rebase that dropped
+    every worktree commit as already in the target. The worktree goes back to its original HEAD before the
+    state goes; a failed reset keeps the state, so ``--abort`` can still finish the job.
     """
     if state.mode == "committed":
         empty = head == state.target_head
@@ -275,12 +284,13 @@ def check_moves_something(worktree: Path, target: Path, state: State, head: str,
         empty = not merge.diff_paths(target, state.target_head, final)
     if not empty:
         return
-    nothing = "the resolution kept the branch's copy of every path, so nothing moves"
+    nothing = nothing_moves(state.mode)
     try:
         restore(worktree, state)
     except AttachError as exc:
-        raise AttachError(f"{nothing}; resetting the worktree to {state.original_head[:7]} failed ({exc}), "
-                          "so the attach state is kept: run --abort once that is fixed") from exc
+        raise AttachError(f"{nothing}; resetting the worktree to {state.original_head[:7]} failed ({exc}); "
+                          f"the worktree is left at {head[:7]} and the attach state is kept: run --abort "
+                          "once that is fixed") from exc
     raise AttachError(f"{nothing}; the attach is dropped and the worktree {worktree.as_posix()} is back at "
                       f"{state.original_head[:7]}, its HEAD before the attach")
 

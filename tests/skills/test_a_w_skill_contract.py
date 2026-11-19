@@ -1,28 +1,20 @@
-"""Contract test for the ``a-w`` skill: its SKILL.md frontmatter, its API launcher and its models.
+"""Contract test for the ``a-w`` skill: its SKILL.md frontmatter and its command launch line.
 
-The skill's models and API are imported, never copied: a literal pinned here would drift from the module that
-defines it. A skill without a models or an API module skips the tests that need one.
+The skill has no API or models module; it ships driver scripts under ``commands/``, which SKILL.md launches
+through ``hpy``. Every command file the body names must exist in the skill folder.
 """
 from __future__ import annotations
 
-from types import ModuleType
-
-import pytest
-from pydantic import ValidationError
+import re
 
 from harness_lib.project import plugin_root
 from harness_lib.skill_parts import skill_parts
 
 NAME = "a-w"
-SKILL = plugin_root() / "skills" / NAME / "SKILL.md"
-MODELS = "harness_lib.a_w_models"
-API = "harness_lib.a_w_api"
-LAUNCHER = 'scripts/skill_api.py" a_w_api'
-
-
-def _module(dotted: str) -> ModuleType:
-    """The module ``dotted``; the calling test is skipped when the skill has no such part."""
-    return pytest.importorskip(dotted)
+SKILL_DIR = plugin_root() / "skills" / NAME
+SKILL = SKILL_DIR / "SKILL.md"
+LAUNCHER = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/attach_worktree.py"'
+COMMAND = re.compile(r"\$\{CLAUDE_SKILL_DIR\}/(commands/[\w./-]+\.py)")
 
 
 def test_frontmatter_names_the_skill_folder() -> None:
@@ -35,26 +27,13 @@ def test_description_is_filled() -> None:
     assert description.startswith("Use when"), description
 
 
-def test_api_heredoc_launches_the_skill_api() -> None:
-    _module(API)
+def test_body_launches_the_attach_command_through_hpy() -> None:
     body = skill_parts(SKILL)[1]
     assert LAUNCHER in body
 
 
-def test_api_exports_existing_names() -> None:
-    api = _module(API)
-    missing = [name for name in api.__all__ if not hasattr(api, name)]
+def test_every_command_the_body_names_exists() -> None:
+    named = set(COMMAND.findall(skill_parts(SKILL)[1]))
+    assert named, "SKILL.md names no command under ${CLAUDE_SKILL_DIR}/commands"
+    missing = sorted(path for path in named if not (SKILL_DIR / path).is_file())
     assert not missing, missing
-
-
-def test_models_forbid_extra_keys() -> None:
-    models = _module(MODELS)
-    with pytest.raises(ValidationError):
-        models.Document.model_validate({"name": NAME, "unexpected": 1})
-
-
-def test_document_round_trips_through_its_dump() -> None:
-    models = _module(MODELS)
-    entry = models.Entry(id=f"{models.ENTRY_PREFIX}1", kind=models.EntryKind.FIRST, text="first entry")
-    document = models.Document(name=NAME, entries=[entry])
-    assert models.Document.model_validate_json(models.dump_document(document)) == document

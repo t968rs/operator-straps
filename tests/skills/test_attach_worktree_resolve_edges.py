@@ -6,6 +6,7 @@ instead cuts ``wt`` from a branch ``other`` that ``feature`` never merged.
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import stat
 import subprocess
@@ -160,10 +161,45 @@ def test_committed_whose_commits_the_target_already_holds_restores_the_worktree(
     done = _run(script_path, repos, "feature", "--committed")
     assert done.returncode == 1, done.stdout + done.stderr
     assert "nothing moves" in done.stderr and "--continue" not in done.stderr
+    assert "the target already holds them" in done.stderr
     assert original[:7] in done.stderr
     assert _git(wt, "rev-parse", "HEAD") == original
     assert not _state_file(wt).exists()
     _untouched(main, moved)
+
+
+def _load_resolve(plugin_root: Path, monkeypatch: pytest.MonkeyPatch):
+    commands = plugin_root / "skills" / "a-w" / "commands"
+    monkeypatch.syspath_prepend(str(plugin_root / "lib"))
+    monkeypatch.syspath_prepend(str(commands))
+    spec = importlib.util.spec_from_file_location("attach_resolve_under_test", commands / "attach_resolve.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_nothing_to_move_with_a_failed_reset_keeps_the_state_for_abort(plugin_root: Path, repos: dict,
+                                                                        monkeypatch: pytest.MonkeyPatch
+                                                                        ) -> None:
+    resolve = _load_resolve(plugin_root, monkeypatch)
+    main, wt, base = repos["main"], repos["wt"], repos["base"]
+    original = _commit(wt, "shared.txt", _WT, "worktree edit")
+    head = _commit(main, "shared.txt", _WT, "same edit, landed on the target")
+    state = resolve.State(target_branch="feature", target_checkout=main.as_posix(), mode="committed",
+                          target_head=head, original_head=original, patch_base=base, cut=base, rules=())
+    resolve.write_state(wt, state)
+
+    def refused_reset(worktree: Path, state: object) -> None:
+        raise resolve.AttachError("reset refused")
+
+    monkeypatch.setattr(resolve, "restore", refused_reset)
+    with pytest.raises(resolve.AttachError) as caught:
+        resolve.check_moves_something(wt, main, state, head, _git(main, "rev-parse", "HEAD^{tree}"))
+    message = str(caught.value)
+    assert "nothing moves" in message and "reset refused" in message
+    assert f"resetting the worktree to {original[:7]}" in message and f"left at {head[:7]}" in message
+    assert "the attach state is kept" in message and "--abort" in message
+    assert _state_file(wt).is_file()
 
 
 def test_committed_refuses_a_merge_commit_it_would_have_to_rebase(script_path: Path, repos: dict) -> None:
