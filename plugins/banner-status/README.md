@@ -20,7 +20,7 @@ approved by the user:
 | File | What |
 |---|---|
 | `.claude/settings.json` | `"statusLine": {"type": "command", "command": "ccstatusline --config <project>/.claude/ccstatusline.json", "padding": 0}` |
-| `.claude/ccstatusline.json` | ccstatusline's config, from `skills/setup-statusline/ccstatusline.defaults.json`; when present, only gains the working-refs line on a yes |
+| `.claude/ccstatusline.json` | ccstatusline's config, from `skills/setup-statusline/ccstatusline.defaults.json`; when present, only gains the working-refs line, or has an old `working-refs/line.txt` widget's `commandPath` replaced, on a yes |
 
 - **Optional dependency, not bundled:** installing this plugin does not install ccstatusline, and nothing
   changes on screen until the skill has run. It needs Node.js and npm and one global install,
@@ -41,8 +41,10 @@ approved by the user:
   the path to `path.resolve`, so a relative `state_dir` lands under the project and an absolute one is kept as
   given (and is then shared by every checkout).
 - **Working-refs line, opt-in for an existing file:** an existing `.claude/ccstatusline.json` keeps its tuning;
-  the skill asks, and on a yes appends only the working-refs `custom-command` line as a new last line. A new
-  file gets it with the other defaults. The widget needs the working-refs mod.
+  the skill asks, and on a yes appends only the working-refs `custom-command` line as a new last line. An
+  existing widget that still names the old `working-refs/line.txt` has its `commandPath` replaced on a yes,
+  and nothing else changes. A new file gets the line with the other defaults. The widget needs the
+  working-refs mod.
 - **Existing `statusLine`:** one that does not run ccstatusline is shown and kept unless the skill is run with
   `--replace`.
 - **Shared:** `.claude/settings.json` is committed, so the setting reaches every checkout. A checkout without
