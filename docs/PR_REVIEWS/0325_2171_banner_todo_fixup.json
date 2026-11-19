@@ -8,7 +8,7 @@
   "base_sha": "22e33d8f845d89435ba63bd1a63cf19c4c771813",
   "head_sha": "63fc6b3892919494794c4cbb65cf69df89b24059",
   "review_date": "2026-11-19",
-  "verdict": "READY TO MERGE - 17 of 19 findings resolved, 1 bubbled, 1 refuted",
+  "verdict": "READY TO MERGE - 18 of 19 findings resolved, 0 bubbled, 1 refuted",
   "stats": {
     "additions": 4057,
     "deletions": 192,
@@ -43,9 +43,7 @@
     "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/adv_code_runtime.json",
     "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/adv_code_tests.json"
   ],
-  "bubbles": [
-    "M3"
-  ],
+  "bubbles": [],
   "strengths": [
     "The new working_refs schema section matches its defaults.json value (max_chars 120), the WorkingRefsConfig dataclass and _working_refs builder in config.py, the root README key table and the working-refs mod's mirror, so the four-place key rule holds.",
     "The max_chars constraint (integer, exclusiveMinimum 0, additionalProperties false) agrees with the config.py fallback check that runs without jsonschema.",
@@ -608,6 +606,12 @@
       "status": "RESOLVED",
       "date": "2026-11-19",
       "evidence": "63fc6b3 (working-tree snapshot; developer commits) - ghStateOf maps gh MERGED to CLOSED through a new issueStateOf helper, so a merged PR number in an override hides; watch.test.ts gains a MERGED case; README and the hide.test.ts PR-number test name state the MERGED-as-CLOSED rule"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "dc01368 (working-tree snapshot; developer commits) - plan 2027 branch set to 2171-banner-todo-fixup through plan_api.write and freeze --refreeze (r1.5); relink refused since base 1043312 is on HEAD history (outside fixer waves)"
     }
   ]
 }
