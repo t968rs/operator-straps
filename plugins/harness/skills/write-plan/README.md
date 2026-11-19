@@ -82,7 +82,7 @@ sweeps fail; a base squashed inside another pull request has no counterpart, so 
   browser: it reloads `<id>/live.js` every few seconds, so a `record` in the terminal shows up on the page
   without a re-render.
 - `live.js` is derived from the receipts and the DesignEvolution catalog. The driver keeps a `.gitignore` in
-  the plan folder that lists it; after a pull, `PLAN render <id>` rebuilds it.
+  the plan folder that lists it; after a pull, `PLAN render <id>` rebuilds it, and an a-w attach rebuilds it in the target.
 
 **Refreeze** is for a change of design: change the plan through `plan_api.write`, then
 `PLAN freeze <id> --refreeze`. It is routine, not a failure, but the developer approves it. A refreeze that
@@ -122,7 +122,7 @@ A commit sequence that keeps the history readable:
    `Docs(plans): freeze plan <id>`. When the developer asks for a lock, `PLAN lock <id>` runs after this
    commit, and its `lock` entry is committed next. The committed copy is
    also what a later refreeze reads to keep the plan's scheme. Committing the plan folder's `.gitignore` is
-   optional: whenever the driver rebuilds `live.js` (record, freeze, render, `evolution_api`) it adds the
+   optional: whenever the driver rebuilds `live.js` (record, freeze, render, `evolution_api`, or an a-w attach that lands the plan's files) it adds the
    `live.js` line when the file is missing or lacks it, so a repository may ignore the file instead.
 4. **Work**: one commit per item, or per wave when items land together. Record with `--staged` before the
    commit, or with `--sha <rev>` after it, and commit the receipt beside the code it describes (a receipt is
