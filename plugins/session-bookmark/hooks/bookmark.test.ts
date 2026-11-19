@@ -582,7 +582,7 @@ describe('/session-bookmark', () => {
     const seen = world(on)
     await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
     expect(seen.commands).toContain('session-bookmark')
-    expect(seen.descriptions.some(d => d.includes(NOTES_ARG))).toBe(true)
+    expect(seen.descriptions.some(d => d.includes(`\`${NOTES_ARG}\``))).toBe(true)
   })
 
   test('says so before any compaction, then shows the bookmark', async ($, on) => {
@@ -616,7 +616,7 @@ describe('/session-bookmark notes', () => {
     expect(await runCommand($, 'session-bookmark', `  ${NOTES_ARG} `)).toBe('1. always')
   })
 
-  test('needs no compaction: no bookmark is read or stored', async ($, on) => {
+  test('needs no compaction: no bookmark is stored; the notes file is read live', async ($, on) => {
     const seen = world(on, { files: { [NOTES_FILE]: notesJson(['always']) } })
     await runCommand($, 'session-bookmark', NOTES_ARG)
     expect(saved(seen)).toBeUndefined()
@@ -705,13 +705,25 @@ describe('compaction fallback', () => {
     expect(await promptContext($)).toEqual([])
   })
 
-  test('the installed mark lasts one prompt: a later unseen compaction is still owed', async ($, on) => {
+  test('the installed mark lasts one row: a later unseen compaction is still owed', async ($, on) => {
     world(on)
     await $.session.compact({ trigger: 'manual', messages: HISTORY })
     await appendRow($)
     expect(await promptContext($)).toEqual([])
     await appendRow($)
     expect((await promptContext($)).length).toBe(1)
+  })
+
+  test('two compactions in one turn: the second, unseen one is owed though the first was installed', async ($, on) => {
+    world(on)
+    await promptContext($)
+    await $.session.compact({ trigger: 'auto', messages: HISTORY })
+    await appendRow($)
+    await appendRow($)
+    const context = await promptContext($)
+    expect(context.length).toBe(1)
+    expect(context[0]?.startsWith(BOOKMARK_HEADER)).toBe(true)
+    expect(await promptContext($)).toEqual([])
   })
 
   test("a subagent's compaction row owes nothing", async ($, on) => {

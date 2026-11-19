@@ -41,7 +41,7 @@ const bookmarkState = atom({ plugin: 'session-bookmark', key: 'bookmark' } as co
 
 /**
  * Per-load bookkeeping of the main loop's compactions (a reload starts afresh). `installed`: this mod's
- * `session.compact` hook appended a bookmark since the last prompt. `owed`: a compaction row reached
+ * `session.compact` hook appended a bookmark since the last compaction row or prompt. `owed`: a compaction row reached
  * `session.append` with no bookmark installed, so the next prompt carries one.
  */
 const compaction = { installed: false, owed: false }
@@ -260,8 +260,8 @@ const capture = async ($: Dollar): Promise<Capture> => {
 }
 
 /**
- * The stored notes as `add-bookmark --list` numbers them, against the branch checked out now; a file the
- * script refuses is reported, not shown as empty. Never throws.
+ * The stored notes as `add-bookmark --list` numbers them, every usable note with no `MAX_NOTES` cut, against
+ * the branch checked out now; a file the script refuses is reported, not shown as empty. Never throws.
  */
 const liveNotesText = async ($: Dollar): Promise<string> => {
   const { git, top } = await captureGit($)
@@ -340,7 +340,11 @@ export const registerBookmark = (on: Parameters<Register>[0]): void => {
   // run (for example a mod before it ended the chain): the next prompt carries the bookmark instead.
   on('session.append', { door: 'compaction' }, async ($, e, next) => {
     const result = await next(e)
-    if (e.agentId === undefined) compaction.owed = !compaction.installed
+    if (e.agentId === undefined) {
+      // each row consumes the mark, so a later compaction in the same turn is judged on its own
+      compaction.owed = !compaction.installed
+      compaction.installed = false
+    }
     return result
   }).catch((_$, e, next) => next(e))
 

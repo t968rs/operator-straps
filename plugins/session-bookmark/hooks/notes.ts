@@ -75,21 +75,21 @@ const storedNote = (entry: unknown): StoredNote | null => {
 }
 
 /**
- * The notes in a file's text as `parseNotes` reads them, or null for a file the script refuses (its
- * `read_notes`): malformed JSON, another version or a missing `notes` array.
+ * Every usable note in a file's text, oldest first and uncapped, as the script's `read_notes` keeps them, so
+ * note N here is the note `remove N` and `edit N` act on even in a hand-edited file holding more than
+ * `MAX_NOTES`. Null for a file the script refuses: malformed JSON, another version or a missing `notes` array.
  */
 export const parseNotesOrNull = (text: string): StoredNote[] | null => {
   const data = parse(text)
   if (!isObject(data) || data.version !== NOTES_SCHEMA_VERSION || !Array.isArray(data.notes)) return null
-  const kept = data.notes.map(storedNote).filter((n): n is StoredNote => n !== null)
-  return kept.slice(-MAX_NOTES)
+  return data.notes.map(storedNote).filter((n): n is StoredNote => n !== null)
 }
 
 /**
- * The notes in a file's text, oldest first, at most `MAX_NOTES` (the newest when more are stored). Malformed
- * JSON, another version or a missing `notes` array hold none.
+ * The notes the compaction bookmark prints, oldest first, at most `MAX_NOTES` (the newest when more are
+ * stored). Malformed JSON, another version or a missing `notes` array hold none.
  */
-export const parseNotes = (text: string): StoredNote[] => parseNotesOrNull(text) ?? []
+export const parseNotes = (text: string): StoredNote[] => (parseNotesOrNull(text) ?? []).slice(-MAX_NOTES)
 
 /** The name `git rev-parse --abbrev-ref HEAD` prints on a detached HEAD. */
 const DETACHED_HEAD = 'HEAD'

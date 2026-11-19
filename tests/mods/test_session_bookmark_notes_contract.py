@@ -3,8 +3,9 @@
 The script (``plugins/harness/skills/add-bookmark/commands/add_note.py``) writes
 ``<state_dir>/session-bookmark/notes.json``; the mod (``plugins/session-bookmark/hooks/notes.ts``) reads it at
 every compaction and for ``/session-bookmark notes``. An installed mod cannot import the harness plugin, so
-``notes.ts`` copies the file's path, version, limits, the branch key and the other-branch mark, and the default
-``state_dir``. This test fails when one side changes without the other.
+``notes.ts`` copies the file's path, version, limits, the branch key and the other-branch mark, the default
+``state_dir`` and the printed line format (the script's ``note_line`` against the mod's ``noteLine``). This
+test fails when one side changes without the other.
 """
 from __future__ import annotations
 
@@ -58,6 +59,49 @@ def test_branch_key_matches(notes_ts: str, script: ModuleType) -> None:
 
 def test_other_branch_mark_matches(notes_ts: str, script: ModuleType) -> None:
     assert ts_string(notes_ts, "OTHER_BRANCH_MARK") == script.OTHER_BRANCH_MARK
+
+
+_TS_NOTE = {"text": "${note.text}", "branch": "${note.branch}"}
+
+
+def _as_ts_template(script: ModuleType, body: str) -> str:
+    """A ``note_body`` rendered from TS placeholders, as the template literal ``noteBody`` holds."""
+    mark = f"; {script.OTHER_BRANCH_MARK} "
+    return "`" + body.replace(mark, "; ${OTHER_BRANCH_MARK} ") + "`"
+
+
+@pytest.mark.parametrize("current", ["${note.branch}", "${current}"], ids=["same-branch", "other-branch"])
+def test_branch_tagged_line_matches_the_mod_template(notes_ts: str, script: ModuleType, current: str) -> None:
+    assert _as_ts_template(script, script.note_body(_TS_NOTE, current)) in notes_ts
+
+
+def test_standing_line_and_numbering_match_the_mod(notes_ts: str, script: ModuleType) -> None:
+    assert script.note_body({"text": "keep"}, "main") == "keep"
+    assert "if (note.branch === null) return note.text" in notes_ts
+    line = script.note_line("${i}", {"text": "${noteBody(note, current)}"}, None)
+    assert f"`{line}`" in notes_ts
+
+
+def _ts_function_body(source: str, name: str) -> str:
+    """The text of the exported arrow function ``name`` up to the next blank line."""
+    start = source.index(f"export const {name} = ")
+    end = source.find("\n\n", start)
+    return source[start:] if end < 0 else source[start:end]
+
+
+def test_live_view_numbers_every_note_as_the_script_does(
+    make_project, notes_ts: str, script: ModuleType
+) -> None:
+    """``/session-bookmark notes`` reads through ``parseNotesOrNull``; ``remove N`` picks from ``read_notes``.
+
+    Both keep every usable note, so a hand-edited file past ``MAX_NOTES`` numbers alike on both sides.
+    """
+    assert "MAX_NOTES" not in _ts_function_body(notes_ts, "parseNotesOrNull")
+    project = make_project(config={})
+    path = script.notes_path(project)
+    texts = [f"n{i}" for i in range(script.MAX_NOTES + 3)]
+    script.write_notes(path, [{"text": t} for t in texts])
+    assert [n["text"] for n in script.read_notes(path)] == texts
 
 
 def test_default_state_dir_equals_defaults_json(repo_root: Path, notes_ts: str) -> None:
