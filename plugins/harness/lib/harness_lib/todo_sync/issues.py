@@ -31,6 +31,8 @@ LIST_LIMIT = 1000
 LIST_FIELDS = "number,title,url,labels,body,comments"
 #: The open-issue list ``find_untracked`` leaves under ``state_dir`` for the working-refs mod.
 OPEN_ISSUES_REL = "todo-sync/open_issues.json"
+#: The open-issue list's ``version``; the working-refs mod's ``OPEN_LIST_VERSION`` mirrors it.
+OPEN_ISSUES_VERSION = 1
 
 
 def untracked_path(cfg: HarnessConfig) -> Path:
@@ -46,7 +48,7 @@ def open_issues_path(cfg: HarnessConfig) -> Path:
 def write_open_issues(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> Path:
     """Write ``{version, fetched_at, open}`` (the sorted numbers of ``rows``) to ``open_issues_path``."""
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    data = {"version": 1, "fetched_at": stamp, "open": sorted(r["number"] for r in rows)}
+    data = {"version": OPEN_ISSUES_VERSION, "fetched_at": stamp, "open": sorted(r["number"] for r in rows)}
     return write_atomic(open_issues_path(cfg), json.dumps(data) + "\n")
 
 

@@ -4,8 +4,9 @@ The skill pins a ccstatusline version and writes a ``statusLine`` command; the d
 config schema that version reads; the git-status mod (``plugins/git-status/hooks/status.ts``) clears its own
 line only when that command names ccstatusline. The defaults' ``custom-command`` widget prints the line the
 working-refs mod writes (plans 2025 and 2027), so its command names that file; it reads the branch the line
-was built for and, when the checkout's HEAD names another, prints that branch dark before the line. All of
-it is prose or data, so the test pins the shared names.
+was built for and, when the checkout's HEAD names another, prints that branch dark before the line. The skill
+and defaults are prose or data, so most tests pin the shared names; the widget command is code, so its tests
+run it under node against a temporary checkout.
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
+from harness_lib.working_refs import LINE_JSON_REL
 
 _REPO = Path(__file__).resolve().parents[2]
 _PLUGIN = _REPO / "plugins" / "banner-status"
@@ -26,9 +28,9 @@ _DEFAULTS = _SKILL_DIR / "ccstatusline.defaults.json"
 _README = _PLUGIN / "README.md"
 _STATUS_TS = _REPO / "plugins" / "git-status" / "hooks" / "status.ts"
 _HARNESS_DEFAULTS = _REPO / "plugins" / "harness" / "config" / "defaults.json"
-# harness_lib.working_refs.LINE_JSON_REL, spelled out so these tests fail on the widget alone, whether or not
-# the harness constant has landed (tests/mods/test_working_refs_contract.py pins the constant itself)
-_LINE_JSON = "working-refs/line.json"
+# the file the harness and the working-refs mod write (tests/mods/test_working_refs_contract.py pins the mod's
+# LINE_JSON_PATH to it), so a rename on the producer side fails the widget's path pin below
+_LINE_JSON = LINE_JSON_REL
 
 # ccstatusline 2.2.32 reads config schema version 4 (src/types/Settings.ts CURRENT_VERSION)
 _PINNED = "2.2.32"
@@ -239,10 +241,12 @@ def test_widget_falls_back_to_line_txt_without_line_json(tmp_path: Path) -> None
     assert _run_widget(project) == _TEXT
 
 
-def test_project_config_widget_matches_the_defaults() -> None:
+def test_project_config_carries_the_defaults_widget() -> None:
+    # guards this repository's own dogfood config: it may add or tune widgets, but must keep the defaults'
+    # working-refs widget command among its custom-command widgets
     project = [item for line in json.loads(_text(_PROJECT_CONFIG))["lines"] for item in line
                if item["type"] == "custom-command"]
-    assert [item["commandPath"] for item in project] == [_custom_commands()[0]["commandPath"]]
+    assert _custom_commands()[0]["commandPath"] in [item["commandPath"] for item in project]
 
 
 def test_skill_resolves_state_dir_and_offers_the_widget_for_an_existing_config() -> None:

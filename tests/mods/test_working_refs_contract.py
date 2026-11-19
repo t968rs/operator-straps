@@ -4,13 +4,14 @@ The harness ``working`` command writes ``<state_dir>/working-refs/overrides.json
 ``artifacts.plans`` for ``*_PIP.html`` pages, reads each sibling ``*_ActionPlan.json`` and writes
 ``<state_dir>/working-refs/line.txt`` and the branch-stamped ``line.json`` for the ccstatusline widget. It
 hides TODO ids the catalog (``todo.folder`` / ``todo.catalog``) lists in ``retired_ids`` and issues ``gh``
-reports closed; the open list ``todo_sync.py untracked`` writes (``todo-sync/open_issues.json``) answers only
-OPEN, an issue missing from it is due for a ``gh`` check (``todo.gh.repo``), rechecked past
-``todo.gh.max_age_hours``; ``working_refs.max_chars`` caps the line. An installed mod cannot import the harness
-plugin, so ``plugins/working-refs/hooks/mirror.ts`` copies these names; this test fails when one side changes
-without the other. ``plans.ts`` reads the ActionPlan fields inline as ``data.<field>``; one test pins each
-against ``ActionPlan.model_fields``. Each test reads the mirror before importing the harness module, so it
-fails on the missing mirror whether or not ``harness_lib.working_refs`` exists yet.
+reports closed; the open list ``todo_sync.py untracked`` writes (``todo-sync/open_issues.json``, whose
+``version`` ``hide.ts`` checks) answers only OPEN, an issue missing from it is due for a ``gh`` check
+(``todo.gh.repo``), rechecked past ``todo.gh.max_age_hours``; ``working_refs.max_chars`` caps the line. An
+installed mod cannot import the harness plugin, so ``plugins/working-refs/hooks/mirror.ts`` copies these
+names; this test fails when one side changes without the other. ``plans.ts`` reads the ActionPlan fields
+inline as ``data.<field>``; one test pins each against ``ActionPlan.model_fields``. Each test reads the
+mirror before importing the harness module, so it fails on the missing mirror whether or not
+``harness_lib.working_refs`` exists yet.
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from mods._mods_helpers import ts_number, ts_optional_string, ts_string
 _MIRROR_TS_REL = "plugins/working-refs/hooks/mirror.ts"
 _DEFAULTS_REL = "plugins/harness/config/defaults.json"
 _PLANS_TS_REL = "plugins/working-refs/hooks/plans.ts"
+_HIDE_TS_REL = "plugins/working-refs/hooks/hide.ts"
 
 
 def _mirror(repo_root: Path) -> str:
@@ -91,6 +93,14 @@ def test_line_json_and_open_issues_paths_match(repo_root: Path) -> None:
     from harness_lib.working_refs import LINE_JSON_REL
     assert line_json == LINE_JSON_REL
     assert open_issues == OPEN_ISSUES_REL
+
+
+def test_open_list_version_matches_the_writer(repo_root: Path) -> None:
+    path = repo_root / _HIDE_TS_REL
+    assert path.is_file(), f"missing {_HIDE_TS_REL}"
+    version = ts_number(path.read_text(encoding="utf-8"), "OPEN_LIST_VERSION")
+    from harness_lib.todo_sync.issues import OPEN_ISSUES_VERSION
+    assert version == OPEN_ISSUES_VERSION
 
 
 def test_set_at_key_matches_the_override_entry(repo_root: Path, tmp_path: Path) -> None:
