@@ -30,7 +30,7 @@
       {
         "id": "51bfaf03-6256-4bd9-97a4-03099b1d4f2d",
         "type": "custom-command",
-        "commandPath": "node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s),r=(j.workspace||{}).project_dir||j.cwd||'.';process.stdout.write(require('fs').readFileSync(require('path').resolve(r,'.claude/state/harness/working-refs/line.txt'),'utf8'))}catch(e){}})\"",
+        "commandPath": "node -e \"let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const f=require('fs'),p=require('path'),j=JSON.parse(s),r=(j.workspace||{}).project_dir||j.cwd||'.',u=p.resolve(r,'.claude/state/harness/working-refs/line.json'),rd=n=>f.readFileSync(n,'utf8');let raw;try{raw=rd(u)}catch(e){process.stdout.write(rd(p.join(p.dirname(u),'line.txt')));return}const l=JSON.parse(raw),t=l.text;if(typeof t!=='string'||!t)return;let h='';try{let g=p.resolve(r,'.git');if(f.statSync(g).isFile())g=p.resolve(r,f.readFileSync(g,'utf8').split('\\n').find(x=>x.startsWith('gitdir:')).slice(7).trim());h=f.readFileSync(p.join(g,'HEAD'),'utf8').trim()}catch(e){}const b=h.startsWith('ref: refs/heads/')?h.slice(16):/^[0-9a-f]{40,}/.test(h)?'(detached)':'',w=l.branch;process.stdout.write((typeof w==='string'&&w&&b&&w!==b?'\\x1b[38;5;240m'+w+'\\x1b[39m \\u00b7 ':'')+t)}catch(e){}})\"",
         "preserveColors": true,
         "timeout": 1000
       }

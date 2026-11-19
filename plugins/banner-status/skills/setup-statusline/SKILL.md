@@ -56,7 +56,8 @@ repository, so the change reaches everyone who checks it out; say so in the repo
    - A `statusLine` whose `command` already runs ccstatusline: go on (the run repairs it).
    - Any other `statusLine`: show it and stop, unless the arguments hold `--replace`.
 4. **Resolve `state_dir`.** The defaults' third line holds a `custom-command` widget that prints the line the
-   working-refs mod writes, and its `commandPath` names that file under the harness state folder. Read
+   working-refs mod writes, and its `commandPath` names that file, `working-refs/line.json`, under the
+   harness state folder. Read
    `state_dir` from `<project>/.claude/harness.json` (default `.claude/state/harness`). When it differs from
    the default, replace the `.claude/state/harness` part of the widget's `commandPath` with it, in the copy
    that is written and in the line offered in step 5. Write it with forward slashes only: the path sits in a
@@ -69,7 +70,9 @@ repository, so the change reaches everyone who checks it out; say so in the repo
    loaded; without it the file never appears and the widget prints nothing.
 5. **Write the defaults** to `<project>/.claude/ccstatusline.json` when that file is absent, with the step 4
    path. An existing file is the user's tuning; keep it and say so. When it already holds a `custom-command`
-   widget naming `working-refs`, say the line is there and skip the question. Otherwise offer the widget as an
+   widget naming `working-refs/line.json`, say the line is there and skip the question. When the widget names
+   `working-refs/line.txt`, it is the old line: offer to replace that widget's `commandPath` with the
+   defaults' (step 4 path), touching nothing else in the file, and keep it on a no. Otherwise offer the widget as an
    opt-in: ask with `AskUserQuestion` (header `working-refs`) whether to add the working-refs line, stating
    that it needs the working-refs mod:
    - **Add the line:** append only the `custom-command` line from the defaults, with the step 4 path, as a new
