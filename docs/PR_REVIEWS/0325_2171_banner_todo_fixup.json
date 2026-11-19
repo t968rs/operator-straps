@@ -1,0 +1,613 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 325,
+  "pr_title": "2171 banner todo fixup",
+  "branch": "2171-banner-todo-fixup",
+  "base_branch": "main",
+  "base_sha": "22e33d8f845d89435ba63bd1a63cf19c4c771813",
+  "head_sha": "63fc6b3892919494794c4cbb65cf69df89b24059",
+  "review_date": "2026-11-19",
+  "verdict": "READY TO MERGE - 17 of 19 findings resolved, 1 bubbled, 1 refuted",
+  "stats": {
+    "additions": 4057,
+    "deletions": 192,
+    "files_changed": 59,
+    "source": {
+      "additions": 3275,
+      "deletions": 192,
+      "files_changed": 57
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/config.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/tests.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/docs.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/overall.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/roast.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0325/pr325_20261119T223653Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [
+    "M3"
+  ],
+  "strengths": [
+    "The new working_refs schema section matches its defaults.json value (max_chars 120), the WorkingRefsConfig dataclass and _working_refs builder in config.py, the root README key table and the working-refs mod's mirror, so the four-place key rule holds.",
+    "The max_chars constraint (integer, exclusiveMinimum 0, additionalProperties false) agrees with the config.py fallback check that runs without jsonschema.",
+    "The todo.gh.repo and todo.gh.max_age_hours descriptions now state the working-refs reads, and the mod's config.ts and watch.ts do pass gh --repo and recheck by that age.",
+    "line.test.ts tests the cap at exact boundaries: maxChars = full.length, two.length and two.length - 1. This pins fitCount's 'fits including the +N it would still need' rule, and also the empty-head and head-longer-than-cap edges.",
+    "watch.test.ts's gh fake records argv, cwd and timeoutMs. The retry test seeds checked_at 48h old with a gh failure, so it tells a retry timed from tried_at apart from one timed from checked_at.",
+    "The widget tests run the real node command from ccstatusline.defaults.json under a shell with the status JSON on stdin. They cover a .git folder, absolute and relative worktree .git files, detached HEAD, an unreadable HEAD, a null or empty stamp, empty text and the line.txt fallback, and are marked cross_os.",
+    "hide.test.ts tests isClosed's ordering between the open list and the cached CLOSED answer in both directions, plus the 'missing from the list is no answer' rule, which is the core of the D3 fail-open design.",
+    "test_config_working_refs.py checks max_chars validation with and without jsonschema (monkeypatched out of sys.modules), so the fallback type check is held to the same contract.",
+    "test_todo_sync_open_issues.py fakes only the gh boundary (gh.run_gh) and checks the real file find_untracked writes, including that a listing cut off at the limit writes no list. These are behavioral tests, not mock-chain tests.",
+    "hide.ts keeps every hiding rule pure (retiredIdsOf, openListOf, issueCacheOf, isClosed, visibleRefs), and its module docstring states the one-sided contract (only gh answers CLOSED; absence from the open list is no answer), which isClosed and answeredAt implement exactly.",
+    "band.tsx workingParts reproduces line.ts compose piece for piece (head, ' · ', space-joined segments, ' +N' or bare '+N'), and falls back to `text` for a line from an older working-refs that has no `others`.",
+    "issues.py writes open_issues.json atomically and only after open_issues returns a complete listing; a listing at LIST_LIMIT raises before write_open_issues, as the find_untracked docstring says.",
+    "config.py _working_refs checks max_chars (bool excluded, integer above 0) and rejects unknown keys without jsonschema, and config.ts countOr/positiveOr apply the same bounds to the mirrored keys.",
+    "The recheck pass uses its own isBusy/isOwed pacing, writes the cache once per pass, prunes entries no override names (cacheText keep), and afterAttempt keeps the last known state on a gh failure, moving only triedAt.",
+    "The working-refs README's What hides section matches hide.ts and watch.ts closely: only gh answers CLOSED, the open list answers OPEN when fetched later, a failed gh keeps the last known state and records UNKNOWN when nothing is known, and the recheck runs after each scan and at an idle prompt.",
+    "The CLAUDE.md mirror sentence names exactly the seven keys mirror.ts now mirrors (state_dir, artifacts.plans, todo.folder, todo.catalog, todo.gh.repo, todo.gh.max_age_hours, working_refs.max_chars).",
+    "todo_sync.md and the sync-gh-todo skill describe open_issues.json accurately: it is written right after a complete listing, also on `untracked: none`, and not when the listing refuses at LIST_LIMIT or gh fails.",
+    "The band-line README documents the segment composition edge cases (head +N without a separator, bare +N, the older-producer text fallback) exactly as band.tsx workingParts draws them.",
+    "The committed ActionPlan blob (d4ca46e) matches the r1.4 freeze record, and every task has a sealed receipt; the release table versions match each bumped plugin.json.",
+    "The deferred work is recorded rather than lost: the stale-plan-link research note and a ranked TODO item for clearing another branch's override, both cross-referenced from the plan's deferred_to_future_plans.",
+    "The new widget command uses one path: only the line.json path holds `.claude/state/harness`, and the line.txt fallback is built with path.dirname. Step 4's single state_dir substitution therefore still covers both files, and step 5's `working-refs/line.txt` test never matches the new command.",
+    "The widget's branch comparison matches the mod's keying. A raw SHA in HEAD maps to `(detached)`, the same key working-refs uses. A worktree's `gitdir:` file is followed without calling git, and every read error leaves the plain line or an empty output.",
+    "The sync-gh-todo addition matches todo_sync.md:161-164: open_issues.json is written by both success outputs, `untracked: none` and the list, and by neither on a problem line. The path matches working-refs OPEN_ISSUES_PATH (hooks/mirror.ts:24).",
+    "The working skill's new description clause ('other branches bracketed after the current one's') matches the `[ <branch> <refs> ]` segment format in plugins/working-refs/README.md:15.",
+    "tests/skills/test_setup_statusline_contract.py pins the line.json path and runs the line.txt fallback and stale-file cases against the defaults.",
+    "Cross-file contracts are pinned on both sides: mirror.ts LINE_JSON_PATH, OPEN_ISSUES_PATH, SET_AT_KEY and every new default (including the null todo.folder and gh.repo, via ts_optional_string) are checked against the harness constants and defaults.json in test_working_refs_contract.py.",
+    "The new working_refs.max_chars key touches all four places (defaults.json, schema, config.py dataclass and builder with a no-jsonschema type check, README key table) plus the mod mirror and the CLAUDE.md mirror list, and each is backed by a test.",
+    "The hide rules are carefully asymmetric and fail open: only a gh CLOSED hides, the open list answers only OPEN and wins only when it is fresher, a gh failure keeps the last known state and moves only triedAt, and UNKNOWN or unknown issues stay visible. hide.test.ts and watch.test.ts both cover these cases.",
+    "fitCount is monotone and keeps the head whole. The band-line workingParts mirrors line.ts compose exactly, edge cases included (head +N with no separator, an empty head drawing the first segment, an older working-refs sending text alone), and band.test.tsx pins each one.",
+    "The ccstatusline widget stays a file-only node one-liner with no git child process. It follows worktree gitdir files, falls back to line.txt for an older working-refs, and is tested by running the real command under the OS shell (cross_os tests), not by string matching.",
+    "find_untracked writes the open-issue list only after a complete listing (the LIST_LIMIT raise comes first), so a cut-off listing can never leave a partial OPEN list behind. test_a_listing_at_the_limit_writes_no_list pins this.",
+    "The watch.test.ts additions are behavioral: a fake engine answers fs, git and gh, and the tests assert the line atom, the files and the gh argv, cwd and timeout, with no stubbing of the functions under test.",
+    "The new key working_refs.max_chars lands in all four places CLAUDE.md requires (defaults.json, schema, WorkingRefsConfig and _working_refs builder, README key table). The mod mirrors it in mirror.ts, CLAUDE.md's working-refs mirror sentence lists every mirrored key, and test_working_refs_contract pins each default, including the nullable ones.",
+    "One writer per file is documented the same way in the issues.py docstring, the mirror.ts header, the working-refs README Files table and the spec Constraints, and the code follows it (the harness writes overrides.json and open_issues.json; the mod writes line.txt, line.json and issues.json).",
+    "todo_sync.md, the sync-gh-todo SKILL, the find_untracked docstring and test_todo_sync_open_issues agree on when open_issues.json is written: also on 'untracked: none', and never on a listing that reaches LIST_LIMIT.",
+    "band-line's workingParts reproduces line.ts compose exactly (head, ' · ', space-joined segments, ' +N' with no separator), and the band-line README and band.test.tsx cover each edge form, including an older working-refs line that has only `text`.",
+    "The hide rules read the same in the code, the README, the spec, the plan and the schema: only a gh CLOSED hides, the open list answers OPEN, the fresher answer wins, a failure keeps the last known state, and plan refs never hide (D4).",
+    "The release notes extend the untagged v1.0.0 file with versions that match each bumped plugin.json. Deferred scope is recorded as a research note and a TODO item instead of being left in prose.",
+    "The new logic sits in pure modules (hide.ts, the `line.ts` cap and fit, the `watch.ts` due and attempt helpers), and watch.test.ts exercises them through a fake engine (filesystem, process and clock) rather than stubbed helpers. These are real behavioral tests.",
+    "The ccstatusline one-liner is tested by actually running it under node against temporary `.git` directories and files: a folder `.git`, absolute and relative `gitdir:` files, a detached HEAD and the `line.txt` fallback, marked `cross_os`.",
+    "The new config key follows the CLAUDE.md checklist (defaults, schema, dataclass and builder with a check that works without jsonschema, README row). Each mirrored default is pinned by the contract test, including the nullable ones through `ts_optional_string`.",
+    "The one-writer rule holds: the harness writes `open_issues.json` only after a complete listing, and the mod alone writes `line.json` and `issues.json`. Hiding never rewrites `overrides.json` (D3).",
+    "gh failures fail safe: the last known state is kept, a failure with nothing known records `UNKNOWN` (shown), and the retry waits a full age from `triedAt`, so a broken gh cannot hide refs or hammer the API.",
+    "band-line still draws through `text` for an older working-refs, and the widget falls back to `line.txt` when `line.json` is absent, so the plugins can upgrade in either order.",
+    "band-line's workingParts reproduces line.ts compose exactly for every head/others/more combination, and falls back to `text` for an older working-refs line.",
+    "fitCount checks each candidate line together with the ` +N` it would still need, so a drawn line never exceeds max_chars unless the uncut head alone does.",
+    "Python `_working_refs` validates max_chars without jsonschema (bool, non-int and non-positive rejected), mirroring the TS countOr guard.",
+    "write_open_issues runs only after open_issues returned a complete listing, so a LIST_LIMIT hit leaves no partial open list that would claim issues are open.",
+    "isClosed lets only a gh CLOSED answer hide an issue and lets a later open list override it, so a missing or stale feed shows refs rather than hiding them.",
+    "Every in-scope test passes at the PR head: 48 Python tests (config, open-issue list, working-refs contract, statusline widget) plus 117 working-refs and 35 band-line mod tests.",
+    "watch.test.ts's gh retry test separates 'age from the try' from 'age from checked_at': checked_at sits 48 h back, so a wrong implementation would call gh a second time at the next prompt and fail the test.",
+    "The widget tests run the real defaults commandPath through a shell with the status JSON on stdin. They cover worktree .git files with absolute and relative gitdirs, a detached HEAD, a HEAD that does not read, and the line.txt fallback.",
+    "hide.test.ts pins both orderings of the open-list and cached-CLOSED timestamps, plus the case of a number missing from the list. That covers the full isClosed decision table.",
+    "test_a_listing_at_the_limit_writes_no_list asserts that the open-issues file is absent, so moving write_open_issues ahead of the limit check fails it."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "A merged pull request in an override never hides",
+        "file": "plugins/working-refs/hooks/watch.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.ts",
+          "plugins/working-refs/hooks/hide.test.ts",
+          "plugins/working-refs/hooks/watch.test.ts",
+          "plugins/working-refs/README.md"
+        ],
+        "lines": "248-259",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "`ghStateOf` keeps only `OPEN` and `CLOSED` and maps every other state to `UNKNOWN`, which `isClosed` always shows. `gh ... --json state` reports `MERGED` for a merged pull request, so a PR number in an override stays on every branch's line indefinitely and is rechecked every `todo.gh.max_age_hours`. If `gh issue view` refuses a PR number instead, the failure path also lands on `UNKNOWN`, with the same result. This defeats the PR-number case the change explicitly plans for: hide.test.ts:95-99 says a PR number in an override 'shows until gh answers CLOSED', and the README says the same. A merged PR, the normal way a PR ends, never gets that answer. The pure test passes because it injects `CLOSED` directly, so nothing exercises the gh mapping.",
+        "fix": [
+          "In `ghStateOf`, map `MERGED` to `CLOSED` (`state === 'MERGED' ? 'CLOSED' : ...`), and add a watch.test.ts case where gh answers `MERGED` and the number hides.",
+          "If `gh issue view` turns out to reject PR numbers, retry the same number with `gh pr view <n> --json state` before recording `UNKNOWN`, and treat `MERGED` as closed there too."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "A failed issue-cache write turns recheck and scan into an endless gh loop",
+        "file": "plugins/working-refs/hooks/watch.ts",
+        "lines": "430,437-451",
+        "reviewer": "runtime, adv_code_runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "runRecheck swallows a failed cache write (`$.fs.write(...).catch(noop)`, watch.ts:448) and still calls requestScan when a gh answer changed an issue's hiding (watch.ts:450). The scan reads the old cache from disk, so the issue is still due, and runScan always queues another recheck (watch.ts:430). That recheck runs gh for the same issues again, sees the same change against the same stale disk cache, and requests another scan. While the cache file cannot be written (read-only or locked state dir, full disk), the session runs `gh issue view` for every due issue in a loop with no end, up to 10 s per call and invisible to the user.\n\nAlso (adv_code_runtime): runRecheck swallows a failed write of issues.json (`.catch(noop)`) but still compares the closed state against its in-memory `next` map and calls requestScan when an issue's hiding changed. The scan rereads the unchanged cache from disk, finds the same issue still due (its on-disk answer is old or absent), and ends with `later(... requestRecheck)`; the recheck runs gh again, sees the same in-memory-vs-disk difference, and asks for another scan. Nothing breaks the cycle while the write keeps failing, so the mod spawns `gh issue view` (and a full scan with git calls) back to back for as long as the session lives, which contradicts the module's promise that a host failure degrades to an empty line.\n\nAlso (overall): When dueIssues comes back empty, runRecheck returns at line 445 without updating memo.recheckDueAt. That happens when another session in the same checkout has already rewritten issues.json, or when the answers moved later in some other way that the last scan did not see. isRecheckDue (lines 504-507) then stays true, and every prompt schedules a recheck pass (resolveWatch plus four file reads) that finds nothing due and returns, until an unrelated scan recomputes the memo. No gh call is wasted, but the pass repeats on every prompt.\n\nAttack: Project with an override naming issue 301 (`working 301` on any branch), no `<state_dir>/working-refs/issues.json` and no open list, and issue 301 closed on GitHub. Make the cache unwritable (create `<state_dir>/working-refs/issues.json` with `{}` and mark it read-only, or stub `$.fs.write` to reject for that path in a hook test). Start a session: runScan (watch.ts:402) ends with `later(requestRecheck)` (430); runRecheck finds 301 due (answeredAt -Infinity), gh answers CLOSED, the write at 448 fails silently, `isClosed(301, list, hide.cache)` is false while `isClosed(301, list, next)` is true, so 450 calls requestScan; the scan rereads the unchanged file, line 430 queues another recheck, 301 is due again, and the cycle repeats. Counting `$.process.run` calls with argv[0] === 'gh' over a few clock ticks shows it growing without bound instead of stopping at 1.",
+        "fix": [
+          "Treat the write as a precondition for the follow-up scan: `const wrote = await $.fs.write(path, text).then(() => true, () => false)`, and return before requestScan when it is false, after setting memo.recheckDueAt to now + maxAgeOf(w) so a prompt does not retry at once.",
+          "Keep the session's attempts in memory (for example `memo.attempts: Map<number, CachedIssue>` merged over the disk cache in readHide), so a failed write does not drop the `triedAt` that stops dueIssues from picking the issue again.",
+          "In runRecheck, request the follow-up scan only when the cache write succeeded (await the write without `.catch(noop)` inside a try, and return on failure).",
+          "Keep the rechecked cache in session memory (for example `memo.cache`) and have the scan merge it over the file, so a failed write cannot make the same issue due again.",
+          "Gate the scan-end `later(... requestRecheck)` on `memo.recheckDueAt <= now`, so a scan triggered by a recheck does not start another recheck before the due time passes.",
+          "Before the early return in runRecheck, set memo.recheckDueAt = dueAtOf(issues, hide.list, hide.cache, maxAgeOf(w)), so the probe waits for the real next due time."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Top README says retired ids and closed issues hide without scoping it to override refs",
+        "file": "README.md",
+        "lines": "46",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The Branch Working Refs row reads \"a retired TODO id (the checked-out catalog) or an issue `gh` reports closed hides\". Only override refs hide: buildLine (plugins/working-refs/hooks/line.ts:98-101) filters the own override through visibleRefs but takes the plans' union unfiltered (D4), and the working-refs README says plan refs never hide. A reader of the top README would expect a plan's retired id to drop.",
+        "fix": [
+          "README.md:46: write \"an override's retired TODO id (the checked-out catalog) or closed issue hides; plan refs never hide\"."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "README key-table rows for state_dir and todo.catalog miss the new working-refs uses",
+        "file": "README.md",
+        "lines": "561,590",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The PR extends the todo.gh.repo and todo.gh.max_age_hours rows (and their schema descriptions) to name the working-refs mod, but two other keys the mod now reads or writes under were not updated. The README.md:561 state_dir row still lists `working-refs/` as only 'the /harness:working overrides and the working-refs line file'. The mod now writes line.txt, line.json and issues.json there, and `todo_sync.py untracked` writes `todo-sync/open_issues.json`. The README.md:590 todo.catalog row lists `todo_sync.py`, its SessionStart hook and `todo-watch` but not working-refs, which reads `retired_ids` from it (plugins/working-refs/README.md:69).",
+        "fix": [
+          "state_dir row: '`working-refs/` (the /harness:working overrides, the working-refs line files line.txt and line.json, and its gh issue cache), `todo-sync/` (the untracked rows and the open-issue list)'.",
+          "todo.catalog row: append '`working-refs` mod (its `retired_ids` hide override TODO ids)'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Plan 2027 names branch 1171-banner-todo-fixup; the work lands from 2171-banner-todo-fixup",
+        "file": "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+        "files": [
+          "docs/plans/2027_working_refs_cross_branch_ActionPlan.json",
+          "docs/plans/2027_working_refs_cross_branch_PIP.html"
+        ],
+        "lines": "6,472",
+        "reviewer": "docs, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The frozen ActionPlan sets \"branch\": \"1171-banner-todo-fixup\" (line 6) and the PIP head repeats it (\"Branch 1171-banner-todo-fixup -> main\", PIP line 107), while the PR branch is 2171-banner-todo-fixup (both branches exist locally). working-refs rule 1 compares the plan's `branch` with the current branch, and rule 2 does not hold either (base_commit 1043312 is not the PR's merge base 22e33d8), so the feature's own plan link and its refs (todo-k69m, #301) never show on the branch that ships it, and the PIP misnames the branch it records.\n\nAlso (overall): The ActionPlan's `branch` is `1171-banner-todo-fixup` (line 6), and the PIP head row says the same (PIP line 107), but the PR head branch is `2171-banner-todo-fixup`. A local branch named 1171 also exists, so the work appears to have moved to the 2171 branch. working-refs rule 1 (plan branch equals the current branch) therefore never holds on the PR branch. Rule 2 does not hold either: base_commit 1043312 differs from the branch's merge base with main, 22e33d8. So the plan 2027 link never appears on this branch's working line, though its own feature exists to show it.\n\nAlso (roast): The ActionPlan's `branch` is `1171-banner-todo-fixup` and its `base_commit` is `1043312`, but this PR's branch is `2171-banner-todo-fixup` with merge base `22e33d8`. So rule 1 (branch name) and rule 2 (merge base) of `qualifies` both fail here, and the working line on this branch never shows plan 2027, the plan for the working line itself. The PIP page head row repeats the old branch.",
+        "fix": [
+          "Refreeze plan 2027 through the plan driver with `branch` set to 2171-banner-todo-fixup (plan_api.write, then plan.py freeze, which re-renders the PIP), with the developer's OK.",
+          "If the rename to 2171 is the accident, rename the branch back so the plan, the PIP and the receipts name the branch the work came from.",
+          "Refreeze plan 2027 with `branch` set to `2171-banner-todo-fixup` through the plan driver (a routine refreeze), which re-renders the PIP head row.",
+          "Leave it, since the plan stops qualifying after the merge anyway, and note the branch move in the PR description.",
+          "Set `branch` to `2171-banner-todo-fixup` (and `base_commit` to the current merge base if rule 2 should hold), then refreeze and re-render the PIP page per the plan workflow.",
+          "Leave it as is if the plan is archived at merge, and note in the PR description that the plan link does not show on this branch."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "band-line copies the line's join rules with nothing tying them to working-refs",
+        "file": "plugins/band-line/hooks/band.tsx",
+        "files": [
+          "plugins/band-line/hooks/band.tsx",
+          "plugins/working-refs/hooks/line.ts",
+          "plugins/band-line/hooks/band.test.tsx"
+        ],
+        "lines": "24-37",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "`workingParts` rebuilds the line from `head`, `others` and `more` using its own copy of working-refs's `compose` rules: ` · ` only when both sides exist, a space between segments, and ` +N` with a space only when something precedes it. The spec picked approach A so that format lives 'in one place', but this is a second place. Every band.test.tsx fixture hand-writes a `text` that matches the parts, so if `compose` in line.ts changes, band-line silently draws a different string from the `text` the same atom carries and no test notices.",
+        "fix": [
+          "In `workingParts`, join the plain parts (each `{dim}` as its string) and return `[line.text]` when the result differs from `line.text`, so the drawn characters always equal the producer's text. Add a band.test.tsx case with a mismatched `text` that draws `text` verbatim."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "setup-statusline summary text omits the new replace-old-widget path",
+        "file": "plugins/banner-status/skills/setup-statusline/SKILL.md",
+        "files": [
+          "plugins/banner-status/skills/setup-statusline/SKILL.md",
+          "plugins/banner-status/README.md"
+        ],
+        "lines": "3,21,73-75,97-98",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Step 5 now offers to replace an existing widget's `commandPath` when it names `working-refs/line.txt` (SKILL.md:73-75), but the frontmatter description (line 3: \"the defaults when absent, else only the opt-in working-refs line\"), the Files written table (line 21: \"an existing file only gains the working-refs line, on a yes in step 5\"), the step 7 report (lines 97-98: only \"whether the working-refs line was added\") and the banner-status README bullet (README.md:43-45: \"on a yes appends only the working-refs custom-command line\") still say an existing file can only gain the line. Step 5 also does not name the question tool or header for the replace offer, unlike the add offer beside it.\n\nAlso (skill_package): Step 5 (SKILL.md:73-75) now also rewrites an existing widget's commandPath when it names working-refs/line.txt. The skill's Files-written table (SKILL.md:21: 'an existing file only gains the working-refs line, on a yes in step 5'), its frontmatter description (SKILL.md:3: 'else only the opt-in working-refs line') and the banner-status README (README.md:23 'only gains the working-refs line on a yes', README.md:43-45) still say that adding the line is the only change made to an existing file. The skill's own summary therefore contradicts its step 5.\n\nAlso (skill_package): Step 5 (SKILL.md:74-75) says to 'offer to replace that widget's commandPath' but, unlike the add-the-line offer right after it, does not say to use AskUserQuestion, which header to use or what the options are. Step 7 (SKILL.md:97-98) reports only 'whether the working-refs line was added', so a commandPath that was replaced or kept never appears in the report.",
+        "fix": [
+          "SKILL.md line 3 and line 21: add that an existing widget naming working-refs/line.txt can have its commandPath replaced on a yes; step 7: report whether the old widget was replaced; step 5: ask the replace offer with AskUserQuestion (header working-refs); banner-status README.md:43-45: add the same sentence.",
+          "Change SKILL.md:21 to say an existing file gains the working-refs line, or has an old line.txt widget's commandPath replaced, on a yes in step 5. Make the same change to the description at SKILL.md:3 and to plugins/banner-status/README.md:23 and :43-45.",
+          "At SKILL.md:74-75, ask with AskUserQuestion (header `working-refs`) and two options, **Replace the command** and **Keep the file as it is**. At SKILL.md:97-98, report whether the working-refs line was added, replaced or kept."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "working-refs manifest and marketplace descriptions still describe a current-branch-only line",
+        "file": "plugins/working-refs/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/working-refs/.claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json"
+        ],
+        "lines": "4",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The README intro, the top-level README feature row and the release notes now describe the line as the current branch's refs followed by every other branch's override. The plugin.json description (bumped to 0.2.0 in this PR) and the marketplace entry still read 'The plans, TODO ids and issues the current branch works on, as one line for the ccstatusline widget and band-line', the pre-2027 scope.",
+        "fix": [
+          "Extend both descriptions, e.g. '... the current branch works on, then every other branch's override, as one line for the ccstatusline widget and band-line'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "working-refs README still says the line is empty with no override, though other branches' overrides now fill it",
+        "file": "plugins/working-refs/README.md",
+        "lines": "19,95",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:19 says \"Nothing qualifies and no override: the line is empty\" and the State table (line 95) says `line` is null \"while nothing qualifies or overrides\". With this change buildLine (line.ts:103-108) draws every other branch's visible override even when the current branch has no plan and no override of its own, so the line is empty only when nothing qualifies and no branch has a visible override (or before git-status's first snapshot, watch.ts:418).",
+        "fix": [
+          "plugins/working-refs/README.md:19: \"Nothing qualifies and no branch has a visible override: the line is empty\"; line 95: \"while nothing qualifies and no branch's override shows\"."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "\"Every branch means one checkout\" ignores the absolute state_dir case the same README documents",
+        "file": "plugins/working-refs/README.md",
+        "lines": "40-41",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/working-refs/README.md:40-41 states that overrides.json and both issue files live under the checkout's own state_dir, \"so a d-w worktree session does not see the main checkout's overrides\". Lines 107-108 of the same file (and config.ts `under`, which keeps an absolute path) say an absolute state_dir is shared by every checkout, in which case a worktree session does see the main checkout's overrides. The two paragraphs contradict each other for that configuration.",
+        "fix": [
+          "plugins/working-refs/README.md:40-41: qualify the sentence with \"(with a relative state_dir; an absolute one is shared, and every checkout then sees the same overrides)\"."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "README says every scan rewrites each line file; line.json is skipped before the first snapshot",
+        "file": "plugins/working-refs/README.md",
+        "files": [
+          "plugins/working-refs/README.md",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "107-111",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugins/working-refs/README.md:107-111 states that after every scan the rendered text is compared with each line file's contents and rewritten on any difference, so the session.start scan empties a line another branch or an earlier session left. watch.ts:429 writes line.json only when `branch !== null`, so a session.start scan that runs before git-status's first snapshot leaves an earlier session's line.json as it was (the plan's TASK-5 asks for exactly that). The same README's Files table (line 103) already says line.json is 'Not written before git-status's first snapshot', so the paragraph contradicts the row above it.",
+        "fix": [
+          "Qualify the paragraph: line.txt is compared and rewritten after every scan; line.json only after scans that have a git-status snapshot, so a line.json from an earlier session stays (its branch stamp tells the widget it is stale) until the first snapshot."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "config.ts WorkingRefsConfig docs still describe a paths-only type; optionalPathOr duplicates pathOr",
+        "file": "plugins/working-refs/hooks/config.ts",
+        "lines": "21,23,47-52",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The WorkingRefsConfig type doc (line 21) still reads 'Project-relative (or absolute) POSIX paths the mod reads and writes under', but the type now also holds ghRepo, ghMaxAgeHours and maxChars. The stateDir field doc (line 23) still says 'the override file and the line file live under it', but line.json, issues.json and todo-sync/open_issues.json now live there too. Separately, optionalPathOr (lines 50-52) has the same body as pathOr (lines 47-48) and differs only in the fallback's type.",
+        "fix": [
+          "Reword line 21 to 'The harness values the mod reads: paths (project-relative or absolute POSIX), the gh settings and the line cap', and line 23 to 'the override, line and issue-cache files live under <state_dir>/working-refs/, the open-issue list under <state_dir>/todo-sync/'. Make pathOr generic, `const pathOr = <T extends string | null>(v: unknown, fallback: T): string | T => ...`, and delete optionalPathOr."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "line.json's 'absent stays absent while there is no line' branch is untested",
+        "file": "plugins/working-refs/hooks/watch.test.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.test.ts",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "561-566",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "watch.ts:364-373 (writeLineJson) skips the write when no file exists and the text is empty, so a branch with nothing to show never creates line.json. The new 'line.json (plan 2027)' block in watch.test.ts tests the stamped write, the no-snapshot skip and the rewrite of an existing file, but no test covers a snapshot with no line and no existing file. If that guard were removed, line.json would be written on every scan of an empty branch and no test would fail. Also, the test named 'a line that empties rewrites an existing line.json' never has a line in the session. It only covers a stale file from another branch.",
+        "fix": [
+          "Add a test: world(on) with no plans or overrides, start, then expect(fileJson(w, LINE_JSON_FILE)).toBeUndefined() and expect(w.writes.map(keyOf)).not.toContain(keyOf(LINE_JSON_FILE)).",
+          "Rename the existing test to 'no line rewrites a stale line.json with empty text, stamped with the current branch'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Probe docstrings still describe the pre-2027 triggers",
+        "file": "plugins/working-refs/hooks/watch.ts",
+        "lines": "25-26,38,509,516-520",
+        "reviewer": "runtime, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "afterToolCall's docstring (watch.ts:509) says a scan runs 'when the plans folder or the override file moved', but filesMoved (watch.ts:493-501) now also compares the catalog's and the open list's mtimes. WATCH_TOOLS (watch.ts:38) still says the watched tools 'may write a plan, its page or the override file' and leaves out the catalog and open_issues.json, which are the reason Bash/Edit calls now matter for hiding. onPrompt's docstring (watch.ts:516-520) lists branch, HEAD/tags and files, but the function now also queues a gh recheck when one is due (watch.ts:523).\n\nAlso (overall): Three prose contracts in watch.ts no longer match the code. The afterToolCall docstring (line 509) says a scan runs 'when the plans folder or the override file moved', but filesMoved (lines 493-501) now also compares the catalog and open_issues.json mtimes. The WATCH_TOOLS doc (line 38) lists only 'a plan, its page or the override file' as files those tools may write, though the catalog and the open list are now watched too. The module docstring (lines 25-26) says a scan runs 'when a recheck changed an issue's state', but runRecheck (line 450) asks for a scan only when an issue's hiding changes. An OPEN to UNKNOWN move, for example, triggers no scan. The runRecheck docstring and the README already state the narrower rule correctly.\n\nAlso (roast): `WATCH_TOOLS` (line 38) says its tools 'may write a plan, its page or the override file', and `afterToolCall` (line 509) says it scans 'when the plans folder or the override file moved'. `filesMoved` now also compares the catalog's and the open-issue list's mtimes, and the module header and README describe that, but these two comments were not updated.",
+        "fix": [
+          "watch.ts:509: 'After a file or shell tool call: a scan when the plans folder, the override file, the catalog or the open-issue list moved.'",
+          "watch.ts:38: 'Tools whose calls may write a plan, its page, the override file, the TODO catalog or the open-issue list.'",
+          "watch.ts:516-520: add 'and a gh recheck pass when an override issue fell due (isRecheckDue)' to the onPrompt docstring.",
+          "watch.ts:509: 'a scan when the plans folder's signature or the mtime of the override file, the catalog or the open-issue list moved'; watch.ts:38: 'Tools whose calls may write a plan, its page, the override file, the catalog or the open-issue list'; watch.ts:25-26: 'and when a recheck changed whether an issue hides'.",
+          "Reword line 38 to name the catalog and the open-issue list as well, and line 509 to say 'when the plans folder's signature or the override file's, the catalog's or the open list's mtime moved' (the `filesMoved` wording)."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Two docstrings lag the new behavior (band-line drawing, tool-call probe)",
+        "file": "plugins/working-refs/types/index.d.ts",
+        "files": [
+          "plugins/working-refs/types/index.d.ts",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "36",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugins/working-refs/types/index.d.ts:36 says `text` is 'drawn verbatim by band-line'. band.tsx now draws head, others and more with dim branch names, and draws `text` verbatim only for an older working-refs line without `others`. plugins/working-refs/hooks/watch.ts:509 says afterToolCall scans 'when the plans folder or the override file moved'. filesMoved (watch.ts:492-501) also compares the catalog and open-issue list mtimes, as the module header and the README Hooks row say.",
+        "fix": [
+          "index.d.ts:36: 'The full plain form (...); band-line draws its characters from head, others and more, and draws it verbatim only from an older working-refs.'",
+          "watch.ts:509: 'a scan when the plans folder, the override file, the catalog or the open-issue list moved.'"
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Open-issue list version is copied but never pinned across the mod/harness boundary",
+        "file": "tests/mods/test_working_refs_contract.py",
+        "files": [
+          "tests/mods/test_working_refs_contract.py",
+          "plugins/working-refs/hooks/hide.ts",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "86-92",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "hide.ts:22-23 declares OPEN_LIST_VERSION = 1 as the version `todo_sync.issues.write_open_issues` writes, and openListOf drops any other version (fail-open: every issue shows). The harness side writes a literal 1 (issues.py:49). test_working_refs_contract.py's docstring (lines 6-10) says the open list is part of what the test keeps in step, and the new test at lines 86-92 pins only the path (OPEN_ISSUES_PATH), not the version. Each side pins its own literal 1 (hide.test.ts:30-38, test_todo_sync_open_issues.py:44), so bumping the Python version would update only the Python test, and the mod would then quietly ignore every list.",
+        "fix": [
+          "Add a test to tests/mods/test_working_refs_contract.py that reads OPEN_LIST_VERSION (move it to mirror.ts, or read it from hide.ts with ts_number), calls issues.write_open_issues on a make_project config, and asserts the written `version` equals it.",
+          "Promote the literal in issues.py to a module constant (e.g. OPEN_ISSUES_VERSION) and pin the mirror against that constant."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Module docstring still says the statusline contract is prose or data only",
+        "file": "tests/skills/test_setup_statusline_contract.py",
+        "lines": "7-8",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring at test_setup_statusline_contract.py:7-8 ends with 'All of it is prose or data, so the test pins the shared names.' The new tests at lines 136-239 run the widget's node command in a subprocess and check what it prints (branch stamp, HEAD and worktree `.git` file resolution, the line.txt fallback). That is behavioral code under test, not a pin on shared names, so the docstring no longer describes the module.",
+        "fix": [
+          "Reword the closing sentence, e.g.: 'The skill and defaults are prose or data, so most tests pin the shared names; the widget command is code, so its tests run it under node against a temporary checkout.'"
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Widget path pin no longer tied to the harness LINE_JSON_REL constant",
+        "file": "tests/skills/test_setup_statusline_contract.py",
+        "files": [
+          "tests/skills/test_setup_statusline_contract.py",
+          "tests/mods/test_working_refs_contract.py",
+          "plugins/harness/lib/harness_lib/working_refs.py"
+        ],
+        "lines": "29-31,126",
+        "reviewer": "adv_code_tests",
+        "fix_kind": "mechanical",
+        "summary": "The widget test previously imported harness_lib.working_refs.LINE_REL, so a rename on the producer side failed the widget test. It now spells `_LINE_JSON = \"working-refs/line.json\"` as a literal. The comment says this keeps the test independent of whether the harness constant has landed, but `LINE_JSON_REL` is in the PR at plugins/harness/lib/harness_lib/working_refs.py:27. tests/mods/test_working_refs_contract.py pins `LINE_JSON_REL == mirror.LINE_JSON_PATH`, and nothing pins either of them to the widget's path. A rename that moves both producer sides in step passes every test while the ccstatusline widget keeps reading a file the mod no longer writes. The widget then falls back to the stale line.txt, or prints nothing.\n\nAttack: Change `LINE_JSON_REL` in plugins/harness/lib/harness_lib/working_refs.py:27 and `LINE_JSON_PATH` in plugins/working-refs/hooks/mirror.ts:22 to 'working-refs/line2.json', keeping the widget commandPath in plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json unchanged. Run `python -m pytest tests/skills/test_setup_statusline_contract.py tests/mods/test_working_refs_contract.py -q` and `claude plugin test plugins/working-refs`: every test passes. In a real session, though, the mod writes line2.json, the widget finds no line.json, and it prints the stale line.txt fallback and never the branch-stamped line.",
+        "fix": [
+          "In tests/skills/test_setup_statusline_contract.py, import `LINE_JSON_REL` from `harness_lib.working_refs` and assert `_LINE_JSON == LINE_JSON_REL` (or use the import in place of the literal), then remove the outdated 'whether or not the harness constant has landed' comment.",
+          "Add `assert ts_string(mirror, \"LINE_JSON_PATH\") in <widget commandPath>` to tests/mods/test_working_refs_contract.py so the mirror, the harness constant and the widget form one chain."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Test pins the repository's own .claude/ccstatusline.json to the plugin defaults",
+        "file": "tests/skills/test_setup_statusline_contract.py",
+        "files": [
+          "tests/skills/test_setup_statusline_contract.py",
+          ".claude/ccstatusline.json"
+        ],
+        "lines": "242-245",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_project_config_widget_matches_the_defaults (lines 242-245) reads _REPO/.claude/ccstatusline.json and requires its custom-command list to equal exactly the plugin defaults' widget. That file is this checkout's own dogfood configuration, not plugin content. CLAUDE.md says no test reads a real project checkout. If the developer adds a second custom-command widget or tunes the local statusline, a plugin contract test fails with no plugin defect behind it.",
+        "fix": [
+          "Remove the test and keep .claude/ccstatusline.json in sync by hand or through the setup-statusline skill.",
+          "Relax it to check only that the defaults' commandPath appears among the project config's custom-command widgets, with a comment that it guards the repo's dogfood config."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M3",
+      "classification": "architectural_ambiguity",
+      "reason": "frozen plan 2027: fixing branch needs the developer's refreeze OK; freeze --refreeze writes git tags (barred here). Rename-back vs refreeze turns on which name was intended"
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 325 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":10,\"first_sha\":\"a6972d32e88936008f19602ae1b8852b25056321\",\"headRefName\":\"2171-banner-todo-fixup\",\"headRefOid\":\"63fc6b3892919494794c4cbb65cf69df89b24059\",\"last_sha\":\"63fc6b3892919494794c4cbb65cf69df89b24059\",\"mergeCommit\":null,\"number\":325,\"state\":\"OPEN\",\"title\":\"2171 banner todo fixup\",\"url\":\"https://github.com/t968rs/operator-straps/pull/325\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (27 checked, 1 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 27,
+          "findings_refuted": 1,
+          "findings_upheld": 26,
+          "code_findings": 2
+        },
+        "refuted_ids": [
+          "M11"
+        ],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "2171-banner-todo-fixup",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "2171-banner-todo-fixup",
+        "head_ref_name": "2171-banner-todo-fixup",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "a6972d32e88936008f19602ae1b8852b25056321",
+        "head_sha": "63fc6b3892919494794c4cbb65cf69df89b24059",
+        "base_ancestor_command": "git merge-base --is-ancestor a6972d32e88936008f19602ae1b8852b25056321 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 63fc6b3892919494794c4cbb65cf69df89b24059 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M11",
+      "status": "REFUTED",
+      "date": "2026-11-19",
+      "evidence": "plugins/working-refs/hooks/watch.ts:429 calls writeLineJson whenever branch is non-null; plugins/working-refs/hooks/watch.test.ts:358-365 (default branch 'feat', no line, no line.json) asserts w.writes toEqual([]) and watch.test.ts:503-509 asserts writes equal only [LINE_FILE], so removing the guard at watch.ts:370 writes line.json and fails both tests"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - watch.ts part: no edit; watch.ts:429 already writes line.json only when branch !== null, which is the behavior the README paragraph (other fixer's part) must be qualified to describe; README scan paragraph: line.txt is compared and rewritten after every scan; line.json follows only after a scan with a git-status snapshot, so an earlier session's line.json stays until the first snapshot; watch.ts is the other part"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - WorkingRefsConfig doc names paths, gh settings and line cap; stateDir doc names the working-refs and todo-sync files; pathOr made generic over string | null and optionalPathOr deleted"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - WATCH_TOOLS doc names the TODO catalog and open-issue list; afterToolCall doc uses the filesMoved wording; onPrompt doc adds the gh recheck pass when isRecheckDue; module header says a recheck scans when an issue's hiding changed"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - index.d.ts text doc says band-line draws from head, others and more and draws text verbatim only from an older working-refs; watch.ts afterToolCall doc names the catalog and open list mtimes"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - runRecheck treats the issue-cache write as a precondition for the follow-up scan: on failure it sets memo.recheckDueAt to now + max age and returns; the nothing-due early return also refreshes memo.recheckDueAt so a prompt stops re-queuing empty passes"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - SKILL.md frontmatter description and Files-written row now name the replace of an old working-refs/line.txt widget's commandPath on a yes; step 5 asks the replace offer with AskUserQuestion (header working-refs) and the options Replace the command / Keep the file as it is; step 7 reports added, replaced or kept; banner-status README Files row and working-refs bullet carry the same replace sentence"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - plugin.json description extended to 'then every other branch's override, as one line for the ccstatusline widget and band-line'; marketplace.json is the other part; marketplace.json working-refs description extended to every other branch's override"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - README intro line 19 now reads 'Nothing qualifies and no branch has a visible override'; State table line field reads 'while nothing qualifies and no branch's override shows'"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - README Every-branch paragraph qualifies the state_dir sentence with 'with a relative state_dir; an absolute one is shared, and every checkout then sees the same overrides'"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - issues.py promotes the open-list version to OPEN_ISSUES_VERSION and write_open_issues writes it; test_working_refs_contract.py adds test_open_list_version_matches_the_writer pinning hide.ts OPEN_LIST_VERSION (ts_number) to it and notes the version in the docstring; hide.ts comment names the constant and the pin"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - module docstring now says the skill and defaults are prose or data pinned by shared names, while the widget command is code its tests run under node against a temporary checkout"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - _LINE_JSON now takes harness_lib.working_refs.LINE_JSON_REL (imported) instead of a literal, and the outdated 'whether or not the harness constant has landed' comment is replaced; tests/mods/test_working_refs_contract.py already pins LINE_JSON_REL to mirror LINE_JSON_PATH, so the chain closes without an edit there; No edit in this part: LINE_JSON_REL is defined at plugins/harness/lib/harness_lib/working_refs.py:27 and is the constant the widget pin must match. The pin fix (import LINE_JSON_REL or assert against the mirror path) is applied in tests/skills/test_setup_statusline_contract.py by the other part's fixer."
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - test renamed test_project_config_carries_the_defaults_widget and relaxed to require only that the defaults' commandPath appears among the project config's custom-command widgets, with a comment that it guards the repo's dogfood config; .claude/ccstatusline.json: the relaxed check holds, no edit needed"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - README.md:46 Branch Working Refs row now says an override's retired TODO id or closed issue hides, and plan refs never hide"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - README.md:561 state_dir row lists working-refs line.txt, line.json, issues.json and todo-sync/ (untracked rows, open_issues.json); README.md:590 todo.catalog row adds the working-refs mod and its retired_ids"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - band.tsx workingParts now joins the pieces and draws line.text verbatim, plain, when the join differs; band.test.tsx adds a mismatched-text case; line.ts cited as the compose format owner, no edit needed"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "63fc6b3 (working-tree snapshot; developer commits) - ghStateOf maps gh MERGED to CLOSED through a new issueStateOf helper, so a merged PR number in an override hides; watch.test.ts gains a MERGED case; README and the hide.test.ts PR-number test name state the MERGED-as-CLOSED rule"
+    }
+  ]
+}
