@@ -154,20 +154,31 @@ drafts in the configured artifact folders. `/harness:c-msg <change>` rewrites th
 
 ```text
 /harness:add-bookmark keep the public API frozen until PR 60 merges
+/harness:add-bookmark --standing run the tests through pytest -c pyproject.toml
 /harness:add-bookmark --list
+/harness:add-bookmark --edit 2 keep the public API frozen until PR 61 merges
+/harness:add-bookmark --remove 2
 /harness:add-bookmark --clear
 ```
 
-| Form                                     | Effect                                      |
-|------------------------------------------|---------------------------------------------|
-| `/harness:add-bookmark [--] <note text>` | Store one note (a leading `--` is optional) |
-| `/harness:add-bookmark --list`           | Print the stored notes, numbered            |
-| `/harness:add-bookmark --clear`          | Drop every stored note                      |
+| Form                                         | Effect                                                              |
+|----------------------------------------------|---------------------------------------------------------------------|
+| `/harness:add-bookmark [--] <note text>`     | Store one note on the current branch (a leading `--` is optional)   |
+| `/harness:add-bookmark --standing <text>`    | Store one note with no branch; it applies on every branch           |
+| `/harness:add-bookmark --list`               | Print the stored notes, numbered                                    |
+| `/harness:add-bookmark --remove N`           | Drop note N of the `--list` numbering and print the list            |
+| `/harness:add-bookmark --edit N <text>`      | Replace the text of note N, keeping its branch, and print the list  |
+| `/harness:add-bookmark --clear`              | Drop every stored note                                              |
+| `/session-bookmark notes`                    | Print the same numbered list through the mod, with no model turn    |
 
 - The session that runs the command writes the stored line, so a note that points at the conversation
   (`the current status of the banner options`, `what we built`) is stored as the branch, versions, ids and
   pending checks it refers to. Text that stands alone is stored as written, apart from quoting and length.
-- At most 20 notes; `--clear` frees the slots. A note over 300 characters, or a blank one, is refused.
+- A note records the branch checked out when it is added (none on a detached HEAD or under `--standing`). The
+  list marks a note from another branch `[<branch>; now on <current>]` and never hides it; the session confirms
+  such a note with the developer before applying or skipping it.
+- At most 20 notes; `--remove N` or `--clear` frees slots. A note over 300 characters, or a blank one, is
+  refused.
 - Notes live in `session-bookmark/notes.json` under `state_dir` (default `.claude/state/harness`); gitignore that
   folder like the other runtime state.
 - The file is versioned (`"version": 1`). A file that is not JSON or has another version is refused, not
