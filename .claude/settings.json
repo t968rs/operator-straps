@@ -1,4 +1,9 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "ccstatusline --config E:/automation/operator-straps/.claude/ccstatusline.json",
+    "padding": 0
+  },
   "enabledPlugins": {
     "harness@operator-straps": true,
     "agent-watcher@operator-straps": true,
@@ -9,7 +14,8 @@
     "bubble-stamp@operator-straps": true,
     "superpowers-lt@operator-straps": true,
     "banner-status@operator-straps": true,
-    "parallel2-lanes@operator-straps": true
+    "parallel2-lanes@operator-straps": true,
+    "working-refs@operator-straps": true
   },
   "extraKnownMarketplaces": {
     "operator-straps": {
@@ -18,10 +24,5 @@
         "repo": "t968rs/operator-straps"
       }
     }
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "ccstatusline --config E:/automation/operator-straps/.claude/ccstatusline.json",
-    "padding": 0
   }
 }

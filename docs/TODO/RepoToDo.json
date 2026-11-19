@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 78,
-    "needs_decision": 47,
+    "items": 75,
+    "needs_decision": 44,
     "trackers": 0,
-    "close_candidates": 35,
+    "close_candidates": 38,
     "by_status": {
-      "NEEDS_DECISION": 47,
+      "NEEDS_DECISION": 44,
       "OPEN": 31
     },
     "by_impact": {
-      "dev_velocity": 45,
+      "dev_velocity": 42,
       "docs_tooling": 24,
       "maintainability": 2,
       "runtime_failure": 5,
@@ -73,14 +73,14 @@
       "silent_wrong_output": 1
     },
     "by_loe": {
-      "XS": 5,
-      "S": 27,
-      "M": 33,
+      "XS": 4,
+      "S": 26,
+      "M": 32,
       "L": 12,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 70,
+      "gh_issue": 67,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -326,65 +326,8 @@
       "why_ranked": "Severity 2 cosmetic defect published without warning on every built page, silent_wrong_output impact, S size."
     },
     {
-      "id": "todo-545g",
-      "rank": 5,
-      "title": "add-bookmark: remove or edit a single stored note instead of clear-and-re-add",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "A remove N (and edit N) subcommand in add-bookmark, separate add-bookmark and remove-bookmark skills, or one edit-bookmarks skill?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#272",
-          "url": "https://github.com/t968rs/operator-straps/issues/272"
-        }
-      ],
-      "gh_issues": [
-        272
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "Dropping one stale bookmark note today means clearing every note and re-adding the rest. Checked: plugins/harness/skills/add-bookmark/commands/add_note.py:118-121 defines only the add, list and clear subcommands (functions at :91, :99, :104). The issue title leaves open whether this is a remove subcommand, separate add-bookmark and remove-bookmark skills, or one edit-bookmarks skill. The session-bookmark mod reads the same notes (plugins/session-bookmark/hooks/notes.ts). Related: todo-v8mh (branch-scoped notes go stale silently).",
-      "proposed_change": "Add `remove N` (and optionally `edit N <text>`) to add_note.py, printing the numbered list after the change; document it in plugins/harness/skills/add-bookmark/SKILL.md (or a new skill, per the decision) and add tests in tests/skills/test_add_note_script.py.",
-      "files": [
-        "plugins/harness/skills/add-bookmark/commands/add_note.py",
-        "plugins/harness/skills/add-bookmark/SKILL.md",
-        "tests/skills/test_add_note_script.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "One script's subcommands; the notes file format is unchanged.",
-        "consumers": [
-          "plugins/session-bookmark/hooks/notes.ts"
-        ]
-      },
-      "loe": {
-        "size": "XS",
-        "reasoning": "One subcommand over an existing list file, plus tests and a SKILL.md line."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 2.0,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 1,
-          "blast_factor": 1.0,
-          "cost": 1.0,
-          "base_score": 2.0,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 debt (clear and re-add to drop one note), dev_velocity impact, XS size."
-    },
-    {
       "id": "todo-afq8",
-      "rank": 6,
+      "rank": 5,
       "title": "merge-commit-msg: relax the squash title check to capitalized, not the branch name, no leading digits, no trailing separator",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -445,7 +388,7 @@
     },
     {
       "id": "todo-7jb6",
-      "rank": 7,
+      "rank": 6,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -499,7 +442,7 @@
     },
     {
       "id": "todo-7vfg",
-      "rank": 8,
+      "rank": 7,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -558,65 +501,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (a repeated five-reviewer fan-out), dev_velocity impact, S size."
     },
     {
-      "id": "todo-ys3k",
-      "rank": 9,
-      "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
-      "kind": "bug",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Is a third-party mod that ends or skips the session.compact chain ours to work around (for example, detect the compaction on the next prompt.submit instead), or out of scope; and is session-bookmark affected or only todo-watch?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#204",
-          "url": "https://github.com/t968rs/operator-straps/issues/204"
-        }
-      ],
-      "gh_issues": [
-        204
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue title names session-bookmark, but the transcript says 'todo-watch: its session.compact hook was skipped. \"cc-plugin-sec-default\" runs first and sent the event on past it.' Checked: plugins/todo-watch/hooks/checks.ts:584-588 sets `isContextForced` only after `next(e)` and only when `isMainCompaction` (:515-516) sees `result.skip === undefined`; plugins/session-bookmark/hooks/bookmark.ts:220-231 likewise returns early when `result.skip !== undefined`. A mod earlier in the chain that never calls `next` or returns a skip result would bypass both. What cc-plugin-sec-default actually returns is unverified.",
-      "proposed_change": "Reproduce with a mod test that registers an earlier session.compact handler returning without `next` and one returning a skip result; per the decision, make todo-watch re-force its TODO_SYNC line on the first prompt after any compaction it can detect (and give session-bookmark the same fallback), or document the ordering limit in each mod's README.",
-      "files": [
-        "plugins/todo-watch/hooks/checks.ts",
-        "plugins/session-bookmark/hooks/bookmark.ts"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "Two mods' compaction handlers.",
-        "consumers": [
-          "plugins/todo-watch/hooks/checks.ts",
-          "plugins/session-bookmark/hooks/bookmark.ts"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "A reproduction test per mod and a small fallback."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.4142,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 1.4142,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 defect that needs another mod installed, dev_velocity impact, S size."
-    },
-    {
       "id": "todo-rst5",
-      "rank": 10,
+      "rank": 8,
       "title": "todo_sync add: accept catalog_entry_ids so a new item can cite a research entry (clears T4)",
       "kind": "feature",
       "status": "OPEN",
@@ -676,7 +562,7 @@
     },
     {
       "id": "todo-n48z",
-      "rank": 11,
+      "rank": 9,
       "title": "pr-sum: add --level 0, brief summary text only (no tables, no diagrams)",
       "kind": "feature",
       "status": "OPEN",
@@ -737,7 +623,7 @@
     },
     {
       "id": "todo-mbt8",
-      "rank": 12,
+      "rank": 10,
       "title": "pr-sum: add --gh to write the summary to the PR description or a comment, still saving the .md",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -795,7 +681,7 @@
     },
     {
       "id": "todo-5rze",
-      "rank": 13,
+      "rank": 11,
       "title": "strap: refreeze review-local, stale since pr_review.py changed in 0ae8c1c (#239) and again in 757277a",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -859,7 +745,7 @@
     },
     {
       "id": "todo-v62t",
-      "rank": 14,
+      "rank": 12,
       "title": "Slash command that prints the stored bookmark notes without a model turn",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -878,7 +764,7 @@
       ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "The issue asks for a slash command that shows the current bookmark notes, what add-bookmark --list prints, without waiting on an agent or model turn. Checked: --list today runs through the add-bookmark skill, so the model runs the script and relays its output (plugins/harness/skills/add-bookmark/SKILL.md:38-41, :68-72); the script's list subcommand is plugins/harness/skills/add-bookmark/commands/add_note.py:99-101 (parser at :120). The session-bookmark mod registers only its compaction bookmark (plugins/session-bookmark/hooks/register.ts) and reads the same notes file (plugins/session-bookmark/hooks/notes.ts). Other mods hook prompt.submit (plugins/git-status/hooks/status.ts:438, plugins/todo-watch/hooks/checks.ts:665), and a git-status test drops a prompt with drop: 'held' (plugins/git-status/hooks/status.test.ts:98), but whether a mod can print text to the developer and end the turn without the model is unverified. No skill under plugins/ uses shell injection in its body. Related: todo-545g (remove or edit a single note).",
+      "summary": "The issue asks for a slash command that shows the current bookmark notes, what add-bookmark --list prints, without waiting on an agent or model turn. Checked: --list today runs through the add-bookmark skill, so the model runs the script and relays its output (plugins/harness/skills/add-bookmark/SKILL.md:38-41, :68-72); the script's list subcommand is plugins/harness/skills/add-bookmark/commands/add_note.py:99-101 (parser at :120). The session-bookmark mod registers only its compaction bookmark (plugins/session-bookmark/hooks/register.ts) and reads the same notes file (plugins/session-bookmark/hooks/notes.ts). Other mods hook prompt.submit (plugins/git-status/hooks/status.ts:438, plugins/todo-watch/hooks/checks.ts:665), and a git-status test drops a prompt with drop: 'held' (plugins/git-status/hooks/status.test.ts:98), but whether a mod can print text to the developer and end the turn without the model is unverified. No skill under plugins/ uses shell injection in its body. Related: removing or editing a single note (#272) landed in dd37310 (PR #322).",
       "proposed_change": "Per the decision: either add a prompt.submit handler to session-bookmark that matches a /bookmarks (or similar) prompt, reads the notes through notes.ts and shows them without passing the prompt on, with a mod test; or add a list-only skill that injects the add_note.py list output and tells the model to relay it verbatim. Document the command in the add-bookmark SKILL.md and the session-bookmark README.",
       "files": [
         "plugins/session-bookmark/hooks/register.ts",
@@ -916,7 +802,7 @@
     },
     {
       "id": "todo-67gw",
-      "rank": 15,
+      "rank": 13,
       "title": "plan.py relink writes the base and tag without checking anchors and sweeps at the new base",
       "kind": "bug",
       "status": "OPEN",
@@ -976,7 +862,7 @@
     },
     {
       "id": "todo-5qsm",
-      "rank": 16,
+      "rank": 14,
       "title": "strap relink keeps the bare 'pass --to REF' hint and writes a --to base without checking it",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1036,7 +922,7 @@
     },
     {
       "id": "todo-yu6v",
-      "rank": 17,
+      "rank": 15,
       "title": "Working refs: clear another branch's override (`/harness:working --clear --branch NAME`)",
       "kind": "feature",
       "status": "OPEN",
@@ -1052,7 +938,7 @@
       "gh_issues": [],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "Per the note: `/harness:working --clear` acts only on the current branch (plugins/harness/skills/working/commands/working.py, do_clear), so an override left on a deleted branch or on a detached HEAD cannot be cleared from the working list and stays on every line until its TODO ids retire or its issues close. Plan 2027 (docs/plans/2027_working_refs_cross_branch_ActionPlan.json, refrozen r1.4) records this as a deferred_to_future_plans entry, and the spec docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md lists it under Non-goals. Per the session: the developer wants the working list easy to clear (one of three stated purposes: close out, monitor, clear); overrides live in <state_dir>/working-refs/overrides.json keyed by branch, with (detached) for a detached HEAD; the helper is clear_override in plugins/harness/lib/harness_lib/working_refs.py. Deferred from local review local-1171-banner-todo-fixup finding M17 (developer decision 2026-11-19). Related: todo-k69m (#301, working refs in the banner). Local-only, no GitHub issue. Research level 0: the code paths above are named by the note and confirmed only to exist; the do_clear behaviour is taken from the note, unverified.",
+      "summary": "Per the note: `/harness:working --clear` acts only on the current branch (plugins/harness/skills/working/commands/working.py, do_clear), so an override left on a deleted branch or on a detached HEAD cannot be cleared from the working list and stays on every line until its TODO ids retire or its issues close. Plan 2027 (docs/plans/2027_working_refs_cross_branch_ActionPlan.json, refrozen r1.4) records this as a deferred_to_future_plans entry, and the spec docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md lists it under Non-goals. Per the session: the developer wants the working list easy to clear (one of three stated purposes: close out, monitor, clear); overrides live in <state_dir>/working-refs/overrides.json keyed by branch, with (detached) for a detached HEAD; the helper is clear_override in plugins/harness/lib/harness_lib/working_refs.py. Deferred from local review local-1171-banner-todo-fixup finding M17 (developer decision 2026-11-19). Related: #301 (working refs in the banner), landed in PR #319 (368b117). Local-only, no GitHub issue. Research level 0: the code paths above are named by the note and confirmed only to exist; the do_clear behaviour is taken from the note, unverified.",
       "proposed_change": "Add a `--branch NAME` option to `/harness:working --clear` that clears the override keyed by NAME through clear_override, and keep the current-branch behaviour when the option is absent. Accept `(detached)` as NAME for a detached-HEAD override. Do not require NAME to exist as a local branch, since the point is clearing overrides whose branch is gone. Update plugins/harness/skills/working/SKILL.md to document the flag and remove the Non-goals line in the spec once it lands. Open choice for the implementer: whether `--branch` also takes a list or a `--all-stale` form; not in scope unless the developer asks.",
       "files": [
         "plugins/harness/skills/working/commands/working.py",
@@ -1092,7 +978,7 @@
     },
     {
       "id": "todo-9yns",
-      "rank": 18,
+      "rank": 16,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -1153,7 +1039,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 19,
+      "rank": 17,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1213,7 +1099,7 @@
     },
     {
       "id": "todo-g3zz",
-      "rank": 20,
+      "rank": 18,
       "title": "a-w attach drops a receipts plan's gitignored live.js, so the target's HTML PIP shows every item pending: rebuild live.js on attach and warn in plan.py check",
       "kind": "bug",
       "status": "OPEN",
@@ -1281,7 +1167,7 @@
     },
     {
       "id": "todo-jrz2",
-      "rank": 21,
+      "rank": 19,
       "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1343,7 +1229,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 22,
+      "rank": 20,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1404,7 +1290,7 @@
     },
     {
       "id": "todo-2r6p",
-      "rank": 23,
+      "rank": 21,
       "title": "Narrow the PostToolUse Write|Edit|Bash hook that launches validate_pr_json_schema.py",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1463,7 +1349,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 24,
+      "rank": 22,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1521,75 +1407,8 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
-      "id": "todo-k69m",
-      "rank": 25,
-      "title": "Working refs in the banner: show the TODO ids and GitHub issues being worked on (`Working: todo-cvm4 (283)`)",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Which surface shows the line (a band-line second line, a ccstatusline custom-command widget, or both; or a new standalone mod), how the refs are set (an explicit skill command keyed by branch, or also written by todo-editor and write-plan runs), and what the numbers in the example mean (todo-cvm4 cites #283; #238 and #241 are unrelated open issues)?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#301",
-          "url": "https://github.com/t968rs/operator-straps/issues/301"
-        }
-      ],
-      "gh_issues": [
-        301
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The developer asks for a mod (preferably in the banner display) that keeps the TODO and GitHub issue refs being worked on on screen, e.g. `Working: todo-cvm4 (238, 241)`. Per the session: the refs are tracked by hand today, as a session-bookmark note tying branch 1162-plan-skill-tag-archive to #284 (plan.py archive, since landed in PR #299, 73dc114) with related todo-cvm4 (#283) and #265 (driver tags, since landed in PR #271, 7f5aedf); the notes file in the main checkout now holds no notes (.claude/state/harness/session-bookmark/notes.json). Checked: todo-cvm4 cites #283 (docs/TODO/RepoToDo.json:2122-2138); #238 (merge-commit-msg squash title check) and #241 (todo_sync add catalog_entry_ids) are open issues unrelated to it, so the numbers in the example are unverified (illustrative, a typo of 283, or other issues). Surfaces: band-line draws the oStraps banner above the prompt as one line built by formatBanner (plugins/band-line/hooks/banner.ts:98-102) and already reads another mod's state atom (git-status's `git`, plugins/band-line/hooks/band.tsx:12); banner-status's ccstatusline option is the preferred banner (plugins/banner-status/README.md, option table) and its defaults carry `customCommandCacheTtlSeconds` (plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json:38), so a custom-command widget could print the same line (widget support unverified); git-status's own line is the fallback. A user on ccstatusline never sees a band-line segment. Branch names cannot supply the refs: local branches carry a sequence prefix, not an issue number (1166-todo-snapshot-table-format, 1162-plan-skill-tag-archive for #284, 2162/3162-skill-tag-archive; git branch). session-bookmark notes are free text with no scope field (plugins/session-bookmark/hooks/notes.ts:59-64, parseNotes keeps text only) and are read only at compaction, so they are no source either. Mods cannot read harness files: they copy `state_dir` (plugins/session-bookmark/hooks/notes.ts:11, stateDirOf) or the whole config (plugins/todo-watch/hooks/config.ts) and a test pins the copy. Related catalog items: todo-v8mh (branch-scoped notes go stale silently, #279), todo-jq3x (TODO item sets a session /goal through a session-bookmark hook, #282), todo-545g (edit a single bookmark note, #272). No open issue covers a working-refs banner (gh issue list searches for banner, status line, band, mod).",
-      "proposed_change": "Recommended: a small refs store plus a band-line segment, not a ninth mod. (1) A harness skill (e.g. `/harness:working todo-cvm4 [#283] | --clear | --list`) whose script writes `<state_dir>/working-refs/refs.json` keyed by branch (`{version, refs: {<branch>: {todo_ids, issues, set_at}}}`), canonicalizing ids as todo_sync does and filling each TODO id's `gh_issues` from the catalog when no issue is named; keying by branch keeps a ref from following the developer onto the next branch (the staleness todo-v8mh describes). (2) band-line reads that file for git-status's current branch (it already holds the snapshot) and draws `Working: todo-cvm4 (283)` as a second line of its Box (plugins/band-line/hooks/band.tsx), leaving the one-line width budget of formatBanner alone; the file is re-read on `prompt.submit`/`turn.complete` by mtime, as todo-watch does (M6). band-line then copies `state_dir` like session-bookmark's notes.ts, with a contract test pinning the copy and the file shape against the script. (3) Optionally the script also prints the line for a ccstatusline custom-command widget, and setup-statusline offers it, so the preferred banner shows it too. Alternatives weighed: a new `working-refs` mod owning the state and drawing its own band (cleanest ownership, but a third AbovePrompt band and another install; band-line would need it as an optional dependency to merge the line); extending todo-watch (it already reads the catalog and harness.json, but it is inactive without `todo.folder` and its band is dismissable, wrong for a persistent line); branch-name parsing (rejected: prefixes are not issue numbers). Any new config key (e.g. a toggle or label) takes the four harness places plus a `hooks/config.ts` mirror and a `tests/mods/test_band-line_config_mirror.py`-style test. Bump band-line and harness versions and add the release-notes line.",
-      "code_snippet": "plugins/band-line/hooks/banner.ts:98\nexport const formatBanner = (g: GitSnapshot, s: SessionFigures, columns = 120): string => {\n  const tail = `${commitsSegment(g)}${sessionSegment(s)}`\n  const head = `${needsAttention(g) ? WARNING : ''}${LABEL} ${branchSegment(g)} · ${treeSegment(g)}`\n  return clip(head, Math.max(columns - tail.length, MIN_HEAD)) + tail\n}",
-      "files": [
-        "plugins/band-line/hooks/band.tsx",
-        "plugins/band-line/hooks/banner.ts",
-        "plugins/band-line/types/index.d.ts",
-        "plugins/band-line/README.md",
-        "plugins/band-line/.claude-plugin/plugin.json",
-        "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json",
-        "plugins/session-bookmark/hooks/notes.ts",
-        "plugins/todo-watch/hooks/config.ts"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "Additive display and a new state file; band-line's existing banner line and git-status's snapshot contract stay as they are, and no driver or catalog writer changes.",
-        "consumers": [
-          "plugins/band-line/hooks/band.tsx (ui.render AbovePrompt reads git-status's git atom)",
-          "plugins/band-line/hooks/band.test.tsx",
-          "plugins/banner-status/skills/setup-statusline/SKILL.md (ccstatusline option)",
-          ".github/workflows/ci.yml:128 (claude plugin test over the mods)",
-          ".claude-plugin/marketplace.json (band-line entry)"
-        ]
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "A skill script with its refs file and catalog lookup, a band-line read and render with tests, a contract test for the copied state_dir and file shape, README and version bumps; a new mod instead would add a manifest, marketplace entry and CI line."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.0,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 4,
-          "blast_factor": 1.0,
-          "cost": 4.0,
-          "base_score": 1.0,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 missing workflow aid (refs tracked by hand in bookmark notes), dev_velocity impact, M size."
-    },
-    {
       "id": "todo-kj3z",
-      "rank": 26,
+      "rank": 23,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1646,7 +1465,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 27,
+      "rank": 24,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -1706,7 +1525,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 28,
+      "rank": 25,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1765,7 +1584,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 29,
+      "rank": 26,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1824,7 +1643,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 30,
+      "rank": 27,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1886,7 +1705,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 31,
+      "rank": 28,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1945,7 +1764,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 32,
+      "rank": 29,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2009,7 +1828,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 33,
+      "rank": 30,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -2068,7 +1887,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 34,
+      "rank": 31,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2129,7 +1948,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 35,
+      "rank": 32,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2191,7 +2010,7 @@
     },
     {
       "id": "todo-v8mh",
-      "rank": 36,
+      "rank": 33,
       "title": "session-bookmark: a branch-scoped note goes stale silently after the branch changes",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2213,7 +2032,7 @@
         204
       ],
       "catalog_entry_ids": [],
-      "summary": "Per the session: note 1 read 'For each turn on branch 1153-strap-writing-docstrings: determine the best commit grouping and dispatch those instructions to harness:branch-commit-msg HEAD -- <instructions>'; on 1155-local-review-strapping the session read the branch name as a scope limit, skipped the per-turn dispatch for many turns without saying so, and the developer ran /harness:branch-commit-msg HEAD by hand. Note 2 (next branch after 1154 develops #252 / todo-kex8) was also stale. Checked: a note carries no scope but its text: add_note.py:91-96 stores only added and text; notes.ts:59-64 parseNotes returns the text alone and drops added; bookmark.ts:86-91 prints the notes as a numbered list with no date or branch, while bookmark.ts:100 prints the current branch apart from them, so nothing compares the two. add-bookmark SKILL.md:53-56 tells the writer to spell out the branch in the text, which is how branch scoping ends up as free prose. RESUME_HINT (bookmark.ts:42-45) says nothing about notes, and plugins/harness/rules/HARNESS_RULES.md has no rule on stored notes (no match for bookmark). No stale-note check exists today; whether the session would follow a marked note is unverified. Related: #272 (open, untracked) asks for removing or editing one note, which would let a stale note be dropped without clear; todo-ys3k (#204) is the only catalog item on bookmark.ts.",
+      "summary": "Per the session: note 1 read 'For each turn on branch 1153-strap-writing-docstrings: determine the best commit grouping and dispatch those instructions to harness:branch-commit-msg HEAD -- <instructions>'; on 1155-local-review-strapping the session read the branch name as a scope limit, skipped the per-turn dispatch for many turns without saying so, and the developer ran /harness:branch-commit-msg HEAD by hand. Note 2 (next branch after 1154 develops #252 / todo-kex8) was also stale. Checked: a note carries no scope but its text: add_note.py:91-96 stores only added and text; notes.ts:59-64 parseNotes returns the text alone and drops added; bookmark.ts:86-91 prints the notes as a numbered list with no date or branch, while bookmark.ts:100 prints the current branch apart from them, so nothing compares the two. add-bookmark SKILL.md:53-56 tells the writer to spell out the branch in the text, which is how branch scoping ends up as free prose. RESUME_HINT (bookmark.ts:42-45) says nothing about notes, and plugins/harness/rules/HARNESS_RULES.md has no rule on stored notes (no match for bookmark). No stale-note check exists today; whether the session would follow a marked note is unverified. Related: removing or editing one note (#272) landed in dd37310 (PR #322), so a stale note can be dropped without clear; the session.append compaction fallback for #204 landed in bookmark.ts in 3050174 (PR #322).",
       "proposed_change": "Per the decision. (a) Mod only: in formatBookmark, mark a note whose text names a branch other than b.branch (match against branch-like tokens, or the local branch list) with a visible stale marker and ask the session to confirm it with the developer before applying or dropping it; heuristic, no schema change. (b) Structured scope: add_note.py records the current branch (or takes --branch / --standing) in each entry; parseNotes keeps the field; noteLines prints it and flags a mismatch with b.branch; a standing note prints as applying on every branch. Needs the field mirrored in notes.ts and pinned in test_session_bookmark_notes_contract.py, and a NOTES_VERSION decision (an optional field avoids the bump). (c) Rule: HARNESS_RULES.md (and the bookmark's notes header) says a session that judges a stored note not to apply states that and asks, never drops it silently. (b) plus a one-line (c) header is the most robust; (a) is the cheapest. Pair with #272 so a stale note can be removed singly.",
       "files": [
         "plugins/session-bookmark/hooks/bookmark.ts",
@@ -2259,7 +2078,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 37,
+      "rank": 34,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2318,7 +2137,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 38,
+      "rank": 35,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2376,7 +2195,7 @@
     },
     {
       "id": "todo-e2jv",
-      "rank": 39,
+      "rank": 36,
       "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
       "kind": "feature",
       "status": "OPEN",
@@ -2443,7 +2262,7 @@
     },
     {
       "id": "todo-zes6",
-      "rank": 40,
+      "rank": 37,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "kind": "feature",
       "status": "OPEN",
@@ -2502,7 +2321,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 41,
+      "rank": 38,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2557,7 +2376,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 42,
+      "rank": 39,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -2618,7 +2437,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 43,
+      "rank": 40,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "kind": "bug",
       "status": "OPEN",
@@ -2668,7 +2487,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 44,
+      "rank": 41,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2716,7 +2535,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 45,
+      "rank": 42,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2791,7 +2610,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 46,
+      "rank": 43,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2849,7 +2668,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 47,
+      "rank": 44,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -2905,7 +2724,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 48,
+      "rank": 45,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2968,7 +2787,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 49,
+      "rank": 46,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -3028,7 +2847,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 50,
+      "rank": 47,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -3089,7 +2908,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 51,
+      "rank": 48,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3156,7 +2975,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 52,
+      "rank": 49,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3232,7 +3051,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 53,
+      "rank": 50,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3292,7 +3111,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 54,
+      "rank": 51,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3369,7 +3188,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 55,
+      "rank": 52,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -3431,7 +3250,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 56,
+      "rank": 53,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3490,7 +3309,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 57,
+      "rank": 54,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3551,7 +3370,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 58,
+      "rank": 55,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3609,7 +3428,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 59,
+      "rank": 56,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3667,7 +3486,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 60,
+      "rank": 57,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -3720,7 +3539,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 61,
+      "rank": 58,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -3774,7 +3593,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 62,
+      "rank": 59,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3830,7 +3649,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 63,
+      "rank": 60,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3884,7 +3703,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 64,
+      "rank": 61,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -3944,7 +3763,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 65,
+      "rank": 62,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3999,7 +3818,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 66,
+      "rank": 63,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4054,7 +3873,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 67,
+      "rank": 64,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -4105,7 +3924,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 68,
+      "rank": 65,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4162,7 +3981,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 69,
+      "rank": 66,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4215,7 +4034,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 70,
+      "rank": 67,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4270,7 +4089,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 71,
+      "rank": 68,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4331,7 +4150,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 72,
+      "rank": 69,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -4389,7 +4208,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 73,
+      "rank": 70,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4444,7 +4263,7 @@
     },
     {
       "id": "todo-jt35",
-      "rank": 74,
+      "rank": 71,
       "title": "Config key for a per-project browser icon on the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4504,7 +4323,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 75,
+      "rank": 72,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4567,7 +4386,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 76,
+      "rank": 73,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -4622,7 +4441,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 77,
+      "rank": 74,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4673,7 +4492,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 78,
+      "rank": 75,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4736,6 +4555,33 @@
   ],
   "trackers": [],
   "close_candidates": [
+    {
+      "number": 272,
+      "title": "`add-bookmark` + `remove-bookmark` --OR-- `edit-bookmarks`",
+      "url": "https://github.com/t968rs/operator-straps/issues/272",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #322 (\"Feature(add-bookmark): branch-tagged session notes\") is MERGED at 2026-11-19T08:20:58Z as 1043312, on main (`git branch -a --contains 1043312`). It carries dd37310, which adds `remove N` and `edit N TEXT` subcommands to plugins/harness/skills/add-bookmark/commands/add_note.py (parsers at :199-200, dispatch at :216-218) and `--remove N` / `--edit N` to the add-bookmark SKILL.md, plus 16556d0 (tests for `remove` and `edit`). The decision went to subcommands in add-bookmark. `gh issue view 272` reports OPEN. Catalog item todo-545g retired.",
+      "recommended_action": "Close as completed, citing PR #322 (merge commit 1043312, feature commit dd37310).",
+      "related_todo_ids": []
+    },
+    {
+      "number": 204,
+      "title": "BUG: `session-bookmark` Skipped (?)",
+      "url": "https://github.com/t968rs/operator-straps/issues/204",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #322 (\"Feature(add-bookmark): branch-tagged session notes\") is MERGED at 2026-11-19T08:20:58Z as 1043312, on main (`git branch -a --contains 1043312`). It carries 3050174, a compaction fallback for when an earlier mod ends the `session.compact` chain: plugins/todo-watch/hooks/checks.ts:699-701 re-forces the TODO_SYNC line on `session.append` door `compaction`, and plugins/session-bookmark/hooks/bookmark.ts:33-47 attaches a `detected` bookmark to the next prompt; 11f024e refines the per-row judgment. `gh issue view 204` reports OPEN. Catalog item todo-ys3k retired.",
+      "recommended_action": "Close as completed, citing PR #322 (merge commit 1043312, fallback commit 3050174).",
+      "related_todo_ids": []
+    },
+    {
+      "number": 301,
+      "title": "Working refs in the banner: show the TODO ids and GitHub issues being worked on (`Working: todo-cvm4 (283)`)",
+      "url": "https://github.com/t968rs/operator-straps/issues/301",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #319 (\"Feature(working-refs): `working-refs` banner line\") is MERGED at 2026-11-19T00:04:38Z as 368b117, on main (`git branch -a --contains 368b117`). It adds the plugins/working-refs mod, the `/harness:working` override command (plugins/harness/skills/working/commands/working.py), the plan `refs` field (PlanRefs in plugins/harness/lib/harness_lib/plan_models.py), band-line's second line and the ccstatusline widget; plan 2027 followed with every branch's override on the line (24407f5, f3d9811). `gh issue view 301` already reports CLOSED (COMPLETED) at 2026-11-19T15:15:58Z. Catalog item retired; the stale-override follow-up stays open as todo-yu6v.",
+      "recommended_action": "None: already closed as completed after PR #319 (merge commit 368b117); drop this entry once confirmed.",
+      "related_todo_ids": []
+    },
     {
       "number": 284,
       "title": "plan.py archive: fold a finished plan's driver tags into one archive tag",
@@ -5074,7 +4920,10 @@
     "todo-udx4",
     "todo-w3ck",
     "todo-4zhu",
-    "todo-7nb9"
+    "todo-7nb9",
+    "todo-k69m",
+    "todo-545g",
+    "todo-ys3k"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
