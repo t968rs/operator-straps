@@ -2,9 +2,10 @@
 
 ``live.js`` (``harness_lib.plan_live``) is derived and gitignored, so it never moves with the worktree and is
 deleted with it. After a successful move (staged, ``--committed`` or ``--continue``), ``attach_worktree.py``
-rebuilds it in the target checkout for every frozen receipts plan whose receipts, freeze ledger, plan JSON or
-DesignEvolution the move wrote, printing ``live: rebuilt <plans>/<id>/live.js``. A rebuild that fails prints a
-``live: warning:`` line naming ``plan.py render <id>`` and the move still exits 0.
+rebuilds it in the target checkout for every frozen receipts plan with an HTML page whose receipts, freeze
+ledger, plan JSON or DesignEvolution the move landed (paths the target already held staged count), printing
+``live: rebuilt <plans>/<id>/live.js``. A rebuild that fails prints a ``live: warning:`` line naming
+``plan.py render <id>`` and the move still exits 0.
 
 Each test builds a ``make_project`` repository whose ``artifacts.plans`` is ``work/plans`` (not the default),
 with branch ``main`` checked out in the project and ``wt`` a detached worktree cut the way ``d-w`` cuts one.
@@ -33,7 +34,6 @@ PLANS = "work/plans"
 NODE = "tests/test_calc_sub.py::test_sub"
 _GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
             "GIT_COMMITTER_EMAIL": "t@t"}
-_IGNORES = f"{PLANS}/**/.gitignore\nlive.js\n"
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -97,8 +97,13 @@ def script_path(plugin_root: Path) -> Path:
 
 @pytest.fixture()
 def repos(make_project, tmp_path: Path) -> dict:
-    """The project on ``main`` holding frozen receipts plan 0001 and no ``live.js``; ``wt`` cut from it."""
-    files = {".gitignore": _IGNORES, "shared.txt": "one\ntwo\nthree\n", **_plan_files("0001", "Sample")}
+    """The project on ``main`` holding frozen receipts plan 0001 and no ``live.js``; ``wt`` cut from it.
+
+    No project-level ignore rule covers ``live.js`` or the per-plan ``.gitignore``: as in a real project, the
+    ``.gitignore`` ``write_live`` keeps is the only rule, so the target's working tree shows what a rebuild
+    leaves behind.
+    """
+    files = {"shared.txt": "one\ntwo\nthree\n", **_plan_files("0001", "Sample")}
     main = make_project(config={"artifacts": {"plans": PLANS}}, files=files)
     wt = tmp_path / "wt"
     _git(main, "worktree", "add", "--quiet", "--detach", str(wt), "HEAD")
@@ -122,6 +127,19 @@ def test_a_staged_move_of_a_receipt_rebuilds_live_js_in_the_target(script_path: 
     assert not wt.exists()
 
 
+def test_a_rebuild_leaves_the_plan_gitignore_unstaged_and_live_js_ignored(script_path: Path,
+                                                                           repos: dict) -> None:
+    main = repos["main"]
+    _receipt(repos["wt"], "0001", "TASK-1")
+    done = _attach(script_path, repos, "main")
+    assert done.returncode == 0, done.stdout + done.stderr
+    status = _git(main, "status", "--porcelain", "--untracked-files=all").splitlines()
+    assert f"A  {PLANS}/0001/receipts/TASK-1.json" in status
+    assert f"?? {PLANS}/0001/.gitignore" in status
+    assert not any("live.js" in line for line in status)
+    assert _git(main, "check-ignore", f"{PLANS}/0001/live.js") == f"{PLANS}/0001/live.js"
+
+
 def test_a_committed_move_of_a_whole_plan_rebuilds_live_js(script_path: Path, repos: dict) -> None:
     main, wt = repos["main"], repos["wt"]
     _write(wt, _plan_files("0002", "Other"))
@@ -143,7 +161,10 @@ def test_continue_rebuilds_live_js_after_a_resolution(script_path: Path, repos: 
     _commit_all(wt, "worktree edit")
     _write(main, {"shared.txt": "one\nTARGET\nthree\n"})
     _commit_all(main, "target edit")
-    assert _attach(script_path, repos, "main").returncode == 2
+    stopped = _attach(script_path, repos, "main")
+    assert stopped.returncode == 2
+    assert not any(line.startswith("live:") for line in stopped.stdout.splitlines())
+    assert _live(main, "0001") is None
     _write(wt, {"shared.txt": "one\nRESOLVED\nthree\n"})
     _git(wt, "add", "shared.txt")
     done = _attach(script_path, repos, "--continue")
