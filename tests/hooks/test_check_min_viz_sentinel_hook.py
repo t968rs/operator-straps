@@ -152,7 +152,7 @@ class TestMain:
         rc, out, _ = _run_main(monkeypatch, project, capsys, None)
         assert rc == 0 and json.loads(out)["decision"] == "block"
 
-    def test_unusable_config_falls_back_to_the_default_state_dir(
+    def test_schema_invalid_config_keeps_its_state_dir_silently(
             self, make_project, monkeypatch, capsys,
     ) -> None:
         project = make_project(files={".claude/harness.json": '{"state_dir": ".claude/odd"}'})
@@ -161,7 +161,15 @@ class TestMain:
         _write(directory, "41")
         (project / ".claude" / "harness.json").write_text('{"state_dir": ".claude/odd", "bogus": 1}')
         rc, out, err = _run_main(monkeypatch, project, capsys, {"cwd": str(project), "session_id": "sess"})
-        assert rc == 0 and json.loads(out)["decision"] == "block" and "config unusable" in err
+        assert (rc, json.loads(out)["decision"], err) == (0, "block", "")
+
+    def test_unparseable_config_falls_back_to_the_default_state_dir(
+            self, make_project, monkeypatch, capsys,
+    ) -> None:
+        project, _ = _project(make_project)
+        (project / ".claude" / "harness.json").write_text("{not json")
+        rc, out, err = _run_main(monkeypatch, project, capsys, {"cwd": str(project), "session_id": "sess"})
+        assert rc == 0 and json.loads(out)["decision"] == "block" and "harness config unreadable" in err
 
 
 def test_subprocess_blocks_owning_session(make_project) -> None:

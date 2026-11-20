@@ -242,6 +242,7 @@ CASES = {
     "stop hook": lambda r, t: (["hooks/check_phase5_sentinel.py"], {"cwd": str(r), "session_id": "s"}),
     "min-viz stop hook": lambda r, t: (["hooks/check_min_viz_sentinel.py"],
                                        {"cwd": str(r), "session_id": "s"}),
+    "stop gates hook": lambda r, t: (["hooks/stop_gates.py"], {"cwd": str(r), "session_id": "s"}),
     "bash discipline hook": lambda r, t: (["hooks/bash_discipline.py"], {
         "cwd": str(r), "tool_name": "Bash", "tool_input": {"command": "git status && git log"}}),
     "strap new": lambda r, t: (_strap_new_args(r), None),

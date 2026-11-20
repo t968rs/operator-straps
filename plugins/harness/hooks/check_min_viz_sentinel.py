@@ -4,9 +4,12 @@
 (layout in ``harness_lib.min_viz_sentinel``); ``pr_sum.py build`` clears it once the draft holds the required
 diagram blocks. While it exists, the arming session cannot stop: the hook emits the Stop-hook decision
 ``{"decision": "block", "reason": ...}`` on stdout and exits 0, the contract ``check_phase5_sentinel.py``
-documents. The project comes from the payload ``cwd``, a linked worktree maps to its main checkout, and an
-unusable harness config falls back to the raw or default ``state_dir``, so a config typo never disarms the
-gate.
+documents. The project comes from the payload ``cwd``, a linked worktree maps to its main checkout, and
+``state_dir`` is read raw from ``harness.json`` with no schema validation, falling back to the plugin
+default, so a config typo never disarms the gate (``check_phase5_sentinel.state_root_for``).
+
+On ``Stop`` the registered command is ``stop_gates.py``, which runs ``decide`` here and in
+``check_phase5_sentinel.py`` in one launch; ``SubagentStop`` runs this file on its own.
 
 Allow-stop paths: no sentinel; a sentinel armed by another session (stderr notice; a sentinel with no owner,
 or a payload with no ``session_id``, blocks); a sentinel older than ``MAX_AGE_SECONDS`` (stderr notice);
@@ -14,8 +17,6 @@ or a payload with no ``session_id``, blocks); a sentinel older than ``MAX_AGE_SE
 """
 from __future__ import annotations
 
-import json
-import os
 import sys
 import time
 from dataclasses import dataclass
@@ -26,17 +27,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from check_phase5_sentinel import (  # noqa: E402
-    _default_state_dir,
-    _raw_state_dir,
-    _resolve_project,
     _session_id_from,
     _stop_payload_from_stdin,
+    emit_block,
+    state_root_for,
 )
-from harness_lib.config import ConfigError, activate, load_config  # noqa: E402
 from harness_lib.min_viz_sentinel import (  # noqa: E402
     SENTINEL_GLOB,
     SENTINEL_PREFIX,
-    sentinel_dir_under,
+    SENTINEL_SUBDIR,
 )
 
 MAX_AGE_SECONDS = 86400  # 24 hours
@@ -116,41 +115,33 @@ def _block_reason(armed: Armed) -> str:
     )
 
 
-def _sentinel_dir_for(payload: Dict[str, Any]) -> Path:
-    """Sentinel directory of the project holding the payload's ``cwd`` (else the process cwd)."""
-    cwd = payload.get("cwd")
-    project = _resolve_project(Path(cwd) if isinstance(cwd, str) and cwd else Path(os.getcwd()))
-    try:
-        cfg = activate(load_config(project))
-    except ConfigError as exc:
-        fallback = sentinel_dir_under(project, _raw_state_dir(project) or _default_state_dir())
-        print(f"harness config unusable ({exc}); scanning {fallback} for --min-viz sentinels",
-              file=sys.stderr)
-        return fallback
-    return sentinel_dir_under(cfg.project_root, cfg.state_dir)
-
-
-def main() -> int:
-    """Hook entry point; returns 0 always, enforcing through the JSON decision contract."""
-    payload = _stop_payload_from_stdin()
-    sentinel_dir = _sentinel_dir_for(payload)
+def decide(payload: Dict[str, Any], state_root: Path) -> Optional[str]:
+    """The block reason for the stopping session, or None to allow the stop (notices go to stderr)."""
+    sentinel_dir = state_root / SENTINEL_SUBDIR
     if not sentinel_dir.is_dir():
-        return 0
+        return None
     notices: List[str] = []
     armed = find_armed(sentinel_dir, _session_id_from(payload), notices)
     for notice in notices:
         print(notice, file=sys.stderr)
     if armed is None:
-        return 0
+        return None
     if bool(payload.get("stop_hook_active", False)):
         print(
             f"--min-viz sentinel hot for PR #{armed.pr}, but stop_hook_active is set -- allowing stop to "
             f"avoid a block loop. Delete {armed.path} manually if the summary will not be built.",
             file=sys.stderr,
         )
-        return 0
-    json.dump({"decision": "block", "reason": _block_reason(armed)}, sys.stdout)
-    sys.stdout.write("\n")
+        return None
+    return _block_reason(armed)
+
+
+def main() -> int:
+    """Hook entry point; returns 0 always, enforcing through the JSON decision contract."""
+    payload = _stop_payload_from_stdin()
+    reason = decide(payload, state_root_for(payload))
+    if reason:
+        emit_block(reason)
     return 0
 
 

@@ -2,9 +2,14 @@
 
 Sentinel location: ``<main checkout>/<state_dir>/pr-review/.phase5_pending_<PR>``, where the project is
 resolved from the Stop payload's ``cwd`` (else the process cwd), a linked worktree maps to its main
-checkout, and ``state_dir`` comes from the project's harness config. An unusable config (or git missing
-from PATH) never disarms the gate: the scan falls back to the config's raw ``state_dir`` when readable,
-else the plugin default, and to the payload ``cwd`` as the project root.
+checkout, and ``state_dir`` is read straight from the project's ``harness.json`` with no schema validation
+(``jsonschema`` costs a Stop launch about 90 ms; every other harness entry point reports a malformed
+config). A ``harness.json`` that does not parse, or git missing from PATH, never disarms the gate: the
+scan falls back to the plugin default ``state_dir`` (with a stderr notice) and to the payload ``cwd`` as
+the project root.
+
+The registered Stop command is ``stop_gates.py``, which runs ``decide`` here and in
+``check_min_viz_sentinel.py`` in one launch; ``main`` keeps this file runnable on its own.
 - Line 1: PR identifier (any string).
 - Line 2 (optional): unix-int write-time timestamp.
 - Line 3 (optional): id of the session that armed it (CLAUDE_CODE_SESSION_ID).
@@ -49,13 +54,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from harness_lib.config import CONFIG_REL, DEFAULTS_PATH, ConfigError, activate, load_config  # noqa: E402
-from harness_lib.project import project_root  # noqa: E402
+from harness_lib.config import CONFIG_REL, DEFAULTS_PATH  # noqa: E402
+from harness_lib.project import main_worktree, project_root  # noqa: E402
 from harness_lib.validation.artifact_names import (  # noqa: E402
     SENTINEL_GLOB as _SENTINEL_GLOB,
     SENTINEL_PREFIX as _SENTINEL_PREFIX,
-    phase5_sentinel_dir,
-    sentinel_dir_under,
+    SENTINEL_SUBDIR,
 )
 
 MAX_AGE_SECONDS = 86400  # 24 hours
@@ -226,10 +230,18 @@ def _resolve_project(start: Path) -> Path:
 
 
 def _raw_state_dir(project: Path) -> Optional[str]:
-    """``state_dir`` read straight from the project's harness.json, when it parses and holds a string."""
+    """``state_dir`` read straight from the project's harness.json, when it parses and holds a string.
+
+    No schema validation runs. An absent file reads as no value; a file that cannot be read or parsed
+    reads as no value with a stderr notice.
+    """
+    source = project / CONFIG_REL
     try:
-        raw = json.loads((project / CONFIG_REL).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        raw = json.loads(source.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as exc:
+        print(f"harness config unreadable ({source}: {exc}); scanning the default state_dir", file=sys.stderr)
         return None
     value = raw.get("state_dir") if isinstance(raw, dict) else None
     return value if isinstance(value, str) and value.strip() else None
@@ -240,20 +252,15 @@ def _default_state_dir() -> str:
     return json.loads(DEFAULTS_PATH.read_text(encoding="utf-8"))["state_dir"]
 
 
-def _sentinel_dir_for(payload: Dict[str, Any]) -> Path:
-    """Sentinel directory of the project holding the payload's ``cwd`` (else the process cwd).
+def state_root_for(payload: Dict[str, Any]) -> Path:
+    """``<main checkout>/<state_dir>`` of the project holding the payload's ``cwd`` (else the process cwd).
 
-    An unusable harness config does not disarm the gate: the scan falls back to the config's raw
-    ``state_dir`` when readable, else the plugin default, with a stderr notice.
+    The gates' sentinel folders sit under it. ``state_dir`` is the raw config value, else the plugin
+    default, so a config typo never disarms a gate.
     """
     cwd = payload.get("cwd")
     project = _resolve_project(Path(cwd) if isinstance(cwd, str) and cwd else Path(os.getcwd()))
-    try:
-        return phase5_sentinel_dir(activate(load_config(project)))
-    except ConfigError as exc:
-        fallback = sentinel_dir_under(project, _raw_state_dir(project) or _default_state_dir())
-        print(f"harness config unusable ({exc}); scanning {fallback} for Phase 5 sentinels", file=sys.stderr)
-        return fallback
+    return main_worktree(project) / Path(_raw_state_dir(project) or _default_state_dir())
 
 
 def _print_notices(result: SentinelClassification) -> None:
@@ -269,6 +276,41 @@ def _print_notices(result: SentinelClassification) -> None:
         )
 
 
+def decide(payload: Dict[str, Any], state_root: Path) -> Optional[str]:
+    """The block reason for the stopping session, or None to allow the stop.
+
+    Allow-stop paths (None):
+    - no hot sentinel, or the sentinel dir absent;
+    - every hot sentinel was armed by another session (stderr notice);
+    - hot sentinel but ``stop_hook_active`` already set on stdin (loop-break, stderr notice).
+
+    Stale-sentinel warnings and the notices above print to stderr; stdout stays free for the one JSON
+    decision the caller emits.
+    """
+    sentinel_dir = state_root / SENTINEL_SUBDIR
+    if not sentinel_dir.is_dir():
+        return None
+    result = evaluate_sentinels(sentinel_dir, session_id=_session_id_from(payload))
+    _print_notices(result)
+    if result.hot_pr is None:
+        return None
+    if bool(payload.get("stop_hook_active", False)):
+        print(
+            f"Phase 5 sentinel hot for PR #{result.hot_pr}, but stop_hook_active "
+            f"is set -- allowing stop to avoid a block loop. Delete "
+            f"{result.hot_path} manually if Phase 5 closeout did not run.",
+            file=sys.stderr,
+        )
+        return None
+    return _block_reason(result.hot_pr)
+
+
+def emit_block(reason: str) -> None:
+    """Print the Stop-hook block decision on stdout."""
+    json.dump({"decision": "block", "reason": reason}, sys.stdout)
+    sys.stdout.write("\n")
+
+
 def main() -> int:
     """Stop-hook entry point; returns 0 always.
 
@@ -277,35 +319,11 @@ def main() -> int:
     which Claude Code feeds back to the model as a reason to keep going. A
     bare non-zero exit is only surfaced to the user and never reaches the
     model, so it cannot enforce anything.
-
-    Allow-stop paths (exit 0, no decision emitted):
-    - no hot sentinel, or the sentinel dir absent (an unusable harness config falls back to
-      its raw ``state_dir`` else the plugin default, so a config typo never disarms the gate);
-    - every hot sentinel was armed by another session (stderr notice);
-    - hot sentinel but ``stop_hook_active`` already set on stdin (loop-break).
-
-    Stale-sentinel warnings, other-session notices, the loop-break notice,
-    and the unusable-config notice print to stderr; stdout is reserved for
-    the JSON decision so the harness can parse it cleanly.
     """
     payload = _stop_payload_from_stdin()
-    sentinel_dir = _sentinel_dir_for(payload)
-    if not sentinel_dir.is_dir():
-        return 0
-    result = evaluate_sentinels(sentinel_dir, session_id=_session_id_from(payload))
-    _print_notices(result)
-    if result.hot_pr is None:
-        return 0
-    if bool(payload.get("stop_hook_active", False)):
-        print(
-            f"Phase 5 sentinel hot for PR #{result.hot_pr}, but stop_hook_active "
-            f"is set -- allowing stop to avoid a block loop. Delete "
-            f"{result.hot_path} manually if Phase 5 closeout did not run.",
-            file=sys.stderr,
-        )
-        return 0
-    json.dump({"decision": "block", "reason": _block_reason(result.hot_pr)}, sys.stdout)
-    sys.stdout.write("\n")
+    reason = decide(payload, state_root_for(payload))
+    if reason:
+        emit_block(reason)
     return 0
 
 
