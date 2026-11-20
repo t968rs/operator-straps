@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
-from harness_lib.review_local_models import LABEL_PATTERN, REVIEW_PREFIX
+from harness_lib.review_local_names import LABEL_PATTERN, REVIEW_PREFIX
 
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
@@ -18,6 +18,7 @@ _LABEL_BODY = LABEL_PATTERN.strip("^$")
 REVIEW_ARTIFACT_PATTERN = re.compile(rf"^(\d{{4}}|{REVIEW_PREFIX}{_LABEL_BODY})_")
 SENTINEL_PREFIX = ".phase5_pending_"
 SENTINEL_GLOB = f"{SENTINEL_PREFIX}*"
+SENTINEL_SUBDIR = "pr-review"
 # Spelled out here, not imported from ``harness_lib.plan_doc.PLAN_SUFFIX``: that module also builds the
 # plan_models tree and its model classes, which this module does not need. A test pins the two equal.
 PLAN_ARTIFACT_SUFFIX = "_ActionPlan.json"
@@ -42,14 +43,21 @@ def is_review_artifact_name(name: str) -> bool:
     return bool(REVIEW_ARTIFACT_PATTERN.match(name))
 
 
-def sentinel_dir_under(project: Path, state_dir: str) -> Path:
-    """``<main checkout of project>/<state_dir>/pr-review``; usable without a loaded config.
+def state_root_under(project: Path, state_dir: str) -> Path:
+    """``<main checkout of project>/<state_dir>``: the one anchor every sentinel folder sits under.
 
     Sentinels are per repository: a linked worktree resolves to its main checkout, so a sentinel armed
-    from a worktree gates the stop of a session opened in the main checkout, and the reverse.
+    from a worktree gates the stop of a session opened in the main checkout, and the reverse. The
+    writers (``sentinel_dir_under`` here and in ``min_viz_sentinel``) and the Stop gates
+    (``check_phase5_sentinel.state_root_for``) all build their folder from it.
     """
     from harness_lib.project import main_worktree
-    return main_worktree(Path(project)) / Path(state_dir) / "pr-review"
+    return main_worktree(Path(project)) / Path(state_dir)
+
+
+def sentinel_dir_under(project: Path, state_dir: str) -> Path:
+    """``<main checkout of project>/<state_dir>/pr-review``; usable without a loaded config."""
+    return state_root_under(project, state_dir) / SENTINEL_SUBDIR
 
 
 def phase5_sentinel_dir(cfg: HarnessConfig) -> Path:

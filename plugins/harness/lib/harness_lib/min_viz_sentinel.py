@@ -22,9 +22,13 @@ SENTINEL_SUBDIR = "pr-sum"
 
 
 def sentinel_dir_under(project: Path, state_dir: str) -> Path:
-    """``<main checkout of project>/<state_dir>/pr-sum``; usable without a loaded config."""
-    from harness_lib.project import main_worktree
-    return main_worktree(Path(project)) / Path(state_dir) / SENTINEL_SUBDIR
+    """``<main checkout of project>/<state_dir>/pr-sum``; usable without a loaded config.
+
+    The anchor is ``validation.artifact_names.state_root_under``, shared with the Phase 5 sentinel and the
+    Stop gates.
+    """
+    from harness_lib.validation.artifact_names import state_root_under
+    return state_root_under(project, state_dir) / SENTINEL_SUBDIR
 
 
 def sentinel_path(cfg: HarnessConfig, pr: Union[int, str]) -> Path:

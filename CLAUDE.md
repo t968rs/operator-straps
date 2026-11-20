@@ -40,9 +40,13 @@ plugin (ArcGIS Pro toolbox skills) plus nine TypeScript mods (`agent-watcher`, `
 - **Drivers activate, library code reads.** Scripts, hooks and skill commands call
   `activate(load_config(project_root(...)))` once; library modules read `active()` inside functions, never at
   import time. Hooks resolve the project from the payload `cwd`.
-- **Phase 5 sentinels are per repository**: `sentinel_dir_under` anchors them at the main checkout. The Stop hook,
-  `phase4_branch_safety.py`, the schema hook and `agent-watcher` all use that rule; change it in all four or
-  none.
+- **Phase 5 sentinels are per repository**: `state_root_under` (`validation/artifact_names.py`) anchors them at
+  the main checkout; both `sentinel_dir_under` functions and the Stop gates' `check_phase5_sentinel.state_root_for`
+  call it. The Stop hook, `phase4_branch_safety.py`, the schema hook and `agent-watcher` all use that rule; change
+  it in all four or none.
+- **The Stop gates do not activate.** `stop_gates.py` and the two sentinel hooks read `state_dir` raw through
+  `check_phase5_sentinel.state_root_for` to skip config validation at launch; nothing on their `decide` path may
+  call `active()`.
 - **Skills and agents** invoke code as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/..."` in
   harness; arc-straps skills run their Python through `harness-skill-api --file "${CLAUDE_SKILL_DIR}/scripts/<module>.py"`,
   since hpy sits under harness's plugin root. Skill-local files go as `${CLAUDE_SKILL_DIR}/...`, and agents
@@ -51,7 +55,8 @@ plugin (ArcGIS Pro toolbox skills) plus nine TypeScript mods (`agent-watcher`, `
   without a leading underscore must be registered, or named under `COMPOSED` as decided inside a registered
   dispatcher (`bash_pretool.py` runs `guard_locked.py` plus the three Bash hooks, `write_pretool.py` runs
   `guard_locked.py` and `guard_commit_txt.py`, `powershell_pretool.py` runs `guard_locked.py` and
-  `powershell_allow_shapes.py`, each in one launch); both are checked by
+  `powershell_allow_shapes.py`, `stop_gates.py` runs `check_phase5_sentinel.py` and
+  `check_min_viz_sentinel.py`, each in one launch); both are checked by
   `tests/contract/test_hooks_json_paths.py`. Every hook launch costs an interpreter start, so a new hook
   for an event and matcher that already has a command joins that command's dispatcher (or turns it into one,
   with a `COMPOSED` entry) instead of adding a command.

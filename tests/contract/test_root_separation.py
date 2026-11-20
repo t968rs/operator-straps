@@ -242,6 +242,7 @@ CASES = {
     "stop hook": lambda r, t: (["hooks/check_phase5_sentinel.py"], {"cwd": str(r), "session_id": "s"}),
     "min-viz stop hook": lambda r, t: (["hooks/check_min_viz_sentinel.py"],
                                        {"cwd": str(r), "session_id": "s"}),
+    "stop gates hook": lambda r, t: (["hooks/stop_gates.py"], {"cwd": str(r), "session_id": "s"}),
     "bash discipline hook": lambda r, t: (["hooks/bash_discipline.py"], {
         "cwd": str(r), "tool_name": "Bash", "tool_input": {"command": "git status && git log"}}),
     "strap new": lambda r, t: (_strap_new_args(r), None),
@@ -256,7 +257,8 @@ CASES = {
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
 MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
                             "docstring-dispatch", "arc-meta apply_rc", "todo_sync retire", "todo_sync split",
-                            "todo_sync refresh", "todo_sync migrate-ids", "arc-help-pages apply_help"})
+                            "todo_sync refresh", "todo_sync migrate-ids", "arc-help-pages apply_help",
+                            "stop gates hook"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))

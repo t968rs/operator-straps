@@ -22,7 +22,7 @@ EXPECTED: Dict[Tuple[str, str], List[str]] = {
     ("PreToolUse", "PowerShell"): ["powershell_pretool.py"],
     ("PreToolUse", "Write|Edit"): ["write_pretool.py"],
     ("PostToolUse", "Write|Edit|Bash"): ["validate_pr_json_schema.py"],
-    ("Stop", ""): ["check_phase5_sentinel.py", "check_min_viz_sentinel.py"],
+    ("Stop", ""): ["stop_gates.py"],
     ("SubagentStop", ""): ["check_min_viz_sentinel.py"],
 }
 
@@ -33,6 +33,7 @@ COMPOSED: Dict[str, List[str]] = {
                         "bash_allow_shapes.py"],
     "write_pretool.py": ["guard_locked.py", "guard_commit_txt.py"],
     "powershell_pretool.py": ["guard_locked.py", "powershell_allow_shapes.py"],
+    "stop_gates.py": ["check_phase5_sentinel.py", "check_min_viz_sentinel.py"],
 }
 
 
@@ -90,8 +91,9 @@ def _imported_hook_stems(dispatcher: str) -> set:
 @pytest.mark.parametrize("dispatcher", sorted(COMPOSED))
 def test_a_dispatcher_imports_exactly_its_composed_hooks(dispatcher: str) -> None:
     """The dispatcher is registered and imports each composed hook, and only those, so a hook added to
-    one side without the other fails here. Imports are not calls: ``tests/hooks/test_bash_pretool.py``
-    covers that each composed ``decide`` runs."""
+    one side without the other fails here. Imports are not calls: each dispatcher's own test covers that
+    each composed ``decide`` runs (``tests/hooks/test_bash_pretool.py`` for the Bash dispatcher,
+    ``tests/hooks/test_stop_gates.py`` for ``stop_gates.py``)."""
     registered = {SHELL_FORM.match(h["command"]).group("name") for _, _, h in _entries()}
     assert dispatcher in registered
     assert _imported_hook_stems(dispatcher) == {name[: -len(".py")] for name in COMPOSED[dispatcher]}
