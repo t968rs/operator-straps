@@ -2,9 +2,17 @@
 
 The dispatcher reads the Stop payload once, resolves the project and its ``state_dir`` once, and decides the
 Phase 5 gate (``check_phase5_sentinel.decide``) and the ``--min-viz`` gate (``check_min_viz_sentinel.decide``)
-in one launch. One assertion per test: nothing armed allows the stop; one armed gate blocks with its own
-reason; both armed block once with both reasons; a gate that raises leaves the other free to decide; the
-launch imports neither ``pydantic`` nor ``jsonschema``.
+in one launch. Each test checks one behavior, though a few make two asserts on the same outcome:
+
+- nothing armed allows the stop;
+- one armed gate blocks with its own reason;
+- both armed block once with both reasons;
+- ``stop_hook_active`` allows the stop with one notice per gate;
+- a gate that raises leaves the other free to decide;
+- an unknown config key is silent and keeps its ``state_dir``;
+- an unparseable config scans the default with a notice;
+- the launch imports neither ``pydantic`` nor ``jsonschema``;
+- the dispatcher run as a child process blocks.
 """
 from __future__ import annotations
 
@@ -137,18 +145,31 @@ def test_unparseable_config_scans_the_default_with_a_notice(make_project, monkey
     assert "PR #42" in json.loads(out)["reason"] and "harness config unreadable" in err
 
 
-def test_the_launch_imports_neither_pydantic_nor_jsonschema() -> None:
-    """The Stop launch stays stdlib plus ``harness_lib``: the import cost of either library is the point."""
+def test_the_launch_imports_neither_pydantic_nor_jsonschema(make_project) -> None:
+    """The Stop launch stays stdlib plus ``harness_lib``: the import cost of either library is the point.
+
+    The probe runs ``main()`` on a project with a ``harness.json`` and both gates armed, so the config read
+    and both ``decide()`` calls execute; a lazy import inside any of them shows up in ``sys.modules``.
+    """
+    project = make_project(config={"state_dir": "var/harness"})
+    _arm_phase5(project)
+    _arm_min_viz(project)
+    payload = json.dumps({"cwd": str(project), "hook_event_name": "Stop", "session_id": "sess"})
     probe = (
-        "import runpy, sys\n"
+        "import io, runpy, sys\n"
         f"sys.argv = [{str(_HOOK_PATH)!r}]\n"
-        "sys.stdin = __import__('io').StringIO('{}')\n"
-        f"runpy.run_path({str(_HOOK_PATH)!r}, run_name='not_main')\n"
+        f"sys.stdin = io.StringIO({payload!r})\n"
+        f"ns = runpy.run_path({str(_HOOK_PATH)!r}, run_name='not_main')\n"
+        "ns['main']()\n"
         "print(sorted(m for m in ('pydantic', 'jsonschema') if m in sys.modules))\n"
     )
-    done = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=False)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("PYDEVD_", "PYCHARM_"))}
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    done = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, env=env,
+                          cwd=str(project), check=False)
     assert done.returncode == 0, done.stderr
-    assert done.stdout.strip() == "[]"
+    lines = done.stdout.strip().splitlines()
+    assert json.loads(lines[0])["decision"] == "block" and lines[-1] == "[]"
 
 
 def test_subprocess_blocks_owning_session(make_project) -> None:

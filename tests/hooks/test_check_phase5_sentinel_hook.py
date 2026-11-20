@@ -532,8 +532,8 @@ def test_main_unparseable_config_still_blocks_on_default_dir_with_notice(make_pr
     assert "harness config unreadable" in stderr
 
 
-def test_main_unusable_config_still_blocks_on_default_dir(make_project, monkeypatch, capsys):
-    """A config typo does not disarm the gate: the default ``state_dir`` is scanned instead."""
+def test_main_schema_invalid_config_without_state_dir_scans_the_default(make_project, monkeypatch, capsys):
+    """An unknown key with no ``state_dir`` scans the default ``state_dir``; no schema check runs."""
     project = make_project(config={"not_a_harness_key": True})
     (_default_sentinel_dir(project) / ".phase5_pending_42").touch()
     rc, stdout, _stderr = _run_main(monkeypatch, project, capsys)
@@ -541,7 +541,7 @@ def test_main_unusable_config_still_blocks_on_default_dir(make_project, monkeypa
     assert json.loads(stdout)["decision"] == "block"
 
 
-def test_main_unusable_config_keeps_its_readable_state_dir(make_project, monkeypatch, capsys):
+def test_main_schema_invalid_config_keeps_its_state_dir(make_project, monkeypatch, capsys):
     """An invalid config that still names a string ``state_dir`` is scanned at that location."""
     project = make_project(config={"not_a_harness_key": True, "state_dir": "var/harness"})
     custom = project / "var" / "harness" / "pr-review"

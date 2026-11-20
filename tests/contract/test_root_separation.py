@@ -257,7 +257,8 @@ CASES = {
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
 MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
                             "docstring-dispatch", "arc-meta apply_rc", "todo_sync retire", "todo_sync split",
-                            "todo_sync refresh", "todo_sync migrate-ids", "arc-help-pages apply_help"})
+                            "todo_sync refresh", "todo_sync migrate-ids", "arc-help-pages apply_help",
+                            "stop gates hook"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
