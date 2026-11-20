@@ -8,8 +8,7 @@ config). A ``harness.json`` that does not parse, or git missing from PATH, never
 scan falls back to the plugin default ``state_dir`` (with a stderr notice) and to the payload ``cwd`` as
 the project root.
 
-The registered Stop command is ``stop_gates.py``, which runs ``decide`` here and in
-``check_min_viz_sentinel.py`` in one launch; ``main`` keeps this file runnable on its own.
+Sentinel file lines:
 - Line 1: PR identifier (any string).
 - Line 2 (optional): unix-int write-time timestamp.
 - Line 3 (optional): id of the session that armed it (CLAUDE_CODE_SESSION_ID).
@@ -39,6 +38,9 @@ cannot block a stop; exit 2 is the alternate blocking path used elsewhere.
 The ``stop_hook_active`` flag on stdin breaks the otherwise-unbounded block
 loop when closeout never clears the sentinel.
 
+The registered Stop command is ``stop_gates.py``, which runs ``decide`` here and in
+``check_min_viz_sentinel.py`` in one launch; ``main`` keeps this file runnable on its own.
+
 Stdlib plus the plugin's ``harness_lib``; no assumptions about bash, POSIX
 utilities, or PATH; cross-platform by construction.
 """
@@ -55,11 +57,12 @@ from typing import Any, Dict, List, Optional, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from harness_lib.config import CONFIG_REL, DEFAULTS_PATH  # noqa: E402
-from harness_lib.project import main_worktree, project_root  # noqa: E402
+from harness_lib.project import project_root  # noqa: E402
 from harness_lib.validation.artifact_names import (  # noqa: E402
     SENTINEL_GLOB as _SENTINEL_GLOB,
     SENTINEL_PREFIX as _SENTINEL_PREFIX,
     SENTINEL_SUBDIR,
+    state_root_under,
 )
 
 MAX_AGE_SECONDS = 86400  # 24 hours
@@ -260,7 +263,7 @@ def state_root_for(payload: Dict[str, Any]) -> Path:
     """
     cwd = payload.get("cwd")
     project = _resolve_project(Path(cwd) if isinstance(cwd, str) and cwd else Path(os.getcwd()))
-    return main_worktree(project) / Path(_raw_state_dir(project) or _default_state_dir())
+    return state_root_under(project, _raw_state_dir(project) or _default_state_dir())
 
 
 def _print_notices(result: SentinelClassification) -> None:

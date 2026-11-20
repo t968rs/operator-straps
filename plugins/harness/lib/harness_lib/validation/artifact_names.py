@@ -43,14 +43,21 @@ def is_review_artifact_name(name: str) -> bool:
     return bool(REVIEW_ARTIFACT_PATTERN.match(name))
 
 
-def sentinel_dir_under(project: Path, state_dir: str) -> Path:
-    """``<main checkout of project>/<state_dir>/pr-review``; usable without a loaded config.
+def state_root_under(project: Path, state_dir: str) -> Path:
+    """``<main checkout of project>/<state_dir>``: the one anchor every sentinel folder sits under.
 
     Sentinels are per repository: a linked worktree resolves to its main checkout, so a sentinel armed
-    from a worktree gates the stop of a session opened in the main checkout, and the reverse.
+    from a worktree gates the stop of a session opened in the main checkout, and the reverse. The
+    writers (``sentinel_dir_under`` here and in ``min_viz_sentinel``) and the Stop gates
+    (``check_phase5_sentinel.state_root_for``) all build their folder from it.
     """
     from harness_lib.project import main_worktree
-    return main_worktree(Path(project)) / Path(state_dir) / SENTINEL_SUBDIR
+    return main_worktree(Path(project)) / Path(state_dir)
+
+
+def sentinel_dir_under(project: Path, state_dir: str) -> Path:
+    """``<main checkout of project>/<state_dir>/pr-review``; usable without a loaded config."""
+    return state_root_under(project, state_dir) / SENTINEL_SUBDIR
 
 
 def phase5_sentinel_dir(cfg: HarnessConfig) -> Path:
