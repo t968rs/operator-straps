@@ -3,8 +3,9 @@
 A review run is keyed by a PR number or by a local key, ``local-<label>``. Every run-state path, review file
 name and sentinel name is built from the key, so a key parses only when it is filesystem-safe: the label is
 lower-case letters, digits and single hyphens, at most ``LABEL_MAX`` characters. A local review file is
-``LOCAL_<label>_<slug>.json``: the review folder keeps digit prefixes for PR reviews. This module imports no
-other ``harness_lib`` module.
+``LOCAL_<label>_<slug>.json``: the review folder keeps digit prefixes for PR reviews. The only other
+``harness_lib`` module it imports is the stdlib-only ``review_local_names``, which holds ``REVIEW_PREFIX`` and
+``LABEL_PATTERN``.
 """
 from __future__ import annotations
 
@@ -13,11 +14,11 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from harness_lib.review_local_names import LABEL_PATTERN, REVIEW_PREFIX
+
 LOCAL_PREFIX = "local-"
-REVIEW_PREFIX = "LOCAL_"
 LOCAL_STATE = "LOCAL"
 LABEL_MAX = 48
-LABEL_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
 _LABEL = re.compile(LABEL_PATTERN)
 _REF = r"^[^\s.\-][^\s]*$"
 _NON_LABEL = re.compile(r"[^a-z0-9]+")
