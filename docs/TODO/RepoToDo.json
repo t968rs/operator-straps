@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 73,
-    "needs_decision": 42,
+    "items": 72,
+    "needs_decision": 41,
     "trackers": 0,
-    "close_candidates": 36,
+    "close_candidates": 37,
     "by_status": {
-      "NEEDS_DECISION": 42,
+      "NEEDS_DECISION": 41,
       "OPEN": 31
     },
     "by_impact": {
-      "dev_velocity": 40,
+      "dev_velocity": 39,
       "docs_tooling": 24,
       "maintainability": 2,
       "runtime_failure": 5,
@@ -74,13 +74,13 @@
     },
     "by_loe": {
       "XS": 4,
-      "S": 25,
+      "S": 24,
       "M": 31,
       "L": 12,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 65,
+      "gh_issue": 64,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -1109,70 +1109,8 @@
       "why_ranked": "Severity 3 because a plan frozen and recorded in a worktree (a supported but uncommon path) silently shows every item pending after the attach, dev_velocity impact since only the plan page misleads, M size for two fixes plus tests."
     },
     {
-      "id": "todo-jrz2",
-      "rank": 18,
-      "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
-      "kind": "refactor",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Should the Stop hooks read `state_dir` without full jsonschema validation of harness.json (about 90 ms saved, but a malformed config is no longer reported there), or keep validation and take only the constants move and the dispatcher merge?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#191",
-          "url": "https://github.com/t968rs/operator-straps/issues/191"
-        }
-      ],
-      "gh_issues": [
-        191
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The reported multi-minute PostToolUse stalls were traced in the issue's comment to the third-party `remember` plugin's post-tool-hook.sh, not this repo (unverified here); the harness work left is the Stop-hook cost from the 2026-11-03 measurements. Checked: plugins/harness/hooks/hooks.json:41-45 registers check_phase5_sentinel.py and check_min_viz_sentinel.py as two Stop commands (measured 418 ms and 414 ms); plugins/harness/lib/harness_lib/validation/artifact_names.py:12 imports `LABEL_PATTERN` and `REVIEW_PREFIX` from harness_lib/review_local_models.py, which imports pydantic at :14 (about 160 ms per the issue); plugins/harness/lib/harness_lib/config.py:277-284 `_validate` imports jsonschema on every `load_config` (about 90 ms per the issue). tests/contract/test_hooks_json_paths.py:31-33 has `COMPOSED` only for bash_pretool.py. The PreToolUse and PostToolUse Bash hooks sit within 40 ms of the interpreter floor and are left alone.",
-      "proposed_change": "Move the two constants into a stdlib-only module that both artifact_names.py and review_local_models.py import; merge the two Stop hooks into one registered dispatcher with a `COMPOSED` entry in tests/contract/test_hooks_json_paths.py, sharing one project lookup and config load; per the decision, read `state_dir` without full schema validation in that dispatcher (the `ConfigError` fallback keeps the gate armed). Re-measure Stop wall time against the 830 ms baseline.",
-      "files": [
-        "plugins/harness/hooks/hooks.json",
-        "plugins/harness/hooks/check_phase5_sentinel.py",
-        "plugins/harness/hooks/check_min_viz_sentinel.py",
-        "plugins/harness/lib/harness_lib/validation/artifact_names.py",
-        "plugins/harness/lib/harness_lib/review_local_models.py",
-        "plugins/harness/lib/harness_lib/config.py",
-        "tests/contract/test_hooks_json_paths.py"
-      ],
-      "blast_radius": {
-        "level": "M",
-        "reasoning": "The Stop and SubagentStop hooks run in every session of every consuming project; the Phase 5 gate must keep its fail-closed behavior.",
-        "consumers": [
-          "plugins/harness/hooks/hooks.json",
-          "plugins/harness/skills/pr-review/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "A constants move, one dispatcher on the bash_pretool.py pattern, and a timing re-measure."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.291,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.2,
-          "cost": 2.4,
-          "base_score": 1.291,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 debt with a concrete per-turn cost (about 830 ms per Stop), dev_velocity impact, S size."
-    },
-    {
       "id": "todo-8ywz",
-      "rank": 19,
+      "rank": 18,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1233,7 +1171,7 @@
     },
     {
       "id": "todo-2r6p",
-      "rank": 20,
+      "rank": 19,
       "title": "Narrow the PostToolUse Write|Edit|Bash hook that launches validate_pr_json_schema.py",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1252,7 +1190,7 @@
       ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "The issue quotes the hook entry and asks for a more specific one; the body states no target. Checked: plugins/harness/hooks/hooks.json:33-37 registers validate_pr_json_schema.py under matcher 'Write|Edit|Bash', so every Write, Edit and Bash call launches an interpreter through hpy. The script already exits before any harness_lib import when the event cannot name a plan or review artifact: `_cannot_target` (plugins/harness/hooks/validate_pr_json_schema.py:367-384) needs a .json path or substring and a candidate artifact directory, and `main` returns at :419-420 (landed for #17, close candidate, PR #99). What is left is the launch cost per call. Whether Claude Code supports a finer per-hook filter than the tool-name matcher (for example a path or command condition) is unverified. Related: todo-jrz2 (Stop hook launch cost).",
+      "summary": "The issue quotes the hook entry and asks for a more specific one; the body states no target. Checked: plugins/harness/hooks/hooks.json:33-37 registers validate_pr_json_schema.py under matcher 'Write|Edit|Bash', so every Write, Edit and Bash call launches an interpreter through hpy. The script already exits before any harness_lib import when the event cannot name a plan or review artifact: `_cannot_target` (plugins/harness/hooks/validate_pr_json_schema.py:367-384) needs a .json path or substring and a candidate artifact directory, and `main` returns at :419-420 (landed for #17, close candidate, PR #99). What is left is the launch cost per call. Whether Claude Code supports a finer per-hook filter than the tool-name matcher (for example a path or command condition) is unverified. Related: the Stop hook launch cost work landed in PR #327 (a19e578, one stop_gates.py dispatcher).",
       "proposed_change": "Decide the narrowing: (A) a per-hook condition, if Claude Code supports one, so Write/Edit fire only for .json paths and Bash only for commands naming .json; (B) fold the hook into an existing PostToolUse dispatcher if one appears, per the COMPOSED rule; (C) keep the stdlib pre-check as the filter and close the issue. Update tests/contract/test_hooks_json_paths.py and tests/hooks/test_hooks_schema_validation.py for any registration change, and bump the harness version.",
       "code_snippet": "plugins/harness/hooks/hooks.json:35\n        \"matcher\": \"Write|Edit|Bash\",",
       "files": [
@@ -1292,7 +1230,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 21,
+      "rank": 20,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1351,7 +1289,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 22,
+      "rank": 21,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1408,7 +1346,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 23,
+      "rank": 22,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -1468,7 +1406,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 24,
+      "rank": 23,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1527,7 +1465,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 25,
+      "rank": 24,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1586,7 +1524,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 26,
+      "rank": 25,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1648,7 +1586,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 27,
+      "rank": 26,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1707,7 +1645,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 28,
+      "rank": 27,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1771,7 +1709,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 29,
+      "rank": 28,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -1830,7 +1768,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 30,
+      "rank": 29,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1891,7 +1829,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 31,
+      "rank": 30,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1953,7 +1891,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 32,
+      "rank": 31,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2012,7 +1950,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 33,
+      "rank": 32,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2070,7 +2008,7 @@
     },
     {
       "id": "todo-e2jv",
-      "rank": 34,
+      "rank": 33,
       "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
       "kind": "feature",
       "status": "OPEN",
@@ -2137,7 +2075,7 @@
     },
     {
       "id": "todo-zes6",
-      "rank": 35,
+      "rank": 34,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "kind": "feature",
       "status": "OPEN",
@@ -2196,7 +2134,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 36,
+      "rank": 35,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2251,7 +2189,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 37,
+      "rank": 36,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -2312,7 +2250,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 38,
+      "rank": 37,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "kind": "bug",
       "status": "OPEN",
@@ -2362,7 +2300,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 39,
+      "rank": 38,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2410,7 +2348,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 40,
+      "rank": 39,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2485,7 +2423,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 41,
+      "rank": 40,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2543,7 +2481,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 42,
+      "rank": 41,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -2599,7 +2537,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 43,
+      "rank": 42,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2662,7 +2600,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 44,
+      "rank": 43,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -2722,7 +2660,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 45,
+      "rank": 44,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2783,7 +2721,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 46,
+      "rank": 45,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2850,7 +2788,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 47,
+      "rank": 46,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2926,7 +2864,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 48,
+      "rank": 47,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2986,7 +2924,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 49,
+      "rank": 48,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3063,7 +3001,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 50,
+      "rank": 49,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -3125,7 +3063,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 51,
+      "rank": 50,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3184,7 +3122,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 52,
+      "rank": 51,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3245,7 +3183,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 53,
+      "rank": 52,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3303,7 +3241,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 54,
+      "rank": 53,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3361,7 +3299,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 55,
+      "rank": 54,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -3414,7 +3352,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 56,
+      "rank": 55,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -3468,7 +3406,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 57,
+      "rank": 56,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3524,7 +3462,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 58,
+      "rank": 57,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3578,7 +3516,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 59,
+      "rank": 58,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -3638,7 +3576,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 60,
+      "rank": 59,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3693,7 +3631,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 61,
+      "rank": 60,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3748,7 +3686,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 62,
+      "rank": 61,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3799,7 +3737,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 63,
+      "rank": 62,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3856,7 +3794,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 64,
+      "rank": 63,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3909,7 +3847,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 65,
+      "rank": 64,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3964,7 +3902,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 66,
+      "rank": 65,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4025,7 +3963,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 67,
+      "rank": 66,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -4083,7 +4021,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 68,
+      "rank": 67,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4138,7 +4076,7 @@
     },
     {
       "id": "todo-jt35",
-      "rank": 69,
+      "rank": 68,
       "title": "Config key for a per-project browser icon on the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4198,7 +4136,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 70,
+      "rank": 69,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4261,7 +4199,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 71,
+      "rank": 70,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -4316,7 +4254,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 72,
+      "rank": 71,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4367,7 +4305,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 73,
+      "rank": 72,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4430,6 +4368,15 @@
   ],
   "trackers": [],
   "close_candidates": [
+    {
+      "number": 191,
+      "title": "`PostToolUse` Hook Runs Forever",
+      "url": "https://github.com/t968rs/operator-straps/issues/191",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #327 (\"Feature(hooks): `stop_gates.py` Stop dispatcher\") is MERGED at 2026-11-20T07:11:12Z as a19e578, on main (`git branch -a --contains a19e578`). It lands the Stop-hook cost work the issue's measurements left: one registered Stop dispatcher plugins/harness/hooks/stop_gates.py in place of the two sentinel launches (d8bcac3), the stdlib-only review_local_names.py holding REVIEW_PREFIX and LABEL_PATTERN so the Stop hooks skip pydantic (212bf39), and a raw `state_dir` read with no jsonschema validation. The PostToolUse stall itself was traced in the issue to the third-party `remember` plugin. `gh issue view 191` already reports CLOSED (COMPLETED) at 2026-11-10T15:32:14Z. Catalog item todo-jrz2 retired.",
+      "recommended_action": "None: already closed as completed; the remaining Stop-hook work landed in PR #327 (merge commit a19e578). Drop this entry once confirmed.",
+      "related_todo_ids": []
+    },
     {
       "number": 305,
       "title": "Enable Slash-Command (Skill) that displays current bookmarks",
@@ -4782,7 +4729,8 @@
     "todo-545g",
     "todo-ys3k",
     "todo-v62t",
-    "todo-v8mh"
+    "todo-v8mh",
+    "todo-jrz2"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
