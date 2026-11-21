@@ -5,7 +5,7 @@ const RUN = 'pr1526_20261009T120000Z'
 const NOW = 1_800_000_000_000
 const BAND = {
   component: 'AbovePrompt',
-  props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} },
+  props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} },
 } as const
 
 const slash = (p: string): string => p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, '')

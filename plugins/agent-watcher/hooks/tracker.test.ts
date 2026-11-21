@@ -925,7 +925,7 @@ describe('the header convention and row fields (issue #193)', () => {
   })
   const bandLine = async ($: Engine): Promise<string | undefined> => {
     const props = {
-      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+      hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
     }
     const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
     const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
@@ -1104,7 +1104,7 @@ describe('pr-review run directory', () => {
   /** The band line: the test kit exposes no plugin state, so the drawn band is what is observed. */
   const bandLine = async ($: Engine): Promise<string | undefined> => {
     const props = {
-      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+      hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
     }
     const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
     const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
@@ -1181,7 +1181,7 @@ describe('review-local runs (a local-<label> key)', () => {
   })
   const bandLine = async ($: Engine): Promise<string | undefined> => {
     const props = {
-      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+      hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
     }
     const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
     const text = (await ui.find({ type: 'Text', text: /^(local review|PR #)/ }))?.text
