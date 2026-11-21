@@ -1,0 +1,243 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 332,
+  "pr_title": "Test(mods): `AgentSpawnInput` engine 2.1.330 type-check",
+  "branch": "3000-BUG-hook-mod-drift",
+  "base_branch": "2000-version-1-release",
+  "base_sha": "c63dc5b689b5c72779cf467ae3155425e2a37681",
+  "head_sha": "4c122f4e229f92b7d1af29c17c209c29beca588d",
+  "review_date": "2026-11-20",
+  "verdict": "READY TO MERGE - 6 of 6 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 34,
+    "deletions": 18,
+    "files_changed": 8,
+    "source": {
+      "additions": 34,
+      "deletions": 18,
+      "files_changed": 8
+    }
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "tests (opus)",
+    "docs (sonnet)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0332/pr332_20261121T025818Z/findings/cicd.json",
+    "docs/_scratch/pr_review/0332/pr332_20261121T025818Z/findings/tests.json",
+    "docs/_scratch/pr_review/0332/pr332_20261121T025818Z/findings/docs.json",
+    "docs/_scratch/pr_review/0332/pr332_20261121T025818Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "ci.yml keeps the engine CLI pinned to an exact version (2.1.330) instead of a floating tag, and the comment above the step was rewritten to state why the pin exists and when to raise it, so the comment and the pinned value agree.",
+    "The pin bump in .github/workflows/ci.yml:119 matches the release note in docs/RELEASES/v1.0.0.md:83 (2.1.330, up from 2.1.322), and no other file still names the old pin.",
+    "git-status: removing the `git === 'missing'` comparison is correct; the early return at status.test.ts:140 already narrows `w.git`, so the line was unreachable and type-invalid, and the `git: 'missing'` tests at lines 380 and 482 still exercise the ENOENT path.",
+    "parallel2-lanes: `spawnInput` is annotated `AgentSpawnInput` with a `Partial<AgentSpawnInput>` override, so the compiler now checks every fake spawn built through it, and `workflow` takes the object shape the hook's `isOutOfScope` reads.",
+    "pytest-scope: one matcher per tool gives each handler a narrowed `e.command` while a shared recorder keeps both shells covered.",
+    "All changed tests stay behavioral: they drive the real plugin hooks through the engine test kit and fake only engine-boundary events (fs, process, tool, spawn), never the function under test.",
+    "The Build(ci) release line matches the code: ci.yml installs claude-code 2.1.330 (was 2.1.322), and the test diffs add isCollapsed to AbovePrompt props, build a full AgentSpawnInput with workflow { runId, agentIndex }, split the pytest-scope Bash/PowerShell fakes into one matcher each, and drop the unreachable git === 'missing' comparison in the git-status fake.",
+    "The 'Test files only; no mod's runtime code changed' claim holds: the diff touches only *.test.ts(x) files besides ci.yml and the release notes, so the plugin version table needs no change.",
+    "The entry sits in the Changes list in the existing Type(scope) style and uses the file's wrapping and wording conventions.",
+    "The git-status fake's removed `git === 'missing'` check (status.test.ts) was genuinely dead: line 140 already returns the ENOENT deny for 'missing', so the drop changes no behavior and fixes a no-overlap comparison.",
+    "pytest-scope's split into two single-tool `tool.call` matchers with a shared `ranShell` keeps each handler's `e.command` typed per tool instead of relying on a union over a `for` loop.",
+    "The spawn.test.ts workflow case now passes a realistic `{ runId, agentIndex }` object, and spawn.ts:19 tests `e.workflow` for truthiness, so the out-of-scope assertion still exercises the real classification; the default `fork: false` in the helper does not trip that check.",
+    "The ci.yml pin comment and the v1.0.0 Build(ci) line agree on the version (2.1.322 -> 2.1.330) and correctly state that only test files changed, so no plugin version bump is owed."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "band-line's AbovePrompt mounts still omit the now-required isCollapsed prop",
+        "file": "plugins/band-line/hooks/band.test.tsx",
+        "files": [
+          "plugins/band-line/hooks/band.test.tsx",
+          ".github/workflows/ci.yml",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "65-68,72,80,378",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR adds `isCollapsed: false` to every AbovePrompt props object in agent-watcher and parallel2-lanes because the newer engine types require it, but plugins/band-line/hooks/band.test.tsx:67 still builds `BAND.props` without it, and the mounts at lines 72, 80 and 378 spread that object into `$.ui.mount`. The engine's own declarations (plugins/band-line/.claude-plugin/types/claude-code/index.d.ts, written by 2.1.327: `isCollapsed: boolean` at line 12739, non-optional, and `MountTarget.props: RenderPropsOf[C]` at line 20203) make that a type error. The CI plugin job runs `claude plugin validate --strict` over every `plugins/*/` directory (ci.yml:124), so with the pin raised to 2.1.330 the band-line test file is expected to fail the same strict check this PR fixes elsewhere. The commit message's 'strict validate passes' and the v1.0.0 release line ('the AbovePrompt props carry isCollapsed') do not hold for band-line.\n\nAlso (overall): The PR raises the CI engine pin to 2.1.330 on the premise that every mod test file now type-checks there, and adds `isCollapsed: false` to the AbovePrompt props in agent-watcher (band.test.tsx:8, tracker.test.ts:928,1107,1184) and parallel2-lanes (band.test.tsx:55). plugins/band-line/hooks/band.test.tsx:67 builds the same `BAND` constant (`{ component: 'AbovePrompt', props: { hasSurvey, isWorking, maxRows, bodyColumns, scroll, view } } as const`) without `isCollapsed`, and spreads it into `$.ui.mount` at :72 and :378 exactly as parallel2-lanes does. The CI plugin job runs `claude plugin validate --strict` on every `plugins/*/`, so band-line is checked against the same 2.1.330 types that forced the other two edits; the release note (docs/RELEASES/v1.0.0.md:85) and the ci.yml comment (:116-117) both state the AbovePrompt props carry `isCollapsed` everywhere. The PR's CI was still pending at review time, so the failure is inferred from the identical shape rather than observed.",
+        "fix": [
+          "Add `isCollapsed: false` to the BAND props at plugins/band-line/hooks/band.test.tsx:67 (between `hasSurvey` and `isWorking`, as in the other mods), then confirm with `claude plugin validate --strict plugins/band-line` under 2.1.330.",
+          "Add `isCollapsed: false` to the props at plugins/band-line/hooks/band.test.tsx:67, matching the agent-watcher and parallel2-lanes constants.",
+          "If 2.1.330 validate --strict passes on band-line as written, record why (e.g. a looser mount signature there) in the ci.yml pin comment so the next pin raise does not chase it."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Three identical AbovePrompt props literals in tracker.test.ts",
+        "file": "plugins/agent-watcher/hooks/tracker.test.ts",
+        "lines": "928,1107,1184",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "plugins/agent-watcher/hooks/tracker.test.ts repeats the same AbovePrompt props object inside three `bandLine` helpers (lines 928, 1107, 1184), so this PR had to apply the `isCollapsed` fix three times; band.test.tsx in the same folder already holds the same props as a `BAND` constant. One shared constant would make the next engine prop a single edit.",
+        "fix": [
+          "Hoist a module-level `const BAND_PROPS = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} } as const` and use it in the three helpers."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Resume spawn still bypasses the AgentSpawnInput type with `as never`",
+        "file": "plugins/parallel2-lanes/hooks/band.test.tsx",
+        "lines": "162",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR introduces `spawnInput` so every fake spawn is checked against `AgentSpawnInput`, yet the resume test at plugins/parallel2-lanes/hooks/band.test.tsx:162 still passes `{ prompt, description, resume } as never`. The cast hides exactly the drift this PR repairs (missing `tool_use_id`, `subagentType`, `provider`, `parentModel`, `background`, `fork`), so the next engine type change will not surface here.\n\nAlso (overall): The PR introduces `spawnInput` in plugins/parallel2-lanes/hooks/band.test.tsx:66-70 so spawns type-check as a full `AgentSpawnInput` against the pinned engine types, but the resume spawn at :162 still passes a partial object cast `as never`. That cast silences exactly the type drift this PR exists to catch: if `resume`'s shape changes in a later engine, this call keeps compiling while the runtime check in spawn.ts:19 (`e.resume`) may read a different shape.",
+        "fix": [
+          "Replace the literal with `spawnInput('keep going', 'resume', { resume: { agentId: 'agent-1' } })` and drop the `as never` cast.",
+          "Replace :162 with `await $.agent.spawn(spawnInput('keep going', 'resume', { resume: { agentId: 'agent-1' } }))` and drop the `as never`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Fork, teammate and workflow fakes contradict the engine's documented AgentSpawnInput values",
+        "file": "plugins/parallel2-lanes/hooks/spawn.test.ts",
+        "files": [
+          "plugins/parallel2-lanes/hooks/spawn.test.ts",
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/parallel2-lanes/hooks/band.test.tsx"
+        ],
+        "lines": "52-56,175-187",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The `spawnInput` docstring (spawn.test.ts:52) says it builds the input 'as the engine raises it', but the out-of-scope variants at spawn.test.ts:178-180 spread it into shapes the engine never raises: a fork keeps `subagentType: 'general-purpose'` (the type documents `fork` for a fork), a teammate keeps `background: false` (documented as true for a teammate), and the workflow agent carries `runId: 'run-1', agentIndex: 0` (documented as a `wf_` id and an index counted from 1). The hook only checks truthiness (spawn.ts:19), so the test passes, but the fakes misdocument the contract they claim to mirror.\n\nAlso (tests): The same seven-line `spawnInput` helper and docstring appear verbatim in plugins/parallel2-lanes/hooks/band.test.tsx:66-70 and plugins/parallel2-lanes/hooks/spawn.test.ts:52-56. The next engine change to `AgentSpawnInput` needs the same edit twice, which is the multi-site drift this PR is cleaning up.\n\nAlso (overall): plugins/parallel2-lanes/hooks/band.test.tsx:66-70 and plugins/parallel2-lanes/hooks/spawn.test.ts:52-56 define the same `spawnInput` builder (same defaults: `toolu_1`, `general-purpose`, `{ plugin: 'engine', tier: 'core' }`, `opus`, `background`/`fork` false). The next engine bump that adds a required `AgentSpawnInput` field must be fixed in both copies; todo-watch already keeps shared fakes in a `testWorld.ts` module beside its tests.",
+        "fix": [
+          "Use documented values: `{ ...call, fork: true, subagentType: 'fork' }`, `{ ...call, isTeammate: true, background: true }`, `{ ...call, workflow: { runId: 'wf_1', agentIndex: 1 } }`.",
+          "Or narrow the `spawnInput` docstring to say it builds a plain Agent-call input and the variants only set the out-of-scope flag.",
+          "Move `spawnInput` into one test-only module (for example `plugins/parallel2-lanes/hooks/_spawn_input.ts`, imported only by the two test files) and import it from both.",
+          "Or keep both copies and accept the duplication; note it in the helper docstring so the pair is edited together.",
+          "Move `spawnInput` into a shared test helper beside the tests (for example `hooks/testSpawn.ts`, mirroring todo-watch's `testWorld.ts`) and import it from both test files.",
+          "Keep both copies but add a one-line comment in each naming the other, so a field change is applied to both."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "pytest-scope shell fake keeps an `as never` cast the new per-tool matchers may not need",
+        "file": "plugins/pytest-scope/hooks/scope.test.ts",
+        "lines": "97-102",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The refactor at plugins/pytest-scope/hooks/scope.test.ts:97-102 splits the Bash and PowerShell fakes into one matcher each, but `ranShell` still returns its result `as never`, so the fake's answer shape is never type-checked against the engine's tool.call result. parallel2-lanes/hooks/band.test.tsx:43-44 returns the same `{ result: { stdout, stderr, interrupted } }` shape from per-tool matchers with no cast and passes strict validation.",
+        "fix": [
+          "Drop the cast by returning the result inline in each matcher (`(_$, e) => (seen.shell.push(e.command), { result: { stdout: 'ok', stderr: '', interrupted: false } })`), or give `ranShell` an explicit return type from the engine's tool.call result type instead of `never`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "todo-watch band layout test still tolerates the 2.1.322 engine CI no longer runs",
+        "file": "plugins/todo-watch/hooks/band.test.tsx",
+        "files": [
+          "plugins/todo-watch/hooks/band.test.tsx",
+          ".github/workflows/ci.yml"
+        ],
+        "lines": "173-177",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "plugins/todo-watch/hooks/band.test.tsx:173-176 explains that 2.1.323+ stacks the 'engine' part beneath the band while 2.1.322 replaces it, and strips an optional trailing 'engine' node so the assertion holds on both. That tolerance existed because CI pinned 2.1.322 (see the #292 review); with this PR's pin at 2.1.330 the 2.1.322 branch is unreachable in CI, and the optional node now lets the layout test pass even if a later engine stops stacking the part beneath.",
+        "fix": [
+          "Assert the 2.1.330 layout strictly (`expect(texts).toEqual([...START_LINES, '✓ in sync', 'engine'])`) and drop the 2.1.322 sentence from the comment.",
+          "Keep the tolerance but reword the comment to state the minimum engine CI pins (2.1.330) and why the trailing node stays optional."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 332 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"2000-version-1-release\",\"commits_count\":3,\"first_sha\":\"0f4c1e5833d99c1b245af40060e5fd691e0e160f\",\"headRefName\":\"3000-BUG-hook-mod-drift\",\"headRefOid\":\"4c122f4e229f92b7d1af29c17c209c29beca588d\",\"last_sha\":\"4c122f4e229f92b7d1af29c17c209c29beca588d\",\"mergeCommit\":null,\"number\":332,\"state\":\"OPEN\",\"title\":\"Test(mods): `AgentSpawnInput` engine 2.1.330 type-check\",\"url\":\"https://github.com/t968rs/operator-straps/pull/332\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "3000-BUG-hook-mod-drift",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "3000-BUG-hook-mod-drift",
+        "head_ref_name": "3000-BUG-hook-mod-drift",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "0f4c1e5833d99c1b245af40060e5fd691e0e160f",
+        "head_sha": "4c122f4e229f92b7d1af29c17c209c29beca588d",
+        "base_ancestor_command": "git merge-base --is-ancestor 0f4c1e5833d99c1b245af40060e5fd691e0e160f HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4c122f4e229f92b7d1af29c17c209c29beca588d HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "2000-version-1-release",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "4c122f4 (working-tree snapshot; developer commits) - resume spawn at band.test.tsx:165 now builds spawnInput('keep going', 'resume', { resume: { agentId: 'agent-1' } }) with no `as never` cast"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "4c122f4 (working-tree snapshot; developer commits) - spawnInput docstrings narrowed to a plain Agent-call input whose variants set only their flag, each naming the other copy so both are edited together; v1.0.0.md: release line makes no claim about the fake values, no edit"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "4c122f4 (working-tree snapshot; developer commits) - layout comment at todo-watch band.test.tsx:173-175 now states CI pins 2.1.330 and why the trailing engine node stays optional; ci.yml: pin already 2.1.330, no edit"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "4c122f4 (working-tree snapshot; developer commits) - band-line BAND props at band.test.tsx:67 gain isCollapsed: false (between hasSurvey and isWorking); ci.yml:116-117 and v1.0.0.md:84-85 claims now hold for band-line, no edit"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "4c122f4 (working-tree snapshot; developer commits) - Hoisted the AbovePrompt props literal into a module-level BAND_PROPS constant (tracker.test.ts:33) and replaced the three inline copies in the bandLine helpers (now lines 931, 1107, 1181) with props: BAND_PROPS"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "4c122f4 (working-tree snapshot; developer commits) - Dropped the ranShell helper and its `as never` cast; the Bash and PowerShell tool.call matchers now record the command and return the result inline, so the shape is type-checked like band.test.tsx:43-44"
+    }
+  ]
+}
