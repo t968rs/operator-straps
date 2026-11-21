@@ -21,7 +21,7 @@ depends on no other plugin.
   user messages and before the `/compact` instructions. They are read at each compaction from
   `<state_dir>/session-bookmark/notes.json` under the git top level of the session cwd, else of
   `CLAUDE_PROJECT_DIR`; when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds
-  a notes file is read. `state_dir` coming from `.claude/harness.json` (default
+  a notes file is read. `state_dir` comes from `.claude/harness.json` (default
   `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
   other-version file means no notes section; a note stays until it is removed or cleared with
   `/harness:add-bookmark`.
@@ -90,7 +90,7 @@ depends on no other plugin.
 ## Checks
 
 ```
-claude plugin validate <mod folder>
+claude plugin validate --strict <mod folder>
 claude plugin test <mod folder>
 tsc -p <mod folder>   # once the engine has generated .claude-plugin/types/ by loading the mod
 ```

@@ -7,7 +7,8 @@ call through unchanged.
 ## Install
 
 ```
-/plugin install pytest-scope --marketplace t968rs/operator-straps
+claude plugin marketplace add t968rs/operator-straps
+claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
 ```
 
 ## Options

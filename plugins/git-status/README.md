@@ -57,7 +57,7 @@ attaches nothing.
 | `tool.call` on `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit` | Refreshes after the call returns, without delaying it. |
 | `turn.complete` | Refreshes. |
 | `prompt.submit` | Runs its own `git status` (after a background run in flight, waiting at most 2 s) and attaches the `GIT_STATE` line when it changed. |
-| `session.end`, `session.compact` | Force the next prompt's line after `/clear`, a resume or a main compaction. |
+| `session.end`, `session.compact`, `session.append` (door `compaction`) | Force the next prompt's line after `/clear`, a resume or a main compaction; the `session.append` hook covers a compaction whose `session.compact` chain another mod ended first. |
 
 Background runs coalesce: one `git status` in flight, at least 2 s between background starts, and a
 request made while one runs is owed a single run after it. `git status` runs with
@@ -76,7 +76,7 @@ a timeout, a refused status line) clears the status and never blocks a prompt or
 ## Checks
 
 ```
-claude plugin validate <mod folder>
+claude plugin validate --strict <mod folder>
 claude plugin test <mod folder>
 ```
 

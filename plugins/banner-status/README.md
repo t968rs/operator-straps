@@ -75,7 +75,7 @@ JSON that ccstatusline pipes to its stdin and resolves the file against `workspa
 so a session launched in a worktree prints that checkout's line. The widget reads the branch the line was
 built for from `line.json` and the checkout's `HEAD` from `.git` (a worktree's `gitdir:` file is followed),
 with no git call; when the stamped branch differs from `HEAD`'s, it prints that branch dark before the line.
-When `line.json` is absent (working-refs 0.1.0 writes only `line.txt`), it falls back to `line.txt`. The mod picks the checkout from the session
+When `line.json` is absent (an older working-refs wrote only `line.txt`), it falls back to `line.txt`. The mod picks the checkout from the session
 `cwd` first, so a session launched elsewhere whose `cwd` later moves into a worktree shows the launch folder's
 line here while band-line shows the worktree's. `customCommandCacheTtlSeconds` stays 0 so the line
 follows each refresh.

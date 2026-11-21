@@ -39,6 +39,8 @@ Its second skill, `arc-help-pages`, builds the longer help page a tool's "?" pag
 ## Install
 
 ```
+claude plugin marketplace add t968rs/operator-straps
+claude plugin install harness@operator-straps
 claude plugin install arc-straps@operator-straps
 ```
 
@@ -141,6 +143,10 @@ checkout the call runs in (`root`) and the main checkout of its repository (`che
 - An `arc-straps` update can change the generator. After updating, sweep `check_applied` over `tool_names()`
   and apply the tools it flags, then dry-run `apply_toolbox` and apply it when it does not report
   `UNCHANGED`.
+- An update can also change the help-page generator (0.3.1: the Python syntax opens with `import arcpy`
+  and `arcpy.ImportToolbox`). Sweep `check_help_page` and rebuild each page it reports `help_page_stale` with
+  `apply_help(page, apply=True)`. Renaming the archive file stales every page, since the syntax names the
+  archive by file name.
 
 ## Migrating a project copy
 

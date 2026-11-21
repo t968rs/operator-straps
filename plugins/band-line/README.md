@@ -18,14 +18,14 @@ oStraps: ⎇ feature/x ↑2 ↓1 · +3 ~3 ?2 · (R,L):1,2 | [Opus 5.5] · ctx:11
 ## Working line (optional)
 
 When `working-refs` holds a working line, it draws as a second line in the subtle color directly under the
-banner (`plan 2025 · todo-k69m (301) · [ other todo-zz99 ] +1`). The source is the `working-refs` mod's `line`
+banner (`plan 2025 · todo-k69m banner (301) · [ other todo-zz99 ] +1`). The source is the `working-refs` mod's `line`
 state value (`$.state['working-refs'].line`), read as an atom so the line redraws when it changes.
 `working-refs` is optional and not listed under `dependencies`: while it is not installed, or its line is
 null or empty, only the banner draws, exactly as before.
 
 The second line's segments, in order, drawn from the `head`, `others` and `more` fields:
 
-- `head`: the plans part and the branch's own refs, plain (`plan 2025 · todo-k69m (301)`); left out when empty.
+- `head`: the plans part and the branch's own refs, plain (`plan 2025 · todo-k69m banner (301)`); left out when empty.
 - ` · ` between the head and the first other-branch segment, only when both exist.
 - One `[ <branch> <refs> ]` per other branch, most recent first, separated by a space; the branch name draws
   dim (`dimColor`), the rest in the subtle color.
