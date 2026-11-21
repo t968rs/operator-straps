@@ -21,8 +21,10 @@ status or merge claims.
 | `--auto-title`     | When the PR title is not a one-line ASCII `Word(scope): summary` subject distinct    |
 |                    | from the branch name, `build` makes the draft title the PR title (`gh pr edit`).    |
 |                    | A usable or merged PR title is kept; an unusable title on an open or closed          |
-|                    | (unmerged) PR is replaced.                                                           |
-| `--local`          | Reads the checked-out branch when it is not the PR branch, working tree included.   |
+|                    | (unmerged) PR is replaced. Default: the `auto_title` key; `--no-auto-title` turns it |
+|                    | off for one run.                                                                     |
+| `--local`          | Reads the checked-out branch when it is not the PR branch: staged and unstaged     |
+|                    | changes included, untracked files left out.                                          |
 | `--remote-head`    | Reads the committed PR head `gh` reports, even on the PR branch.                    |
 | `--committed-only` | Keeps the local PR head but leaves uncommitted changes out.                         |
 | `--repo DIR`       | Names the project when the session runs elsewhere.                                  |

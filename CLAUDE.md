@@ -1,7 +1,7 @@
 # operator-straps
 
-Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) and the `arc-straps`
-plugin (ArcGIS Pro toolbox skills) plus nine TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
+Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) the `arc-straps`
+plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin (`/setup-statusline`), plus nine TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
 `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`, `working-refs`). Layout and install:
 `README.md`.
 
@@ -122,7 +122,7 @@ Releases (`vX.Y.Z` tags, GitHub releases) version the whole marketplace and neve
 Each branch or session that bumps a plugin also suggests the next release version, from the latest tag
 (`gh release list --limit 1`) and the largest plugin bump since it: minor when any plugin bumped its minor or a
 plugin was added, patch when every bump was a patch, major only on the developer's call or a breaking change
-across the marketplace (a config key renamed, a plugin removed). The suggested release's notes go in
+across the marketplace (a config key renamed, a plugin removed, a schema change that invalidates existing artifacts or pinned copies). The suggested release's notes go in
 `docs/RELEASES/v<X.Y.Z>.md`: one file per release, created by the first branch that suggests that version and
 extended by later ones, with a table of each changed plugin's old and new version
 (`| harness | 0.62.0 | 0.63.0 |`) and one line per change. The developer cuts the release, and the GitHub

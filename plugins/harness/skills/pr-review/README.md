@@ -13,12 +13,16 @@ issues are presented, so all mechanical or unambiguous issues are resolved by th
 | Phase           | Driver command                | Result                                                                            |
 |-----------------|-------------------------------|-----------------------------------------------------------------------------------|
 | 1 Capture       | `capture`                     | PR metadata, structural guards, review buckets, slot plan, one brief per reviewer |
-| 2 Review        | none (agent dispatch)         | One `findings/<slot>.json` per reviewer, written through `record`                 |
-| 3 Consolidate   | `merge`, `amend`, `build`     | One `<reviews>/<NNNN>_<slug>.json` with a derived verdict                         |
+| 2 Review        | none (agent dispatch; `-a`: one Workflow call, refuters start with `init`) | One `findings/<slot>.json` per reviewer, written through `record`; refutations under `-a` |
+| 3 Consolidate   | `merge`, `amend`, `build`, `fold` | One `<reviews>/<NNNN>_<slug>.json` with a derived verdict                         |
 | 4 Branch safety | `phase4_branch_safety.py`     | First run inside `build`, second run before any fix                               |
-| 5 Fix           | `waves`, `bubble`, `closeout` | Fixer briefs, dispatch rows, resolutions, verdict recomputed                      |
+| 5 Fix           | `waves`, `bubble`, `refute`, `unrefute`, `closeout` | Fixer briefs, dispatch rows, resolutions, verdict recomputed                      |
 
 The driver is `../../scripts/pr_review.py`; each subcommand lists its options under `--help`.
+
+An issue closed as `REFUTED` (every finding refuted in an `-a` run, or `refute` by the developer) is dispositioned
+and gets no fixer; `unrefute --fix` returns it to the next `waves`. `amend --regrade <ID>=mechanical|judgment` sets
+an issue's fix kind before `build`, which decides whether its fixer can run `haiku`.
 
 ## Fix waves
 

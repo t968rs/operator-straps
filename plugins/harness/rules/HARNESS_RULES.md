@@ -25,9 +25,9 @@ wins wherever it is more specific.
 - **History rewrites belong to the developer, everywhere:** no `rebase`, `cherry-pick`, `commit --amend`,
   `reset` to drop commits, or `push`. Recommend the operation instead; subagent prompts never contain one.
   One exception: `attach_worktree.py` (`harness:a-w`) rebases and squashes the `d-w` worktree's commits and
-  resets it to its original HEAD on `--abort`, a failed start or ambiguous rules at a rebase stop. At exit 2
-  the agent resolves files there and reruns with `--continue` or `--abort`, never running a rewrite or
-  `merge` itself.
+  resets it to its original HEAD on `--abort`, a failed start, ambiguous rules at a rebase stop or an empty
+  move. At exit 2 the agent resolves files there and reruns with `--continue` or `--abort`, never
+  running a rewrite or `merge` itself.
 - Commit messages only on explicit ask (`harness:c-msg`, `harness:branch-commit-msg`, or in words). A finished
   unit of work otherwise ends with the list of changed files.
 - `harness:amend-commit-msg` rewrites only the drafted commit-message TXT file; it never runs `git commit --amend`.
