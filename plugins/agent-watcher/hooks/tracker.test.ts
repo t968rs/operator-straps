@@ -29,6 +29,10 @@ const PR_REVIEW_PY = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_RO
 const SHA = '0123456789abcdef0123456789abcdef01234567'
 const NOW = 1_800_000_000_000
 const ZERO = 'findings=0 critical=0 important=0 minor=0'
+/** The AbovePrompt props the band helpers mount with. */
+const BAND_PROPS = {
+  hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+} as const
 
 type Files = Map<string, { text: string; mtimeMs: number }>
 /** `unreadable`: paths that exist but whose read is refused (a lock, an OS refusal, over 4 MiB). */
@@ -924,10 +928,7 @@ describe('the header convention and row fields (issue #193)', () => {
     result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
   })
   const bandLine = async ($: Engine): Promise<string | undefined> => {
-    const props = {
-      hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
-    }
-    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })
     const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
     await ui.unmount()
     return text
@@ -1103,10 +1104,7 @@ describe('pr-review run directory', () => {
   }
   /** The band line: the test kit exposes no plugin state, so the drawn band is what is observed. */
   const bandLine = async ($: Engine): Promise<string | undefined> => {
-    const props = {
-      hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
-    }
-    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })
     const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
     await ui.unmount()
     return text
@@ -1180,10 +1178,7 @@ describe('review-local runs (a local-<label> key)', () => {
     result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
   })
   const bandLine = async ($: Engine): Promise<string | undefined> => {
-    const props = {
-      hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
-    }
-    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })
     const text = (await ui.find({ type: 'Text', text: /^(local review|PR #)/ }))?.text
     await ui.unmount()
     return text

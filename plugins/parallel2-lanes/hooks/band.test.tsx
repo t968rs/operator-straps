@@ -63,7 +63,10 @@ const bandLines = async ($: Engine, hasSurvey = false): Promise<string[]> => {
   return found.map(node => node.text ?? '')
 }
 
-/** A full `agent.spawn` input, as the engine raises it for one Agent call. */
+/**
+ * A full `agent.spawn` input for one plain Agent call; a variant sets only the flag a test needs (`resume`).
+ * The same builder lives in spawn.test.ts: a change to `AgentSpawnInput` edits both copies.
+ */
 const spawnInput = (prompt: string, description: string, over: Partial<AgentSpawnInput> = {}): AgentSpawnInput => ({
   tool_use_id: 'toolu_1', prompt, description, subagentType: 'general-purpose',
   provider: { plugin: 'engine', tier: 'core' }, parentModel: 'opus', background: false, fork: false, ...over,
@@ -159,7 +162,7 @@ describe('the lane band', () => {
     world(on)
     await spawnLane($, 'task1')
     await turnEnd($, 'agent-1')
-    await $.agent.spawn({ prompt: 'keep going', description: 'resume', resume: { agentId: 'agent-1' } } as never)
+    await $.agent.spawn(spawnInput('keep going', 'resume', { resume: { agentId: 'agent-1' } }))
     expect(await bandLines($)).toEqual([
       'parallel2 feat-x: w1 task1 dispatched (running), task2 dispatched · w2 task3 planned',
     ])
