@@ -64,7 +64,7 @@ const world = (on: On, w: World = {}): void => {
 const submit = { text: 'hello', wait: false, origin: { kind: 'composer' } } as const
 const BAND = {
   component: 'AbovePrompt',
-  props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 120, scroll: { offset: 0, bodyRows: 10 }, view: {} },
+  props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 120, scroll: { offset: 0, bodyRows: 10 }, view: {} },
 } as const
 
 /** The banner text the band draws now, or undefined when it draws none. */

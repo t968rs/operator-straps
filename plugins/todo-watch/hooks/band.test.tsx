@@ -170,8 +170,9 @@ describe('the band above the prompt', () => {
     engineDraws(on)
     await start($, w)
     const clean = await bandNodes($)
-    // 2.1.323+ stacks each plugin's band as its own part (the band's lines, then the part beneath, here
-    // 'engine'); 2.1.322 replaces the part beneath while the plugin draws, so the trailing node is optional
+    // CI pins 2.1.330, which stacks each plugin's band as its own part (the band's lines, then the part
+    // beneath, here 'engine'); the trailing node stays optional so a local engine before 2.1.323, which
+    // replaces the part beneath while the plugin draws, still runs this file
     const texts = clean.all.map(t => t.text.trim())
     const own = texts.at(-1) === 'engine' ? texts.slice(0, -1) : texts
     expect(own).toEqual([...START_LINES, '✓ in sync'])
