@@ -23,8 +23,8 @@ import { archivedIdsOf, type MergeBaseOf, pageOf, parsePlan, type PlanInfo, qual
  * `todo.gh.max_age_hours`; every TODO id takes its keyword label from the same catalog (plan 2028). Scans run at
  * `session.start`, when git-status's snapshot names another branch, when HEAD or the archive tags moved at a
  * prompt, when the plans folder's signature or the override file's, the catalog's or the open list's mtime moved
- * after a file or shell tool call or at a prompt, and when a recheck changed whether an issue hides. Every host failure degrades to an empty line; no hook throws into a tool call, a
- * prompt or a session start.
+ * after a file or shell tool call or at a prompt, and when a recheck changed whether an issue hides.
+ * Every host failure degrades to an empty line; no hook throws into a tool call, a prompt or a session start.
  * Functions taking `$` are function declarations: the engine follows `$` past an import only into one.
  */
 

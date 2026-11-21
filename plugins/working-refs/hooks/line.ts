@@ -52,7 +52,8 @@ export const labelsOf = (ids: readonly string[], keywords: ReadonlyMap<string, s
   ids.map(id => ({ id, keyword: keywords.get(id) ?? null }))
 
 /** `todo-x7ty stop_gates`, or the id alone when it has no keyword. */
-export const labelText = (label: TodoLabel): string => (label.keyword === null ? label.id : `${label.id} ${label.keyword}`)
+export const labelText = (label: TodoLabel): string =>
+  label.keyword === null ? label.id : `${label.id} ${label.keyword}`
 
 /** A label in its TODO's color, for the ccstatusline form. */
 const coloredLabel = (label: TodoLabel): string => `\x1b[38;5;${todoColor(label.id)}m${labelText(label)}${RESET_FG}`
@@ -67,9 +68,9 @@ const drawRefs = (
 }
 
 /**
- * The refs as the line draws them, each id labelled with its keyword: `todo-k69m banner (301, 315)`; an id
- * without a keyword alone `todo-k69m`; issues alone `#301, #315`. The `/harness:working` reply
- * (`harness_lib.working_refs.format_refs`) stays unlabelled.
+ * The plain refs text of the line's head and of each other branch's segment (`buildLine`, `segmentOf`), each id
+ * labelled with its keyword: `todo-k69m banner (301, 315)`; an id without a keyword alone `todo-k69m`; issues
+ * alone `#301, #315`. The `/harness:working` reply (`harness_lib.working_refs.format_refs`) stays unlabelled.
  */
 export const formatRefs = (refs: Refs, keywords: ReadonlyMap<string, string> = NO_KEYWORDS): string =>
   drawRefs(labelsOf(refs.todoIds, keywords), refs.issues)
@@ -101,7 +102,7 @@ const segmentStatus = (s: OtherSegment): string =>
 /** One other branch's segment from its visible refs. */
 const segmentOf = (branch: string, refs: Refs, keywords: ReadonlyMap<string, string>): OtherSegment => {
   const labels = labelsOf(refs.todoIds, keywords)
-  return { branch, refs: drawRefs(labels, refs.issues), labels, issues: [...refs.issues] }
+  return { branch, refs: formatRefs(refs, keywords), labels, issues: [...refs.issues] }
 }
 
 /** Every other branch's visible override, empty ones dropped, by `set_at` descending, then branch name. */
@@ -117,7 +118,8 @@ const otherSegments = (branch: string, overrides: Overrides, view: LineView): Ot
 
 /**
  * How many leading segments fit: each is added while the plain line with the ` +N` it would still need stays
- * within `maxChars`; the head is never cut, and with an empty head the first segment is always drawn.
+ * within `maxChars`; the head is never cut, and with an empty head the first segment is always drawn. The count
+ * stops at the first segment that overflows: a later, shorter segment never takes its place.
  */
 const fitCount = (head: string, all: readonly OtherSegment[], maxChars: number): number => {
   const plain = all.map(segmentText)
@@ -147,7 +149,7 @@ export const buildLine = (
     issues: union(sorted.map(p => p.refs.issues)),
   }
   const labels = labelsOf(refs.todoIds, view.keywords)
-  const refsText = drawRefs(labels, refs.issues)
+  const refsText = formatRefs(refs, view.keywords)
   const head = joinParts(plansPart(plans, p => p.id), refsText)
   const all = otherSegments(branch, overrides, view)
   const k = fitCount(head, all, view.maxChars)

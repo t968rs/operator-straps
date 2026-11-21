@@ -190,7 +190,8 @@ _TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {
                           "a list of issue numbers"),
     "code_snippet": (lambda v: isinstance(v, str), "a string"),
     "keyword": (lambda v: _text(v) and keywords.valid_keyword(v),
-                f"one word of letters, digits, '_', '.' or '-' (at most {keywords.KEYWORD_MAX} characters)"),
+                f"one word of letters, digits, '_', '.' or '-', starting with a letter or digit "
+                f"(at most {keywords.KEYWORD_MAX} characters)"),
 }
 
 

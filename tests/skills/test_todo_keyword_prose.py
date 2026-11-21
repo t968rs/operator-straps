@@ -30,7 +30,7 @@ def test_add_drafts_a_keyword_from_the_suggestion() -> None:
     assert "`keyword`" in add and "suggest-keyword" in add
 
 
-def test_the_keyword_is_one_word_the_agent_may_choose() -> None:
+def test_sync_names_the_one_word_shape_and_the_refusal() -> None:
     sync = _section("sync")
     assert "one word" in sync and "lacks keyword" in sync
 

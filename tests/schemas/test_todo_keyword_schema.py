@@ -44,6 +44,14 @@ def test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern(word: str) -> 
     assert validators & {"pattern", "maxLength", "minLength"}, validators
 
 
+@pytest.mark.parametrize("word", ["parser\n", "a\n"])
+def test_a_keyword_ending_in_a_newline_is_refused_by_the_write_gate(word: str) -> None:
+    """Python's ``jsonschema`` runs the pattern with ``re.search``, whose ``$`` matches before a final
+    newline, so the refusal rests on ``valid_keyword``, the check every write path runs first."""
+    from harness_lib.todo_sync.keywords import valid_keyword
+    assert not valid_keyword(word)
+
+
 def test_a_null_keyword_is_refused_absent_is_the_null() -> None:
     validators = {e.validator for e in _errors(_item(keyword=None))}
     assert "type" in validators, validators

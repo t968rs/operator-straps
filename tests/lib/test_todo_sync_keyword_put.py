@@ -2,12 +2,13 @@
 
 The agent path (``todo_sync.py inbox put``, run by the todo-editor agent for add-todo and sync-gh-todo)
 refuses an item without a one-word ``keyword``, its refusal naming ``guess_keyword``'s answer or saying there
-is none; the agent may set any one-word value. ``add --spec`` and the drain take ``keyword`` as an optional
-key and keep it right after the title; an update may set it.
+is none; the agent may set any one-word value, and a value with a trailing newline is no one word. ``add
+--spec``, the drain and an update take ``keyword`` and keep it right after the title.
 """
 from __future__ import annotations
 
 import copy
+import datetime as dt
 import json
 import sys
 from pathlib import Path
@@ -17,11 +18,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _todo_helpers import MIN_CATALOG, build  # noqa: E402
+from _todo_helpers import CATALOG_REL, MIN_CATALOG, build  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, inbox, updates  # noqa: E402
 from harness_lib.todo_sync.reshape import add_items  # noqa: E402
 
 WALK_ROOTS = ()
+DAY = dt.date(2026, 11, 13)
 
 
 def _item(**over: Any) -> Dict[str, Any]:
@@ -90,5 +92,29 @@ def test_add_keeps_a_keyword_right_after_the_title() -> None:
     assert item["keyword"] == "rows" and keys[keys.index("title") + 1] == "keyword"
 
 
-def test_an_update_may_set_the_keyword() -> None:
-    assert "keyword" in updates.UPDATE_FIELDS
+def test_put_refuses_a_keyword_ending_in_a_newline(make_project, tmp_path: Path) -> None:
+    cfg = build(make_project)
+    assert _refusal(cfg, _spec(tmp_path, [_item(keyword="parser\n")])).startswith("item 1: keyword")
+
+
+def _after_title(item: Dict[str, Any]) -> bool:
+    keys = list(item)
+    return keys[keys.index("title") + 1] == "keyword"
+
+
+def test_the_drain_keeps_a_keyword_right_after_the_title(make_project, tmp_path: Path) -> None:
+    cfg = build(make_project)
+    assert _refusal(cfg, _spec(tmp_path, [_item(keyword="rows")])) == ""
+    [(new, _issue)] = inbox.drain(cfg, today=DAY).added
+    catalog = json.loads(cfg.path(CATALOG_REL).read_text(encoding="utf-8"))
+    item = next(i for i in catalog["items"] if i["id"] == new)
+    assert item["keyword"] == "rows" and _after_title(item)
+
+
+def test_an_update_sets_the_keyword_right_after_the_title() -> None:
+    catalog = copy.deepcopy(MIN_CATALOG)
+    target = next(i for i in catalog["items"] if "keyword" not in i)
+    out = updates.apply_updates(catalog, [{"id": target["id"], "fields": {"keyword": "rows"}}])
+    item = next(i for i in out.catalog["items"] if i["id"] == target["id"])
+    assert item["keyword"] == "rows" and _after_title(item)
+    assert out.updated == ((target["id"], ("keyword",)),)

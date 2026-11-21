@@ -44,6 +44,19 @@ describe('keywordsOf (plan 2028)', () => {
     expect([...keywordsOf(text)]).toEqual([['todo-a', 'ok']])
   })
 
+  test('a keyword that is not one word (a newline, an ESC byte, too long) is skipped', async () => {
+    const long = 'a'.repeat(33)
+    const text = JSON.stringify({
+      items: [
+        { id: 'todo-a', keyword: 'a\nb' }, { id: 'todo-b', keyword: '\u001b[31mred' },
+        { id: 'todo-c', keyword: 'stop_gates\n' }, { id: 'todo-d', keyword: long }, { id: 'todo-e', keyword: '-x' },
+        { id: 'todo-f', keyword: 'a'.repeat(32) }, { id: 'todo-g', keyword: 'two words' },
+        { id: 'todo-h', keyword: '\u001b[2J' },
+      ],
+    })
+    expect([...keywordsOf(text)]).toEqual([['todo-f', 'a'.repeat(32)]])
+  })
+
   test('an absent or malformed catalog, or one without an item list, gives an empty map', async () => {
     for (const text of [undefined, '', '{x', '[]', '{}', JSON.stringify({ items: 'todo-a' })]) {
       expect(keywordsOf(text).size).toBe(0)
@@ -57,6 +70,16 @@ describe('catalogViewOf', () => {
     const got = catalogViewOf(text)
     expect([...got.retired]).toEqual(['todo-48q2'])
     expect([...got.keywords]).toEqual([['todo-x7ty', 'stop_gates']])
+  })
+
+  test('a keyword outside the schema pattern or cap never reaches the view', async () => {
+    const text = JSON.stringify({
+      items: [
+        { id: 'todo-a', keyword: 'fix the\nthing' }, { id: 'todo-b', keyword: 'b'.repeat(33) },
+        { id: 'todo-c', keyword: 'ok' },
+      ],
+    })
+    expect([...catalogViewOf(text).keywords]).toEqual([['todo-c', 'ok']])
   })
 
   test('an absent or malformed catalog retires and labels nothing', async () => {

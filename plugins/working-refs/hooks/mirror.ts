@@ -13,7 +13,8 @@
  * - The defaults are the harness `config/defaults.json` values of `state_dir`, `artifacts.plans`, `todo.folder`,
  *   `todo.catalog`, `todo.gh.repo`, `todo.gh.max_age_hours` and `working_refs.max_chars`.
  * - A plan is `<prefix>_ActionPlan.json` beside its page `<prefix>_PIP.html` (`harness_lib.plan_doc`).
- * - A catalog item's `keyword` (`TodoCatalog.schema.json` `$defs/item`) labels its TODO id on the line.
+ * - A catalog item's `keyword` (`TodoCatalog.schema.json` `$defs/item`) labels its TODO id on the line; the
+ *   reader re-checks its schema `pattern` and `maxLength` before the keyword reaches the line.
  *
  * `tests/mods/test_working_refs_contract.py` pins every value. Pure: no `$`.
  */
@@ -46,3 +47,6 @@ export const ISSUES_KEY = 'issues'
 export const SET_AT_KEY = 'set_at'
 /** A catalog item's one-word label for its TODO id (plan 2028, a property of `$defs/item`). */
 export const KEYWORD_KEY = 'keyword'
+/** The keyword's `pattern` and `maxLength` in that schema; a catalog that skipped `check` can break either. */
+export const KEYWORD_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_.-]*$'
+export const KEYWORD_MAX = 32

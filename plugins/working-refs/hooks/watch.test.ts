@@ -614,7 +614,7 @@ describe('keyword labels (plan 2028)', () => {
   const catalog = (items: Array<Record<string, unknown>>, retired: string[] = []): string =>
     JSON.stringify({ items, retired_ids: retired })
 
-  test('one catalog read both retires and labels: the line, the atom and line.txt', async ($, on) => {
+  test('the catalog both retires and labels: the line, the atom and line.txt', async ($, on) => {
     const w = world(on, { config: TODO_CONFIG })
     addPlan(w, '2025_banner_refs', planJson())
     w.setFile(CATALOG_FILE, catalog([{ id: 'todo-x7ty', keyword: 'stop_gates' }, { id: 'todo-zz99' }], ['todo-ab12']),

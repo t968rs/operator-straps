@@ -70,8 +70,11 @@ describe('todoColor (plan 2028 V5, V6)', () => {
     expect(todoColor('')).toBe(72)
     for (const id of ['todo-x7ty', 'todo-k69m', 'todo-zz99']) {
       expect(todoColor(id)).toBe(TODO_PALETTE[fnv1a32(id) % 8])
-      expect(todoColor(id)).toBe(todoColor(id))
     }
+    // fixed per-id colors, so a hash change fails across runs
+    expect(todoColor('todo-x7ty')).toBe(203)
+    expect(todoColor('todo-k69m')).toBe(214)
+    expect(todoColor('todo-zz99')).toBe(36)
   })
 })
 
@@ -256,7 +259,7 @@ describe('buildLine: keyword labels (plan 2028)', () => {
     const line = buildLine('topic', [], ov, kw({ maxChars: one.length }))
     expect(line?.text).toBe(one)
     expect(line?.more).toBe(1)
-    // long enough for the whole unlabelled line, too short for any labelled segment
+    // long enough for the whole unlabelled line, too short for the first labelled segment, and the cap never skips ahead to a later one
     const unlabelled = 'todo-k69m · [ a todo-x7ty ] [ b todo-zz99 ]'
     expect(buildLine('topic', [], ov, view({ maxChars: unlabelled.length }))?.text).toBe(unlabelled)
     expect(buildLine('topic', [], ov, kw({ maxChars: unlabelled.length }))?.text).toBe('todo-k69m banner +2')

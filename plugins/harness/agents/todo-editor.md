@@ -179,7 +179,7 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
 3. Write `{"items": [...]}` to `<state_dir>/todo-sync/add-<stamp>-<rand>.json`: `<stamp>` is the UTC time as
    `YYYYMMDDTHHMMSS` and `<rand>` is six random lowercase letters. Several todo-editor agents may draft at once,
    and a path they share lets one overwrite another's spec between its write and its `inbox put`. Each item carries `issue` (the number), `url`,
-   `title`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`,
+   `title`, `keyword`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`,
    and optionally `needs_decision`, `decision_question`, `status`, `files`, `related_gh_issues`,
    `code_snippet`. The shapes: `keyword` one word naming the module, skill, class or file the item is about,
    the agent's own choice (letters, digits, `_`, `.` and `-`, starting with a letter or digit, at most 32
@@ -196,8 +196,10 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
    before the put.
 4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first,
    and it queues one inbox file per item without writing the catalog. It prints one `queued <path>` line per
-   item. On a `problem:` line fix the spec and rerun once; a `problem:` line saying an item lacks keyword is
-   that one rerun: set the keyword from the suggestion and put again.
+   item. On a `problem:` line fix the spec and rerun once; a `problem:` line saying items lack keyword is
+   that one rerun: it names every item without one (`item <n> lacks keyword (...)`, one clause per item), so
+   set `keyword` on each of them, from its suggestion or a word of the agent's own when it has none, and put
+   again.
 5. List every queued item under `Added` as `queued: <title> (#N)`, with ` (needs decision)` appended when it
    carries `needs_decision: true`. The item's id is not drawn yet: the drain's summary line names it later.
    Skip **finish**: the drain adds the items, renders the snapshot and runs the check.
@@ -232,7 +234,7 @@ session's conversation had already established (or `none`). Draft exactly one it
 3. Write `{"items": [{...}]}` to `<state_dir>/todo-sync/add-<stamp>-<rand>.json` (`<stamp>` and `<rand>` as in
    **sync**, so no other run shares the path) with the **sync** item keys, `keyword` included, never `issue` or
    `url`. After writing the spec, run `TS suggest-keyword --spec <path>` and set `keyword` from the guess or a
-   better word, as in **sync** step 3; a `lacks keyword` refusal from the put is the one rerun. The script makes the item a local `note` source, or files the issue. A note about an issue that is
+   better word, as in **sync** step 3; a `lacks keyword` refusal from the put is the one rerun, with `keyword` set on every item it names. The script makes the item a local `note` source, or files the issue. A note about an issue that is
    already open belongs to `/harness:sync-gh-todo`, not to `add`: a `related_gh_issues` entry still leaves the
    issue untracked, so the next sync would draft a second item for it. Say so under `Open`.
 4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first.

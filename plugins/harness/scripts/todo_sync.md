@@ -190,11 +190,15 @@ With `--update` it queues field updates of existing items instead: the spec is
 whole spec is checked against the catalog first, then one inbox file is written per update. `add --inbox`
 applies the queued updates.
 
-Every item of an `add` spec must carry a `keyword`, the one word the working-refs line shows beside the item's
-id. An item without one is refused before anything is queued, naming the item by its position:
+Every item of an `inbox put` spec must carry a `keyword`, the one word the working-refs line shows beside the
+item's id. A spec with items lacking one is refused before anything is queued, in one `problem:` line that
+names every such item by its position, one clause per item joined with `; `:
 `item <n> lacks keyword (suggested: X)` when `suggest-keyword` has a confident guess, else
 `item <n> lacks keyword (no confident guess: name the module, skill or class it is about)`. `add --spec` and
-the `add --inbox` drain do not require one.
+the `add --inbox` drain do not require one. A project that pins its catalog schema (`todo.catalog_schema`,
+default `RepoToDo.schema.json` in the TODO folder) refreshes that copy from the harness
+`catalogs/TodoCatalog.schema.json` before the first keyworded item lands: an older copy's closed `$defs/item`
+has no `keyword`, so `check` reports T1 on every item that carries one.
 
 | Option | Meaning |
 |---|---|
@@ -220,7 +224,8 @@ The one-time migration that gives each catalog item without a `keyword` its conf
 `suggest-keyword` prints), placed right after the item's `title`. An item that already has a keyword keeps it,
 and an item with no confident guess stays without one. Only the catalog is written, and only when something
 changes. Prints `keywords: set N, left M without one` (`would set N` on a dry run), then one
-`set <id>: <keyword>` line per item given a keyword.
+`set <id>: <keyword>` line per item given a keyword. Refresh a pinned catalog schema copy from
+`catalogs/TodoCatalog.schema.json` before the run (see `inbox put`), or `check` reports T1 on each item it fills.
 
 | Option | Meaning |
 |---|---|

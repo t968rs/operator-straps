@@ -3,10 +3,10 @@
 ``guess_keyword`` answers only with high confidence: a one-word title prefix (``merge-commit-msg: ...``)
 that is not a generic kind such as ``docs`` or ``fix``, else the one file stem that dominates the item's
 ``files`` (a leading ``test_`` dropped, everything past the first dot ignored, generic stems such as
-``SKILL`` or ``README`` skipped), else None. ``fill_keywords`` writes a guess into every item of a catalog
+``SKILL`` or ``README`` and shared ALL-CAPS Markdown docs such as ``PROVENANCE.md`` skipped), else None. ``fill_keywords`` writes a guess into every item of a catalog
 copy that has no keyword and leaves the rest without one; ``apply_keywords`` does it to the project
-catalog. ``require_keywords`` refuses a spec item that names no keyword, suggesting the guess when there
-is one.
+catalog. ``require_keywords`` refuses, in one error, every spec item that names no keyword, suggesting the
+guess when there is one.
 """
 from __future__ import annotations
 
@@ -39,8 +39,9 @@ NO_GUESS = "no confident guess: name the module, skill or class it is about"
 
 
 def valid_keyword(value: Any) -> bool:
-    """True for a string the schema's ``keyword`` pattern and length cap accept."""
-    return isinstance(value, str) and len(value) <= KEYWORD_MAX and bool(KEYWORD_RE.match(value))
+    """True for a string the schema's ``keyword`` pattern and length cap accept; ``fullmatch`` keeps the
+    pattern's ``$`` from passing a trailing newline."""
+    return isinstance(value, str) and len(value) <= KEYWORD_MAX and bool(KEYWORD_RE.fullmatch(value))
 
 
 def _title_guess(title: Any) -> Optional[str]:
@@ -54,13 +55,20 @@ def _title_guess(title: Any) -> Optional[str]:
     return word
 
 
+def _shared_doc(name: str, stem: str) -> bool:
+    """True for an ALL-CAPS Markdown file (``PROVENANCE.md``, ``CHANGELOG.md``): a shared index doc many
+    unrelated items touch, so its stem names no item's subject."""
+    return name.lower().endswith(".md") and stem.isupper()
+
+
 def _stem(path: str) -> Optional[str]:
-    """A file's name up to its first dot, a leading ``test_`` dropped; None for a generic stem."""
+    """A file's name up to its first dot, a leading ``test_`` dropped; None for a generic stem or a
+    shared ALL-CAPS Markdown doc."""
     name = PurePosixPath(path.replace("\\", "/")).name
     stem = name.split(".", 1)[0]
     if stem.startswith("test_"):
         stem = stem[len("test_"):]
-    if not stem or stem.startswith("_") or stem.lower() in GENERIC_STEMS:
+    if not stem or stem.startswith("_") or stem.lower() in GENERIC_STEMS or _shared_doc(name, stem):
         return None
     return stem
 
@@ -153,16 +161,22 @@ def keyword_lines(fill: KeywordFill, dry_run: bool) -> List[str]:
     return lines
 
 
+def _lacks_clause(n: int, spec: Dict[str, Any]) -> str:
+    """``item <n> lacks keyword (...)`` with the confident guess, else the no-guess hint."""
+    guess = guess_keyword(spec)
+    hint = f"suggested: {guess}" if guess else NO_GUESS
+    return f"item {n} lacks keyword ({hint})"
+
+
 def require_keywords(specs: Sequence[Any]) -> None:
-    """Refuse the first spec item (an object) whose ``keyword`` is absent or blank, suggesting the
-    confident guess when there is one.
+    """Refuse every spec item (an object) whose ``keyword`` is absent or blank in one error, suggesting
+    the confident guess for each when there is one.
 
     Raises:
-        TodoSyncError: ``item <n> lacks keyword (...)``, ``n`` counted from 1.
+        TodoSyncError: one ``item <n> lacks keyword (...)`` clause per such item, joined with ``; ``,
+            ``n`` counted from 1.
     """
-    for n, spec in enumerate(specs, 1):
-        if not isinstance(spec, dict) or has_keyword(spec):
-            continue
-        guess = guess_keyword(spec)
-        hint = f"suggested: {guess}" if guess else NO_GUESS
-        raise TodoSyncError(f"item {n} lacks keyword ({hint})")
+    clauses = [_lacks_clause(n, spec) for n, spec in enumerate(specs, 1)
+               if isinstance(spec, dict) and not has_keyword(spec)]
+    if clauses:
+        raise TodoSyncError("; ".join(clauses))

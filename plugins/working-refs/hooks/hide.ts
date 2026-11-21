@@ -1,5 +1,5 @@
 import type { Refs } from '../types'
-import { KEYWORD_KEY } from './mirror'
+import { KEYWORD_KEY, KEYWORD_MAX, KEYWORD_PATTERN } from './mirror'
 
 /**
  * Which override refs leave the working line (plan 2027): a TODO id the checked-out catalog lists in
@@ -54,13 +54,19 @@ const retiredIn = (data: unknown): ReadonlySet<string> => {
   return new Set(ids.filter((x): x is string => typeof x === 'string'))
 }
 
+/** One word, a letter or digit first, at most 32 characters; `$` without the m flag ends the input only. */
+const KEYWORD_SHAPE = new RegExp(KEYWORD_PATTERN)
+
+const keywordOk = (keyword: unknown): keyword is string =>
+  typeof keyword === 'string' && keyword.length <= KEYWORD_MAX && KEYWORD_SHAPE.test(keyword)
+
 const keywordsIn = (data: unknown): ReadonlyMap<string, string> => {
   const items = isObject(data) && Array.isArray(data.items) ? data.items : []
   const found = new Map<string, string>()
   for (const item of items) {
     if (!isObject(item) || typeof item.id !== 'string') continue
     const keyword = item[KEYWORD_KEY]
-    if (typeof keyword === 'string' && keyword !== '') found.set(item.id, keyword)
+    if (keywordOk(keyword)) found.set(item.id, keyword)
   }
   return found
 }
@@ -71,12 +77,16 @@ export const catalogViewOf = (text: string | undefined): CatalogView => {
   return { retired: retiredIn(data), keywords: keywordsIn(data) }
 }
 
-/** The catalog's `retired_ids`; empty for an absent or malformed catalog, non-string members dropped. */
+/**
+ * The catalog's `retired_ids`; empty for an absent or malformed catalog, non-string members dropped. A test seam:
+ * production reads the same `retiredIn` through `catalogViewOf(...).retired`, so no hook calls this.
+ */
 export const retiredIdsOf = (text: string | undefined): ReadonlySet<string> => retiredIn(parse(text))
 
 /**
- * The catalog's item id -> `keyword` map (plan 2028); items without a non-empty string keyword (or a string id)
- * are skipped, and an absent or malformed catalog gives an empty map.
+ * The catalog's item id -> `keyword` map (plan 2028); items without a string keyword of one word (or a string id)
+ * are skipped, and an absent or malformed catalog gives an empty map. A test seam: production reads the same
+ * `keywordsIn` through `catalogViewOf(...).keywords`, so no hook calls this.
  */
 export const keywordsOf = (text: string | undefined): ReadonlyMap<string, string> => keywordsIn(parse(text))
 
