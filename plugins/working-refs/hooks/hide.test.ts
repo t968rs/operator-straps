@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { CachedIssue, OpenList } from './hide'
-import { isClosed, issueCacheOf, openListOf, retiredIdsOf, visibleRefs } from './hide'
+import { catalogViewOf, isClosed, issueCacheOf, keywordsOf, openListOf, retiredIdsOf, visibleRefs } from './hide'
 
 const T0 = Date.parse('2026-11-19T10:00:00Z')
 const HOUR = 3_600_000
@@ -22,6 +22,48 @@ describe('retiredIdsOf', () => {
       expect(retiredIdsOf(text).size).toBe(0)
     }
     expect([...retiredIdsOf(JSON.stringify({ retired_ids: ['todo-a', 3, null] }))]).toEqual(['todo-a'])
+  })
+})
+
+describe('keywordsOf (plan 2028)', () => {
+  test('each item\'s keyword by its id', async () => {
+    const text = JSON.stringify({
+      items: [{ id: 'todo-x7ty', keyword: 'stop_gates' }, { id: 'todo-k69m', keyword: 'banner' }],
+      retired_ids: [],
+    })
+    expect([...keywordsOf(text)]).toEqual([['todo-x7ty', 'stop_gates'], ['todo-k69m', 'banner']])
+  })
+
+  test('items without a string keyword (or a string id) are skipped', async () => {
+    const text = JSON.stringify({
+      items: [
+        { id: 'todo-a', keyword: 'ok' }, { id: 'todo-b' }, { id: 'todo-c', keyword: null }, { id: 'todo-d', keyword: 7 },
+        { id: 'todo-e', keyword: '' }, { keyword: 'orphan' }, { id: 9, keyword: 'num' }, 'todo-f', null,
+      ],
+    })
+    expect([...keywordsOf(text)]).toEqual([['todo-a', 'ok']])
+  })
+
+  test('an absent or malformed catalog, or one without an item list, gives an empty map', async () => {
+    for (const text of [undefined, '', '{x', '[]', '{}', JSON.stringify({ items: 'todo-a' })]) {
+      expect(keywordsOf(text).size).toBe(0)
+    }
+  })
+})
+
+describe('catalogViewOf', () => {
+  test('the retired ids and the keywords from one catalog text', async () => {
+    const text = JSON.stringify({ items: [{ id: 'todo-x7ty', keyword: 'stop_gates' }], retired_ids: ['todo-48q2'] })
+    const got = catalogViewOf(text)
+    expect([...got.retired]).toEqual(['todo-48q2'])
+    expect([...got.keywords]).toEqual([['todo-x7ty', 'stop_gates']])
+  })
+
+  test('an absent or malformed catalog retires and labels nothing', async () => {
+    for (const text of [undefined, '{x']) {
+      const got = catalogViewOf(text)
+      expect(got.retired.size + got.keywords.size).toBe(0)
+    }
   })
 })
 

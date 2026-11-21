@@ -7,7 +7,7 @@ import {
   readConfig, type WorkingRefsConfig,
 } from './config'
 import {
-  CACHE_VERSION, type CachedIssue, isClosed, issueCacheOf, type IssueState, type OpenList, openListOf, retiredIdsOf,
+  CACHE_VERSION, type CachedIssue, catalogViewOf, isClosed, issueCacheOf, type IssueState, type OpenList, openListOf,
 } from './hide'
 import { buildLine, type LineView, statusText } from './line'
 import { PIP_HTML_SUFFIX, PLAN_SUFFIX } from './mirror'
@@ -20,10 +20,10 @@ import { archivedIdsOf, type MergeBaseOf, pageOf, parsePlan, type PlanInfo, qual
  * ccstatusline form in `<state_dir>/working-refs/line.txt` (D6) and, stamped with the branch, `line.json`
  * (plan 2027). Override refs hide by the checked-out catalog's `retired_ids`, the open-issue list `todo_sync.py
  * untracked` writes and the mod's own `gh issue view` cache, which a recheck pass refreshes past
- * `todo.gh.max_age_hours`. Scans run at `session.start`, when git-status's snapshot names another branch, when
- * HEAD or the archive tags moved at a prompt, when the plans folder's signature or the override file's, the
- * catalog's or the open list's mtime moved after a file or shell tool call or at a prompt, and when a recheck
- * changed whether an issue hides. Every host failure degrades to an empty line; no hook throws into a tool call, a
+ * `todo.gh.max_age_hours`; every TODO id takes its keyword label from the same catalog (plan 2028). Scans run at
+ * `session.start`, when git-status's snapshot names another branch, when HEAD or the archive tags moved at a
+ * prompt, when the plans folder's signature or the override file's, the catalog's or the open list's mtime moved
+ * after a file or shell tool call or at a prompt, and when a recheck changed whether an issue hides. Every host failure degrades to an empty line; no hook throws into a tool call, a
  * prompt or a session start.
  * Functions taking `$` are function declarations: the engine follows `$` past an import only into one.
  */
@@ -377,9 +377,13 @@ async function writeLineJson($: Dollar, path: string, branch: string, text: stri
   if (onDisk !== json) await $.fs.write(path, json)
 }
 
-/** What hides refs: the catalog's retired ids, the open list and the gh cache, with the mtimes the probes compare. */
+/**
+ * What hides refs and labels them: the catalog's retired ids and keywords, the open list and the gh cache, with
+ * the mtimes the probes compare.
+ */
 type HideState = {
   retired: ReadonlySet<string>
+  keywords: ReadonlyMap<string, string>
   list: OpenList | null
   cache: ReadonlyMap<number, CachedIssue>
   catalogMtime: number | undefined
@@ -394,11 +398,13 @@ async function readHide($: Dollar, w: Watch): Promise<HideState> {
   const openIssuesMtime = await mtimeOf($, openPath)
   const list = openListOf(openIssuesMtime === undefined ? undefined : await readText($, openPath))
   const cache = issueCacheOf(await readText($, issuesCacheFileOf(w.root, w.cfg)))
-  return { retired: retiredIdsOf(catalogText), list, cache, catalogMtime, openIssuesMtime }
+  // one parse of the catalog serves both the retired ids and the keywords
+  const { retired, keywords } = catalogViewOf(catalogText)
+  return { retired, keywords, list, cache, catalogMtime, openIssuesMtime }
 }
 
 const viewOf = (h: HideState, maxChars: number): LineView => ({
-  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), maxChars,
+  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), keywords: h.keywords, maxChars,
 })
 
 const maxAgeOf = (w: Watch): number => w.cfg.ghMaxAgeHours * HOUR_MS

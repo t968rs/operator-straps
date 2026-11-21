@@ -3,7 +3,7 @@ import type { Engine, MockClock } from 'claude-code/testing'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { WorkingLine } from '../types'
-import { statusText } from './line'
+import { statusText, todoColor } from './line'
 import { branchOfSnapshot, configPathOf, isSnapshotMove, pairedPlans, rootCandidates, signatureOf } from './watch'
 
 /**
@@ -607,6 +607,52 @@ describe('hidden refs (plan 2027)', () => {
     w.setFile(ISSUES_FILE, cacheJson([9, 'CLOSED', NOW - HOUR]), NOW - HOUR)
     await start($, w)
     expect(w.line?.text).toBe('[ other todo-ab12 ]')
+  })
+})
+
+describe('keyword labels (plan 2028)', () => {
+  const catalog = (items: Array<Record<string, unknown>>, retired: string[] = []): string =>
+    JSON.stringify({ items, retired_ids: retired })
+
+  test('one catalog read both retires and labels: the line, the atom and line.txt', async ($, on) => {
+    const w = world(on, { config: TODO_CONFIG })
+    addPlan(w, '2025_banner_refs', planJson())
+    w.setFile(CATALOG_FILE, catalog([{ id: 'todo-x7ty', keyword: 'stop_gates' }, { id: 'todo-zz99' }], ['todo-ab12']),
+      NOW - HOUR)
+    w.setFile(OVERRIDES_FILE, JSON.stringify({
+      version: 1,
+      branches: {
+        feat: { todo_ids: ['todo-ab12', 'todo-x7ty'], issues: [], set_at: '2026-11-18T00:00:00Z' },
+        other: { todo_ids: ['todo-x7ty', 'todo-zz99'], issues: [], set_at: '2026-11-17T00:00:00Z' },
+      },
+    }), NOW - 5_000)
+    await start($, w)
+    expect(w.line?.text).toBe('plan 2025 · todo-x7ty stop_gates · [ other todo-x7ty stop_gates, todo-zz99 ]')
+    expect(w.line?.refs).toBe('todo-x7ty stop_gates')
+    expect(w.line?.labels).toEqual([{ id: 'todo-x7ty', keyword: 'stop_gates' }])
+    expect(lineText(w)).toBe(statusText(w.line ?? null))
+    expect(lineText(w)).toContain(`\x1b[38;5;${todoColor('todo-x7ty')}mtodo-x7ty stop_gates\x1b[39m`)
+    expect(fileJson(w, LINE_JSON_FILE).text).toBe(lineText(w))
+  })
+
+  test('a keyword added in the checked-out catalog relabels at the next prompt', async ($, on) => {
+    const w = world(on, { config: TODO_CONFIG })
+    w.setFile(CATALOG_FILE, catalog([{ id: 'todo-ab12' }]), NOW - HOUR)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], [9]), NOW - 5_000)
+    w.gh = { 9: 'OPEN' }
+    await start($, w)
+    expect(w.line?.text).toBe('todo-ab12 (9)')
+    w.setFile(CATALOG_FILE, catalog([{ id: 'todo-ab12', keyword: 'banner' }]), NOW - 1_000)
+    await prompt($, w)
+    expect(w.line?.text).toBe('todo-ab12 banner (9)')
+  })
+
+  test('no catalog configured: ids print alone', async ($, on) => {
+    const w = world(on)
+    w.setFile(CATALOG_FILE, catalog([{ id: 'todo-ab12', keyword: 'banner' }]), NOW - HOUR)
+    w.setFile(OVERRIDES_FILE, overridesJson('feat', ['todo-ab12'], []), NOW - 5_000)
+    await start($, w)
+    expect(w.line?.text).toBe('todo-ab12')
   })
 })
 

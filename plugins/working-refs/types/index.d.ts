@@ -27,7 +27,11 @@ export type WorkingLine = {
   todoIds: string[]
   /** The own issues: the override entry's issues not reported closed when it has one, else the plans' union. */
   issues: number[]
-  /** The plans part and the own refs, plain (`plan 2025 · todo-k69m (301)`); '' when both are empty. */
+  /** The own TODO ids with their catalog keywords, in `todoIds` order (plan 2028). */
+  labels: TodoLabel[]
+  /** The own refs formatted plain, each id labelled (`todo-k69m banner (301)`); '' when there are none. */
+  refs: string
+  /** The plans part and the own refs, plain (`plan 2025 · todo-k69m banner (301)`); '' when both are empty. */
   head: string
   /** The other branches' override segments drawn, most recently set first; each `refs` is the formatted text. */
   others: OtherSegment[]
@@ -44,8 +48,20 @@ export type WorkingLine = {
 export type OtherSegment = {
   /** The branch name, or `(detached)`. */
   branch: string
-  /** Its visible refs, formatted (`todo-k69m (301)`). */
+  /** Its visible refs, formatted plain, each id labelled (`todo-k69m banner (301)`). */
   refs: string
+  /** Its visible TODO ids with their catalog keywords, in override order (plan 2028). */
+  labels: TodoLabel[]
+  /** Its visible issues, in override order. */
+  issues: number[]
+}
+
+/** One TODO id as the line labels it (plan 2028 D1): `todo-x7ty stop_gates`, or the id alone. */
+export type TodoLabel = {
+  /** The canonical TODO id. */
+  id: string
+  /** The catalog item's `keyword`; null when the item has none or the catalog does not list the id. */
+  keyword: string | null
 }
 
 declare module 'claude-code' {

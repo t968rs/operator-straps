@@ -1,11 +1,19 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { Refs, WorkingLine } from '../types'
-import { buildLine, DARK, fileUrl, formatRefs, type LineView, osc8, plainText, RESET_FG, statusText } from './line'
+import {
+  buildLine, DARK, fileUrl, fnv1a32, formatRefs, type LineView, osc8, plainText, RESET_FG, statusText, todoColor,
+  TODO_PALETTE,
+} from './line'
 import type { Overrides } from './overrides'
 import type { PlanInfo } from './plans'
 
 const ESC = '\x1b'
+/** A TODO label as the ccstatusline form draws it: in the id's color, then the default foreground. */
+const painted = (id: string, label: string = id): string => `${ESC}[38;5;${todoColor(id)}m${label}${RESET_FG}`
+/** Every OSC 8 link escape and SGR color escape dropped. */
+const strip = (s: string): string => s.replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '').replace(/\x1b\[[0-9;]*m/g, '')
+const KEYWORDS: ReadonlyMap<string, string> = new Map([['todo-x7ty', 'stop_gates'], ['todo-k69m', 'banner']])
 const page = (id: string): string => `E:/repo/docs/PLANS/${id}_x_PIP.html`
 
 const plan = (id: string, refs: Partial<Refs> = {}): PlanInfo => ({
@@ -20,7 +28,7 @@ const override = (branch: string, refs: Refs): Overrides => new Map([[branch, { 
 const overridesOf = (...rows: Array<[string, string[], number[], string?]>): Overrides =>
   new Map(rows.map(([b, todoIds, issues, setAt]) => [b, { refs: { todoIds, issues }, setAt: setAt ?? SET_AT }]))
 const view = (over: Partial<LineView> = {}): LineView => ({
-  retired: new Set(), isClosed: () => false, maxChars: 1000, ...over,
+  retired: new Set(), isClosed: () => false, keywords: new Map(), maxChars: 1000, ...over,
 })
 
 describe('formatRefs', () => {
@@ -34,6 +42,37 @@ describe('formatRefs', () => {
     expect(formatRefs({ todoIds: [], issues: [301, 315] })).toBe('#301, #315')
     expect(formatRefs({ todoIds: [], issues: [] })).toBe('')
   })
+
+  test('each id is labelled with its keyword; an id without one prints alone (plan 2028 D1)', async () => {
+    expect(formatRefs({ todoIds: ['todo-x7ty'], issues: [] }, KEYWORDS)).toBe('todo-x7ty stop_gates')
+    expect(formatRefs({ todoIds: ['todo-x7ty', 'todo-zz99', 'todo-k69m'], issues: [301] }, KEYWORDS))
+      .toBe('todo-x7ty stop_gates, todo-zz99, todo-k69m banner (301)')
+    expect(formatRefs({ todoIds: [], issues: [301] }, KEYWORDS)).toBe('#301')
+  })
+})
+
+describe('todoColor (plan 2028 V5, V6)', () => {
+  test('FNV-1a 32-bit matches the reference vectors', async () => {
+    expect(fnv1a32('')).toBe(0x811c9dc5)
+    expect(fnv1a32('a')).toBe(0xe40c292c)
+    expect(fnv1a32('foobar')).toBe(0xbf9cf968)
+  })
+
+  test('the palette is the eight V5 colors, never DARK\'s 240', async () => {
+    expect([...TODO_PALETTE]).toEqual([39, 170, 36, 214, 141, 72, 203, 178])
+    expect(TODO_PALETTE).not.toContain(240)
+  })
+
+  test('the color is the palette entry at the hash modulo eight', async () => {
+    // 0xe40c292c % 8 = 4, 0xbf9cf968 % 8 = 0, 0x811c9dc5 % 8 = 5
+    expect(todoColor('a')).toBe(141)
+    expect(todoColor('foobar')).toBe(39)
+    expect(todoColor('')).toBe(72)
+    for (const id of ['todo-x7ty', 'todo-k69m', 'todo-zz99']) {
+      expect(todoColor(id)).toBe(TODO_PALETTE[fnv1a32(id) % 8])
+      expect(todoColor(id)).toBe(todoColor(id))
+    }
+  })
 })
 
 describe('buildLine', () => {
@@ -41,6 +80,7 @@ describe('buildLine', () => {
     const line = buildLine('topic', [plan('2025', { todoIds: ['todo-k69m'], issues: [301] })], NONE)
     expect(line).toEqual({
       branch: 'topic', plans: [{ id: '2025', page: page('2025') }], todoIds: ['todo-k69m'], issues: [301],
+      labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)',
       head: 'plan 2025 · todo-k69m (301)', others: [], more: 0, text: 'plan 2025 · todo-k69m (301)',
     })
   })
@@ -73,7 +113,8 @@ describe('buildLine', () => {
   test('an override with no plan shows the refs alone', async () => {
     const line = buildLine('(detached)', [], override('(detached)', { todoIds: ['todo-k69m'], issues: [301] }))
     expect(line).toEqual({
-      branch: '(detached)', plans: [], todoIds: ['todo-k69m'], issues: [301], head: 'todo-k69m (301)', others: [],
+      branch: '(detached)', plans: [], todoIds: ['todo-k69m'], issues: [301],
+      labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)', head: 'todo-k69m (301)', others: [],
       more: 0, text: 'todo-k69m (301)',
     })
   })
@@ -174,6 +215,54 @@ describe('buildLine: other branches and the cap (plan 2027)', () => {
   })
 })
 
+describe('buildLine: keyword labels (plan 2028)', () => {
+  const kw = (over: Partial<LineView> = {}): LineView => view({ keywords: KEYWORDS, ...over })
+
+  test('the own refs from the plans are labelled, an id without a keyword alone', async () => {
+    const plans = [plan('2025', { todoIds: ['todo-x7ty', 'todo-zz99'], issues: [301] })]
+    const line = buildLine('topic', plans, NONE, kw())
+    expect(line?.refs).toBe('todo-x7ty stop_gates, todo-zz99 (301)')
+    expect(line?.head).toBe('plan 2025 · todo-x7ty stop_gates, todo-zz99 (301)')
+    expect(line?.labels).toEqual([{ id: 'todo-x7ty', keyword: 'stop_gates' }, { id: 'todo-zz99', keyword: null }])
+    expect(line?.todoIds).toEqual(['todo-x7ty', 'todo-zz99'])
+  })
+
+  test('the own override and every other-branch segment are labelled', async () => {
+    const ov = overridesOf(
+      ['topic', ['todo-k69m'], []], ['a', ['todo-x7ty'], [5], '2026-11-19T00:00:00Z'], ['b', ['todo-zz99'], []],
+    )
+    const line = buildLine('topic', [], ov, kw())
+    expect(line?.text).toBe('todo-k69m banner · [ a todo-x7ty stop_gates (5) ] [ b todo-zz99 ]')
+    expect(line?.others[0]).toEqual({
+      branch: 'a', refs: 'todo-x7ty stop_gates (5)', labels: [{ id: 'todo-x7ty', keyword: 'stop_gates' }], issues: [5],
+    })
+  })
+
+  test('a retired id leaves with its label', async () => {
+    const ov = overridesOf(['topic', ['todo-x7ty', 'todo-k69m'], []])
+    const line = buildLine('topic', [], ov, kw({ retired: new Set(['todo-x7ty']) }))
+    expect(line?.text).toBe('todo-k69m banner')
+    expect(line?.labels).toEqual([{ id: 'todo-k69m', keyword: 'banner' }])
+  })
+
+  test('the cap counts the labelled plain text', async () => {
+    const ov = overridesOf(
+      ['topic', ['todo-k69m'], []],
+      ['a', ['todo-x7ty'], [], '2026-11-19T00:00:02Z'], ['b', ['todo-zz99'], [], '2026-11-19T00:00:01Z'],
+    )
+    const full = 'todo-k69m banner · [ a todo-x7ty stop_gates ] [ b todo-zz99 ]'
+    expect(buildLine('topic', [], ov, kw({ maxChars: full.length }))?.text).toBe(full)
+    const one = 'todo-k69m banner · [ a todo-x7ty stop_gates ] +1'
+    const line = buildLine('topic', [], ov, kw({ maxChars: one.length }))
+    expect(line?.text).toBe(one)
+    expect(line?.more).toBe(1)
+    // long enough for the whole unlabelled line, too short for any labelled segment
+    const unlabelled = 'todo-k69m · [ a todo-x7ty ] [ b todo-zz99 ]'
+    expect(buildLine('topic', [], ov, view({ maxChars: unlabelled.length }))?.text).toBe(unlabelled)
+    expect(buildLine('topic', [], ov, kw({ maxChars: unlabelled.length }))?.text).toBe('todo-k69m banner +2')
+  })
+})
+
 describe('fileUrl', () => {
   test('a drive path gets three slashes, backslashes become slashes', async () => {
     expect(fileUrl('E:/x/y.html')).toBe('file:///E:/x/y.html')
@@ -193,8 +282,10 @@ describe('fileUrl', () => {
 describe('the rendered forms', () => {
   const line = (over: Partial<WorkingLine> = {}): WorkingLine => ({
     branch: 'topic', plans: [{ id: '2025', page: 'E:/r/2025_x_PIP.html' }], todoIds: ['todo-k69m'], issues: [301],
+    labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)',
     head: 'plan 2025 · todo-k69m (301)', others: [], more: 0, text: 'plan 2025 · todo-k69m (301)', ...over,
   })
+  const K69M = painted('todo-k69m')
 
   test('osc8 wraps the text in the hyperlink escapes', async () => {
     expect(osc8('file:///E:/a.html', '2025')).toBe(`${ESC}]8;;file:///E:/a.html${ESC}\\2025${ESC}]8;;${ESC}\\`)
@@ -206,10 +297,10 @@ describe('the rendered forms', () => {
   })
 
   test('the ccstatusline form links each plan number to its page', async () => {
-    expect(statusText(line())).toBe(`plan ${osc8('file:///E:/r/2025_x_PIP.html', '2025')} · todo-k69m (301)`)
+    expect(statusText(line())).toBe(`plan ${osc8('file:///E:/r/2025_x_PIP.html', '2025')} · ${K69M} (301)`)
     const two = line({ plans: [{ id: '2024', page: '/r/a.html' }, { id: '2025', page: '/r/b.html' }] })
     expect(statusText(two)).toBe(
-      `plans ${osc8('file:///r/a.html', '2024')}, ${osc8('file:///r/b.html', '2025')} · todo-k69m (301)`,
+      `plans ${osc8('file:///r/a.html', '2024')}, ${osc8('file:///r/b.html', '2025')} · ${K69M} (301)`,
     )
   })
 
@@ -224,15 +315,48 @@ describe('the rendered forms', () => {
     const built = buildLine('topic', [plan('2025')], ov, view({ maxChars: 52 }))
     expect(built?.text).toBe('plan 2025 · todo-k69m (301) · [ other todo-zz99 ] +1')
     expect(statusText(built)).toBe(
-      `plan ${osc8(fileUrl(page('2025')), '2025')} · todo-k69m (301) · [ ${DARK}other${RESET_FG} todo-zz99 ] +1`,
+      `plan ${osc8(fileUrl(page('2025')), '2025')} · ${K69M} (301) · [ ${DARK}other${RESET_FG} ${painted('todo-zz99')} ] +1`,
     )
-    const stripped = statusText(built).replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '').replace(/\x1b\[[0-9;]*m/g, '')
-    expect(stripped).toBe(plainText(built))
+    expect(strip(statusText(built))).toBe(plainText(built))
     expect(plainText(built)).not.toContain(DARK)
+  })
+
+  test('each TODO label is colored by its id in the own refs and every segment; issues stay plain', async () => {
+    const ov = overridesOf(
+      ['topic', ['todo-x7ty', 'todo-zz99'], [301]], ['other', ['todo-k69m'], [5], '2026-11-19T00:00:00Z'],
+      ['third', [], [7]],
+    )
+    const built = buildLine('topic', [plan('2025')], ov, view({ keywords: KEYWORDS }))
+    expect(built?.text)
+      .toBe('plan 2025 · todo-x7ty stop_gates, todo-zz99 (301) · [ other todo-k69m banner (5) ] [ third #7 ]')
+    const own = `${painted('todo-x7ty', 'todo-x7ty stop_gates')}, ${painted('todo-zz99')} (301)`
+    const other = `[ ${DARK}other${RESET_FG} ${painted('todo-k69m', 'todo-k69m banner')} (5) ]`
+    expect(statusText(built)).toBe(
+      `plan ${osc8(fileUrl(page('2025')), '2025')} · ${own} · ${other} [ ${DARK}third${RESET_FG} #7 ]`,
+    )
+    expect(strip(statusText(built))).toBe(plainText(built))
+  })
+
+  test('the plain form and the atom\'s texts carry no color', async () => {
+    const ov = overridesOf(['topic', ['todo-x7ty'], [301]], ['other', ['todo-k69m'], []])
+    const built = buildLine('topic', [plan('2025')], ov, view({ keywords: KEYWORDS }))
+    for (const s of [plainText(built), built?.refs ?? '', built?.head ?? '', ...(built?.others ?? []).map(o => o.refs)]) {
+      expect(s).not.toContain(ESC)
+    }
+    expect(built?.refs).toBe('todo-x7ty stop_gates (301)')
+  })
+
+  test('the colored form keeps the cap the plain text measured', async () => {
+    const ov = overridesOf(
+      ['a', ['todo-x7ty'], [], '2026-11-19T00:00:02Z'], ['b', ['todo-k69m'], [], '2026-11-19T00:00:01Z'],
+    )
+    const built = buildLine('topic', [], ov, view({ keywords: KEYWORDS, maxChars: 30 }))
+    expect(built?.text).toBe('[ a todo-x7ty stop_gates ] +1')
+    expect(statusText(built)).toBe(`[ ${DARK}a${RESET_FG} ${painted('todo-x7ty', 'todo-x7ty stop_gates')} ] +1`)
   })
 
   test('no line, no text', async () => {
     expect(statusText(null)).toBe('')
-    expect(statusText(line({ plans: [], todoIds: [], issues: [] }))).toBe('')
+    expect(statusText(line({ plans: [], todoIds: [], issues: [], labels: [] }))).toBe('')
   })
 })
