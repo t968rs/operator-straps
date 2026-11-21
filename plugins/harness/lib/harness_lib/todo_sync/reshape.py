@@ -29,7 +29,7 @@ from harness_lib.config import HarnessConfig
 from harness_lib.project import plugin_root
 from harness_lib.todo_sync import TodoSyncError
 from harness_lib.todo_sync import ids as todo_ids
-from harness_lib.todo_sync import issues
+from harness_lib.todo_sync import issues, keywords
 from harness_lib.todo_sync.issues import catalog_issue_numbers
 from harness_lib.todo_sync.ranking import (NOTE_SOURCE, RankingError, RankingMethod, expected_order,
                                            method_from, score)
@@ -108,7 +108,7 @@ def refresh_items(catalog: Dict[str, Any]) -> Reshape:
 ADD_REQUIRED = ("title", "kind", "summary", "proposed_change", "blast_radius", "loe", "impact", "severity",
                 "why_ranked")
 ADD_OPTIONAL = ("issue", "url", "needs_decision", "decision_question", "status", "files", "related_gh_issues",
-                "code_snippet")
+                "code_snippet", "keyword")
 #: Spec keys that name the item's GitHub issue.
 ISSUE_KEYS = ("issue", "url")
 
@@ -189,6 +189,9 @@ _TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {
     "related_gh_issues": (lambda v: isinstance(v, list) and all(_count(x) for x in v),
                           "a list of issue numbers"),
     "code_snippet": (lambda v: isinstance(v, str), "a string"),
+    "keyword": (lambda v: _text(v) and keywords.valid_keyword(v),
+                f"one word of letters, digits, '_', '.' or '-', starting with a letter or digit "
+                f"(at most {keywords.KEYWORD_MAX} characters)"),
 }
 
 
@@ -267,13 +270,16 @@ def _source(spec: Dict[str, Any], day: str) -> Dict[str, Any]:
 
 def _item_fields(item_id: str, spec: Dict[str, Any], day: str) -> Dict[str, Any]:
     """The item's keys in schema order, with the spec's values and the defaults of the optional ones."""
-    item: Dict[str, Any] = {
-        "id": item_id, "rank": 0, "title": spec["title"], "kind": spec["kind"],
+    item: Dict[str, Any] = {"id": item_id, "rank": 0, "title": spec["title"]}
+    if "keyword" in spec:
+        item["keyword"] = spec["keyword"]
+    item.update({
+        "kind": spec["kind"],
         "status": spec.get("status", "OPEN"), "needs_decision": spec.get("needs_decision", False),
         "decision_question": spec.get("decision_question"), "tracker": None,
         "sources": [_source(spec, day)], "gh_issues": [spec["issue"]] if "issue" in spec else [],
         "related_gh_issues": list(spec.get("related_gh_issues") or []), "catalog_entry_ids": [],
-        "summary": spec["summary"], "proposed_change": spec["proposed_change"]}
+        "summary": spec["summary"], "proposed_change": spec["proposed_change"]})
     if "code_snippet" in spec:
         item["code_snippet"] = spec["code_snippet"]
     item.update({"files": list(spec.get("files") or []), "blast_radius": spec["blast_radius"],

@@ -45,8 +45,9 @@ def short_wait(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _item(issue: int) -> Dict[str, Any]:
     return {"issue": issue, "url": f"https://github.com/example/widgets/issues/{issue}",
-            "title": f"New problem {issue}", "kind": "bug", "summary": "The parser skips a row.",
-            "proposed_change": "Read every row.", "impact": "silent_wrong_output", "severity": 5,
+            "title": f"New problem {issue}", "keyword": "parser", "kind": "bug",
+            "summary": "The parser skips a row.", "proposed_change": "Read every row.",
+            "impact": "silent_wrong_output", "severity": 5,
             "why_ranked": "Computed from ranking_method.",
             "blast_radius": {"level": "S", "reasoning": "One module.", "consumers": []},
             "loe": {"size": "S", "reasoning": "Small."}}

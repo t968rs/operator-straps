@@ -14,7 +14,7 @@ from typing import Any, Dict, Iterable, List, Sequence, Set, Tuple
 
 from harness_lib.todo_sync import TodoSyncError
 from harness_lib.todo_sync import ids as todo_ids
-from harness_lib.todo_sync import reshape
+from harness_lib.todo_sync import keywords, reshape
 from harness_lib.todo_sync.reshape import ADD_OPTIONAL, ADD_REQUIRED, ISSUE_KEYS, Move
 
 #: The fields an update may set: the ``add`` spec keys less the issue keys, in that order.
@@ -82,7 +82,16 @@ def _apply_one(n: int, item: Dict[str, Any], fields: Dict[str, Any], seen: Set[T
             raise TodoSyncError(f"update {n} sets {item_id} {key} again; one spec sets a field once")
     seen.update((item_id, key) for key in fields)
     item.update({key: copy.deepcopy(value) for key, value in fields.items()})
+    if "keyword" in fields:
+        _keyword_after_title(item)
     reshape._check_item(n, item, "update")
+
+
+def _keyword_after_title(item: Dict[str, Any]) -> None:
+    """Move ``item``'s ``keyword`` right after its ``title`` in place, as ``add`` and the migration lay it."""
+    ordered = keywords._with_keyword(item, item["keyword"])
+    item.clear()
+    item.update(ordered)
 
 
 def apply_updates(catalog: Dict[str, Any], entries: Sequence[Any]) -> Updated:

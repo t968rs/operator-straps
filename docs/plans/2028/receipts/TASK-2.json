@@ -1,0 +1,36 @@
+{
+  "plan_id": "2028",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "cb49cb0c229ca1d0649446fed87b68f73665b0b2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[prefix]",
+        "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[single-stem]",
+        "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[ts-test-suffix]",
+        "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[dominant-stem]",
+        "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[generic-skipped]",
+        "tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[kind-prefix]",
+        "tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[tie]",
+        "tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[too-long]",
+        "tests/lib/test_todo_sync_keywords.py::test_fill_sets_confident_guesses_and_leaves_the_rest_without_a_keyword",
+        "tests/lib/test_todo_sync_keywords.py::test_fill_keeps_an_existing_keyword_and_places_a_new_one_after_the_title",
+        "tests/lib/test_todo_sync_keywords.py::test_apply_writes_the_catalog_and_dry_run_does_not",
+        "tests/lib/test_todo_sync_keywords.py::test_keyword_lines_name_each_set_and_count_the_rest"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[prefix] tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[single-stem] tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[ts-test-suffix] tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[dominant-stem] tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[generic-skipped] tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[kind-prefix] tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[tie] tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[too-long] tests/lib/test_todo_sync_keywords.py::test_fill_sets_confident_guesses_and_leaves_the_rest_without_a_keyword tests/lib/test_todo_sync_keywords.py::test_fill_keeps_an_existing_keyword_and_places_a_new_one_after_the_title tests/lib/test_todo_sync_keywords.py::test_apply_writes_the_catalog_and_dry_run_does_not tests/lib/test_todo_sync_keywords.py::test_keyword_lines_name_each_set_and_count_the_rest"
+    }
+  },
+  "evidence": "staged tree cb49cb0: 12 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-20",
+  "seal": "843d917195a9ea4827b4caf44b2ca6a46d260271e55c61974e21b7b498bef828"
+}

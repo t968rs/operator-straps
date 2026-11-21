@@ -179,9 +179,11 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
 3. Write `{"items": [...]}` to `<state_dir>/todo-sync/add-<stamp>-<rand>.json`: `<stamp>` is the UTC time as
    `YYYYMMDDTHHMMSS` and `<rand>` is six random lowercase letters. Several todo-editor agents may draft at once,
    and a path they share lets one overwrite another's spec between its write and its `inbox put`. Each item carries `issue` (the number), `url`,
-   `title`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`,
+   `title`, `keyword`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`,
    and optionally `needs_decision`, `decision_question`, `status`, `files`, `related_gh_issues`,
-   `code_snippet`. The shapes: `severity` an integer 1 to 5; `loe` an object `{"size": "S", "reasoning": "..."}`;
+   `code_snippet`. The shapes: `keyword` one word naming the module, skill, class or file the item is about,
+   the agent's own choice (letters, digits, `_`, `.` and `-`, starting with a letter or digit, at most 32
+   characters; `inbox put` refuses an item without one); `severity` an integer 1 to 5; `loe` an object `{"size": "S", "reasoning": "..."}`;
    `blast_radius` an object `{"level": "S", "reasoning": "...", "consumers": []}`; `files` a list of strings.
    `inbox put` refuses, with a `problem:` line naming the spec item and field, a value of another shape and any
    item the catalog schema rejects: `kind` outside its list, a `url` not `https://`, a `code_snippet` whose
@@ -189,9 +191,15 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
    `blast_radius`, `needs_decision` true without a `decision_question` (or a question without it), and
    `status` `NEEDS_DECISION` without `needs_decision` true. Never `id`, `rank`, `priority`, `sources`, `gh_issues`, `depends_on` or `unblocks`: the
    script builds the `gh_issue` source and computes the rest. No stub or research folder is needed.
+   Once the spec is written, run `TS suggest-keyword --spec <path>`: it prints the script's guess of each
+   item's keyword. Take the guess, or a better word of the agent's own choice, and set `keyword` in the spec
+   before the put.
 4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first,
    and it queues one inbox file per item without writing the catalog. It prints one `queued <path>` line per
-   item. On a `problem:` line fix the spec and rerun once.
+   item. On a `problem:` line fix the spec and rerun once; a `problem:` line saying items lack keyword is
+   that one rerun: it names every item without one (`item <n> lacks keyword (...)`, one clause per item), so
+   set `keyword` on each of them, from its suggestion or a word of the agent's own when it has none, and put
+   again.
 5. List every queued item under `Added` as `queued: <title> (#N)`, with ` (needs decision)` appended when it
    carries `needs_decision: true`. The item's id is not drawn yet: the drain's summary line names it later.
    Skip **finish**: the drain adds the items, renders the snapshot and runs the check.
@@ -224,8 +232,9 @@ session's conversation had already established (or `none`). Draft exactly one it
 2. Score as in **sync**: `severity`, `impact`, `loe` and `blast_radius` follow the catalog's `ranking_method`
    scales, with a best guess at level 0. `kind` and `why_ranked` as in **sync**.
 3. Write `{"items": [{...}]}` to `<state_dir>/todo-sync/add-<stamp>-<rand>.json` (`<stamp>` and `<rand>` as in
-   **sync**, so no other run shares the path) with the **sync** item keys, never `issue` or
-   `url`: the script makes the item a local `note` source, or files the issue. A note about an issue that is
+   **sync**, so no other run shares the path) with the **sync** item keys, `keyword` included, never `issue` or
+   `url`. After writing the spec, run `TS suggest-keyword --spec <path>` and set `keyword` from the guess or a
+   better word, as in **sync** step 3; a `lacks keyword` refusal from the put is the one rerun, with `keyword` set on every item it names. The script makes the item a local `note` source, or files the issue. A note about an issue that is
    already open belongs to `/harness:sync-gh-todo`, not to `add`: a `related_gh_issues` entry still leaves the
    issue untracked, so the next sync would draft a second item for it. Say so under `Open`.
 4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first.
@@ -248,7 +257,7 @@ Runs for `Operation: update`. `Ids:` names one item and `Guidance:` says what to
    lines, issues) and check its claims as **add** level 1 does; when the update sets `summary`, cite
    `path:line` there, carry over the existing text that still holds, and write a claim the tree neither
    confirms nor refutes as `unverified`. A `summary` the guidance does not touch stays as it is.
-2. Choose new values only for `title`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`,
+2. Choose new values only for `title`, `keyword`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`,
    `proposed_change`, `code_snippet`, `files`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked` and
    `related_gh_issues`, and only for the ones the guidance touches. Guidance that names several ids is
    shared by one agent per id: apply only what it says about this item's id, plus what applies to all. Each value replaces the field whole: a new

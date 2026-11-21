@@ -26,10 +26,11 @@ from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report
                                    write_report, write_runner)
 from harness_lib.todo_sync import inbox, locking  # noqa: E402
 from harness_lib.todo_sync.issues import find_untracked, write_untracked  # noqa: E402
+from harness_lib.todo_sync.keywords import apply_keywords, guess_keyword, keyword_lines  # noqa: E402
 from harness_lib.todo_sync.migrate import apply_migration, exclude_paths  # noqa: E402
 from harness_lib.todo_sync.migrate import summary_lines as migrate_lines  # noqa: E402
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
-from harness_lib.todo_sync.reshape import apply_add, apply_refresh, apply_split  # noqa: E402
+from harness_lib.todo_sync.reshape import apply_add, apply_refresh, apply_split, read_spec  # noqa: E402
 from harness_lib.todo_sync.scaffold import init_catalog  # noqa: E402
 from harness_lib.todo_sync.sources import posix  # noqa: E402
 from harness_lib.todo_sync.reshape import summary_lines as reshape_lines  # noqa: E402
@@ -43,7 +44,7 @@ ID_HELP = "Item ids: todo-k7qf or k7qf (any case)."
 DRY_RUN_HELP = "Print the report; write nothing."
 LEASE_HELP = "Run under the catalog lease this token names instead of taking the write lock."
 #: The subcommands whose real run writes the catalog under ``locking.guard``.
-GUARDED = ("init", "add", "retire", "split", "refresh")
+GUARDED = ("init", "add", "retire", "split", "refresh", "keywords")
 
 
 def _summary() -> str:
@@ -96,6 +97,7 @@ def _parser() -> argparse.ArgumentParser:
     _adders(sub, common)
     _leases(sub, common)
     _migrator(sub, common)
+    _keyworders(sub, common)
     return parser
 
 
@@ -159,6 +161,17 @@ def _migrator(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) 
     mig.add_argument("--lease", metavar="TOKEN",
                      help="Run under the catalog lease this token names instead of taking a lease of "
                           "its own.")
+
+
+def _keyworders(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+    """``suggest-keyword`` (read-only guess per spec item) and ``keywords`` (the one-time catalog fill)."""
+    sug = sub.add_parser("suggest-keyword", parents=[common],
+                         help="Print the confident keyword guess of each spec item, or none.")
+    sug.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
+    kws = sub.add_parser("keywords", parents=[common],
+                         help="Give every catalog item that lacks a keyword its confident guess.")
+    kws.add_argument("--dry-run", action="store_true", help=DRY_RUN_HELP)
+    kws.add_argument("--lease", metavar="TOKEN", help=LEASE_HELP)
 
 
 def _config(args: argparse.Namespace) -> HarnessConfig:
@@ -282,11 +295,23 @@ def _migrate(cfg: HarnessConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def _suggest(args: argparse.Namespace) -> int:
+    """``suggest-keyword``: one ``item <n>: <guess|none>`` line per spec item, counted from 1."""
+    for n, item in enumerate(read_spec(args.spec, "items"), 1):
+        guess = guess_keyword(item) if isinstance(item, dict) else None
+        print(f"item {n}: {guess or 'none'}")
+    return 0
+
+
 def _write(cfg: HarnessConfig, args: argparse.Namespace) -> int:
-    """The catalog writes ``init``, ``add --spec``, ``retire``, ``split`` and ``refresh``, or a dry run."""
+    """The catalog writes ``init``, ``add --spec``, ``retire``, ``split``, ``refresh`` and ``keywords``, or
+    a dry run."""
     dry = getattr(args, "dry_run", False)
     if args.command == "init":
         return _init(cfg)
+    if args.command == "keywords":
+        print("\n".join(keyword_lines(apply_keywords(cfg, dry), dry)))
+        return 0
     if args.command == "add":
         print("\n".join(reshape_lines(apply_add(cfg, args.spec, dry, file_issues=args.file_issue), dry)))
     elif args.command == "retire":
@@ -304,6 +329,8 @@ def _unlocked(cfg: HarnessConfig, args: argparse.Namespace) -> int:
         return _check(cfg, args)
     if args.command == "untracked":
         return _untracked(cfg)
+    if args.command == "suggest-keyword":
+        return _suggest(args)
     if args.command == "inbox":
         return _inbox(cfg, args)
     if args.command == "lease":

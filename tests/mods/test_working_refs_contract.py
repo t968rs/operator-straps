@@ -4,14 +4,15 @@ The harness ``working`` command writes ``<state_dir>/working-refs/overrides.json
 ``artifacts.plans`` for ``*_PIP.html`` pages, reads each sibling ``*_ActionPlan.json`` and writes
 ``<state_dir>/working-refs/line.txt`` and the branch-stamped ``line.json`` for the ccstatusline widget. It
 hides TODO ids the catalog (``todo.folder`` / ``todo.catalog``) lists in ``retired_ids`` and issues ``gh``
-reports closed; the open list ``todo_sync.py untracked`` writes (``todo-sync/open_issues.json``, whose
-``version`` ``hide.ts`` checks) answers only OPEN, an issue missing from it is due for a ``gh`` check
-(``todo.gh.repo``), rechecked past ``todo.gh.max_age_hours``; ``working_refs.max_chars`` caps the line. An
-installed mod cannot import the harness plugin, so ``plugins/working-refs/hooks/mirror.ts`` copies these
-names; this test fails when one side changes without the other. ``plans.ts`` reads the ActionPlan fields
-inline as ``data.<field>``; one test pins each against ``ActionPlan.model_fields``. Each test reads the
-mirror before importing the harness module, so it fails on the missing mirror whether or not
-``harness_lib.working_refs`` exists yet.
+reports closed, and labels each TODO id with the catalog item's ``keyword`` (plan 2028, ``KEYWORD_KEY``, a
+property of ``$defs/item`` in ``TodoCatalog.schema.json``); the open list ``todo_sync.py untracked`` writes
+(``todo-sync/open_issues.json``, whose ``version`` ``hide.ts`` checks) answers only OPEN, an issue missing
+from it is due for a ``gh`` check (``todo.gh.repo``), rechecked past ``todo.gh.max_age_hours``;
+``working_refs.max_chars`` caps the line. An installed mod cannot import the harness plugin, so
+``plugins/working-refs/hooks/mirror.ts`` copies these names; this test fails when one side changes without
+the other. ``plans.ts`` reads the ActionPlan fields inline as ``data.<field>``; one test pins each against
+``ActionPlan.model_fields``. Each test reads the mirror before importing the harness module, so it fails on
+the missing mirror whether or not ``harness_lib.working_refs`` exists yet.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ _MIRROR_TS_REL = "plugins/working-refs/hooks/mirror.ts"
 _DEFAULTS_REL = "plugins/harness/config/defaults.json"
 _PLANS_TS_REL = "plugins/working-refs/hooks/plans.ts"
 _HIDE_TS_REL = "plugins/working-refs/hooks/hide.ts"
+_TODO_SCHEMA_REL = "plugins/harness/schemas/catalogs/TodoCatalog.schema.json"
 
 
 def _mirror(repo_root: Path) -> str:
@@ -120,3 +122,20 @@ def test_todo_and_cap_defaults_equal_defaults_json(repo_root: Path) -> None:
     assert ts_number(mirror, "DEFAULT_MAX_CHARS") == defaults["working_refs"]["max_chars"]
     assert ts_optional_string(mirror, "DEFAULT_TODO_FOLDER") == defaults["todo"]["folder"]
     assert ts_optional_string(mirror, "DEFAULT_GH_REPO") == defaults["todo"]["gh"]["repo"]
+
+
+def test_keyword_key_is_a_catalog_item_property(repo_root: Path) -> None:
+    mirror = _mirror(repo_root)
+    key = ts_string(mirror, "KEYWORD_KEY")
+    schema = json.loads((repo_root / _TODO_SCHEMA_REL).read_text(encoding="utf-8"))
+    assert key in schema["$defs"]["item"]["properties"]
+
+
+def test_keyword_pattern_and_cap_match_the_schema(repo_root: Path) -> None:
+    mirror = _mirror(repo_root)
+    pattern = ts_string(mirror, "KEYWORD_PATTERN")
+    cap = ts_number(mirror, "KEYWORD_MAX")
+    schema = json.loads((repo_root / _TODO_SCHEMA_REL).read_text(encoding="utf-8"))
+    keyword = schema["$defs"]["item"]["properties"]["keyword"]
+    assert pattern == keyword["pattern"]
+    assert cap == keyword["maxLength"]

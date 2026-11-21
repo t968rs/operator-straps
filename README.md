@@ -502,6 +502,12 @@ ids on its next add or refresh. Until the catalog is migrated, `retire`, `split`
 refuse (so `/harness:add-todo` and `/harness:sync-gh-todo` stop before any dispatch), and `check` reports one T6
 finding that names `migrate-ids`, plus any duplicate-id findings.
 
+Items carry a one-word `keyword` that `todo_sync.py inbox put` requires (so `/harness:add-todo` and
+`/harness:sync-gh-todo` queue one per item) and `todo_sync.py keywords` fills in once. Before the first keyworded
+item lands, refresh the project's own `RepoToDo.schema.json` (or the file `todo.catalog_schema` names) from the
+harness `catalogs/TodoCatalog.schema.json`: an older copy's closed item definition has no `keyword`, and `check`
+reports a T1 finding for every item that carries one.
+
 `todo_sync.py init` creates a project's first catalog: with `todo.folder` set, it makes the folder, an empty
 schema-valid catalog at `todo.catalog` (default `RepoToDo.json`; default ranking tables, no items, current commit
 recorded) and, when `todo.snapshots.dir` is set, the snapshot page with its `todo_live.js` stamp; it prints a
@@ -532,9 +538,16 @@ write lands between their commands.
 [main session]  todo_sync.py init             only when untracked reports the catalog file not found,
                                               then untracked again
 [todo-editor]   draft one item per issue      from the issue text and the text of any linked PR review
-[todo-editor]   todo_sync.py inbox put        queue each item; refuses a recorded issue
+[todo-editor]   todo_sync.py suggest-keyword  guess each item's keyword
+[todo-editor]   todo_sync.py inbox put        queue each item; refuses a recorded issue or an item without a keyword
 [main session]  todo_sync.py add --inbox      insert, score, rank, recount, then render and check
 ```
+
+Every item `inbox put` queues carries a `keyword`, the one word the working-refs line shows beside its id; an
+item without one is refused with `item <n> lacks keyword`, plus the guess when `suggest-keyword` has a confident
+one. `todo_sync.py keywords [--dry-run]` is the one-time keyword fill for an existing catalog: it gives each item
+without a keyword its confident guess, right after the item's `title`, and leaves an item with no confident
+guess without one.
 
 `/harness:add-todo [--issue] [-r|--research 0-3] -- <note>` turns a note typed in the prompt into one catalog
 item. The main session runs `add_todo.py row`, which picks the agent's model from the research level, and
@@ -550,7 +563,8 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 [main session]  add_todo.py row -r 2          the dispatch row: agent, model, Issue, Research, Project root
 [main session]  + Note:, Context:             the note verbatim, the conversation's context
 [todo-editor]   research at the given level   read, trace, cite
-[todo-editor]   todo_sync.py inbox put        queue as a note (or with --file-issue)
+[todo-editor]   todo_sync.py suggest-keyword  guess the item's keyword
+[todo-editor]   todo_sync.py inbox put        queue as a note (or with --file-issue); refuses an item without a keyword
 [main session]  todo_sync.py add --inbox      insert, score, rank, recount, then render and check
 ```
 

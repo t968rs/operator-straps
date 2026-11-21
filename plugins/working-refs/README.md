@@ -4,14 +4,20 @@ The plans, TODO ids and issues the current branch works on, then every other bra
 the ccstatusline widget prints it from a file, and band-line draws it from state.
 
 ```
-plan 2025 · todo-k69m (301)
-plans 2024, 2025 · todo-k69m, todo-zz11 (301, 315)
-plan 2027 · todo-k69m (301) · [ 1168-todo-banner todo-48q2 ] [ (detached) #315 ] +1
+plan 2025 · todo-k69m banner (301)
+plans 2024, 2025 · todo-k69m banner, todo-zz11 (301, 315)
+plan 2027 · todo-x7ty stop_gates (301) · [ 1168-todo-banner todo-48q2 ] [ (detached) #315 ] +1
 ```
 
 - Plan links come first, each plan number an OSC 8 link to its `<prefix>_PIP.html` page in the line file.
 - The own refs are the branch's override entry when it has one (`/harness:working`), else the union of the
   qualifying plans' `refs`. Plan links are never overridden.
+- Each TODO id is labelled with its catalog item's `keyword` (`todo-x7ty stop_gates`); an id whose item has no
+  keyword, or that the catalog does not list, prints alone. In the line file each label (the id alone when it
+  has none) is drawn in its TODO's own color: ANSI 256 color 39, 170, 36, 214, 141, 72, 203 or 178, picked by
+  the FNV-1a 32-bit hash of the id, so a TODO keeps its color across branches and segments. Issues, plan links
+  and band-line's plain form stay uncolored, and the cap measures the plain text. The `/harness:working` reply
+  stays unlabelled.
 - Every other branch's override follows as `[ <branch> <refs> ]`, most recently set first (`set_at`), the
   branch name dark in the line file and dim in band-line. Segments past `working_refs.max_chars` fold into a
   trailing ` +N`; the plans and the own refs are never cut, and with no own part the first segment always
@@ -68,7 +74,7 @@ wrong-typed value keeps the default:
 |-----|---------|-----|
 | `state_dir` | `.claude/state/harness` | The override file, the line files and the issue cache live under `<state_dir>/working-refs/`; the open-issue list under `<state_dir>/todo-sync/`. |
 | `artifacts.plans` | `docs/PLANS` | The folder scanned for plans and their pages. |
-| `todo.folder`, `todo.catalog` | `null`, `RepoToDo.json` | The catalog whose `retired_ids` hide TODO ids; with no folder nothing retires. |
+| `todo.folder`, `todo.catalog` | `null`, `RepoToDo.json` | The catalog whose `retired_ids` hide TODO ids and whose items' `keyword`s label them; with no folder nothing retires and no id is labelled. |
 | `todo.gh.repo` | `null` | Passed to `gh` as `--repo`; null lets `gh` resolve the checkout's repository. |
 | `todo.gh.max_age_hours` | `24` | The age past which an override issue is rechecked with `gh`. |
 | `working_refs.max_chars` | `120` | The total length of the line; other-branch segments past it fold into ` +N`. |
@@ -94,7 +100,7 @@ hides requests a scan.
 
 | Key | Meaning |
 |-----|---------|
-| `line` | The branch's working line (plans, own refs, `head`, the drawn `others` segments, `more`, plain `text`); null before the first scan and while nothing qualifies and no branch's override shows. Written only when it changed. |
+| `line` | The branch's working line (plans, own refs, their keyword `labels` and formatted plain `refs`, `head`, the drawn `others` segments each with its `labels` and `issues`, `more`, plain `text`); null before the first scan and while nothing qualifies and no branch's override shows. Written only when it changed. |
 
 ## Files
 
