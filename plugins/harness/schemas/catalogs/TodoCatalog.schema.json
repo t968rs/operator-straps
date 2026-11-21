@@ -709,6 +709,12 @@
           "type": "string",
           "description": "One-line statement of the work."
         },
+        "keyword": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+          "maxLength": 32,
+          "description": "The one word that jogs a reader's memory of the item on the working-refs line. Optional: absent means no keyword; null is refused."
+        },
         "kind": {
           "type": "string",
           "enum": [

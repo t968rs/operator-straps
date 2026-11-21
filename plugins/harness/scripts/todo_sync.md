@@ -49,14 +49,16 @@ Both go before or after the command.
 | `lease acquire`, `lease release` | The `harness:todo-editor` agent, around a retire, split or refresh run; the parallel split agents of `/harness:todo-edit --split` (one per id, at once) each take the lease in turn. |
 | `lease break` | A person, to clear the lock of a crashed holder. |
 | `migrate-ids` | A person only; the agent names it and never runs it. |
+| `suggest-keyword` | The `harness:todo-editor` agent, on the spec it is about to pass to `inbox put`. |
+| `keywords` | A person, once, to give the existing items a keyword. |
 
 ## Locking
 
-Every catalog write (`init`, `add`, `retire`, `split`, `refresh`; never a dry run) holds the catalog lock,
+Every catalog write (`init`, `add`, `retire`, `split`, `refresh`, `keywords`; never a dry run) holds the catalog lock,
 `<state_dir>/locks/<catalog path with '/' as '__'>.lock`: a write lock for one command, or, with
 `--lease TOKEN`, the lease that token names. A lock another owner holds is waited on for 10 seconds
 (`lease acquire --wait SECONDS` waits that long instead), then refused naming its owner, mode and age.
-`check`, `render`, `runner`, `untracked`, `inbox put` and every dry run take no lock. `add --inbox` takes
+`check`, `render`, `runner`, `untracked`, `suggest-keyword`, `inbox put` and every dry run take no lock. `add --inbox` takes
 the lock only when a file is queued; with nothing queued it prints `inbox: empty` and takes none.
 `/harness:todo-edit` runs several `harness:todo-editor` agents at once against one catalog: the parallel
 split agents each take the lease with `lease acquire --wait 300` from the dry run to `lease release`, so
@@ -188,11 +190,42 @@ With `--update` it queues field updates of existing items instead: the spec is
 whole spec is checked against the catalog first, then one inbox file is written per update. `add --inbox`
 applies the queued updates.
 
+Every item of an `add` spec must carry a `keyword`, the one word the working-refs line shows beside the item's
+id. An item without one is refused before anything is queued, naming the item by its position:
+`item <n> lacks keyword (suggested: X)` when `suggest-keyword` has a confident guess, else
+`item <n> lacks keyword (no confident guess: name the module, skill or class it is about)`. `add --spec` and
+the `add --inbox` drain do not require one.
+
 | Option | Meaning |
 |---|---|
 | `--spec PATH` | Required. The same JSON file `add --spec` takes, or with `--update` the update spec. |
 | `--file-issue` | File a GitHub issue for each entry that names none first, as `add` does. |
 | `--update` | Queue field updates of existing items: the spec is `{"updates": [{"id": ..., "fields": {...}}]}`. Takes no `--file-issue` (an update files no issue). |
+
+### `suggest-keyword`
+
+Reads the `items` list of an `add` spec and prints one line per item, counted from 1: `item <n>: <guess>` when
+the item has a confident keyword guess, else `item <n>: none`. The guess is the one-word prefix of the title
+(`merge-commit-msg: fall back`) unless it names a kind of work (`docs`, `fix`, ...), else the one file stem
+that dominates the item's `files`. It reads only the spec: no catalog is read or written and no lock is taken.
+The agent runs it before `inbox put`, which refuses an item that names no keyword.
+
+| Option | Meaning |
+|---|---|
+| `--spec PATH` | Required. JSON file `{"items": [{...}, {...}]}`, the file `inbox put --spec` takes. |
+
+### `keywords`
+
+The one-time migration that gives each catalog item without a `keyword` its confident guess (the same guess
+`suggest-keyword` prints), placed right after the item's `title`. An item that already has a keyword keeps it,
+and an item with no confident guess stays without one. Only the catalog is written, and only when something
+changes. Prints `keywords: set N, left M without one` (`would set N` on a dry run), then one
+`set <id>: <keyword>` line per item given a keyword.
+
+| Option | Meaning |
+|---|---|
+| `--dry-run` | Print the same report and write nothing. |
+| `--lease TOKEN` | Run under the lease this token names instead of taking the write lock. |
 
 ### `lease acquire`
 

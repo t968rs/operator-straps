@@ -26,8 +26,9 @@ URL = "https://github.com/example/widgets/issues/{n}"
 
 
 def _item(issue: Optional[int] = 9, **over: Any) -> Dict[str, Any]:
-    base = {"title": f"New problem {issue}", "kind": "bug", "summary": "The parser skips a row.",
-            "proposed_change": "Read every row.", "impact": "silent_wrong_output", "severity": 5,
+    base = {"title": f"New problem {issue}", "keyword": "parser", "kind": "bug",
+            "summary": "The parser skips a row.", "proposed_change": "Read every row.",
+            "impact": "silent_wrong_output", "severity": 5,
             "blast_radius": {"level": "S", "reasoning": "One module.", "consumers": []},
             "loe": {"size": "S", "reasoning": "Small."}, "why_ranked": "Computed from ranking_method."}
     if issue is not None:

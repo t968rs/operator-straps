@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 from harness_lib.config import HarnessConfig
 from harness_lib.todo_sync import TodoSyncError, check, render_snapshot, report_path
 from harness_lib.todo_sync import report as _report
-from harness_lib.todo_sync import reshape
+from harness_lib.todo_sync import keywords, reshape
 from harness_lib.todo_sync.ranking import RankingError
 from harness_lib.todo_sync.report import write_atomic, write_report
 from harness_lib.todo_sync.reshape import add_items, read_spec
@@ -138,6 +138,7 @@ def put(cfg: HarnessConfig, spec: Path, file_issues: bool = False,
             failed filing, or a failed inbox write after filing (naming the issues already filed).
     """
     specs = read_spec(spec, "items")
+    keywords.require_keywords(specs)
     pending = _pending(specs, file_issues)
     _validate(cfg, specs, pending, rng)
     items: Sequence[Any] = specs
