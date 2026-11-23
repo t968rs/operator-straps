@@ -170,7 +170,7 @@ describe('the band above the prompt', () => {
     engineDraws(on)
     await start($, w)
     const clean = await bandNodes($)
-    // CI pins 2.1.330, which stacks each plugin's band as its own part (the band's lines, then the part
+    // CI's pinned engine (ci.yml) stacks each plugin's band as its own part (the band's lines, then the part
     // beneath, here 'engine'); the trailing node stays optional so a local engine before 2.1.323, which
     // replaces the part beneath while the plugin draws, still runs this file
     const texts = clean.all.map(t => t.text.trim())

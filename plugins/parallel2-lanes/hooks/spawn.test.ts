@@ -2,6 +2,7 @@ import type { AgentSpawnInput, On } from 'claude-code'
 import { describe, expect, test } from 'claude-code/testing'
 
 import { briefPath, formatRun, inlinePrompt, laneRef, parseState, viewOf } from './lanes'
+import { spawnInput } from './testSpawn'
 
 // A POSIX root: the engine resolves a read path to an absolute one, and on Linux `C:/...` is relative.
 const FOLDER = '/repo/.claude/state/harness/parallel2'
@@ -48,16 +49,6 @@ const world = (on: On, files: Record<string, string> = { [BRIEF]: BRIEF_TEXT, [S
   })
   return w
 }
-
-/**
- * A full `agent.spawn` input for one plain Agent call. The fork, teammate and workflow variants below set
- * only their out-of-scope flag, not the other values the engine raises with it.
- * The same builder lives in band.test.tsx: a change to `AgentSpawnInput` edits both copies.
- */
-const spawnInput = (prompt: string, description: string, over: Partial<AgentSpawnInput> = {}): AgentSpawnInput => ({
-  tool_use_id: 'toolu_1', prompt, description, subagentType: 'general-purpose',
-  provider: { plugin: 'engine', tier: 'core' }, parentModel: 'opus', background: false, fork: false, ...over,
-})
 
 const dispatch = (prompt: string, model?: string) => spawnInput(prompt, 'lane', model ? { model } : {})
 

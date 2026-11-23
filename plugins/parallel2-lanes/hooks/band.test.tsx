@@ -1,9 +1,10 @@
-import type { AgentSpawnInput, On } from 'claude-code'
+import type { On } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { Engine } from 'claude-code/testing'
 
 import { namesDriver } from './band'
+import { spawnInput } from './testSpawn'
 
 // A POSIX root: the engine resolves a read path to an absolute one, and on Linux `C:/...` is relative.
 const FOLDER = '/repo/.claude/state/harness/parallel2'
@@ -62,15 +63,6 @@ const bandLines = async ($: Engine, hasSurvey = false): Promise<string[]> => {
   await ui.unmount()
   return found.map(node => node.text ?? '')
 }
-
-/**
- * A full `agent.spawn` input for one plain Agent call; a variant sets only the flag a test needs (`resume`).
- * The same builder lives in spawn.test.ts: a change to `AgentSpawnInput` edits both copies.
- */
-const spawnInput = (prompt: string, description: string, over: Partial<AgentSpawnInput> = {}): AgentSpawnInput => ({
-  tool_use_id: 'toolu_1', prompt, description, subagentType: 'general-purpose',
-  provider: { plugin: 'engine', tier: 'core' }, parentModel: 'opus', background: false, fork: false, ...over,
-})
 
 const spawnLane = ($: Engine, id: string) => $.agent.spawn(spawnInput(`Brief: ${brief(id)}`, id))
 
