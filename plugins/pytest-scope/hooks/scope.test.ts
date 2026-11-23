@@ -94,12 +94,14 @@ const world = (on: On, w: World = {}): Seen => {
     return rel.endsWith('.py') ? stat('file') : { deny: `ENOENT: ${e.path}` }
   })
   on('process.run', (_$, e) => (w.isGitMissing === true ? { deny: 'spawn git ENOENT' } : { value: gitAnswer(w, e.argv) }))
-  for (const tool of ['Bash', 'PowerShell'] as const) {
-    on('tool.call', { tool }, (_$, e) => {
-      seen.shell.push(e.command)
-      return { result: { stdout: 'ok', stderr: '', interrupted: false } } as never
-    })
-  }
+  on('tool.call', { tool: 'Bash' }, (_$, e) => {
+    seen.shell.push(e.command)
+    return { result: { stdout: 'ok', stderr: '', interrupted: false } }
+  })
+  on('tool.call', { tool: 'PowerShell' }, (_$, e) => {
+    seen.shell.push(e.command)
+    return { result: { stdout: 'ok', stderr: '', interrupted: false } }
+  })
   on('command.register', (_$, e) => {
     seen.commands.push(e.name)
     return { value: { command: e.name } }

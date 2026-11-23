@@ -145,7 +145,6 @@ const world = (on: On, w: World = {}): Seen => {
     seen.runs.push(e.argv)
     if (w.gate !== undefined) await w.gate
     const git = w.git ?? { stdout: CLEAN }
-    if (git === 'missing') return { deny: 'spawn git ENOENT' }
     return { value: 'stdout' in git ? ran(git.stdout) : ran('', git.exitCode) }
   })
   return seen

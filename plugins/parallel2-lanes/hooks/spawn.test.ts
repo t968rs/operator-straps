@@ -49,7 +49,17 @@ const world = (on: On, files: Record<string, string> = { [BRIEF]: BRIEF_TEXT, [S
   return w
 }
 
-const dispatch = (prompt: string, model?: string) => ({ prompt, description: 'lane', ...(model ? { model } : {}) })
+/**
+ * A full `agent.spawn` input for one plain Agent call. The fork, teammate and workflow variants below set
+ * only their out-of-scope flag, not the other values the engine raises with it.
+ * The same builder lives in band.test.tsx: a change to `AgentSpawnInput` edits both copies.
+ */
+const spawnInput = (prompt: string, description: string, over: Partial<AgentSpawnInput> = {}): AgentSpawnInput => ({
+  tool_use_id: 'toolu_1', prompt, description, subagentType: 'general-purpose',
+  provider: { plugin: 'engine', tier: 'core' }, parentModel: 'opus', background: false, fork: false, ...over,
+})
+
+const dispatch = (prompt: string, model?: string) => spawnInput(prompt, 'lane', model ? { model } : {})
 
 // ---------------------------------------------------------------------------
 // Pure: the Brief line, the paths, the state
@@ -171,7 +181,7 @@ describe('a lane spawn', () => {
     const call = dispatch(`Brief: ${BRIEF}\nStart now.`, 'sonnet')
     await $.agent.spawn({ ...call, fork: true })
     await $.agent.spawn({ ...call, isTeammate: true })
-    await $.agent.spawn({ ...call, workflow: true })
+    await $.agent.spawn({ ...call, workflow: { runId: 'run-1', agentIndex: 0 } })
     expect(w.spawned.map(e => [e.prompt, e.model, e.cwd])).toEqual([
       [call.prompt, 'sonnet', undefined],
       [call.prompt, 'sonnet', undefined],

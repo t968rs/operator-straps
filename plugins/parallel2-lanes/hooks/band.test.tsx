@@ -1,4 +1,4 @@
-import type { On } from 'claude-code'
+import type { AgentSpawnInput, On } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { Engine } from 'claude-code/testing'
@@ -52,7 +52,7 @@ const world = (on: On): World => {
 
 const BAND = {
   component: 'AbovePrompt',
-  props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 120, scroll: { offset: 0, bodyRows: 10 }, view: {} },
+  props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 120, scroll: { offset: 0, bodyRows: 10 }, view: {} },
 } as const
 
 /** The band's run lines now; empty when it draws none. */
@@ -63,7 +63,16 @@ const bandLines = async ($: Engine, hasSurvey = false): Promise<string[]> => {
   return found.map(node => node.text ?? '')
 }
 
-const spawnLane = ($: Engine, id: string) => $.agent.spawn({ prompt: `Brief: ${brief(id)}`, description: id })
+/**
+ * A full `agent.spawn` input for one plain Agent call; a variant sets only the flag a test needs (`resume`).
+ * The same builder lives in spawn.test.ts: a change to `AgentSpawnInput` edits both copies.
+ */
+const spawnInput = (prompt: string, description: string, over: Partial<AgentSpawnInput> = {}): AgentSpawnInput => ({
+  tool_use_id: 'toolu_1', prompt, description, subagentType: 'general-purpose',
+  provider: { plugin: 'engine', tier: 'core' }, parentModel: 'opus', background: false, fork: false, ...over,
+})
+
+const spawnLane = ($: Engine, id: string) => $.agent.spawn(spawnInput(`Brief: ${brief(id)}`, id))
 
 const turnEnd = ($: Engine, agentId?: string) =>
   $.turn.complete({ answer: 'done', durationMs: 5, isAborted: false, turnId: 't1', reason: 'answer', ...(agentId ? { agentId } : {}) })
@@ -153,7 +162,7 @@ describe('the lane band', () => {
     world(on)
     await spawnLane($, 'task1')
     await turnEnd($, 'agent-1')
-    await $.agent.spawn({ prompt: 'keep going', description: 'resume', resume: { agentId: 'agent-1' } } as never)
+    await $.agent.spawn(spawnInput('keep going', 'resume', { resume: { agentId: 'agent-1' } }))
     expect(await bandLines($)).toEqual([
       'parallel2 feat-x: w1 task1 dispatched (running), task2 dispatched · w2 task3 planned',
     ])
