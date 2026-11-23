@@ -56,17 +56,17 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 74,
-    "needs_decision": 43,
+    "items": 73,
+    "needs_decision": 42,
     "trackers": 0,
-    "close_candidates": 37,
+    "close_candidates": 38,
     "by_status": {
-      "NEEDS_DECISION": 43,
+      "NEEDS_DECISION": 42,
       "OPEN": 31
     },
     "by_impact": {
       "dev_velocity": 40,
-      "docs_tooling": 25,
+      "docs_tooling": 24,
       "maintainability": 2,
       "runtime_failure": 5,
       "data_correctness": 1,
@@ -75,12 +75,12 @@
     "by_loe": {
       "XS": 4,
       "S": 24,
-      "M": 33,
+      "M": 32,
       "L": 12,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 66,
+      "gh_issue": 65,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -4370,64 +4370,8 @@
       "why_ranked": "Severity 1 optional capability, docs_tooling impact, M size for the probing."
     },
     {
-      "id": "todo-5v8j",
-      "rank": 72,
-      "title": "v1.0 docs follow-ups: mod README layout, session-bookmark and pytest-scope Hooks tables, PROVENANCE row for harness theme colours, guard_locked rule in HARNESS_RULES.md",
-      "keyword": "readme",
-      "kind": "docs",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "For the guard_locked rule in HARNESS_RULES.md: trim other text to fit under RULES_LIMIT, or raise the 10000-character cap in tests/hooks/test_session_rules.py?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#331",
-          "url": "https://github.com/t968rs/operator-straps/issues/331"
-        }
-      ],
-      "gh_issues": [
-        331
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "Per the session (v1.0 release docs pass on branch 2000-version-1-release, read-only auditors; not re-checked at research level 0, so every claim is unverified): (1) Mod README headings differ. git-status uses 'What it shows' and arc-straps 'What it is'; only session-bookmark has 'What it does' and a Command section; todo-watch documents /todo inside M5 and pytest-scope documents /pytest-broad-ok inline; band-line, banner-status, git-status, parallel2-lanes, working-refs and arc-straps lack Known limitations; arc-straps and pytest-scope title the section 'Install' instead of 'Loading'; band-line, banner-status, parallel2-lanes and working-refs lack a development-load note; banner-status puts Loading before Checks. (2) session-bookmark and pytest-scope have no Hooks table; the session-bookmark rows would be session.compact, session.append, prompt.submit, session.end, session.start and command.run, per plugins/session-bookmark/hooks/bookmark.ts:324-376. (3) The dark scheme in plugins/harness/pages/styles/shared.css takes its values from VS Code Dark Modern and Catppuccin Macchiato (MIT); colour values only, and docs/PROVENANCE.md should carry a row following the strap-debugging precedent. (4) HARNESS_RULES.md is capped below 10000 characters by tests/hooks/test_session_rules.py (RULES_LIMIT) and sits near 10000 after the 1.0 pass, so the proposed guard_locked rule did not fit.",
-      "proposed_change": "(1) Give the mod READMEs one section layout: What it does, Command, State, Known limitations, Checks, Loading, with a Hooks table where the mod registers hooks. Rename the differing headings, add the missing sections and development-load notes, and move Loading ahead of Checks in banner-status. (2) Add a Hooks table to session-bookmark and pytest-scope. (3) Add a docs/PROVENANCE.md row for the shared.css dark scheme citing VS Code Dark Modern and Catppuccin Macchiato (MIT). (4) Add the guard_locked rule to HARNESS_RULES.md: freeze-ledger files under <artifacts.plans>/freezes/ and the files a Locked plan or spec recorded are never written by hand (the guard_locked hook denies it); plan.py lock and strap.py lock run only on the developer's explicit ask; unlock --arm needs the developer's OK. Fitting it means trimming other text or raising the cap.",
-      "files": [
-        "docs/PROVENANCE.md",
-        "plugins/harness/pages/styles/shared.css",
-        "plugins/session-bookmark/hooks/bookmark.ts"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "Documentation files and one rules file; no code consumer reads the READMEs or the provenance row. The HARNESS_RULES cap test is the only check the rules edit touches.",
-        "consumers": []
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "Four separate edits across the mod READMEs, one provenance row and one rules trim or cap change."
-      },
-      "impact": "docs_tooling",
-      "severity": 1,
-      "priority": {
-        "score": 0.3,
-        "components": {
-          "impact_weight": 0.6,
-          "value": 0.6,
-          "loe_points": 4,
-          "blast_factor": 1.0,
-          "cost": 4.0,
-          "base_score": 0.3,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 1 (stale docs and hygiene), impact docs_tooling, LoE M: a docs sweep with no output change."
-    },
-    {
       "id": "todo-nau4",
-      "rank": 73,
+      "rank": 72,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4478,7 +4422,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 74,
+      "rank": 73,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "keyword": "local-llm",
       "kind": "feature",
@@ -4542,6 +4486,15 @@
   ],
   "trackers": [],
   "close_candidates": [
+    {
+      "number": 331,
+      "title": "v1.0 docs follow-ups: mod README layout, session-bookmark and pytest-scope Hooks tables, PROVENANCE row for harness theme colours, guard_locked rule in HARNESS_RULES.md",
+      "url": "https://github.com/t968rs/operator-straps/issues/331",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #333 (branch 2000-version-1-release) lands all four parts: the closing README layout across the plugin READMEs (f62b490), the session-bookmark and pytest-scope Hooks tables, the PROVENANCE row for the shared.css colors and the Locked-files rule in plugins/harness/rules/HARNESS_RULES.md (c422f52), trimmed to stay under RULES_LIMIT with the 10000-character cap unchanged. docs/RELEASES/v1.0.0.md records the work under Docs(plugins). `gh issue view 331` reports OPEN. Catalog item todo-5v8j retired.",
+      "recommended_action": "Close as completed once PR #333 merges, citing its merge commit.",
+      "related_todo_ids": []
+    },
     {
       "number": 191,
       "title": "`PostToolUse` Hook Runs Forever",
@@ -4904,7 +4857,8 @@
     "todo-ys3k",
     "todo-v62t",
     "todo-v8mh",
-    "todo-jrz2"
+    "todo-jrz2",
+    "todo-5v8j"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
