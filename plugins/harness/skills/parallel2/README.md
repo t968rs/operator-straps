@@ -39,7 +39,7 @@ checkout silently reverts that commit, and files the lane deleted or renamed are
 applies the lane's own diff (from the commit the worktree was cut at) three-way onto the target's index:
 target commits made since setup are merged, deletions and renames land, and a real conflict leaves markers
 and is named. It refuses when a lane path is unstaged, untracked or restaged since setup in the target
-checkout.
+checkout, or when the lane changed paths outside its declared files (unless `--include-undeclared`).
 
 ## Lifecycle
 
@@ -48,7 +48,7 @@ checkout.
 | Plan | `parallel2.py plan plan.json` (`-` for stdin) | Overlap check, waves, prongs, probe profiles; run state written |
 | Set up a wave | `parallel2.py setup --wave N [--probe] [--with-setup]` | One worktree and branch `p2/<lane>` per implement lane, registered one at a time (`git worktree add --no-checkout`), then checked out in parallel, from HEAD (or an index snapshot of staged work); one brief per lane; dispatch rows; `--probe` adds the probe prompts, `--with-setup` runs `worktree_setup` and `worktree_baseline` per lane |
 | Probe | `parallel2.py probe --wave N [--passed P1 ...]` | One probe prompt per tool profile that no clean probe covers; `--passed` records clean profiles |
-| Stage a lane | `parallel2.py stage <lane> [--include-undeclared]` | Lane's diff merged three-way into the target checkout's index, no commit |
+| Stage a lane | `parallel2.py stage <lane> [--include-undeclared]` | Lane's diff merged three-way into the target checkout's index, no commit; `--include-undeclared` also stages paths outside the lane's files |
 | Inspect | `parallel2.py status` | Lanes with wave, status, branch, worktree |
 | Clean up | `parallel2.py cleanup [--lane L ...] [--all]` | Staged lanes' worktrees and branches removed; `--lane` for named lanes, `--all` for every lane |
 

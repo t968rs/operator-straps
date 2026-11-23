@@ -10,15 +10,19 @@ issues are presented, so all mechanical or unambiguous issues are resolved by th
 
 ## The five phases
 
-| Phase           | Driver command                | Result                                                                            |
-|-----------------|-------------------------------|-----------------------------------------------------------------------------------|
-| 1 Capture       | `capture`                     | PR metadata, structural guards, review buckets, slot plan, one brief per reviewer |
-| 2 Review        | none (agent dispatch; `-a`: one Workflow call, refuters start with `init`) | One `findings/<slot>.json` per reviewer, written through `record`; refutations under `-a` |
-| 3 Consolidate   | `merge`, `amend`, `build`, `fold` | One `<reviews>/<NNNN>_<slug>.json` with a derived verdict                         |
-| 4 Branch safety | `phase4_branch_safety.py`     | First run inside `build`, second run before any fix                               |
+| Phase           | Driver command                                      | Result                                                                            |
+|-----------------|-----------------------------------------------------|-----------------------------------------------------------------------------------|
+| 1 Capture       | `capture`                                           | PR metadata, structural guards, review buckets, slot plan, one brief per reviewer |
+| 2 Review        | none (agent dispatch)                               | One `findings/<slot>.json` per reviewer, written through `record`                 |
+| 3 Consolidate   | `merge`, `amend`, `build`, `fold`                   | One `<reviews>/<NNNN>_<slug>.json` with a derived verdict                         |
+| 4 Branch safety | `phase4_branch_safety.py`                           | First run inside `build`, second run before any fix                               |
 | 5 Fix           | `waves`, `bubble`, `refute`, `unrefute`, `closeout` | Fixer briefs, dispatch rows, resolutions, verdict recomputed                      |
 
 The driver is `../../scripts/pr_review.py`; each subcommand lists its options under `--help`.
+
+`/harness:pr-review PR -a` is the adversarial run: Phase 2 becomes one Workflow call that adds code refuters,
+which attack the PR's code, and one findings refuter per reviewer slot and per code refuter, which checks that
+slot's findings. A findings refuter starts with `init` and records a refutation report beside the findings.
 
 An issue closed as `REFUTED` (every finding refuted in an `-a` run, or `refute` by the developer) is dispositioned
 and gets no fixer; `unrefute --fix` returns it to the next `waves`. `amend --regrade <ID>=mechanical|judgment` sets

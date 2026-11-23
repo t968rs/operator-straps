@@ -10,7 +10,7 @@ status or merge claims.
 ## Invoking it
 
 ```
-/harness:pr-sum PR [--level 1|2|3] [--min-viz [N]] [--auto-title] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]
+/harness:pr-sum PR [--level 1|2|3] [--min-viz [N]] [--auto-title | --no-auto-title] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]
 ```
 
 | Argument           | Effect                                                                              |
