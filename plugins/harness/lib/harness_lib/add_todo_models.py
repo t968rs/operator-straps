@@ -39,7 +39,13 @@ _MODELS = {ResearchLevel.NONE: "haiku", ResearchLevel.LIGHT: "sonnet", ResearchL
 
 
 class Closing(StrEnum):
-    """What closes a hooked item's session goal; ``--hook`` on the skill, the ``/goal`` evaluator's test."""
+    """What closes a hooked item's session goal; ``--hook`` on the skill, the ``/goal`` evaluator's test.
+
+    ``/goal`` re-checks its condition at every stop, so each condition is one the agent meets by its own
+    actions: a condition that waits on the developer's words or commit keeps waking a session with nothing
+    left to do. ``committed`` and ``developer`` therefore end at the handoff (tests passed, then a drafted
+    commit message or a report to the developer); the developer commits and closes the item.
+    """
 
     RETIRED = "retired"
     COMMITTED = "committed"
@@ -53,8 +59,10 @@ class Closing(StrEnum):
 
 _CONDITIONS = {
     Closing.RETIRED: "is retired from the TODO catalog (`todo_sync.py retire` reported it)",
-    Closing.COMMITTED: "has its change committed on the current branch (`git log` shows the commit)",
-    Closing.DEVELOPER: "is declared done by the developer in this conversation",
+    Closing.COMMITTED: ("is ready to commit: its tests ran by file name and passed, and its commit message "
+                        "is drafted (a c-msg or branch-commit-msg receipt)"),
+    Closing.DEVELOPER: ("is handed to the developer: its tests ran by file name and passed, and a reply "
+                        "lists the files changed and what is left"),
 }
 
 PENDING_DESC = "the item this add-todo run adds"
