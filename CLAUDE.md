@@ -127,4 +127,6 @@ across the marketplace (a config key renamed, a plugin removed, a schema change 
 extended by later ones, with a table of each changed plugin's old and new version
 (`| harness | 0.62.0 | 0.63.0 |`) and one line per change. The branch that creates
 `docs/RELEASES/v<X.Y.Z>.md` also sets `metadata.version` in `.claude-plugin/marketplace.json` and `version` in
-`pyproject.toml` to X.Y.Z. The developer cuts the release, and the GitHub release body is that file.
+`pyproject.toml` to X.Y.Z, and points the `CHANGELOG.md` [Unreleased] entry at that file. The developer cuts
+the release, and the GitHub release body is that file; the cut renames [Unreleased] to `[X.Y.Z] - <date>`, adds
+the `[X.Y.Z]` compare link and rebases the [Unreleased] link on `vX.Y.Z`.
