@@ -75,7 +75,7 @@ JSON that ccstatusline pipes to its stdin and resolves the file against `workspa
 so a session launched in a worktree prints that checkout's line. The widget reads the branch the line was
 built for from `line.json` and the checkout's `HEAD` from `.git` (a worktree's `gitdir:` file is followed),
 with no git call; when the stamped branch differs from `HEAD`'s, it prints that branch dark before the line.
-When `line.json` is absent (working-refs 0.1.0 writes only `line.txt`), it falls back to `line.txt`. The mod picks the checkout from the session
+When `line.json` is absent (an older working-refs wrote only `line.txt`), it falls back to `line.txt`. The mod picks the checkout from the session
 `cwd` first, so a session launched elsewhere whose `cwd` later moves into a worktree shows the launch folder's
 line here while band-line shows the worktree's. `customCommandCacheTtlSeconds` stays 0 so the line
 follows each refresh.
@@ -84,12 +84,19 @@ Git results are cached for 5 s (`gitCacheTtlSeconds`). Edit the project file wit
 `ccstatusline --config <project>/.claude/ccstatusline.json` in a terminal (its editor opens when no input is
 piped).
 
-## Loading
+## Known limitations
 
-```
-claude plugin marketplace add t968rs/operator-straps
-claude plugin install banner-status@operator-straps
-```
+- The `--config` path in `.claude/settings.json` is one checkout's absolute top level, and that file is
+  shared through the repository: a clone at another path, another machine, or a setting written from a linked
+  worktree (whose top level is the worktree) names a path that may not exist where the line runs. The skill
+  writes no other settings scope.
+- A `state_dir` changed after setup does not reach an existing config: when the widget already names
+  `working-refs/line.json`, the skill skips the question and leaves its path as it is.
+- A config that already holds three lines gets no fourth; the working-refs widget can only go at the end of
+  the last line.
+- An installed ccstatusline outside `~2.2.32` is kept and only mentioned. The defaults are config schema
+  version 4, and nothing checks that another version reads them.
+- A folder outside a git repository is refused.
 
 ## Checks
 
@@ -97,3 +104,14 @@ claude plugin install banner-status@operator-straps
 claude plugin validate --strict <plugin folder>
 python -m pytest tests/skills/test_setup_statusline_contract.py -q
 ```
+
+## Loading
+
+```
+claude plugin marketplace add t968rs/operator-straps
+claude plugin install banner-status@operator-straps
+```
+
+For development, `claude --plugin-dir <folder>` loads the folder for one session in place of the marketplace
+copy (or a `CLAUDE_CODE_PLUGIN_DIRS` entry in the user-level `~/.claude/settings.json` `env` block,
+`;`-separated on Windows: append to its existing value rather than replacing it).

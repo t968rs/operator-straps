@@ -2,6 +2,7 @@ import type { AgentSpawnInput, On } from 'claude-code'
 import { describe, expect, test } from 'claude-code/testing'
 
 import { briefPath, formatRun, inlinePrompt, laneRef, parseState, viewOf } from './lanes'
+import { spawnInput } from './testSpawn'
 
 // A POSIX root: the engine resolves a read path to an absolute one, and on Linux `C:/...` is relative.
 const FOLDER = '/repo/.claude/state/harness/parallel2'
@@ -49,7 +50,7 @@ const world = (on: On, files: Record<string, string> = { [BRIEF]: BRIEF_TEXT, [S
   return w
 }
 
-const dispatch = (prompt: string, model?: string) => ({ prompt, description: 'lane', ...(model ? { model } : {}) })
+const dispatch = (prompt: string, model?: string) => spawnInput(prompt, 'lane', model ? { model } : {})
 
 // ---------------------------------------------------------------------------
 // Pure: the Brief line, the paths, the state
@@ -171,7 +172,7 @@ describe('a lane spawn', () => {
     const call = dispatch(`Brief: ${BRIEF}\nStart now.`, 'sonnet')
     await $.agent.spawn({ ...call, fork: true })
     await $.agent.spawn({ ...call, isTeammate: true })
-    await $.agent.spawn({ ...call, workflow: true })
+    await $.agent.spawn({ ...call, workflow: { runId: 'run-1', agentIndex: 0 } })
     expect(w.spawned.map(e => [e.prompt, e.model, e.cwd])).toEqual([
       [call.prompt, 'sonnet', undefined],
       [call.prompt, 'sonnet', undefined],

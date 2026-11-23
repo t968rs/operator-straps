@@ -1,9 +1,12 @@
 {
   "name": "session-bookmark",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Compaction bookmark: git state, last prompts, session notes and /compact instructions kept in session state and appended to the compacted conversation",
   "author": {
     "name": "Kevin Gabelman"
   },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/session-bookmark#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
   "types": "./types/index.d.ts"
 }

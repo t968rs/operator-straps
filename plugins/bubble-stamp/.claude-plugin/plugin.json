@@ -1,9 +1,12 @@
 {
   "name": "bubble-stamp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION, REFUTED) into the bubble memo, PR_<N>_Bubbles.md",
   "author": {
     "name": "Kevin Gabelman"
   },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/bubble-stamp#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
   "types": "./types/index.d.ts"
 }

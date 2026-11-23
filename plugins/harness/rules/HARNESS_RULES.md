@@ -6,8 +6,8 @@ wins wherever it is more specific.
 
 ## Bash discipline
 
-- **One command per Bash call.** No `&&` or `;` chaining; the `bash_discipline` hook denies both (heredoc
-  bodies, quoted text and `for` / `while` / `if` / `case` constructs are exempt).
+- **One command per Bash call.** No `&&` or `;` chaining; the `bash_discipline` hook denies both (heredocs,
+  quoted text and shell `for` / `while` / `if` / `case` are exempt).
 - Absolute paths everywhere. Shell state does not persist between calls, so never rely on `cd`.
 - Git runs as `git -C "<absolute-path>" <subcommand>`, never `cd <path> && git ...`.
 - Interactive flags (`git rebase -i`, `git add -i`) are unavailable.
@@ -25,9 +25,9 @@ wins wherever it is more specific.
 - **History rewrites belong to the developer, everywhere:** no `rebase`, `cherry-pick`, `commit --amend`,
   `reset` to drop commits, or `push`. Recommend the operation instead; subagent prompts never contain one.
   One exception: `attach_worktree.py` (`harness:a-w`) rebases and squashes the `d-w` worktree's commits and
-  resets it to its original HEAD on `--abort`, a failed start or ambiguous rules at a rebase stop. At exit 2
-  the agent resolves files there and reruns with `--continue` or `--abort`, never running a rewrite or
-  `merge` itself.
+  resets it to its original HEAD on `--abort`, a failed start, ambiguous rules at a rebase stop or an empty
+  move. At exit 2 the agent resolves files there and reruns with `--continue` or `--abort`, never
+  running a rewrite or `merge` itself.
 - Commit messages only on explicit ask (`harness:c-msg`, `harness:branch-commit-msg`, or in words). A finished
   unit of work otherwise ends with the list of changed files.
 - `harness:amend-commit-msg` rewrites only the drafted commit-message TXT file; it never runs `git commit --amend`.
@@ -63,20 +63,18 @@ branch's commit history, with a one-sentence rationale:
 - First status update names the lineage: `[base]-->[parent]-->[child]`.
 - **Session end:** report **Branch**, **What was done**, **What's left to do**, **Issues or questions**.
 - **Worktrees** live outside the project directory (an IDE indexing it holds file locks on Windows).
-  `harness:d-w` creates a detached worktree and prints its path. Work there with absolute paths only, commit
-  coherent slices, and stage results onto the target branch only after validation and review, once it is
-  confirmed checked out: `harness:a-w <target>` stages them (or, on the developer's explicit ask, `--committed`
-  fast-forwards the commits) and drops the worktree.
+  `harness:d-w` creates a detached one; work there with absolute paths and commit coherent slices. Once
+  validated and reviewed, `harness:a-w <target>` moves the work onto the checked-out target (see the worktree
+  exception above) and drops the worktree.
 
 ## Agent accountability
 
-Schemas, templates and worked examples ship with the plugin (`schemas/`); a project may pin its own copies under
-the configured `schemas_dir`. Work that is not tracked explicitly is work going rogue.
+Schemas, templates and examples ship with the plugin (`schemas/`); a project may pin copies under
+`schemas_dir`. Untracked work is work going rogue.
 
 - Every review writes `<artifacts.reviews>/{PR}_{Title}.json` (a review-local run with no PR:
   `<artifacts.reviews>/LOCAL_<label>_{Title}.json`) with an explicit verdict.
-- Every plan not produced by a plan-writing skill that owns its own plan/spec format writes
-  `<artifacts.plans>/{PR}_ActionPlan.json` **and**
+- Every plan whose format no plan-writing skill owns writes `<artifacts.plans>/{PR}_ActionPlan.json` **and**
   `<artifacts.plans>/{PR}_PIP.md`, updated as a pair: both written before work begins; after each task the JSON
   status and evidence update and the PIP steps are checked off atomically.
 - **Status is never a claim:** `COMPLETE` requires a commit SHA or a sealed record of the tested tree;
@@ -93,8 +91,7 @@ the configured `schemas_dir`. Work that is not tracked explicitly is work going 
 
 - Evidence before assertions: run the command that proves a claim and read its output before stating it.
   State ambiguity plainly; this covers docs, code comments and chat.
-- After `Write` creates or fully rewrites a file, confirm it landed (`Read` it, or check size and
-  head/tail) before calling it saved.
+- After a `Write` that creates or rewrites a file, confirm it landed (`Read` it) before calling it saved.
 - **Test runs name files or node ids, never a directory.** This binds subagent prompts too: each test command
   names its files and the claim each proves. Prefer one agent owning a guard run over many re-running it.
 - Full-suite runs belong to the developer; when correctness depends on one, say so and hand it over.
@@ -113,7 +110,6 @@ Skills outside this plugin apply when installed.
 - **Making claims:** verification before completion; non-negotiable.
 - **Reviewing code:** `harness:pr-review` (single session) or `harness:pr-team` (parallel fan-out for PRs
   spanning several path buckets). Execute every phase of the chosen skill before stopping.
-- **CI or test-infrastructure changes:** run the project's configured guard suite by file before handing off.
 
 ## Plans and specs
 
@@ -125,6 +121,9 @@ Skills outside this plugin apply when installed.
   helper-extraction and rename changes stay out. `evolution_api` resolves the plan first, so a change found
   before the plan exists is entered (phase `spec-review`) once `plan.py new` has run. A design change the
   developer asks for after the freeze is entered too, alongside its `write` and `freeze --refreeze`.
+- **Locked files are the developer's.** Never write, move or remove a file under `<artifacts.plans>/freezes/`
+  or one a Locked plan or skill spec lists; the `guard_locked` hook denies it. `plan.py lock` and
+  `strap.py lock` run only on the developer's explicit ask, `plan.py unlock --arm` only on their OK.
 
 ## Writing conventions
 
@@ -140,5 +139,6 @@ Skills outside this plugin apply when installed.
 - "The fix is obvious, no need to discuss" -> explicit agreement required.
 - "Tests pass, we're done" -> record the evidence and verify the plan docs.
 - "I'll update the docs later" -> the docs update is atomic with task completion.
-- "It's a one-line change to a CI script" -> run the configured guard files anyway; small CI changes regress.
+- "It's a one-line change to a CI script" -> run the configured guard suite by file before handing off; small
+  CI and test-infrastructure changes regress.
 - "The subagent says its tests pass" -> per-file subagent loops do not run guard suites; run them by name.

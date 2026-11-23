@@ -1,10 +1,13 @@
 {
   "name": "harness",
-  "version": "0.82.0",
+  "version": "0.82.1",
   "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow",
   "author": {
     "name": "Kevin Gabelman"
   },
+  "homepage": "https://github.com/t968rs/operator-straps#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
   "userConfig": {
     "python": {
       "type": "file",

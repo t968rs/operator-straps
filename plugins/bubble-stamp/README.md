@@ -82,9 +82,9 @@ Decision line prefix, entry heading pattern) to `harness_lib/bubble_memo.py`.
 - A stale `Open` row (an id renamed in the review JSON) keeps its memo active, at the cost of one `stat` per
   turn. The developer settles it by hand.
 - Only the newest review JSON of a PR is watched; resolutions kept in an older one stay unstamped.
-- Stamping is one-way. A row stamped `Decided` by a `REFUTED` entry stays `Decided` after `pr_review.py
-  unrefute`, in either mode (`--bubble` appends `BUBBLED`, `--fix` appends `NOT_RESOLVED`), reopens the id;
-  the unstamp is deferred. The developer resets the row to `Open` by hand.
+- Stamping is one-way. `pr_review.py unrefute` reopens the id in either mode (`--bubble` appends `BUBBLED`,
+  `--fix` appends `NOT_RESOLVED`), but a row stamped `Decided` by a `REFUTED` entry stays `Decided`; the unstamp
+  is deferred. The developer resets the row to `Open` by hand.
 - A subagent's turn end is not a trigger; its shell and file tool calls are.
 - Triggers are not coalesced: each matching shell call lists the folder and checks the memos, even when
   several arrive together (they run one after another).

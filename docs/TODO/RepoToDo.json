@@ -59,7 +59,7 @@
     "items": 73,
     "needs_decision": 42,
     "trackers": 0,
-    "close_candidates": 37,
+    "close_candidates": 38,
     "by_status": {
       "NEEDS_DECISION": 42,
       "OPEN": 31
@@ -4487,6 +4487,15 @@
   "trackers": [],
   "close_candidates": [
     {
+      "number": 331,
+      "title": "v1.0 docs follow-ups: mod README layout, session-bookmark and pytest-scope Hooks tables, PROVENANCE row for harness theme colours, guard_locked rule in HARNESS_RULES.md",
+      "url": "https://github.com/t968rs/operator-straps/issues/331",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "PR #333 (branch 2000-version-1-release) lands all four parts: the closing README layout across the plugin READMEs (f62b490), the session-bookmark and pytest-scope Hooks tables, the PROVENANCE row for the shared.css colors and the Locked-files rule in plugins/harness/rules/HARNESS_RULES.md (c422f52), trimmed to stay under RULES_LIMIT with the 10000-character cap unchanged. docs/RELEASES/v1.0.0.md records the work under Docs(plugins). `gh issue view 331` reports OPEN. Catalog item todo-5v8j retired.",
+      "recommended_action": "Close as completed once PR #333 merges, citing its merge commit.",
+      "related_todo_ids": []
+    },
+    {
       "number": 191,
       "title": "`PostToolUse` Hook Runs Forever",
       "url": "https://github.com/t968rs/operator-straps/issues/191",
@@ -4848,7 +4857,8 @@
     "todo-ys3k",
     "todo-v62t",
     "todo-v8mh",
-    "todo-jrz2"
+    "todo-jrz2",
+    "todo-5v8j"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",

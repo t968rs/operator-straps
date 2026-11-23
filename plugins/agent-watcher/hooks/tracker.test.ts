@@ -29,6 +29,21 @@ const PR_REVIEW_PY = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_RO
 const SHA = '0123456789abcdef0123456789abcdef01234567'
 const NOW = 1_800_000_000_000
 const ZERO = 'findings=0 critical=0 important=0 minor=0'
+/** The AbovePrompt props the band helpers mount with. */
+const BAND_PROPS = {
+  hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+} as const
+/** The band line matching `pattern`: the test kit exposes no plugin state, so the drawn band is what is observed. */
+const bandLine = async ($: Engine, pattern: RegExp = /^PR #/): Promise<string | undefined> => {
+  const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })
+  const text = (await ui.find({ type: 'Text', text: pattern }))?.text
+  await ui.unmount()
+  return text
+}
+/** An Agent call answered as an async launch of `loop-1`. */
+const launched = () => ({
+  result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
+})
 
 type Files = Map<string, { text: string; mtimeMs: number }>
 /** `unreadable`: paths that exist but whose read is refused (a lock, an OS refusal, over 4 MiB). */
@@ -920,18 +935,6 @@ describe('forked skill usage rows', () => {
 })
 
 describe('the header convention and row fields (issue #193)', () => {
-  const launched = () => ({
-    result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
-  })
-  const bandLine = async ($: Engine): Promise<string | undefined> => {
-    const props = {
-      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
-    }
-    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
-    const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
-    await ui.unmount()
-    return text
-  }
   /** Every `runs` and `active` value the mod writes. */
   const stateWrites = (on: On): { runs: Record<string, Run>[]; active: unknown[] } => {
     const written: { runs: Record<string, Run>[]; active: unknown[] } = { runs: [], active: [] }
@@ -1101,19 +1104,6 @@ describe('pr-review run directory', () => {
     const body = { fixer, fixed: [], bubbled: bubbled.map(id => ({ id, classification: 'out_of_scope', reason: 'r' })) }
     seen.files.set(`${PR_DIR}/${RUN}/fixes/${fixer}.json`, { text: JSON.stringify(body), mtimeMs: NOW })
   }
-  /** The band line: the test kit exposes no plugin state, so the drawn band is what is observed. */
-  const bandLine = async ($: Engine): Promise<string | undefined> => {
-    const props = {
-      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
-    }
-    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
-    const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
-    await ui.unmount()
-    return text
-  }
-  const launched = () => ({
-    result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
-  })
   const shell = ($: Engine, tool: 'Bash' | 'PowerShell', command: string) =>
     $.tool.call({ tool, command, description: 'd' } as never)
 
@@ -1176,29 +1166,19 @@ describe('review-local runs (a local-<label> key)', () => {
   const LOCAL_REVIEW = `${ROOT}/docs/PR_REVIEWS/LOCAL_fix-band_watch.json`
   const localPrompt = (id: string, role = 'reviewer') => `AGENT_ID: ${id}\nAGENT_ROLE: ${role}\nRUN_ID: ${LOCAL_RUN}\nPR: ${KEY}`
   const open = { verdict: 'NOT READY TO MERGE', issues: { important: [{ id: 'I1' }, { id: 'I2' }] } }
-  const launched = () => ({
-    result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
-  })
-  const bandLine = async ($: Engine): Promise<string | undefined> => {
-    const props = {
-      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
-    }
-    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
-    const text = (await ui.find({ type: 'Text', text: /^(local review|PR #)/ }))?.text
-    await ui.unmount()
-    return text
-  }
+  /** The band text of a local run, or a PR run's when one draws instead. */
+  const LOCAL_BAND = /^(local review|PR #)/
 
   test('the band names the run by its key; the run directory is the key folder', async ($, on) => {
     const seen = world(on, launched)
     await dispatch($, localPrompt('overall'), 'harness:pr-reviewer')
-    expect(await bandLine($)).toBe(`local review ${KEY} · reviewers 0/1`)
+    expect(await bandLine($, LOCAL_BAND)).toBe(`local review ${KEY} · reviewers 0/1`)
     seen.files.set(`${KEY_DIR}/current`, { text: `${LOCAL_RUN}\n`, mtimeMs: NOW })
     seen.files.set(`${KEY_DIR}/${LOCAL_RUN}/plan.json`, { text: JSON.stringify({ phase: 'fix' }), mtimeMs: NOW })
     const fix = { fixer: 'w1_fix_1', fixed: [], bubbled: [{ id: 'I9', classification: 'out_of_scope', reason: 'r' }] }
     seen.files.set(`${KEY_DIR}/${LOCAL_RUN}/fixes/w1_fix_1.json`, { text: JSON.stringify(fix), mtimeMs: NOW })
     await mainTurnEnd($, 't1')
-    expect(await bandLine($)).toBe(`local review ${KEY} · fixers 0/0 · 1 bubbled`)
+    expect(await bandLine($, LOCAL_BAND)).toBe(`local review ${KEY} · fixers 0/0 · 1 bubbled`)
   })
 
   test('the review is LOCAL_<label>_*.json; usage rows log a null pr; matrix rows are never written', async ($, on) => {
@@ -1207,7 +1187,7 @@ describe('review-local runs (a local-<label> key)', () => {
     expect(r.context ?? []).not.toContain(OWNER_NOTE)
     seen.files.set(LOCAL_REVIEW, { text: JSON.stringify({ ...open, bubbles: ['I2'] }), mtimeMs: NOW + 1 })
     await mainTurnEnd($, 't1')
-    expect(await bandLine($)).toBe(`local review ${KEY} · reviewers 1/1 · 1 bubbled`)
+    expect(await bandLine($, LOCAL_BAND)).toBe(`local review ${KEY} · reviewers 1/1 · 1 bubbled`)
     expect(usageRows(seen)).toHaveLength(1)
     expect(usageRows(seen)[0]).toMatchObject({ run_id: LOCAL_RUN, pr: null, role: 'reviewer' })
     expect(seen.files.has(MATRIX)).toBe(false)
@@ -1220,7 +1200,7 @@ describe('review-local runs (a local-<label> key)', () => {
     seen.files.set(LOCAL_REVIEW, { text: JSON.stringify(open), mtimeMs: NOW })
     const block = (await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'Bubbles: I1' })).block
     expect(block?.startsWith(`local review ${KEY}: `)).toBe(true)
-    expect(await bandLine($)).toBe(`local review ${KEY} · Phase 5 pending`)
+    expect(await bandLine($, LOCAL_BAND)).toBe(`local review ${KEY} · Phase 5 pending`)
   })
 })
 

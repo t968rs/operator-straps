@@ -71,7 +71,7 @@ Per-PR metadata: `pr` (number or string), `branch`, `base_branch`. Required when
 
 ### 4. `PLANS_PIP_Template.md`
 
-**Applies to:** `docs/PLANS/{NNNN}_*_PIP.md` and `docs/PLANS/{NNNN}_*_PIP.md`.
+**Applies to:** `<artifacts.plans>/{NNNN}_*_PIP.md`, the markdown PIP of a plan frozen before receipts, and the hand-kept `<artifacts.plans>/{PR}_PIP.md` the harness rules require for a plan whose format no plan-writing skill owns (a receipts plan's PIP is the rendered `_PIP.html`, not this template).
 
 Implementation Plan template — agent-executable task breakdown with exact commands and verification per task.
 
@@ -91,9 +91,9 @@ Used by the dispatch wrapper to mechanically validate subagent returns: `accept_
 
 This is a worked specimen (originally produced for Issue #747's CICD-Decompose-checks subagent dispatch). Treat it as an example of the shape — the structure is general, but the task list is issue-specific. A formal `SubagentExpectations.schema.json` may be promoted later if multiple issues need the same shape.
 
-### 6. `docs/PR_REVIEWS/Catalog.json`
+### 6. `<artifacts.reviews>/Catalog.json` (historical)
 
-**Purpose:** Migration audit snapshot from Issue #1210 (PR_REVIEW schema migration to fix: string → array[string]). Not maintained; for historical reference only.
+**Purpose:** Historical. A consuming project may keep `<artifacts.reviews>/Catalog.json` from the `fix` string → array migration; the plugin ships no such file and nothing reads it.
 
 ### 7. `TodoSyncReport.schema.json`
 
@@ -157,7 +157,7 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 ## Catalog Schemas (`catalogs/`)
 
-Structured catalogs for symbol-level analysis. Most catalog variants — `Decompose`, `ConsumerAudit`, and any future symbol-flavored variant — extend the common `SymbolCatalog.base` via `allOf` + `$ref`, so they share scaffolding (categories, summary, per-entry shape) while carrying purpose-specific fields. A small number of catalogs (`CICDActionAudit` and `TodoCatalog`) describe non-symbol artifacts and are intentionally standalone — they do not inherit `SymbolCatalog.base`. `CICDActionAudit` keeps the `catalog_date` / `summary` shape; `TodoCatalog` uses its own `generated` / `counts` shape and has neither field. Both keep sibling-path refs. Each variant's section below states whether it extends the base. Sibling-schema references use bare relative paths — no leading `./`, no `$id`-by-bare-token.
+Structured catalogs for symbol-level analysis. Most catalog variants — `Decompose`, `ConsumerAudit`, and any future symbol-flavored variant — extend the common `SymbolCatalog.base` via `allOf` + `$ref`, so they share scaffolding (categories, summary, per-entry shape) while carrying purpose-specific fields. `TodoCatalog` and `DesignEvolutionCatalog` describe non-symbol artifacts and are intentionally standalone — they do not inherit `SymbolCatalog.base`. `TodoCatalog` uses its own `generated` / `counts` shape. Both are self-contained (local `#/$defs` refs only). Each variant's section below states whether it extends the base. Sibling-schema references use bare relative paths — no leading `./`, no `$id`-by-bare-token.
 
 ### `catalogs/SymbolCatalog.base.schema.json`
 
@@ -181,18 +181,6 @@ Per-symbol fields beyond the base: `external_usage_count`, `external_usage_files
 
 Top-level adds `target_symbol` (the structure being audited), `audit_reason`, optional `proposed_change`, optional `contract_invariants[]`. Per-consumer fields: `role` (`read` / `write` / `walk` / `mutate`), `contract_relied_on`, `risk_if_changed` (`high` / `medium` / `low`), `evidence`, optional `breaks_if`, `mitigations[]`.
 
-### `catalogs/CICDActionAudit.catalog.schema.json`
-
-**Applies to:** CI/CD action audit catalogs produced during GitHub Actions runtime-migration analysis (e.g., Node.js version deprecations). Typical path: `docs/RESEARCH/CICD/<IssueTitle>_Catalog.json`.
-
-**Base relationship:** Standalone — does **not** extend `SymbolCatalog.base`. The audit shape is `workflows[] -> actions[]`, not a flat per-symbol entry list, so the symbol-catalog scaffolding does not apply. The schema is self-contained while still following the README's documentation conventions (`catalog_date`, `summary`, sibling-path refs).
-
-Top-level fields: `catalog_date`, `issue_number`, `issue_title`, `deprecation_notice` (optional), `summary` (aggregate counts), `workflows[]` (per-workflow action inventories), `resolution_summary` (bucketed outcomes), `recommendations`, `notes[]`.
-
-Per-workflow entry: `file` (repo-relative path), `has_force_node24` (boolean), `actions[]`.
-
-Per-action entry: `name` (uses: reference), `line` (1-indexed), `nodejs_version_target`, `current_status` (`compatible_with_force` / `will_auto_migrate` / `outdated` / `up_to_date`), `resolution` (enum), `rationale`, optional `recommended_change`.
-
 ### `catalogs/TodoCatalog.schema.json`
 
 **Applies to:** The ranked repository TODO catalog (`<todo.folder>/RepoToDo.json` unless `todo.catalog` names another file under the folder), checked by `todo_sync.py` and summarized by the `todo-watch` mod. Rule T1 validates against it when the project keeps no schema beside the data (`<todo.folder>/RepoToDo.schema.json`, or the file `todo.catalog_schema` names), or when `todo.catalog_schema` is null.
@@ -214,6 +202,10 @@ Cross-record rules the schema cannot express that `todo_sync` rules T6-T10 check
 **Base relationship:** Standalone, closed (`additionalProperties: false`). Plan-bound: `plan_id` (4 digits) is required, and `primary_documents` always holds the `plan`. A change requires `id` (`S`, `PR`, `P`, `EX` or `CX` plus a number), `discovered_by`, `phase`, `original`, `issue`, `new_outcome` and `why_new_outcome`, and carries `items[]` (the plan items it touches, default empty) and `date` (`YYYY-MM-DD`, default today). The `category_enums` block is gone: the issue categories are an enum in the models.
 
 **Cross-record rules the schema cannot express:** unique change ids, each change's `original.doc` and `new_outcome.doc` naming a key of `primary_documents`, and summary finding ids that name a change are checked by the model validator (`evolution_models.DesignEvolution`), not by the generated schema. A tool that validates with the JSON schema alone accepts a catalog the models refuse; write through `evolution_api`.
+
+### `catalogs/CrossCuttingLensCatalog.json`
+
+**Applies to:** the cross-cutting lens scope templates `pr_review.py capture` reads and merges with the project's own lenses (`review.lenses`; see the pr-review SKILL.md). Data, not a schema.
 
 ---
 
@@ -276,7 +268,7 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 ### PR_REVIEW JSON
 
 - Verdict is explicit: `READY TO MERGE` or `NOT READY TO MERGE — <reason>`
-- Every issue has `id`, `title`, `description`, `fix`, plus at least one of `file` or `files` (the schema's `anyOf` permits both; a single-file issue listing the path in `files` alongside `file` is acceptable but verbose)
+- Every issue has `id`, `name`, `summary`, `fix`, plus at least one of `file` or `files` (the schema's `anyOf` permits both; a single-file issue listing the path in `files` alongside `file` is acceptable but verbose)
 - `strengths` are specific (not vague praise)
 - `bubble_up` is a complete record of unresolved-after-Phase-5 issues (resolved issues live in `post_review_resolutions`; nothing else is dropped on the floor)
 - `verification_log` paste fields contain raw command stdout, not synthesized summaries
@@ -311,7 +303,7 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 
 ### Catalog JSON (SymbolCatalog variants)
 
-Applies to the symbol-flavored variants only. Standalone catalogs (`CICDActionAudit`, `TodoCatalog`) do not extend the base and are not covered by these rules; `TodoCatalog` is checked by todo_sync rules T6-T10.
+Applies to the symbol-flavored variants only. Standalone catalogs (`TodoCatalog`, `DesignEvolutionCatalog`) do not extend the base and are not covered by these rules; `TodoCatalog` is checked by todo_sync rules T6-T10.
 
 - Validates against the relevant variant schema (which `allOf`-includes `SymbolCatalog.base.schema.json`)
 - `categories[].id` values are referenced by `category_id` on every entry
@@ -333,7 +325,7 @@ Applies to the symbol-flavored variants only. Standalone catalogs (`CICDActionAu
 
 To change a schema (new field, enum value, required-set change):
 
-1. Edit the `.schema.json` file. Exception: `ActionPlan.schema.json` is generated, never edited. Change `harness_lib/plan_models.py` (and `plan_enums.py` for an enum), then run `python tools/gen_plan_schema.py`; `tests/contract/test_plan_schema_generated.py` fails on drift.
+1. Edit the `.schema.json` file. Exception: the generated files are never edited. `ActionPlan`, `Receipt` and `catalogs/DesignEvolutionCatalog` come from the models through `python tools/gen_plan_schema.py` (for `ActionPlan`, change `harness_lib/plan_models.py`, and `plan_enums.py` for an enum, and `tests/contract/test_plan_schema_generated.py` fails on drift; for `Receipt` and `catalogs/DesignEvolutionCatalog`, change `harness_lib/receipt_models.py` and `harness_lib/evolution_models.py`, and `tests/contract/test_evolution_receipt_schema_generated.py` fails on drift); `SkillSpec` comes from `tools/gen_skillspec_schema.py` and `FreezeLedgerEntry` from `freeze_ledger.schema_text()`.
 2. Update this README's relevant section
 3. Update the harness rules if the change affects an agent-facing rule
 4. Update the relevant skill's SKILL.md if it pins the schema
@@ -348,5 +340,7 @@ Existing artifacts validate as-is unless their schema's required-set is widened.
 - **ActionPlan, model first (harness 0.43.0).** `prAttributes.schema.json` is retired and `ActionPlan.schema.json` is generated from the plan models. A project that pinned the old draft-07 `ActionPlan.schema.json` must drop the pin or replace it with a copy of the plugin's generated `ActionPlan.schema.json` (a consuming project never runs the generator). With only the old `ActionPlan.schema.json` pinned, the schema hook reports an unresolvable `$ref` and exits 1 (it used to exit 0 as a setup error). With the old `prAttributes.schema.json` pinned too, the pinned directory still registers it, so the `$ref` resolves and the hook keeps validating plan writes against the old draft-07 shape while `plan.py` validates through the models; drop both pins. `plan.py` ignores a pinned plan schema and validates through the models, so a project that pinned a looser `prAttributes` loses that override.
 - **Receipts and a plan-bound DesignEvolution (harness 0.67.0).** `Receipt.schema.json` is new, and `catalogs/DesignEvolutionCatalog.schema.json` is regenerated from the models: `plan_id` is required, `primary_documents` always holds the `plan`, each change lists the plan `items` it touches, and `category_enums` is removed. A `DesignEvolution.json` kept beside the research notes no longer validates; move it to `<artifacts.plans>/NNNN/DesignEvolution.json`, add the `plan_id`, and drop `category_enums`. Every level is now closed, so also drop the top-level `$schema` and `_comment`; keep only `highest_impact_finding`, `most_embarrassing_finding` and `lessons` under `summary` (drop `total_changes_cataloged`, `by_phase`, `by_issue_category` and `by_why_new_outcome_category`, which `DesignEvolution.counts` computes); and move each prefix key of `id_conventions` under `id_conventions.prefixes`, renaming `id_conventions._comment` to `id_conventions.comment`. A project that pinned the old catalog schema must drop the pin or copy the plugin's. Plans frozen from this version render the PIP as HTML with a derived `live.js` sidecar; plans frozen earlier keep their markdown PIP.
 - **Freeze ledger (harness 0.69.0).** `FreezeLedgerEntry.schema.json` is new, and a plan's freeze stamp moves from the plan JSON into the ledger. Nothing migrates at once: a plan frozen earlier keeps its in-file `frozen` stamp, `plan.py check` prints `legacy: plan <id> keeps an in-file stamp; migrates at its next refreeze`, and `plan.py lock` refuses it until the next `freeze --refreeze`, which writes a history entry for the old stamp, drops `frozen` from the JSON and sets `ledger`. A strap spec frozen earlier gets history entries for its stamps at its first ledger write. A project that pinned `ActionPlan.schema.json` must drop the pin or copy the plugin's, which now allows the `ledger` field. Plan numbers are drawn above every number on any local or remote-tracking branch and in any `*/plan/<no>-*` tag.
+- **Adversarial review (harness 0.71.0).** `PR_REVIEW.schema.json` 2.3.0 adds the `REFUTED`, `BUBBLED` and `NOT_RESOLVED` statuses and `verification_log.dispatch_time.adversarial_check`; `pr_review_invocation_test_matrix.schema.json` adds the `dispatch_shape` `workflow`. A project that pinned either drops the pin or copies the plugin's, or the schema hook rejects `-a` reviews and agent-watcher's workflow rows (and `capture -a` refuses a pinned review schema without the three statuses).
 - **refs on the ActionPlan (harness 0.79.0).** `ActionPlan.schema.json` gains the optional top-level `refs` field (`PlanRefs`: `todo_ids` and `issues`, set by `plan.py new --refs`). Every level is closed, so a project that pinned `ActionPlan.schema.json` must drop the pin or copy the plugin's, which now allows `refs`; with the old pin the schema hook rejects every plan written with `--refs`.
+- **keyword on TODO items (harness 0.82.0).** `catalogs/TodoCatalog.schema.json` `$defs/item` gains the optional `keyword`. Every level is closed, so a project that pinned the catalog schema (`todo.catalog_schema`, or `RepoToDo.schema.json` beside the catalog) refreshes its copy before `todo_sync.py keywords` or the first `inbox put`, or T1 flags every keyworded item.
 - **Every `plan.py` command validates.** `render`, `red`, `lanes` and `record` refuse a plan that does not validate, with the same `schema:` lines `check` prints; only `check` and `freeze` did before. A plan that fails to load is the one case for a hand edit: repair the JSON, then run `plan.py check`.

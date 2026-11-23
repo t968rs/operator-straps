@@ -99,7 +99,7 @@ a new layer needs no vocabulary change for them. A second layer today still touc
 | R3 | Rows validate against `pr_review_invocation_test_matrix.schema.json` before append | Validated in-process; an invalid row is not appended, is kept in `failures` and raised as a toast. |
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (agent-watcher auto)`. |
-| R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.all_issues_dispositioned` settled set: an id whose latest `post_review_resolutions[]` status is `NOT_RESOLVED` is not a disposition, even when `bubbles[]` or `bubble_up[]` names it (the `id_handling.reopened_ids` rule); a latest `BUBBLED` counts only through `bubbles[]` / `bubble_up[]`; a latest `REFUTED` closes it like `RESOLVED`. **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
+| R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.all_issues_dispositioned` settled set: an id whose latest `post_review_resolutions[]` status is `NOT_RESOLVED` is not a disposition, even when `bubbles[]` or `bubble_up[]` names it (the `id_handling.reopened_ids` rule); a latest `BUBBLED` counts only through `bubbles[]` / `bubble_up[]`; a latest `REFUTED` closes it like `RESOLVED`). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
 | R7 | Every returned `Agent` dispatch gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per any other dispatch, of any agent type: this marketplace's agents, built-ins (`Explore`, `general-purpose`, `Plan`) and other plugins' agents, its values read from the header convention below, and one per forked skill run ([Forked skills](#forked-skills)). Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
 The keyword trigger checks the **active** review: the tracked run's PR (its review JSON no older than the
@@ -199,7 +199,7 @@ written and reviewer results carry no ownership note: the matrix schema keys row
 | `turn.complete` | Completes a background subagent or a forked skill; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
 | `prompt.submit` | Scans the sentinels and attaches `PHASE5_PENDING=<ids>` when the hot set changed since the line last attached. |
-| `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the `PHASE5_PENDING=` line again. |
+| `session.end`, `session.compact`, `session.append` (door `compaction`) | After `/clear`, a resume or a main compaction, the next prompt gets the `PHASE5_PENDING=` line again; the `session.append` hook covers a compaction whose `session.compact` chain another mod ended first. |
 | `classic.Stop` | Keeps a settings hook's block as is; otherwise blocks on R6. |
 | `ui.render` `AbovePrompt` | Draws the band above whatever the hooks beneath drew (band-line's banner stays on screen); yields to a survey and passes when there is nothing to show. |
 
@@ -359,7 +359,7 @@ reviewer's matrix `tokens` before 0.7.0 is its last request's count.
 ## Checks
 
 ```
-claude plugin validate <mod folder>
+claude plugin validate --strict <mod folder>
 claude plugin test <mod folder>
 tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.ts, kept outside this folder
 ```

@@ -4,6 +4,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { namesDriver } from './band'
+import { spawnInput } from './testSpawn'
 
 // A POSIX root: the engine resolves a read path to an absolute one, and on Linux `C:/...` is relative.
 const FOLDER = '/repo/.claude/state/harness/parallel2'
@@ -52,7 +53,7 @@ const world = (on: On): World => {
 
 const BAND = {
   component: 'AbovePrompt',
-  props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 120, scroll: { offset: 0, bodyRows: 10 }, view: {} },
+  props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 120, scroll: { offset: 0, bodyRows: 10 }, view: {} },
 } as const
 
 /** The band's run lines now; empty when it draws none. */
@@ -63,7 +64,7 @@ const bandLines = async ($: Engine, hasSurvey = false): Promise<string[]> => {
   return found.map(node => node.text ?? '')
 }
 
-const spawnLane = ($: Engine, id: string) => $.agent.spawn({ prompt: `Brief: ${brief(id)}`, description: id })
+const spawnLane = ($: Engine, id: string) => $.agent.spawn(spawnInput(`Brief: ${brief(id)}`, id))
 
 const turnEnd = ($: Engine, agentId?: string) =>
   $.turn.complete({ answer: 'done', durationMs: 5, isAborted: false, turnId: 't1', reason: 'answer', ...(agentId ? { agentId } : {}) })
@@ -153,7 +154,7 @@ describe('the lane band', () => {
     world(on)
     await spawnLane($, 'task1')
     await turnEnd($, 'agent-1')
-    await $.agent.spawn({ prompt: 'keep going', description: 'resume', resume: { agentId: 'agent-1' } } as never)
+    await $.agent.spawn(spawnInput('keep going', 'resume', { resume: { agentId: 'agent-1' } }))
     expect(await bandLines($)).toEqual([
       'parallel2 feat-x: w1 task1 dispatched (running), task2 dispatched · w2 task3 planned',
     ])

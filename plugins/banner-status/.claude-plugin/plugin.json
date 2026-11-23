@@ -1,8 +1,11 @@
 {
   "name": "banner-status",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window, and the working-refs line as an optional third line)",
   "author": {
     "name": "Kevin Gabelman"
-  }
+  },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/banner-status#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT"
 }

@@ -1,9 +1,12 @@
 {
   "name": "git-status",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Git snapshot, per-prompt GIT_STATE context and a fallback git status line that gives way to ccstatusline or band-line",
   "author": {
     "name": "Kevin Gabelman"
   },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/git-status#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
   "types": "./types/index.d.ts"
 }

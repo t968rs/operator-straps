@@ -21,7 +21,7 @@ depends on no other plugin.
   user messages and before the `/compact` instructions. They are read at each compaction from
   `<state_dir>/session-bookmark/notes.json` under the git top level of the session cwd, else of
   `CLAUDE_PROJECT_DIR`; when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds
-  a notes file is read. `state_dir` coming from `.claude/harness.json` (default
+  a notes file is read. `state_dir` comes from `.claude/harness.json` (default
   `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
   other-version file means no notes section; a note stays until it is removed or cleared with
   `/harness:add-bookmark`.
@@ -53,6 +53,17 @@ depends on no other plugin.
 |------|------|
 | `/session-bookmark` | Prints the bookmark held in this session's state, or says none is held. `$.state` is promised to survive a reload, not a resume, so a resumed session can answer none while its transcript still carries a bookmark message. |
 | `/session-bookmark notes` | Reads the notes file live (no compaction needed) and prints every stored note (no 20-note cut, so a hand-edited file holding more still numbers as the script does) with the same numbering and branch markers as `/harness:add-bookmark --list`, the hint line first when a note is from another branch, or `no notes`. A file the script would refuse (not JSON, no notes list, another version) answers `notes file unreadable; /harness:add-bookmark --clear resets it`; the compaction bookmark still prints no notes section for it. Answers with text and no model turn. Any other argument prints `usage: /session-bookmark [notes]`. |
+
+## Hooks
+
+| Hook | Does |
+|------|------|
+| `session.start` | Registers `/session-bookmark`. |
+| `session.compact` on triggers `manual`, `auto`, `plugin` (main loop) | Starts the git and notes capture beside the summarizer, then appends the bookmark message to the compacted conversation and stores it in state. A subagent's compaction and a skipped one pass through. |
+| `session.append` (door `compaction`, main loop) | Marks the bookmark owed when this mod's `session.compact` hook appended none since the last such row or prompt (the fallback in What it does). |
+| `prompt.submit` | Clears the appended mark; a prompt entered while a bookmark is owed carries it as context (trigger `detected`). A slash-command line never carries it. |
+| `session.end` | After `/clear` or a resume, forgets the appended and owed marks. |
+| `command.run` on `session-bookmark` | Answers `/session-bookmark` and `/session-bookmark notes` (Command). |
 
 ## State
 
@@ -90,7 +101,7 @@ depends on no other plugin.
 ## Checks
 
 ```
-claude plugin validate <mod folder>
+claude plugin validate --strict <mod folder>
 claude plugin test <mod folder>
 tsc -p <mod folder>   # once the engine has generated .claude-plugin/types/ by loading the mod
 ```
