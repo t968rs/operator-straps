@@ -2,7 +2,7 @@
 
 ArcGIS Pro toolbox skills for Claude Code, one plugin beside `harness`.
 
-## What it is
+## What it does
 
 `arc-straps` holds skills that work on ArcGIS Pro toolboxes. Its first skill, `arc-meta`, checks and applies
 tool help in a project's `.atbx` archive:
@@ -35,14 +35,6 @@ Its second skill, `arc-help-pages`, builds the longer help page a tool's "?" pag
   checkout (drive, rooted and malformed hrefs included) or relative; only `#` anchors and web links are
   skipped. The development href is the main checkout's `file:` URI plus the page path, so it is
   the same from any linked worktree.
-
-## Install
-
-```
-claude plugin marketplace add t968rs/operator-straps
-claude plugin install harness@operator-straps
-claude plugin install arc-straps@operator-straps
-```
 
 ## Requirements
 
@@ -162,6 +154,24 @@ For a project that carries its own `arc-meta` skill and apply scripts:
    project-side apply and the plugin's `check_applied` disagree.
 4. Archive the project's frozen strap spec for `arc-meta`; it is stale against the plugin's skill.
 
+## Known limitations
+
+- Only `.atbx` zip archives are read. Legacy `.tbx` and Python toolboxes (`.pyt`) are not found by the archive
+  lookup, and when configured they are refused as not a zip archive.
+- Emptying a parameter's or the summary's canonical text does not clear its hover: `apply_rc` writes only
+  non-empty text and removes no rc key, and `check_applied` does not compare empty canonical text, so the old
+  hover reads `clean`.
+- `apply_toolbox` regenerates `toolbox.metadata.xml` without a thumbnail or geoprocessing lineage; an existing
+  toolbox thumbnail is removed (the report says `thumbnail removed`).
+- `registry_stale` compares strings exactly: a registry `py_path` with backslashes, a `./` prefix or an
+  absolute path reads as stale even when it names the same module.
+- In a linked worktree, `check_links` looks for the target in the current worktree while the href names the
+  main checkout: a page that exists only in the worktree passes, but Pro follows the href to the main
+  checkout, where the page is missing until it is merged.
+- `check_links` reads only quoted `href` values, and only in the canonical XML: an unquoted href is not
+  checked, nor is the "?" page already applied to the archive. Web links are never fetched, and the swap from
+  the development href to a production URL is not checked.
+
 ## Checks
 
 ```
@@ -169,3 +179,16 @@ claude plugin validate --strict plugins/arc-straps
 ```
 
 Source and import history: `docs/PROVENANCE.md` at the marketplace root.
+
+## Loading
+
+```
+claude plugin marketplace add t968rs/operator-straps
+claude plugin install harness@operator-straps
+claude plugin install arc-straps@operator-straps
+```
+
+For development, `claude --plugin-dir <folder>` loads the folder for one session in place of the marketplace
+copy (or a `CLAUDE_CODE_PLUGIN_DIRS` entry in the user-level `~/.claude/settings.json` `env` block,
+`;`-separated on Windows: append to its existing value rather than replacing it). The `harness` plugin must
+load too.

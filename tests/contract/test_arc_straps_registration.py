@@ -83,5 +83,5 @@ def test_the_manifest_and_the_marketplace_describe_the_plugin_alike(repo_root: P
 def test_the_plugin_readme_says_links_pass_through(repo_root: Path) -> None:
     """The README's account of arc-meta says ``<a href>`` reaches the "?" page."""
     text = _text(repo_root, "plugins/arc-straps/README.md")
-    what = text.partition("## What it is")[2].partition("\n## ")[0]
+    what = text.partition("## What it does")[2].partition("\n## ")[0]
     assert "`<a href>`" in what, what

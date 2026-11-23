@@ -4,13 +4,6 @@ Two pytest guards for the Bash and PowerShell tools, written as function hooks. 
 is set, and every failure path (a missing file, a failed stat, no git, an unreadable state store) passes the
 call through unchanged.
 
-## Install
-
-```
-claude plugin marketplace add t968rs/operator-straps
-claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
-```
-
 ## Options
 
 Set at install: `/plugin` opens a dialog for unset options, and `claude plugin install` takes
@@ -60,7 +53,27 @@ test path, is denied: a directory path is never the unit; a file or a node-id is
 - Heredoc bodies and comments are data, not commands.
 - A relative path resolves against the session cwd (which follows an earlier `cd`) and against the root:
   the git top level of the cwd, else of `CLAUDE_PROJECT_DIR`, else the cwd itself.
-- `/pytest-broad-ok` arms a one-shot override for the next broad call. Meant for the developer.
+- `/pytest-broad-ok` (Command) arms a one-shot override for the next broad call. Meant for the developer.
+
+## Command
+
+Registered only while `require_test_file` is on.
+
+| Name | Does |
+|------|------|
+| `/pytest-broad-ok` | Allows the next broad (directory or no-path) pytest call once, then the requirement applies again. Answers `Next broad pytest call is allowed once.` |
+
+## Hooks
+
+The interpreter rewrite registers first, so it runs outermost and the test-file requirement judges the
+rewritten command. Each feature registers nothing while its option is unset.
+
+| Hook | Option | Does |
+|------|--------|------|
+| `tool.call` on `Bash` | `python` | Rewrites a bare pytest to the configured interpreter and adds the rewrite note to the result (section 1). |
+| `tool.call` on `Bash`, `PowerShell` | `require_test_file` | Denies a pytest call with no test path or a directory path, unless the override is armed (section 2). |
+| `session.start` | `require_test_file` | Registers `/pytest-broad-ok`. |
+| `command.run` on `pytest-broad-ok` | `require_test_file` | Arms the one-shot override. |
 
 ## State
 
@@ -80,5 +93,19 @@ test path, is denied: a directory path is never the unit; a file or a node-id is
 claude plugin validate --strict plugins/pytest-scope
 claude plugin test plugins/pytest-scope
 ```
+
+## Loading
+
+Install from the `operator-straps` marketplace, setting the options at install:
+
+```
+claude plugin marketplace add t968rs/operator-straps
+claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
+```
+
+For development, a `CLAUDE_CODE_PLUGIN_DIRS` entry in the user-level `~/.claude/settings.json` `env` block (or
+`claude --plugin-dir <folder>` for one session) loads the folder with hot reload and replaces the marketplace
+copy of the same-named mod. The variable is one string, `;`-separated on Windows: append to its existing value
+rather than replacing it.
 
 Source and import history: `docs/PROVENANCE.md` at the marketplace root.

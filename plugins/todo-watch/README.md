@@ -120,6 +120,12 @@ todo-editor `Agent` result or prompt takes the pending summaries into its contex
 first waits for a drain in flight. Every such wait is capped by the hook's remaining budget less 1 s, at most
 60 s (`waitCapMs`). A drain that did anything then requests a check run.
 
+## Command
+
+| Name | Does |
+|------|------|
+| `/todo` | Prints the summary line, the top `todo.top_n` items and every sync finding (M5 under Behavior). Registered at session start; when the engine refuses the registration, the command passes on. |
+
 ## Hooks
 
 | Hook | Does |
