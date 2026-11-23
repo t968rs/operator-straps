@@ -49,9 +49,17 @@ depends on no other plugin.
 
 ## Session hook (optional goal)
 
-A TODO item can be made the session's goal. `harness:add-todo --hook <closing>` marks the run, and once the
-inbox drain lands the item, `add_todo.py hook --todo <id> --closed-by <closing>` (harness plugin) writes the
-hook switch, `<state_dir>/session-bookmark/hook.json`:
+A goal, free text or a TODO item, can be made the session's goal. Three harness-plugin routes write the hook
+switch, `<state_dir>/session-bookmark/hook.json`:
+
+- `harness:add-bookmark --goal <condition>` (`add_note.py goal`): a free-text goal; the switch's `todo_id` is
+  null and it carries only `goal`, `start_time` and `todo_id`.
+- `harness:add-bookmark --goal-todo <id> <closing>` (`add_note.py goal --todo <id> --closed-by <closing>`): an
+  item already in the catalog.
+- `harness:add-todo --hook <closing>`: marks the run, and once the inbox drain lands the item,
+  `add_todo.py hook --todo <id> --closed-by <closing>` arms it.
+
+A switch for an item:
 
 ```json
 {"version": 1, "hook": {"closed_by": "retired", "desc": "<item title>", "start_time": 1763600000.5,
@@ -63,14 +71,17 @@ hook switch, `<state_dir>/session-bookmark/hook.json`:
   from the session cwd, else `CLAUDE_PROJECT_DIR`. While `fired` is null it queues `/goal <goal>` through
   `$.command.run` (the command runs once the session is idle), then stamps `fired: { at }`, so a switch sets
   its goal once. `/goal` is the engine's session-scoped Stop hook: its evaluator keeps the session working until
-  the condition holds; `/goal clear` ends it, `add_todo.py hook --clear` removes the switch.
-- Closings: `retired` (the item is retired from the catalog), `committed` (its change is committed on the
-  current branch), `developer` (the developer declares it done in the conversation).
+  the condition holds; `/goal clear` ends it, `add_note.py goal --clear` or `add_todo.py hook --clear` removes
+  the switch.
+- Closings, each one the agent meets by itself, since `/goal` re-checks at every stop and a condition that
+  waits on the developer loops the session: `retired` (the item is retired from the catalog), `committed`
+  (tests passed and the commit message is drafted), `developer` (tests passed and a reply hands the item to the
+  developer with the files changed and what is left).
 - A refused `/goal` (an unknown command, past a Stop, a host limit) leaves the switch armed and shows one toast;
   the switch is tried once per mod load, so the next load retries it.
 - Fallback, should `/goal` be unavailable where the mod runs: a temporary `Stop` hook in
   `.claude/settings.local.json` that the file watcher loads and drops without a restart (issue #282's gate).
-  This draft does not write it.
+  The mod does not write it; a live session confirmed `/goal` runs from `$.command.run`.
 
 ## Command
 

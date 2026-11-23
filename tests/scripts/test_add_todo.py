@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from _todo_helpers import CATALOG_REL, LEGACY_CATALOG, TODO_DIR, config, todo_files  # noqa: E402
 from conftest import GIT_ENV, PLUGIN_ROOT  # noqa: E402
+from harness_lib import add_todo_api  # noqa: E402
 from harness_lib.add_todo_api import HOOK_REL, dispatch_row  # noqa: E402
 from harness_lib.add_todo_models import AddTodoRequest, Closing, ResearchLevel, TodoHook  # noqa: E402
 
@@ -123,6 +124,30 @@ def test_the_goal_names_the_item_and_its_closing_clause() -> None:
                     todo_id="todo-af2e")
     assert hook.goal() == f"TODO todo-af2e (catalog item model) {Closing.COMMITTED.condition}"
     assert len(TodoHook(closed_by=Closing.RETIRED, desc="x" * 300, start_time=0, todo_id="t").goal()) <= 500
+
+
+@pytest.mark.parametrize("closing", list(Closing))
+def test_no_closing_waits_on_the_developer(closing: Closing) -> None:
+    """``/goal`` re-checks at every stop, so a condition only the developer can meet loops the session."""
+    text = closing.condition.lower()
+    for waits in ("declared done", "by the developer", "committed on the current branch", "git log"):
+        assert waits not in text, f"{closing.value} waits on the developer: {waits!r}"
+
+
+def test_the_handoff_closings_need_passing_tests() -> None:
+    committed, developer = Closing.COMMITTED.condition, Closing.DEVELOPER.condition
+    assert "passed" in committed and "commit message" in committed
+    assert "passed" in developer and "handed to the developer" in developer
+
+
+def test_a_todo_hook_comes_from_a_catalog_item() -> None:
+    item = {"id": "todo-af2e", "title": "  catalog\n item  "}
+    hook = add_todo_api.todo_hook(Closing.RETIRED, item, now=2.0)
+    assert (hook.todo_id, hook.desc, hook.start_time) == ("todo-af2e", "catalog item", 2.0)
+    assert add_todo_api.todo_hook(Closing.RETIRED, now=1.0).todo_id is None
+    catalog = {"items": [{"id": "todo-af2e"}, "junk"]}
+    assert add_todo_api.catalog_item(catalog, "todo-af2e") == {"id": "todo-af2e"}
+    assert add_todo_api.catalog_item(catalog, "todo-zzzz") is None
 
 
 def test_a_hooked_row_carries_the_hook_line(make_project) -> None:

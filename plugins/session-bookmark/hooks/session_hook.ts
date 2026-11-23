@@ -3,10 +3,11 @@ import type { EngineInterface, Register } from 'claude-code'
 import { stateDirOf } from './notes'
 
 /**
- * Optional session hook: a TODO item turned into the session's goal.
+ * Optional session hook: a goal, free text or a TODO item, turned into the session's goal.
  *
- * `add_todo.py hook` (harness plugin) writes the hook switch, `<state_dir>/session-bookmark/hook.json`:
- * `{ "version": 1, "hook": { "closed_by", "desc", "start_time", "todo_id", "goal" }, "fired": null }`. While
+ * `add_todo.py hook` and `add_note.py goal` (harness plugin) write the hook switch,
+ * `<state_dir>/session-bookmark/hook.json`: `{ "version": 1, "hook": { "goal", "start_time", "todo_id", ... },
+ * "fired": null }`, with `todo_id` null for a free-text goal. While
  * `fired` is null, the end of the next main-loop turn queues `/goal <goal>` through `$.command.run`, which
  * runs once the session is idle, then stamps `fired` with the time, so the goal is set once. `/goal` is the engine's session-scoped Stop hook: its evaluator keeps the session going until the
  * condition holds, and `/goal clear` ends it. An installed mod cannot read the harness plugin, so the path,
@@ -116,7 +117,7 @@ const fire = async ($: Dollar): Promise<void> => {
     await $.fs.write(found.path, markFired(found.text, await $.clock.now()))
   } catch {
     try {
-      $.ui.toast(`session-bookmark: could not set the goal for ${armed.todoId ?? 'the hooked item'}`)
+      $.ui.toast(`session-bookmark: could not set the goal${armed.todoId === null ? '' : ` for ${armed.todoId}`}`)
     } catch {
       // a refused toast leaves the switch armed for the next load
     }
