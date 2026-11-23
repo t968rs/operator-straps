@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Agent harness: PR review and commit tooling, guard hooks, run-tracking and session mods",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
