@@ -1,7 +1,7 @@
 [project]
 name = "operator-straps"
 version = "1.0.0"
-description = "Claude Code marketplace: the harness plugin (PR review, commit tooling, plans, TODO catalog, guard hooks), arc-straps and the session mods"
+description = "Claude Code marketplace: the harness plugin (PR review, commit tooling, plans, TODO catalog, guard hooks), arc-straps, banner-status and the session mods"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

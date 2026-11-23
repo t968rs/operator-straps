@@ -1,6 +1,5 @@
 {
   "name": "operator-straps",
-  "description": "Agent harness: PR review and commit tooling, guard hooks, run-tracking and session mods",
   "owner": {
     "name": "Kevin Gabelman",
     "url": "https://github.com/t968rs"

@@ -1,6 +1,6 @@
 # operator-straps
 
-Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) the `arc-straps`
+Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts), the `arc-straps`
 plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin (`/setup-statusline`), plus nine TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
 `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`, `working-refs`). Layout and install:
 `README.md`.
@@ -125,5 +125,6 @@ plugin was added, patch when every bump was a patch, major only on the developer
 across the marketplace (a config key renamed, a plugin removed, a schema change that invalidates existing artifacts or pinned copies). The suggested release's notes go in
 `docs/RELEASES/v<X.Y.Z>.md`: one file per release, created by the first branch that suggests that version and
 extended by later ones, with a table of each changed plugin's old and new version
-(`| harness | 0.62.0 | 0.63.0 |`) and one line per change. The developer cuts the release, and the GitHub
-release body is that file.
+(`| harness | 0.62.0 | 0.63.0 |`) and one line per change. The branch that creates
+`docs/RELEASES/v<X.Y.Z>.md` also sets `metadata.version` in `.claude-plugin/marketplace.json` and `version` in
+`pyproject.toml` to X.Y.Z. The developer cuts the release, and the GitHub release body is that file.

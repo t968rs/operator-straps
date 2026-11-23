@@ -8,7 +8,7 @@ Install the workflows you need: review a PR with multiple agents, carry findings
 draft commit messages and PR summaries from the diff, or start work in an isolated worktree. Add optional plugins
 to track review progress, keep Git state visible, preserve context through compaction, and scope pytest runs.
 
-[Choose a workflow](#what-you-can-do) · [Requirements](#requirements) · [Install](#install) · [Configure a project](#configure-a-project) · [Release notes](docs/RELEASES/v1.0.0.md)
+[Choose a workflow](#what-you-can-do) · [Requirements](#requirements) · [Install](#install) · [Configure a project](#configure-a-project) · [Release notes](docs/RELEASES/)
 
 ## What you can do
 
@@ -39,12 +39,12 @@ to track review progress, keep Git state visible, preserve context through compa
 
 ### Other harness skills
 
-These load on their own triggers (or as `/harness:<name>`) and need no configuration:
+These load on their own triggers (or as `/harness:<name>`) and need no configuration except where a row names a key:
 
 | Skill | Use it when |
 |---|---|
 | `fold-in-review` | Feedback (notes, failing CI output, a GitHub review URL) should become issues in an active `pr-review` run. |
-| `check-runlogs` | The latest test-runner or script run log needs reading or debugging. |
+| `check-runlogs` | The latest test-runner or script run log needs reading or debugging (needs `runlogs.dir` in `.claude/harness.json`, or `--dir`). |
 | `roast-my-code` | A blunt code review is wanted; `pr-review` may also roll one for its OVERALL slot. |
 | `parallel2` | Two or more subagents are about to run in parallel: disjoint worktree lanes and a tool probe first. |
 | `post-forcepush` | A PR branch was rebased or force-pushed and its review JSON holds stale commit SHAs. |
@@ -127,8 +127,8 @@ The companion plugins install separately. `todo-watch`, `agent-watcher` and `bub
 ## Requirements
 
 - **Claude Code** with plugin support. `pr-review -a` also needs a session that has the Workflow tool.
-- **Python 3.11 or later** for every harness hook and script, with `pydantic>=2.1`, `jsonschema` and
-  `referencing` installed (`python -m pip install "pydantic>=2.1" jsonschema referencing`). `hpy` picks the
+- **Python 3.11 or later** for every harness hook and script; review, plan, TODO and schema-hook code also
+  needs `pydantic>=2.1`, `jsonschema` and `referencing` (`python -m pip install "pydantic>=2.1" jsonschema referencing`). `hpy` picks the
   interpreter (see [Python](#python)); `/harness:doctor` reports what it found.
 - **git**, and **`gh`** signed in for the PR, merge-message, `--auto-title` and TODO-issue skills.
 - **Node.js and npm** only for the ccstatusline status line (`banner-status`).
@@ -188,7 +188,7 @@ drafts in the configured artifact folders. `/harness:c-msg <change>` rewrites th
 
 Releases (`vX.Y.Z` tags, notes under [`docs/RELEASES/`](docs/RELEASES/)) version the marketplace as a whole;
 `metadata.version` in `.claude-plugin/marketplace.json` names the current one. Each plugin keeps its own
-semantic version in its `plugin.json`, which never matches the release number (v1.0.0 ships harness 0.82.1).
+semantic version in its `plugin.json`, which never matches the release number (each release's notes list every plugin's version).
 A plugin bumps its patch for fixes and docs and its minor for new features or config keys; below 1.0 a minor
 bump can also carry a break, which the release's Breaking changes section names. `claude plugin update
 <name>@operator-straps` picks up a new version.
@@ -624,7 +624,7 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 | `scratch_folder`               | `docs/_scratch/`                                                                                | the TODO inbox (`<scratch_folder>/todo-inbox/`) that the `todo-editor` agent's `add`, `sync` and `update` runs write and `todo_sync.py add --inbox` drains; independent of `artifacts.scratch`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `matrix_path`                  | `docs/_harness/pr_review_invocation_test_matrix.jsonl`                                          | `agent-watcher` matrix rows for pr-review / pr-team runs (repo data) |
 | `schemas_dir`                  | `.claude/agent-schemas`                                                                         | pinned project copies of the review schemas; anything missing falls back to the plugin's `schemas/` |
-| `harness_version`              | `null`                                                                                          | the plugin version a pinned `schemas_dir` copy was synced from |
+| `harness_version`              | `null`                                                                                          | informational, read by nothing: the plugin version a pinned `schemas_dir` copy was synced from, recorded by hand |
 | `agent_usage_path`             | `docs/_harness/agent_usage.jsonl`                                                               | `agent-watcher`: one usage row per Agent dispatch of any type or forked skill (model, tokens, runtime, fixer counts)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `artifacts.*`                  | `docs/PR_REVIEWS`, `docs/PLANS`, ...                                                            | review, plan, summary and commit-message output                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `tests.*`                      | `tests/`, common test-file pattern                                                              | review bucketing, commit grouping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
