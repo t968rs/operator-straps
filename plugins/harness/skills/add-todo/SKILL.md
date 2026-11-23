@@ -1,7 +1,7 @@
 ---
 name: add-todo
 description: Use when asked to add a note, reminder, idea or finding to the project's TODO catalog from free text, local-only or backed by a new GitHub issue, researched as deeply as asked. Triggers on "add-todo", "add a todo", "log this as a TODO", "put this in the TODO catalog", "make a TODO item for this". Hands the research and drafting to the harness:todo-editor agent; the main session prints the dispatch row and adds what the conversation already established.
-argument-hint: "[--issue] [-r|--research 0-3] -- <note>"
+argument-hint: "[--issue] [-r|--research 0-3] [--hook retired|committed|developer] -- <note>"
 ---
 
 # add-todo: one TODO item from a note
@@ -23,6 +23,7 @@ and `<note>` are the same invocation. With flags and no `--` token, the text aft
 |---|---|---|
 | `--issue` | A GitHub issue is filed for the item and recorded as its source. | Off: the item stays local, with a dated `note` source. |
 | `-r N`, `--research N` | How far the agent reads before it drafts, 0 to 3; the level also picks the agent's model. | 0 |
+| `--hook C` | Once added, the item becomes the session's goal (`/goal`), closed when it is `retired`, `committed` or declared done by the `developer` (Step 4.5). | Off: no goal. |
 
 | Level | The agent |
 |---|---|
@@ -36,11 +37,12 @@ An empty note, an unknown flag or a level outside 0-3 ends the run: print the `a
 ## Step 1: print the row
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" row [--issue] [-r N]
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" row [--issue] [-r N] [--hook C]
 ```
 
 Run it from the project root with the flags only. stdout is the row: an `agent=harness:todo-editor model=<model>`
-line, then the `SKILL`, `Operation`, `Issue`, `Research` and `Project root` lines. A `problem:` line naming
+line, then the `SKILL`, `Operation`, `Issue`, `Research` and `Project root` lines, and a `Hook: <C>` line with
+`--hook`. A `problem:` line naming
 `todo_sync.py init` means `todo.folder` is set but the catalog does not exist yet: run
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" init`, then the row command
 again. Any other `problem:` line ends the run: relay it.
@@ -90,6 +92,18 @@ it reads `problem: inbox: added <ids>; updated <ids>, then: <reason>` (either pa
 landed), those changes landed and only the render, check or file
 cleanup failed: report them as applied. When it names a lock held by `todo_sync.py add --inbox`, the todo-watch mod is draining those items and
 its summary line arrives as context. Otherwise the queued items stay in the inbox.
+
+## Step 4.5: arm the session hook (`--hook` only)
+
+When the row carried `Hook: <C>` and the drain line names an added id, arm the hook switch for that id:
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" hook --todo <id> --closed-by <C>
+```
+
+It prints `hook: armed <id> (<C>); goal: <goal>`. The session-bookmark mod runs `/goal <goal>` when the turn
+ends; without that mod the switch does nothing. No id added (empty or rejected drain): skip the step and say
+the hook was not armed. A `problem:` line is relayed once.
 
 ## Step 5: report
 
