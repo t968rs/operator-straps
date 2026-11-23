@@ -64,7 +64,8 @@ def test_no_agent_runs_the_note_writer() -> None:
 
 def test_skill_hints_every_form() -> None:
     hint = _frontmatter(_SKILL)["argument-hint"]
-    for form in ("--list", "--clear", "--remove", "--edit", "--standing"):
+    forms = ("--list", "--clear", "--remove", "--edit", "--standing", "--goal", "--goal-todo", "--goal-clear")
+    for form in forms:
         assert form in hint, f"argument-hint never names {form}"
 
 
@@ -75,8 +76,16 @@ def test_skill_passes_the_arguments_through() -> None:
 def test_skill_runs_the_script_through_the_launcher_with_each_subcommand() -> None:
     body = _text(_SKILL)
     assert 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/add_note.py"' in body
-    for subcommand in ("add", "add --standing", "list", "remove", "edit", "clear"):
+    for subcommand in ("add", "add --standing", "list", "remove", "edit", "clear", "goal --", "goal --todo",
+                       "goal --clear"):
         assert f"NOTE {subcommand}" in body, f"skill never runs NOTE {subcommand}"
+
+
+def test_skill_states_the_goal_limit_and_the_meetable_rule(script) -> None:
+    body = _text(_SKILL)
+    assert re.search(rf"at most {script.MAX_GOAL_CHARS} characters", body), "goal length"
+    assert "/goal clear" in body, "no way out of a goal already set"
+    assert "never waits on the developer" in body.lower(), "no rule that the agent can meet the goal itself"
 
 
 def test_skill_names_the_turn_free_notes_view() -> None:

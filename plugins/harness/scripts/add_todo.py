@@ -26,21 +26,19 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from harness_lib.add_todo_api import HOOK_REL, dispatch_row, write_hook_switch  # noqa: E402
-from harness_lib.add_todo_models import (  # noqa: E402
-    MAX_DESC_CHARS,
-    PENDING_DESC,
-    AddTodoRequest,
-    Closing,
-    ResearchLevel,
-    TodoHook,
+from harness_lib.add_todo_api import (  # noqa: E402
+    HOOK_REL,
+    catalog_item,
+    dispatch_row,
+    todo_hook,
+    write_hook_switch,
 )
+from harness_lib.add_todo_models import AddTodoRequest, Closing, ResearchLevel  # noqa: E402
 from harness_lib.config import ConfigError, HarnessConfig, activate, load_config  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 from harness_lib.todo_sync import ids  # noqa: E402
@@ -102,23 +100,12 @@ def _refuse_legacy(catalog: Path) -> None:
         raise Refused(str(exc)) from exc
 
 
-def _build_hook(closing: Closing, item: Optional[Dict[str, Any]] = None,
-                now: Optional[float] = None) -> TodoHook:
-    """The hook for ``closing``: tied to ``item`` (its id and title) once it exists, else row-time pending."""
-    start = time.time() if now is None else now
-    if item is None:
-        return TodoHook(closed_by=closing, desc=PENDING_DESC, start_time=start)
-    title = " ".join(str(item.get("title") or item["id"]).split())[:MAX_DESC_CHARS]
-    return TodoHook(closed_by=closing, desc=title, start_time=start, todo_id=str(item["id"]))
-
-
 def _item(catalog: Path, todo_id: str) -> Dict[str, Any]:
     """The catalog item with ``todo_id``; refuses an id the catalog does not hold."""
-    data = _load(catalog) or {}
-    for item in data.get("items", []):
-        if isinstance(item, dict) and item.get("id") == todo_id:
-            return item
-    raise Refused(f"hook: no catalog item {todo_id}")
+    item = catalog_item(_load(catalog) or {}, todo_id)
+    if item is None:
+        raise Refused(f"hook: no catalog item {todo_id}")
+    return item
 
 
 def _hook(cfg: HarnessConfig, catalog: Path, args: argparse.Namespace) -> str:
@@ -131,7 +118,7 @@ def _hook(cfg: HarnessConfig, catalog: Path, args: argparse.Namespace) -> str:
         return "hook: cleared"
     if not args.todo or not args.closed_by:
         raise Refused("hook needs --todo <id> and --closed-by, or --clear")
-    hook = _build_hook(Closing(args.closed_by), _item(catalog, args.todo))
+    hook = todo_hook(Closing(args.closed_by), _item(catalog, args.todo))
     write_hook_switch(path, hook)
     return f"hook: armed {hook.todo_id} ({hook.closed_by.value}); goal: {hook.goal()}"
 
@@ -148,7 +135,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except (ConfigError, Refused, OSError) as exc:
         print(f"problem: {' '.join(str(exc).split())}", file=sys.stderr)
         return 1
-    hook = None if args.hook is None else _build_hook(Closing(args.hook))
+    hook = None if args.hook is None else todo_hook(Closing(args.hook))
     request = AddTodoRequest(issue=args.issue, research=ResearchLevel(args.research), hook=hook)
     print("\n".join(dispatch_row(request, cfg.project_root)))
     return 0

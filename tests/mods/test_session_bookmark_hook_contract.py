@@ -49,6 +49,14 @@ def test_an_armed_switch_has_the_keys_the_mod_reads(hook_ts: str, tmp_path: Path
         assert key in hook_ts
 
 
+def test_a_free_text_goal_switch_has_the_keys_the_mod_reads(hook_ts: str, tmp_path: Path) -> None:
+    path = tmp_path / add_todo_api.HOOK_REL
+    add_todo_api.write_goal_switch(path, "the tests in test_x.py pass", 2.5)
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert stored["version"] == add_todo_api.HOOK_VERSION and stored[ts_string(hook_ts, "FIRED_KEY")] is None
+    assert stored["hook"] == {"goal": "the tests in test_x.py pass", "start_time": 2.5, "todo_id": None}
+
+
 def test_the_mod_registers_the_session_hook(repo_root: Path) -> None:
     register_ts = (repo_root / _REGISTER_TS_REL).read_text(encoding="utf-8")
     assert "registerSessionHook(on)" in register_ts

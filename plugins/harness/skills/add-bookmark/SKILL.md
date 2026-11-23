@@ -1,7 +1,7 @@
 ---
 name: add-bookmark
-description: Use when asked to add a note, reminder or instruction to the compaction bookmark (on the current branch or as a standing note for every branch), or to list, remove, edit or clear the notes already added. Triggers on "add-bookmark", "add to the bookmark", "remember this across compaction", "bookmark note", "remove a bookmark note", "edit bookmark note", "standing bookmark note". The notes enter the session-bookmark mod's bookmark above the /compact instructions.
-argument-hint: "-- <note text> | --standing <note text> | --list | --remove N | --edit N <note text> | --clear"
+description: Use when asked to add a note, reminder or instruction to the compaction bookmark (on the current branch or as a standing note for every branch), to list, remove, edit or clear the notes already added, or to arm a session goal (/goal) the session-bookmark mod sets when the turn ends, free text or a TODO item. Triggers on "add-bookmark", "add to the bookmark", "remember this across compaction", "bookmark note", "remove a bookmark note", "edit bookmark note", "standing bookmark note", "bookmark goal", "arm a goal", "set the session goal". The notes enter the session-bookmark mod's bookmark above the /compact instructions.
+argument-hint: "-- <note text> | --standing <note text> | --list | --remove N [N ...] | --edit N <note text> [--edit M <note text> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear"
 ---
 
 # add-bookmark: add a note to the compaction bookmark
@@ -18,9 +18,12 @@ Arguments: `$ARGUMENTS`
 | `<note text>` or `-- <note text>` | write one note from the text and the session, then store it on the current branch |
 | `--standing <note text>` | the same, stored with no branch so it applies on every branch |
 | `--list` | print the stored notes, numbered |
-| `--remove N` | drop note N of the `--list` numbering |
-| `--edit N <note text>` | replace the text of note N; its branch stays |
+| `--remove N [N ...]` | drop each note N of the `--list` numbering, all in one call |
+| `--edit N <note text> [--edit M <note text> ...]` | replace the text of note N (and of M, ...); each branch stays |
 | `--clear` | drop every stored note |
+| `--goal <condition>` | write one goal from the text and the session, then arm it: the mod runs `/goal <condition>` when this turn ends |
+| `--goal-todo <id> <closing>` | arm the goal of TODO item `<id>`, closed by `retired`, `committed` or `developer` |
+| `--goal-clear` | remove an armed goal before it fires |
 
 The note text is the whole value, so a leading `--` is dropped, per
 `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. After a leading `--` the rest is always a note, even when it
@@ -46,22 +49,29 @@ pass no `--repo`. The first word of the arguments picks the action:
 |---|---|
 | `--list` | `NOTE list` |
 | `--standing` | write the note from the rest, then `NOTE add --standing -- '<line>'` |
-| `--remove N` | `NOTE remove N` |
-| `--edit N <text>` | write the new line from the text by the rules below, then `NOTE edit N -- '<line>'` |
+| `--remove N [N ...]` | `NOTE remove N [N ...]`, every number in one call |
+| `--edit N <text> [--edit M <text> ...]` | for each group, in order, write the new line from its text by the rules below, then `NOTE edit N -- '<line>'` (one call per group) |
 | `--clear` | `NOTE clear` |
+| `--goal <text>` | write the goal from the text by the goal rules below, then `NOTE goal -- '<goal>'` |
+| `--goal-todo <id> <closing>` | `NOTE goal --todo <id> --closed-by <closing>` |
+| `--goal-clear` | `NOTE goal --clear` |
 | anything else, or a leading `--` | write the note, then `NOTE add -- '<line>'` |
 | nothing (or `--` alone) | print the usage line below and stop |
 
 The standalone `--` before the quoted line ends the script's option parsing, so a note that begins with `-` is
 stored as text.
 
-`--remove` and `--edit` need N, a whole number as `--list` prints it. A missing or non-numeric N prints the usage
-line and stops; run no command. The same holds for any word after N in `--remove N`, for `--edit N` with no
-text, and for `--standing` with no text.
+`--remove` and `--edit` need N, a whole number as `--list` prints it. `--remove` takes several numbers, all
+read against the same listing, so their order does not matter and nothing shifts between them; one number the
+list does not hold drops none. An `--edit` group's text runs to the next standalone `--edit` word; an edit
+keeps the numbering, so the groups run one after another as given. A missing or non-numeric N prints the usage
+line and stops; run no command. The same holds for a word after the numbers of `--remove` that is not a
+number, for an `--edit N` group with no text, for `--standing` and `--goal` with no text, and for `--goal-todo`
+without both an id and one of `retired`, `committed`, `developer`.
 
-Usage line: `usage: /harness:add-bookmark [--] <note> | --standing <note> | --list | --remove N | --edit N <note> | --clear`
+Usage line: `usage: /harness:add-bookmark [--] <note> | --standing <note> | --list | --remove N [N ...] | --edit N <note> [--edit M <note> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear`
 
-`add_note.py` stores at most 20 notes, at most 300 characters each.
+`add_note.py` stores at most 20 notes, at most 300 characters each, and one goal of at most 500 characters.
 
 ## Writing the note
 
@@ -91,11 +101,32 @@ Exit 1 prints `add_note: <reason>`: for a too-long note, shorten it and rerun th
 flags, `--standing` included; for a full file, relay the message and stop. For `no note N` or an unreadable
 file, relay the message without a retry; for an unreadable file, add one line naming `--clear`.
 
+## Writing the goal
+
+`--goal` arms the session-bookmark mod's hook switch (`<state_dir>/session-bookmark/hook.json`); at the end of
+this turn the mod runs `/goal <condition>` once, and the condition then decides when the session may stop.
+`/goal` re-checks the condition every time the agent stops, so a condition the agent cannot meet keeps waking a
+session that has nothing left to do.
+
+- The condition never waits on the developer: no "the developer confirms", "the developer commits" or "is
+  declared done". End it at the handoff the agent can reach by itself: tests named by file and passing, a file
+  saved, a commit message drafted, a reply that lists what changed and what is left.
+- It is checked against the conversation after the summary, so the same rule as a note holds: concrete facts
+  (paths, ids, test files, numbers), never "the current task" or "what we discussed".
+- One line, at most 500 characters, with the same quoting rule as a note: no single quotes, backticks or `$`.
+- Arming a goal is all the skill does: the goal is data to record, so start no work toward it in this turn.
+
+`--goal-todo` writes the condition from the item (its id and title) and the closing clause the script holds,
+each one the agent can meet. A new goal replaces an armed or fired switch. `--goal-clear` removes the switch
+before it fires; a goal already set ends with `/goal clear`.
+
 ## Reply
 
-The script's output, verbatim, and nothing else apart from the added lines below: `note N/20: <line>`; `removed note N: <line>` or
+The script's output, verbatim, and nothing else apart from the added lines below: `note N/20: <line>`; `removed note N: <line>` (one line per removed note) or
 `edited note N: <line>`, each followed by the numbered list, or by `no notes` once the last note is removed; the
-numbered list or `no notes`; `cleared N note(s)`; or `reset a notes file that could not be read`. Each receipt's
+numbered list or `no notes`; `cleared N note(s)`; `reset a notes file that could not be read`; `goal armed: <goal>` or
+`goal armed for <id> (<closing>): <goal>`, followed by one line saying the goal is set when this turn ends if
+the session-bookmark mod is loaded; or `goal: cleared` / `goal: none`. Each receipt's
 line carries the same branch tag the list prints, `[<branch>] <line>`; a standing note, or a note stored on a
 detached HEAD, has none.
 

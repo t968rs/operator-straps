@@ -1,14 +1,20 @@
 """Keep the session notes the session-bookmark mod prints in its compaction bookmark.
 
-Usage: add_note.py [--repo PATH] add [--standing] TEXT... | list | remove N | edit N TEXT... | clear
+Usage: add_note.py [--repo PATH] add [--standing] TEXT... | list | remove N... | edit N TEXT... | clear
+       | goal TEXT... | goal --todo ID --closed-by retired|committed|developer | goal --clear
 
 The notes live in ``<state_dir>/session-bookmark/notes.json`` under the project root: ``{"version": 1,
 "notes": [{"added": "<UTC ISO 8601>", "branch": "<name>", "text": "..."}]}``. ``add`` records the checked-out
 branch; the key is left out under ``--standing`` and on a detached HEAD, and a note without a usable branch
 applies on every branch. ``list`` marks a note added on another branch as ``[<branch>; now on <current>]``.
-``remove`` and ``edit`` address a note by its ``list`` number. A note stays until ``remove`` or ``clear``. The
-mod reads the file at every compaction; ``tests/mods/test_session_bookmark_notes_contract.py`` pins the names
-both sides share.
+``remove`` and ``edit`` address a note by its ``list`` number; ``remove`` takes several, all numbered from
+one listing. A note stays until ``remove`` or ``clear``. The mod reads the file at every compaction;
+``tests/mods/test_session_bookmark_notes_contract.py`` pins the names both sides share.
+
+``goal`` arms the mod's hook switch (``<state_dir>/session-bookmark/hook.json``, written through
+``harness_lib.add_todo_api``): the mod runs ``/goal <goal>`` when the current main-loop turn ends. The goal is
+free text, or a TODO catalog item with its closing (``--todo``, ``--closed-by``); ``goal --clear`` removes
+the switch. A goal already set ends with ``/goal clear``.
 """
 from __future__ import annotations
 
@@ -16,11 +22,14 @@ import argparse
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
+
+from harness_lib.add_todo_models import MAX_GOAL_CHARS  # noqa: E402
 
 NOTES_REL = "session-bookmark/notes.json"
 NOTES_VERSION = 1
@@ -36,11 +45,16 @@ class NoteError(RuntimeError):
     """A note the script refuses to store."""
 
 
-def notes_path(repo: Path) -> Path:
-    """The notes file of the project holding ``repo``; raises ``ConfigError`` for an unreadable config."""
+def _config(repo: Path) -> Any:
+    """The active config of the project holding ``repo``; raises ``ConfigError`` for an unreadable config."""
     from harness_lib.config import activate, load_config
     from harness_lib.project import project_root
-    cfg = activate(load_config(project_root(repo)))
+    return activate(load_config(project_root(repo)))
+
+
+def notes_path(repo: Path) -> Path:
+    """The notes file of the project holding ``repo``; raises ``ConfigError`` for an unreadable config."""
+    cfg = _config(repo)
     return cfg.path(cfg.state_dir) / NOTES_REL
 
 
@@ -161,11 +175,14 @@ def _pick(notes: List[Note], number: int) -> Note:
     return notes[number - 1]
 
 
-def remove(path: Path, number: int, current: Optional[str]) -> str:
+def remove(path: Path, numbers: List[int], current: Optional[str]) -> str:
+    """Drop the notes at ``numbers``, all read against one listing; one missing number drops none."""
     notes = read_notes(path)
-    gone = _pick(notes, number)
-    write_notes(path, [n for n in notes if n is not gone])
-    return f"removed note {number}: {note_body(gone, current)}\n{listing(path, current)}"
+    picked = sorted(set(numbers))
+    gone = [_pick(notes, number) for number in picked]
+    write_notes(path, [n for n in notes if not any(n is g for g in gone)])
+    lines = [f"removed note {number}: {note_body(note, current)}" for number, note in zip(picked, gone)]
+    return "\n".join([*lines, listing(path, current)])
 
 
 def edit(path: Path, number: int, words: List[str], current: Optional[str]) -> str:
@@ -188,6 +205,69 @@ def clear(path: Path) -> str:
     return f"cleared {count} note{'' if count == 1 else 's'}"
 
 
+def _goal_text(words: List[str]) -> str:
+    """The free-text goal, or ``NoteError`` when it is blank or longer than ``/goal`` takes."""
+    text = " ".join(" ".join(words).split())
+    if not text:
+        raise NoteError("goal is blank")
+    if len(text) > MAX_GOAL_CHARS:
+        raise NoteError(f"goal is {len(text)} characters; the limit is {MAX_GOAL_CHARS}")
+    return text
+
+
+def _todo_goal(cfg: Any, todo_id: str, closed_by: str) -> Any:
+    """The ``TodoHook`` for a catalog item; ``NoteError`` without a TODO folder or for an unknown id."""
+    from harness_lib.add_todo_api import catalog_item, todo_hook
+    from harness_lib.add_todo_models import Closing
+    if not cfg.todo.enabled or cfg.todo.catalog is None:
+        raise NoteError("goal --todo needs todo.folder in .claude/harness.json")
+    try:
+        data = json.loads(cfg.path(cfg.todo.catalog).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    item = catalog_item(data if isinstance(data, dict) else {}, todo_id)
+    if item is None:
+        raise NoteError(f"no catalog item {todo_id}")
+    return todo_hook(Closing(closed_by), item)
+
+
+def _clear_goal(path: Path) -> str:
+    if not path.is_file():
+        return "goal: none"
+    path.unlink()
+    return "goal: cleared"
+
+
+def goal(cfg: Any, args: argparse.Namespace) -> str:
+    """Arm the hook switch with a free-text goal or a catalog item's goal, or clear it."""
+    from harness_lib.add_todo_api import HOOK_REL, write_goal_switch, write_hook_switch
+    path = cfg.path(cfg.state_dir) / HOOK_REL
+    if args.clear:
+        return _clear_goal(path)
+    if args.todo is None:
+        if args.closed_by is not None:
+            raise NoteError("--closed-by needs --todo ID")
+        text = _goal_text(args.text)
+        write_goal_switch(path, text, time.time())
+        return f"goal armed: {text}"
+    if args.text:
+        raise NoteError("goal takes text or --todo ID, not both")
+    if args.closed_by is None:
+        raise NoteError("goal --todo needs --closed-by retired|committed|developer")
+    hook = _todo_goal(cfg, args.todo, args.closed_by)
+    write_hook_switch(path, hook)
+    return f"goal armed for {hook.todo_id} ({hook.closed_by.value}): {hook.goal()}"
+
+
+def _goal_parser(sub: Any) -> None:
+    goal_cmd = sub.add_parser("goal", help="arm the session-bookmark hook switch with a /goal")
+    goal_cmd.add_argument("--todo", help="a TODO catalog id the goal names")
+    goal_cmd.add_argument("--closed-by", choices=["retired", "committed", "developer"],
+                          help="what closes a --todo goal")
+    goal_cmd.add_argument("--clear", action="store_true", help="remove the switch")
+    goal_cmd.add_argument("text", nargs="*")
+
+
 def parse_args(argv: Optional[list]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="project to write under (default: cwd)")
@@ -196,15 +276,19 @@ def parse_args(argv: Optional[list]) -> argparse.Namespace:
     add_cmd.add_argument("--standing", action="store_true", help="store the note with no branch")
     add_cmd.add_argument("text", nargs="+")
     sub.add_parser("list", help="print the stored notes, numbered")
-    sub.add_parser("remove", help="drop one note by its listed number").add_argument("number", type=int)
+    remove_cmd = sub.add_parser("remove", help="drop notes by their listed numbers")
+    remove_cmd.add_argument("numbers", type=int, nargs="+")
     edit_cmd = sub.add_parser("edit", help="replace the text of one note by its listed number")
     edit_cmd.add_argument("number", type=int)
     edit_cmd.add_argument("text", nargs="+")
     sub.add_parser("clear", help="drop every stored note")
+    _goal_parser(sub)
     return parser.parse_args(argv)
 
 
 def run(args: argparse.Namespace) -> str:
+    if args.command == "goal":
+        return goal(_config(args.repo), args)
     path = notes_path(args.repo)
     if args.command == "clear":
         return clear(path)
@@ -214,7 +298,7 @@ def run(args: argparse.Namespace) -> str:
     if args.command == "add":
         return add(path, args.text, current)
     if args.command == "remove":
-        return remove(path, args.number, current)
+        return remove(path, args.numbers, current)
     if args.command == "edit":
         return edit(path, args.number, args.text, current)
     return listing(path, current)
