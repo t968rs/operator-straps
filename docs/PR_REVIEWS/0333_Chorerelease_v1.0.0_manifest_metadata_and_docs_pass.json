@@ -1,0 +1,686 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 333,
+  "pr_title": "Chore(release): v1.0.0 manifest metadata and docs pass",
+  "branch": "2000-version-1-release",
+  "base_branch": "main",
+  "base_sha": "339e464cba0856b62f3912aeac8369556006eaa5",
+  "head_sha": "b53b13c043056ffa4ab4b0b555c6b39f038a9e7a",
+  "review_date": "2026-11-23",
+  "verdict": "READY TO MERGE - 23 of 23 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 932,
+    "deletions": 242,
+    "files_changed": 49,
+    "source": {
+      "additions": 671,
+      "deletions": 242,
+      "files_changed": 46
+    }
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "config (sonnet)",
+    "tests (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/cicd.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/config.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/tests.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/docs.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/overall.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/roast.json",
+    "docs/_scratch/pr_review/0333/pr333_20261123T164523Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "ci.yml:116-119 pin comment was rewritten to say what the pin guarantees (mod test files type-check under validate --strict) and when to raise it; the comment and the pinned 2.1.330 agree.",
+    "The exact-version pin (no floating tag) is kept, and docs/RELEASES/v1.0.0.md names the same 2.1.322 -> 2.1.330 change; the mod test files already carry the isCollapsed and AgentSpawnInput fixes the comment cites.",
+    "The change is limited to the comment and the install line; the validate and mod-test steps and their plugin lists are untouched.",
+    "The version bump to 1.0.0 touches only the [project] table; pytest pythonpath, ruff and pylint settings stay untouched and consistent with each other.",
+    "No test or tool reads the pyproject version or description, so the metadata change cannot break a contract.",
+    "isCollapsed is added to the AbovePrompt props consistently in all five mod test files that mount the band (agent-watcher band and tracker, band-line, parallel2-lanes, todo-watch); a grep shows no mount left without it.",
+    "parallel2-lanes tests now build a full typed AgentSpawnInput instead of `as never` / partial literals, so an engine type change fails at type-check rather than silently passing; the workflow variant now uses the real `{ runId, agentIndex }` shape.",
+    "pytest-scope's world drops the `as never` casts by registering Bash and PowerShell separately, so each handler's result is type-checked against its tool.",
+    "git-status removes a dead `'missing'` branch: process.run already returns the deny at status.test.ts:140 before the status path, and the 'git missing' tests still exercise that deny.",
+    "test_the_plugin_readme_says_links_pass_through tracks the README's renamed '## What it does' heading, which does contain the `<a href>` sentence (plugins/arc-straps/README.md:22), so the assertion still has content to check.",
+    "The todo-watch comment's claim that CI pins 2.1.330 matches .github/workflows/ci.yml:119.",
+    "The v1.0.0 Plugins table matches every plugin.json at head and every version at the v0.7.0 tag, including the corrected arc-straps baseline (0.2.0, since #251 merged after the tag).",
+    "The new Known limitations sections are drawn from the code: band-line MIN_HEAD 12, MAX_MODEL 24 and TICK_MS 60_000, the git-status 10 s GIT_TIMEOUT_MS, the arc-straps 'thumbnail removed' and exact-string registry_stale, and the working-refs issueStateOf UNKNOWN rule all check out.",
+    "The README configuration rows (matrix_path, schemas_dir, harness_version, the seven commit_buckets rules) match plugins/harness/config/defaults.json exactly.",
+    "The session-bookmark and pytest-scope Hooks tables match the registrations in bookmark.ts:324-376 and scope.ts:630-650, including the subagent and skip pass-through and the per-option registration.",
+    "HARNESS_RULES.md gains the Locked-files rule and is trimmed to 9991 characters, under the RULES_LIMIT that tests/hooks/test_session_rules.py enforces, with no rule lost.",
+    "The CLI flags documented in this PR exist in the parsers: parallel2 stage --include-undeclared and cleanup --lane, pr-sum --no-auto-title and --local without untracked files, pr_review fold/refute/unrefute/init and amend --regrade, and the todo_sync 120-second GH_TIMEOUT_SECONDS.",
+    "The PROVENANCE row cites real commits (458bef9 for #304, 36c328e for #294) with licenses for each palette source.",
+    "parallel2 README's setup row matches create_worktrees exactly: serial `git worktree add --no-checkout` registration, then parallel checkout (parallel2.py:296-326).",
+    "parallel2 README's stage and cleanup synopses match the argparse definitions and the module usage block (`--include-undeclared`, repeatable `--lane`, `--all`).",
+    "pr-review README's new subcommands (`init`, `fold`, `refute`, `unrefute --fix`, `amend --regrade ID=mechanical|judgment`) all exist in pr_review.py with the described semantics, and the haiku-fixer claim agrees with SKILL.md:486 and :957.",
+    "pr-sum README's `--local` row now states the untracked-file exclusion the driver implements (`untracked=not args.local`), and the `auto_title` default it cites exists in defaults.json.",
+    "Every Related link in the three READMEs resolves to an existing file.",
+    "Every plugin.json bump in this PR matches the release table, and the table's base column agrees with the v0.7.0 tag (for example, arc-straps 0.2.0 is corrected from 0.3.0).",
+    "The mod test fixes for the 2.1.330 pin are type-only and keep the tests behavioral. The full AgentSpawnInput builder replaces an `as never` cast, the workflow flag takes its real `{ runId, agentIndex }` shape, and the deleted git-status branch was unreachable, since line 140 already answers 'missing'.",
+    "tests/contract/test_arc_straps_registration.py follows the arc-straps heading rename to 'What it does'. The checked section still holds the `<a href>` text, so the guard keeps its meaning.",
+    "HARNESS_RULES.md gains the Locked-files rule and stays under its 10,000-character cap (9991). The moved CI guard-suite rule is folded into the rationalization line rather than dropped.",
+    "The new README rows (matrix_path, schemas_dir, harness_version, the seven-rule commit_buckets default) match plugins/harness/config/defaults.json exactly.",
+    "The new Known limitations and Hooks sections are grounded in the code. The session-bookmark Hooks table matches the six registrations in bookmark.ts:324-376, trigger set and fresh-conversation reasons included, and the pytest-scope table matches scope.ts and interpreter.ts registration.",
+    "The plugin version table in docs/RELEASES/v1.0.0.md matches every plugin.json at the v0.7.0 tag (was) and at the PR head (now), including the corrected arc-straps base 0.2.0 and the parallel2-lanes and pytest-scope rows.",
+    "Every marketplace.json plugin description still matches its plugin.json description byte for byte; the session-bookmark entry was brought into line, which test_arc_straps_registration-style checks rely on.",
+    "The mod README layout claims hold: each touched README now runs Command, Hooks, State, Known limitations, Checks, Loading, and each Loading section names the development load.",
+    "The behavior claims spot-checked against the code are accurate: band-line MIN_HEAD 12, MAX_MODEL 24 and a 60 s tick (banner.ts:21-31); the git-status 10 s timeout and success-only toplevel cache (status.ts:31,155-157); the parallel2 `stage --include-undeclared` and `cleanup --lane/--all` flags (parallel2.py:673-681); and pr-sum `--local` leaving untracked files out (pr_sum.py:365-367,448).",
+    "The HARNESS_RULES trim keeps the file at 9991 characters, under the 10000 RULES_LIMIT, while adding the Locked-files rule, which agrees with the README write-plan row and the schemas README lock-guard section.",
+    "The test_arc_straps_registration heading anchor moves to 'What it does' in the same change that renames the arc-straps README section, so the contract test and the doc stay in step.",
+    "The Known limitations sections are drawn from the code, not from optimism: band-line's 12-character clip floor and 24-character model cut match `MIN_HEAD` and `MAX_MODEL` in banner.ts.",
+    "The git-status test drops a `git === 'missing'` branch that an earlier early return made unreachable, rather than casting around the type error.",
+    "The parallel2-lanes spawn tests now build a fully typed `AgentSpawnInput` with `workflow: { runId, agentIndex }`, and the `as never` casts in the spawn and pytest-scope fakes are gone, so the type checker does its job again.",
+    "The plugin-version table was re-checked against the v0.7.0 tag (arc-straps Was 0.2.0, not 0.3.0), and the #251 carry-over is called out explicitly instead of being double-listed.",
+    "Migration entries cite the right harness versions (0.71.0 for PR_REVIEW 2.3.0, verified against the #281 commit history), and HARNESS_RULES.md lands at 9,991 characters, under its 10,000 cap.",
+    "The README 'Configuration keys' table now covers every top-level key in defaults.json (`matrix_path`, `schemas_dir` and `harness_version` added); none is missing.",
+    "Copies of all six touched mods under engine 2.1.330 (the CI pin) pass `claude plugin validate --strict` and `claude plugin test` (parallel2-lanes 25, pytest-scope 63, agent-watcher 254, band-line 36, todo-watch 139, git-status 64 tests, 0 fail).",
+    "The strict gate is live: dropping `isCollapsed` from the parallel2-lanes band props in a probe copy fails validate with TS2741, so the new props are type-checked rather than cast away.",
+    "Removing `as never` from the parallel2-lanes spawn calls and the pytest-scope tool.call results puts those test inputs under the real `AgentSpawnInput` and tool-result types instead of bypassing them.",
+    "The git-status line removed in `process.run` was dead: `w.git === 'missing'` already returns at the handler's top, and `git missing (the run rejects)` still passes.",
+    "The workflow variant now passes the object shape (`{ runId, agentIndex }`), and `isOutOfScope` in spawn.ts tests truthiness, so the out-of-scope test still exercises the same branch.",
+    "tests/contract/test_arc_straps_registration.py tracks the README heading rename (`## What it does`) and can still fail: a missing heading leaves an empty section and the `<a href>` assert fails; 9 tests pass."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I2",
+        "name": "Upgrade step 3 points the TodoCatalog pin at schemas_dir and misses the project's own RepoToDo.schema.json",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "files": [
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/schemas/README.md",
+          "README.md",
+          "CLAUDE.md"
+        ],
+        "lines": "13-42",
+        "reviewer": "overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/RELEASES/v1.0.0.md step 3 of 'Upgrading from 0.7' tells only 'a project that pins TodoCatalog.schema.json under its schemas_dir' to refresh its copy before items carry a keyword. T1 resolves the catalog schema as `todo.catalog_schema` first (default `RepoToDo.schema.json` beside the catalog, used when present) and falls back to `schema_path(...)` (schemas_dir, then the plugin) only when that key is null (plugins/harness/lib/harness_lib/todo_sync/rules_todo.py:34-35). So the common case, a project keeping `<todo.folder>/RepoToDo.schema.json` or a file named by `todo.catalog_schema`, is left out. Two other documents in this same PR describe the pin correctly: the README TODO keyword paragraph and the new schemas/README.md Migration entry ('todo.catalog_schema, or RepoToDo.schema.json beside the catalog'). A project that follows the release body runs `todo_sync.py keywords` and then gets a T1 finding for every keyworded item. This file is the GitHub release body.\n\nAlso (system_shape): This PR widens the CLAUDE.md major-bump rule (CLAUDE.md:125) to 'a schema change that invalidates existing artifacts or pinned copies', and v1.0.0 claims major on the DesignEvolution break alone. Since v0.7.0 (harness 0.65.1), schemas/README.md Migration (lines 342-345) records four more pinned-copy breaks shipped in this release: the freeze ledger (0.69.0, a pinned ActionPlan.schema.json rejects `ledger`), PR_REVIEW 2.3.0 plus the matrix `dispatch_shape` `workflow` (0.71.0: the schema hook rejects `-a` reviews and agent-watcher workflow rows, and `capture -a` refuses the old pin), ActionPlan `refs` (0.79.0: the hook rejects every `--refs` plan), and TodoCatalog `keyword` (0.82.0). docs/RELEASES/v1.0.0.md Breaking changes (30-42) lists only DesignEvolution, and Upgrading from 0.7 (13-28) covers only DesignEvolution and TodoCatalog. A 0.7 project that pins its review, matrix or plan schema under `schemas_dir` follows the upgrade steps and then hits hook rejections that the release body never names. The `inbox put` keyword refusal is also a behavior break, and it appears only inside step 3.\n\nAlso (roast): Step 3 of 'Upgrading from 0.7' tells only a project that pins `TodoCatalog.schema.json` under `schemas_dir` to refresh it. The pin most projects actually carry is the default `todo.catalog_schema`, `RepoToDo.schema.json` beside the catalog, which `config.py:581` resolves whenever the file is present and `rules_todo.py:33-35` validates against ahead of any `schemas_dir` copy. A project on that default follows the guide, runs `todo_sync.py keywords`, and T1 then flags every keyworded item. The schemas README Migration entry this PR adds and the root README both name `RepoToDo.schema.json`, so the release notes are the one place that gets it wrong. The upgrade guide is the page people actually follow.",
+        "fix": [
+          "Reword step 3 to cover every pin T1 reads: 'A project that keeps its own catalog schema (`<todo.folder>/RepoToDo.schema.json`, the file `todo.catalog_schema` names, or `catalogs/TodoCatalog.schema.json` under `schemas_dir` when `todo.catalog_schema` is null): refresh it from the plugin's `catalogs/TodoCatalog.schema.json` (or add the `keyword` property) before any item carries a keyword.'",
+          "Add an Upgrading step to docs/RELEASES/v1.0.0.md: 'A project that pins PR_REVIEW.schema.json, pr_review_invocation_test_matrix.schema.json or ActionPlan.schema.json under schemas_dir: drop the pins or copy the plugin's (schemas README, Migration: 0.69.0, 0.71.0, 0.79.0).' Then list those pinned-copy breaks and the TodoCatalog keyword one as Breaking changes bullets, matching the CLAUDE.md:125 definition.",
+          "Alternatively, narrow the CLAUDE.md:125 wording to artifact-invalidating changes only and state in Breaking changes that pinned copies must be refreshed per the schemas README Migration section. The two documents must then agree on which changes are breaking.",
+          "Rewrite step 3 to cover both pins: 'A project whose TODO catalog schema is pinned (`RepoToDo.schema.json` beside the catalog, the file `todo.catalog_schema` names, or `catalogs/TodoCatalog.schema.json` under `schemas_dir`): refresh it from the plugin's `catalogs/TodoCatalog.schema.json` (or add the `keyword` property) before any item carries a keyword.' Leave the rest of the step as it is."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "TODO item todo-5v8j is added open and NEEDS_DECISION for work this same PR completes",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "4372-4430",
+        "reviewer": "system_shape, roast, docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/TODO/RepoToDo.json:4373-4380 adds todo-5v8j (issue #331) as status NEEDS_DECISION with the question 'trim other text to fit under RULES_LIMIT, or raise the 10000-character cap'. The same PR does all four parts of its proposed_change: (1) the mod README layout with What it does, Command, Known limitations and Loading sections, (2) Hooks tables in session-bookmark and pytest-scope, (3) the PROVENANCE row for the shared.css colors (docs/PROVENANCE.md), and (4) the Locked-files rule in HARNESS_RULES.md:124-126. It also settles the decision by trimming: the file is now 9991 characters and the cap is unchanged. docs/RELEASES/v1.0.0.md:83-92 reports the work done. After merge, the catalog and the todo-watch band still ask for a decision that has already been made, and they rank work that has already shipped.\n\nAlso (roast): The catalog gains `todo-5v8j` (issue #331) with status `NEEDS_DECISION` and the question 'trim other text to fit under RULES_LIMIT, or raise the 10000-character cap'. This same PR settles all four parts. The mod README layout, the session-bookmark and pytest-scope Hooks tables, the PROVENANCE row and the Locked-files rule all land, and HARNESS_RULES.md was trimmed to 9,991 characters, which answers the question. The release notes even file the work under 'Docs(plugins) ... (issue #331)'. On merge, main's catalog, its counts (`needs_decision` 43) and the snapshot list finished work as an open decision.\n\nAlso (docs): docs/TODO/RepoToDo.json:4373 adds todo-5v8j (#331) with status NEEDS_DECISION and the question 'trim other text ... or raise the 10000-character cap'. The same PR does all four parts: it applies the README layout, adds the session-bookmark and pytest-scope Hooks tables and the shared.css PROVENANCE row, and adds the Locked-files rule by trimming HARNESS_RULES.md (9991 characters, under RULES_LIMIT). The release notes (docs/RELEASES/v1.0.0.md:83-92) present this as done. After the merge the catalog and todo-watch will show finished work as open and undecided.\n\nAlso (overall): docs/TODO/RepoToDo.json adds todo-5v8j (#331) with status NEEDS_DECISION. Its decision question asks whether to trim HARNESS_RULES.md or raise the cap, and this PR already settles that: the rules file is trimmed to 9991 characters and gains the Locked-files rule. The PR also lands the other three parts of the item, the mod README layout with Known limitations and Loading sections, the session-bookmark and pytest-scope Hooks tables, and the PROVENANCE shared.css row (release notes, Docs(plugins) entry). After the merge the catalog, the todo-watch band and the snapshot will list finished work as an open decision. The item's proposed_change also contradicts its own summary on banner-status ('move Loading ahead of Checks'), while the code correctly puts Loading last.",
+        "fix": [
+          "Retire the item: run `todo_sync.py retire todo-5v8j`, then `todo_sync.py render`. List #331 as a close candidate, or close it, once this PR merges.",
+          "If any part is meant to stay open, clear `needs_decision` and `decision_question`, set the status to OPEN, and narrow the title and proposed_change to the remaining work.",
+          "Retire the item in this PR (`todo_sync.py retire todo-5v8j`, or the todo-edit retire flow), then re-render the snapshot. List #331 as a close candidate.",
+          "If the item has to stay open for a follow-up, set its status to the remaining work and drop the decision_question that this PR already answered.",
+          "Set the item's decision to the trim that shipped (needs_decision false, status OPEN or resolved) with `todo_sync.py inbox put --update`, then retire it with `todo_sync.py retire` once #331 closes.",
+          "Drop the item from this PR's catalog change and close #331 from the merge.",
+          "Retire todo-5v8j with `todo_sync.py retire` (citing the commits or #333), so the catalog counts drop back.",
+          "Or, if #331 stays open for follow-ups, update the item through the inbox: set status OPEN, clear needs_decision and decision_question, and narrow summary and proposed_change to the work that remains."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Marketplace description kept in two places",
+        "file": ".claude-plugin/marketplace.json",
+        "lines": "3,8-11",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The PR adds `metadata.description` with exactly the same text as the existing top-level `description`. The two copies will be edited apart sooner or later, and a reader cannot tell which one the engine shows.",
+        "fix": [
+          "Keep only the field the marketplace schema documents (`metadata.description`) and remove the top-level `description`, after confirming `claude plugin validate --strict .` still passes.",
+          "If both have to stay, add a check to the existing marketplace contract test that the two are equal."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "CLAUDE.md opening list lost its comma",
+        "file": "CLAUDE.md",
+        "lines": "3-4",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "CLAUDE.md:3 reads 'the `harness` plugin (Python skills, agents, hooks, scripts) the `arc-straps` plugin (...) and the skill-only `banner-status` plugin'. Without a comma after 'scripts)', the first two items run together.\n\nAlso (overall): CLAUDE.md:3-4 now reads 'the `harness` plugin (Python skills, agents, hooks, scripts) the `arc-straps` plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin ...'. The comma that separates the first two list items is missing, so the sentence reads as if `harness` modifies `arc-straps`.\n\nAlso (system_shape): CLAUDE.md:3 now reads 'the `harness` plugin (Python skills, agents, hooks, scripts) the `arc-straps` plugin (...) and the skill-only `banner-status` plugin'. A comma is missing after the first parenthetical, so the three-item list reads as one run-on phrase.\n\nAlso (roast): The rewrite reads 'the `harness` plugin (Python skills, agents, hooks, scripts) the `arc-straps` plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin'. It needs a comma after 'scripts)' before the next item. It is the first sentence every session reads.",
+        "fix": [
+          "Insert a comma: 'hooks, scripts), the `arc-straps`'.",
+          "Insert a comma: '... (Python skills, agents, hooks, scripts), the `arc-straps` plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin ...'.",
+          "Insert a comma: 'the `harness` plugin (Python skills, agents, hooks, scripts), the `arc-straps` plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin'.",
+          "Change 'scripts) the `arc-straps`' to 'scripts), the `arc-straps`' on line 3."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Root README hard-codes the v1.0.0 release in the nav bar and the Versions section",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "CLAUDE.md"
+        ],
+        "lines": "11,191",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:11 links 'Release notes' to docs/RELEASES/v1.0.0.md, and README.md:191 says 'v1.0.0 ships harness 0.82.1'. The CLAUDE.md release process creates a new docs/RELEASES/v<X.Y.Z>.md per release and never updates the root README, so both lines go stale with the next release.",
+        "fix": [
+          "Point the nav link at docs/RELEASES/ (the folder) and phrase the Versions example generically, for example '(the release notes list each plugin's version)'.",
+          "Add 'update the README release-notes link' to the CLAUDE.md Releases checklist."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Other harness skills intro says no configuration, but check-runlogs needs runlogs.dir",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/check-runlogs/SKILL.md",
+          "plugins/harness/config/defaults.json"
+        ],
+        "lines": "42,47",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:42 introduces the new table with 'need no configuration', yet the check-runlogs row (README.md:47) names a skill that refuses with exit 1 while `runlogs.dir` is unset (defaults.json `runlogs.dir: null`; check-runlogs SKILL.md:22-27 tells the agent to show the key to add). The README's own config example (README.md:484) sets `runlogs`, so the root README contradicts itself.\n\nAlso (system_shape): README.md:42 introduces the new table with 'These load on their own triggers ... and need no configuration'. The same README's key table (README.md:647) says `runlogs.dir` defaults to `null` and 'the skill then needs `--dir`'. Without the key or the flag, check-runlogs (README.md:47) cannot find a log.",
+        "fix": [
+          "Reword README.md:42 to 'need no configuration except where a row names a key' and append '(needs `runlogs.dir` in `.claude/harness.json`)' to the check-runlogs row at README.md:47.",
+          "Move check-runlogs out of this table into a row or note that names its `runlogs.dir` key.",
+          "Change the intro to 'need no configuration, except check-runlogs, which reads runlogs.dir (or takes --dir)', or add that note to the check-runlogs row."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Requirements overstates which harness code needs pydantic, jsonschema and referencing",
+        "file": "README.md",
+        "lines": "130-131",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The new Requirements section (README.md:130-131) says Python 3.11 is needed 'for every harness hook and script, with pydantic>=2.1, jsonschema and referencing installed'. The same README says otherwise in two places: 'Commit, summary and worktree tooling need only the standard library' (README.md:450), and doctor is 'Standard library only, so it runs when pydantic, jsonschema or referencing are missing' (README.md:31). The arc-straps README also lists jsonschema as optional.",
+        "fix": [
+          "Reword to: 'Python 3.11 or later for every harness hook and script; review, plan, TODO and schema-hook code also needs pydantic>=2.1, jsonschema and referencing (python -m pip install ...).'"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "The harness_version key row names no consumer, and nothing reads the key",
+        "file": "README.md",
+        "lines": "627",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The new Configuration keys row (README.md:627) fills the 'Used by' column with 'the plugin version a pinned schemas_dir copy was synced from'. That reads as if harness checks pins against it. In fact config.py:207 and 354 only store `harness_version`, and no module or hook reads it. The `todo.snapshots.name_pattern` row (README.md:660) shows the table's convention for such a key: 'read by nothing'.",
+        "fix": [
+          "Reword the row to 'informational, read by nothing: the plugin version a pinned schemas_dir copy was synced from, recorded by hand'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Release notes intro double-counts the patch bumps",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "5-8",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "Lines 5-8 say git-status, parallel2-lanes and pytest-scope 'bumped their patch versions', then that 'every plugin also took a patch bump for the 1.0 manifest metadata'. parallel2-lanes (0.1.0 -> 0.1.1) and pytest-scope (0.1.1 -> 0.1.2) bumped only for the metadata, so the first clause counts the same bump again. The minor-bump list is also split into two clauses for no reason ('harness and arc-straps bumped their minor versions; the agent-watcher ... and banner-status bumped their minor versions').",
+        "fix": [
+          "Merge the two minor clauses into one list. State that git-status bumped its patch for v0.7.0-era work and that every plugin, parallel2-lanes and pytest-scope included, then took a patch bump for the 1.0 manifest metadata."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "v1.0.0 Changes list is split by a blank line, and the branch's own entries carry no PR number",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "69-102",
+        "reviewer": "system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.0.0.md:101 is a blank line between the #293 entry and the #253 entry, so Markdown renders two separate lists. Every other Changes entry starts with its PR number. The entries this branch adds do not: Chore(release) and Docs(release) at 69-82, Docs(plugins) at 83-92, which names only issue #331, and Build(ci) at 93-97, which is the work of the merged PR #332.\n\nAlso (roast): A blank line between the `#293 Build(tools)` entry and the `#253 Fix(writing-docstrings)` entry turns the Changes list into a loose list or two lists. The 1.0 entries now sit apart from the rest of the release. This file becomes the GitHub release body as written.",
+        "fix": [
+          "Delete the blank line at 101. Prefix Build(ci) with #332 and the Chore(release), Docs(release) and Docs(plugins) entries with #333.",
+          "Delete the blank line at line 101 so the Changes bullets form one list."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "BAND_PROPS hoisted but the identical bandLine helpers stay duplicated per describe block",
+        "file": "plugins/agent-watcher/hooks/tracker.test.ts",
+        "lines": "927-935,1106-1114,1177-1185",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The PR hoists the AbovePrompt props into module-level `BAND_PROPS` (plugins/agent-watcher/hooks/tracker.test.ts:33-35), but the `bandLine` helpers that use it stay as separate copies. The copies at 930-935 and 1106-1111 are byte-identical, and the one at 1180-1185 differs only in its text regex. The `launched` factory is also repeated at 927-929, 1112-1114 and 1177-1179. Each later change to how the band is mounted has to touch three places.",
+        "fix": [
+          "Hoist one module-level `bandLine = async ($: Engine, pattern: RegExp = /^PR #/)` next to `BAND_PROPS` and one module-level `launched`, then delete the three per-describe copies; the review-local block passes `/^(local review|PR #)/`."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "PIP template now 'applies to' only pre-receipt plans, leaving out the hand-kept PIP HARNESS_RULES still requires",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "74",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "plugins/harness/schemas/README.md:74 narrows PLANS_PIP_Template.md to '`<artifacts.plans>/{NNNN}_*_PIP.md`, the markdown PIP of a plan frozen before receipts'. HARNESS_RULES.md:77-79 still requires every plan whose format no plan-writing skill owns to write `<artifacts.plans>/{PR}_PIP.md` by hand, which is the template's other consumer, and that name does not match the `{NNNN}_*_PIP.md` pattern given.",
+        "fix": [
+          "Extend schemas/README.md:74 to also cover the hand-kept `<artifacts.plans>/{PR}_PIP.md` that HARNESS_RULES requires for a plan no skill owns.",
+          "Or state in HARNESS_RULES.md:77-79 which template that hand-kept PIP follows, if it is not PLANS_PIP_Template.md."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Catalog.json heading keeps a hard-coded docs/PR_REVIEWS path the new body replaced",
+        "file": "plugins/harness/schemas/README.md",
+        "lines": "94-96",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/schemas/README.md:96 now says `<artifacts.reviews>/Catalog.json` (the plugin ships no such file), but the section heading at line 94 still reads `docs/PR_REVIEWS/Catalog.json`, a project default path the rest of the README avoids.",
+        "fix": [
+          "Change the heading at schemas/README.md:94 to '### 6. `<artifacts.reviews>/Catalog.json` (historical)'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "schemas README says TodoCatalog and DesignEvolutionCatalog keep sibling-path refs; neither has any",
+        "file": "plugins/harness/schemas/README.md",
+        "lines": "160",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The rewritten Catalog Schemas intro (plugins/harness/schemas/README.md:160) names `TodoCatalog` and `DesignEvolutionCatalog` as the standalone catalogs and then says 'Both keep sibling-path refs.' Every `$ref` in both files is a local `#/$defs/...` pointer. Only ConsumerAudit and Decompose reference a sibling file (SymbolCatalog.base). The sentence came from the removed CICDActionAudit wording and is now false for both catalogs it names.\n\nAlso (system_shape): The rewritten catalog intro (plugins/harness/schemas/README.md:160) names `TodoCatalog` and `DesignEvolutionCatalog` as the standalone catalogs, then says 'Both keep sibling-path refs.' Neither schema has a `$ref` to another file. Only ConsumerAudit.catalog.schema.json and Decompose.catalog.schema.json have non-`#` refs, the ones to SymbolCatalog.base. The sentence was carried over from the removed CICDActionAudit wording, and after the swap it is false for both catalogs it names.",
+        "fix": [
+          "Replace 'Both keep sibling-path refs.' with 'Both are self-contained (local `#/$defs` refs only).' or drop the sentence.",
+          "Replace 'Both keep sibling-path refs.' with 'Neither references another schema file.', or drop the sentence."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Schema change step names plan_models.py and its drift test for Receipt and DesignEvolutionCatalog too",
+        "file": "plugins/harness/schemas/README.md",
+        "lines": "328",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/schemas/README.md:328 (rewritten in this PR) says `ActionPlan`, `Receipt` and `catalogs/DesignEvolutionCatalog` come from the models through gen_plan_schema.py, then says to 'change `harness_lib/plan_models.py` ... `tests/contract/test_plan_schema_generated.py` fails on drift' for all three. Receipt comes from receipt_models.py, DesignEvolutionCatalog from evolution_models.py, and both are checked by tests/contract/test_evolution_receipt_schema_generated.py, as the same README says at lines 138 and 200. A maintainer following step 1 would edit the wrong model file for those two schemas.\n\nAlso (system_shape): plugins/harness/schemas/README.md:328 (rewritten in this PR) says ActionPlan, Receipt and DesignEvolutionCatalog all come from gen_plan_schema.py, with the instruction 'change harness_lib/plan_models.py ... tests/contract/test_plan_schema_generated.py fails on drift'. Sections 11 (line 138) and DesignEvolution (line 200) of the same file say otherwise: Receipt comes from receipt_models.py, DesignEvolution from evolution_models.py, and their drift test is tests/contract/test_evolution_receipt_schema_generated.py. test_plan_schema_generated.py does not mention Receipt or DesignEvolution.",
+        "fix": [
+          "Rewrite the parenthetical at schemas/README.md:328 per schema: plan_models.py (plan_enums.py for an enum) and test_plan_schema_generated.py for ActionPlan; receipt_models.py and evolution_models.py with test_evolution_receipt_schema_generated.py for Receipt and DesignEvolutionCatalog.",
+          "Reword step 1 to: 'ActionPlan, Receipt and catalogs/DesignEvolutionCatalog come from plan_models.py (plan_enums.py for an enum), receipt_models.py and evolution_models.py through python tools/gen_plan_schema.py; test_plan_schema_generated.py and test_evolution_receipt_schema_generated.py fail on drift'."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "schemas README Migration entries are out of version order",
+        "file": "plugins/harness/schemas/README.md",
+        "lines": "342-345",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The new 'Adversarial review (harness 0.71.0)' entry (plugins/harness/schemas/README.md:344) comes after 'refs on the ActionPlan (harness 0.79.0)' (line 343). The other entries run in ascending harness version (0.43.0, 0.67.0, 0.69.0, 0.79.0, 0.82.0), so the 0.71.0 entry breaks the order a reader upgrading step by step relies on.",
+        "fix": [
+          "Move the 0.71.0 Adversarial review bullet to sit between the 0.69.0 Freeze ledger and 0.79.0 refs bullets."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "parallel2 README adds --include-undeclared without saying what it lifts",
+        "file": "plugins/harness/skills/parallel2/README.md",
+        "files": [
+          "plugins/harness/skills/parallel2/README.md",
+          "plugins/harness/scripts/parallel2.py",
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ],
+        "lines": "41-42,51",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The Stage row now shows `stage <lane> [--include-undeclared]`, but nothing in the README explains it. The cleanup row explains its new `--lane` flag. The stage prose at README.md:41-42 lists the refusals (a lane path unstaged, untracked or restaged since setup) but leaves out the refusal this flag lifts: the lane changed paths outside its declared files (parallel2.py:33-34; the flag's help at parallel2.py:676 says it also stages paths outside the lane's files). A reader of the README cannot tell when the flag applies.",
+        "fix": [
+          "Append to the Stage row's result: `; --include-undeclared also stages paths outside the lane's files`, and add \"or when the lane changed paths outside its files (unless `--include-undeclared`)\" to the refusal sentence at README.md:41-42, as SKILL.md:110 advises."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "pr-review README says every refuter starts with init; only findings refuters do",
+        "file": "plugins/harness/skills/pr-review/README.md",
+        "files": [
+          "plugins/harness/skills/pr-review/README.md",
+          "plugins/harness/agents/adversarial-reviewer.md",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "13-19,23-25",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/harness/skills/pr-review/README.md:16 reads '`-a`: one Workflow call, refuters start with `init`'. Code refuters (`adv_code`, `adv_code_<scope>`) do not run `init`: plugins/harness/agents/adversarial-reviewer.md:72-73 says 'A findings refuter reads the brief and then runs `init`', and the v1.0.0 notes (docs/RELEASES/v1.0.0.md:184) say 'a findings refuter starts with `pr_review.py init`'.\n\nAlso (skill_package): The Phase 2 row (`-a`: one Workflow call, refuters start with `init`; refutations under `-a`) and the REFUTED paragraph (`every finding refuted in an -a run`) are the README's first and only uses of `-a`. The README has no invocation line and never says that `-a` is the adversarial run, in which refuter agents check each reviewer's findings. A reader who gets only this file sees a flag with no meaning.\n\nAlso (skill_package): The rewritten Phase 2, 3 and 5 rows run far past the padded header widths (`Driver command` is 29 characters wide; the new Phase 2 cell is about 75), while the untouched Phase 1 and 4 rows keep the old padding. The table renders correctly but is ragged in the raw file, which the rest of the README keeps aligned.",
+        "fix": [
+          "Change README.md:16's cell to '`-a`: one Workflow call, findings refuters start with `init`'.",
+          "Add one sentence before or after the phase table, for example: \"`-a` (adversarial) adds a findings refuter per reviewer slot; a refuter that refutes every finding of an issue closes it as `REFUTED` at `build`.\"",
+          "Or add an invocation line `/harness:pr-review PR [-a]` under the intro, with a one-line gloss of `-a`.",
+          "Re-pad the table at README.md:13-19 to the widest cell of each column, or shorten the Phase 2 cell (move the `-a` detail into the paragraph below the table) and re-pad."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "pr-sum README usage line omits --no-auto-title",
+        "file": "plugins/harness/skills/pr-sum/README.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/README.md",
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "13,21-25",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The `--auto-title` row now says `--no-auto-title` turns the `auto_title` key off for one run, but the invocation line at README.md:13 still shows only `[--auto-title]`. SKILL.md's argument-hint lists `[--auto-title] [--no-auto-title]` and pr_sum.py's usage shows `[--auto-title | --no-auto-title]`, so the README synopsis is the one place in the package that hides the flag.",
+        "fix": [
+          "Change `[--auto-title]` on README.md:13 to `[--auto-title | --no-auto-title]`, matching pr_sum.py's usage and SKILL.md's argument-hint."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "spawnInput builder is copied into two test files instead of shared",
+        "file": "plugins/parallel2-lanes/hooks/spawn.test.ts",
+        "files": [
+          "plugins/parallel2-lanes/hooks/spawn.test.ts",
+          "plugins/parallel2-lanes/hooks/band.test.tsx",
+          "plugins/agent-watcher/hooks/tracker.test.ts",
+          "plugins/agent-watcher/hooks/band.test.tsx"
+        ],
+        "lines": "52-61",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/parallel2-lanes/hooks/spawn.test.ts:57-60 and plugins/parallel2-lanes/hooks/band.test.tsx:70-73 define the same `spawnInput` builder (same field set, same defaults). Each docstring says 'a change to `AgentSpawnInput` edits both copies', so keeping them in step depends on a comment. The next engine bump that adds a required `AgentSpawnInput` field has to change both copies. The repo already has a shared, non-test helper module next to mod tests (plugins/todo-watch/hooks/testWorld.ts, imported by todo-watch's band.test.tsx), so a single copy is the established pattern.\n\nAlso (roast): `spawnInput` is defined twice, byte for byte, in spawn.test.ts and band.test.tsx. Both doc comments admit 'a change to `AgentSpawnInput` edits both copies'. The next engine type change is exactly what this PR just handled, and it will fix one copy and leave the other failing `validate --strict`. agent-watcher repeats the pattern: tracker.test.ts adds `BAND_PROPS` beside the identical `BAND.props` in band.test.tsx. The comment is a reminder; a shared helper is a guarantee.",
+        "fix": [
+          "Move `spawnInput` into a new plugins/parallel2-lanes/hooks/testSpawn.ts (modeled on plugins/todo-watch/hooks/testWorld.ts), export it, import it in spawn.test.ts and band.test.tsx, and drop the 'edits both copies' sentence from both docstrings.",
+          "Move `spawnInput` into one helper module that both test files import (as they already import from `./lanes`), and drop the 'edits both copies' comments. Do the same for the AbovePrompt props in agent-watcher (one exported `BAND_PROPS` that band.test.tsx and tracker.test.ts both use).",
+          "If the engine's test kit cannot share a non-hook module, keep both copies and add a test asserting they are equal."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Test comment hard-codes the CI engine pin",
+        "file": "plugins/todo-watch/hooks/band.test.tsx",
+        "files": [
+          "plugins/todo-watch/hooks/band.test.tsx",
+          ".github/workflows/ci.yml"
+        ],
+        "lines": "173-175",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The todo-watch band test comment says 'CI pins 2.1.330'. The ci.yml comment tells the next pin raise to update the test files only if they fail to type-check, so this one will silently go stale. That leaves a comment explaining test behaviour against an engine CI no longer runs.",
+        "fix": [
+          "Reword it to 'CI's pinned engine (ci.yml) stacks each plugin's band as its own part ...', keeping the 2.1.323 threshold, which is a fact about the engine and does not move."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "pyproject description omits the banner-status plugin",
+        "file": "pyproject.toml",
+        "lines": "4",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The new project description lists the harness plugin, arc-straps and the session mods, but the marketplace also ships the skill-only banner-status plugin (CLAUDE.md and README layout). The one-line summary of the marketplace is therefore incomplete at 1.0.0.",
+        "fix": [
+          "Name banner-status in the description, e.g. 'Claude Code marketplace: the harness plugin (...), arc-straps, banner-status and the session mods'",
+          "Shorten the description to avoid enumerating plugins, e.g. 'Claude Code marketplace: harness, arc-straps, banner-status and session mods'"
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Marketplace release version has three homes and no owner",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          ".claude-plugin/marketplace.json",
+          "pyproject.toml",
+          "README.md"
+        ],
+        "lines": "117-127",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "README 'Versions' now says `metadata.version` in `.claude-plugin/marketplace.json` 'names the current one', and `pyproject.toml` also moves to 1.0.0. Neither the Releases section of CLAUDE.md, which every branch that bumps a plugin follows, nor any test says who moves these two numbers, or when. CLAUDE.md still has each branch suggest the next release only through `docs/RELEASES/v<X.Y.Z>.md`. The next release branch will follow that procedure and leave both fields at 1.0.0, and nothing will notice. A version field that nothing keeps current ends up wrong.",
+        "fix": [
+          "Add one sentence to the CLAUDE.md Releases section: the branch that creates `docs/RELEASES/v<X.Y.Z>.md` also sets `metadata.version` in `.claude-plugin/marketplace.json` and `version` in `pyproject.toml` to X.Y.Z.",
+          "Also, or instead, add a contract test asserting that `metadata.version` equals the `pyproject.toml` version and the newest `docs/RELEASES/v*.md` file name (spelling those file names out so `tools/select_tests.py` selects it)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 333 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":12,\"first_sha\":\"68adf74461aadbc59b4bfd9c564f41da9fbac94a\",\"headRefName\":\"2000-version-1-release\",\"headRefOid\":\"b53b13c043056ffa4ab4b0b555c6b39f038a9e7a\",\"last_sha\":\"b53b13c043056ffa4ab4b0b555c6b39f038a9e7a\",\"mergeCommit\":null,\"number\":333,\"state\":\"OPEN\",\"title\":\"Chore(release): v1.0.0 manifest metadata and docs pass\",\"url\":\"https://github.com/t968rs/operator-straps/pull/333\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_cicd",
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (38 checked, 0 refuted, 0 code findings)",
+        "counts": {
+          "findings_checked": 38,
+          "findings_refuted": 0,
+          "findings_upheld": 38,
+          "code_findings": 0
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "2000-version-1-release",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "2000-version-1-release",
+        "head_ref_name": "2000-version-1-release",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "68adf74461aadbc59b4bfd9c564f41da9fbac94a",
+        "head_sha": "b53b13c043056ffa4ab4b0b555c6b39f038a9e7a",
+        "base_ancestor_command": "git merge-base --is-ancestor 68adf74461aadbc59b4bfd9c564f41da9fbac94a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b53b13c043056ffa4ab4b0b555c6b39f038a9e7a HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - CLAUDE.md:3 inserts the missing comma: 'hooks, scripts), the `arc-straps`'."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - README.md:11 nav link now points at docs/RELEASES/ (the folder); README.md:191 Versions example reads '(each release's notes list every plugin's version)' instead of naming v1.0.0. CLAUDE.md: no edit, the generic README needs no Releases checklist step."
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - schemas/README.md:94 heading now reads '### 6. `<artifacts.reviews>/Catalog.json` (historical)'; no anchor link pointed at the old heading."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - docs/RELEASES/v1.0.0.md: step 3 covers every catalog pin T1 reads (RepoToDo.schema.json beside the catalog, the todo.catalog_schema file, or catalogs/TodoCatalog.schema.json under schemas_dir when that key is null); new step 4 covers PR_REVIEW, matrix and ActionPlan pins (Migration 0.69.0, 0.71.0, 0.79.0); Breaking changes gains bullets for those pinned-copy breaks and the TodoCatalog keyword / inbox put refusal; the opening Major line names them. schemas/README.md and README.md already describe the catalog pin correctly; CLAUDE.md:125 major-bump rule now agrees with the release notes, so no edit."
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Retired todo-5v8j with `todo_sync.py retire` (catalog only, ranks and counts recomputed) and added a #331 close_candidates entry (LIKELY_RESOLVED, close once PR #333 merges) with counts.close_candidates 37 -> 38; `todo_sync.py check` reports drift=0, so no render was needed. HARNESS_RULES.md and docs/RELEASES/v1.0.0.md cite the shipped work and need no edit for this issue."
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - No edit in this part: the fix options all change the README intro or check-runlogs row (other part). check-runlogs SKILL.md:26-27 already tells the agent to show the runlogs.dir key when unset, and defaults.json runlogs.dir stays null as documented.; README intro to Other harness skills now reads 'need no configuration except where a row names a key'; check-runlogs row names `runlogs.dir` in .claude/harness.json (or --dir)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Stage row now says --include-undeclared also stages paths outside the lane's files; stage refusal sentence adds the undeclared-paths refusal and its flag exception (README.md Stage prose and lifecycle table)."
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Invocation synopsis at README.md:13 now shows [--auto-title | --no-auto-title], matching pr_sum.py usage and SKILL.md argument-hint.; this part needs no edit: SKILL.md argument-hint (line 4) and invocation (line 65) and pr_sum.py usage (line 56) already show --no-auto-title; the README.md:13 synopsis belongs to the other part's fixer"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - hoisted one module-level bandLine($, pattern = /^PR #/) and one launched factory next to BAND_PROPS; deleted the three per-describe copies; the review-local block passes LOCAL_BAND = /^(local review|PR #)/"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - moved spawnInput into new plugins/parallel2-lanes/hooks/testSpawn.ts (todo-watch testWorld.ts pattern), imported it in spawn.test.ts and band.test.tsx, dropped both 'edits both copies' docstrings and band.test.tsx's now-unused AgentSpawnInput import; agent-watcher tracker.test.ts and band.test.tsx: cited by the roast only, the chosen option covers the spawnInput duplicate"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - description now names banner-status: '..., arc-straps, banner-status and the session mods'"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Removed the top-level description from marketplace.json, keeping metadata.description as the single copy; claude plugin validate --strict . passes and no test reads the top-level field"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - README phase table: Phase 2 cell shortened to 'none (agent dispatch)', table re-padded to each column's widest cell, and a paragraph below it glosses '/harness:pr-review PR -a' as the adversarial run, saying a findings refuter (not a code refuter) starts with init; adversarial-reviewer.md and SKILL.md: cited sources already state findings refuters run init, no edit"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - band.test.tsx comment now reads 'CI's pinned engine (ci.yml) stacks ...', keeping the 2.1.323 threshold; ci.yml: holds the pin the comment points to, no edit"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Requirements bullet reworded: Python 3.11+ for every hook and script; only review, plan, TODO and schema-hook code also needs pydantic>=2.1, jsonschema and referencing"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - harness_version key row now reads 'informational, read by nothing: the plugin version a pinned schemas_dir copy was synced from, recorded by hand'"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - CLAUDE.md Releases section: the branch that creates docs/RELEASES/v<X.Y.Z>.md also sets metadata.version in marketplace.json and version in pyproject.toml to X.Y.Z; marketplace.json and pyproject.toml already hold 1.0.0, README Versions text already names metadata.version, so no edit"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - schemas/README.md Section 4 'Applies to' now also covers the hand-kept <artifacts.plans>/{PR}_PIP.md the harness rules require for a plan no plan-writing skill owns; HARNESS_RULES.md: cited rule already consistent once the template scope includes that file, no edit needed"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Catalog Schemas intro: replaced 'Both keep sibling-path refs.' with 'Both are self-contained (local `#/$defs` refs only).'"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Updates step 1 now names plan_models.py/plan_enums.py with test_plan_schema_generated.py for ActionPlan, and receipt_models.py/evolution_models.py with test_evolution_receipt_schema_generated.py for Receipt and DesignEvolutionCatalog"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Moved the Adversarial review (harness 0.71.0) Migration bullet between the 0.69.0 Freeze ledger and 0.79.0 refs bullets"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Intro (lines 5-9) merges the two minor-bump clauses into one list and drops the double-counted patch clause: git-status bumped its patch for work since v0.7.0, and every plugin, parallel2-lanes and pytest-scope included, took a patch bump for the 1.0 manifest metadata."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "b53b13c (working-tree snapshot; developer commits) - Removed the blank line between the #293 Build(tools) entry and the #253 Fix(writing-docstrings) entry (it sat at line 115, not 101 as the brief states), so the Changes bullets form one list; prefixed Chore(release), Docs(release) and Docs(plugins) with #333 and Build(ci) with #332."
+    }
+  ]
+}
