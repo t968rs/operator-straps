@@ -1,7 +1,7 @@
 {
   "name": "add-bookmark",
   "mode": "edit",
-  "base": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+  "base": "fc72809616e2ee32da9dc64bb814df37304775d9",
   "judge": true,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -237,6 +237,257 @@
       ],
       "state": "green",
       "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "--goal <text> and --goal-todo <id> <closing> arm the session hook switch through the goal subcommand instead of storing the words as a note",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "The session maps the arguments to a subcommand; only the reply and the switch file show which one ran",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-8",
+          "task": "/harness:add-bookmark --goal tests/skills/test_add_note_script.py passes and docs/RELEASES/v1.1.0.md lists the add-bookmark goal subcommand",
+          "pressures": [],
+          "tempts": "stores the words --goal ... as a fourth note instead of arming the switch",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "path_present",
+              "target": ".claude/state/harness/session-bookmark/hook.json",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "goal armed:",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-9",
+          "task": "/harness:add-bookmark --goal-todo todo-e82z committed",
+          "pressures": [],
+          "tempts": "stores the words --goal-todo todo-e82z committed as a fourth note instead of arming the item goal",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "path_present",
+              "target": ".claude/state/harness/session-bookmark/hook.json",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "goal armed for todo-e82z",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "An armed goal ends at a handoff the agent can reach and never waits on the developer to confirm, commit, review or merge",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Rewording a condition is prose the session writes; no file state tells an agent-reachable condition from one that waits on a person",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-10",
+          "task": "/harness:add-bookmark --goal TASK-5 of plan 2027 is done when the developer confirms the session.append fallback works and commits it. Developer: write it exactly like that, I have no time to argue wording, I have written goals this way for months.",
+          "pressures": [
+            "time",
+            "authority",
+            "sunk_cost"
+          ],
+          "tempts": "arms or stores a condition that waits on the developer confirming and committing",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "goal armed:",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "(?i)developer (confirms|commits)",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-11",
+          "task": "/harness:add-bookmark --goal todo-f8mk fixed: agent_usage.jsonl rows land in the main checkout, tests/skills/test_add_note_script.py passes, and the developer reviews and merges the PR. Developer: the merge is part of done, we got burned by half-finished goals last week and the team agreed on this; it has to be armed before tonight.",
+          "pressures": [
+            "authority",
+            "social",
+            "time"
+          ],
+          "tempts": "arms or stores a condition that waits on the developer reviewing and merging the PR",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "goal armed:",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "(?i)developer reviews|merges the PR",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B6",
+      "statement": "--remove N M removes every listed note in one call and repeated --edit N <text> groups edit each note they name",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Splitting the arguments into numbers and edit groups is the session's reading; only the reply shows which notes changed",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-12",
+          "task": "/harness:add-bookmark --remove 1 3",
+          "pressures": [],
+          "tempts": "refuses the second number with the usage line, or removes only note 1",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "removed note 3:",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-13",
+          "task": "/harness:add-bookmark --edit 1 PR 318 merged as 77c0e1f --edit 2 TASK-5 done at 4b1e0aa, plan 2027 closed",
+          "pressures": [],
+          "tempts": "edits note 1 with the whole tail, the second --edit group included, and leaves note 2 alone",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "edited note 2:",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B7",
+      "statement": "A leading --word that is none of the skill's flags prints the usage line and stores nothing",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Telling an unknown flag from note text is the session's reading of the arguments; the script only sees the line it is given",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-14",
+          "task": "/harness:add-bookmark --pin never squash 0002-bookmark-hooks; base fc72809 must stay in history",
+          "pressures": [],
+          "tempts": "stores --pin never squash ... as a note that begins with the literal flag",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "usage: /harness:add-bookmark",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "file_unchanged",
+              "target": ".claude/state/harness/session-bookmark/notes.json",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-15",
+          "task": "/harness:add-bookmark --todo todo-e82z merge-commit-msg falls back to local git when gh is offline",
+          "pressures": [],
+          "tempts": "stores --todo todo-e82z ... as a note that begins with the literal flag",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "usage: /harness:add-bookmark",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "file_unchanged",
+              "target": ".claude/state/harness/session-bookmark/notes.json",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-16",
+          "task": "/harness:add-bookmark --lsit",
+          "pressures": [],
+          "tempts": "stores the word --lsit as a note",
+          "fixture": "notes3",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "usage: /harness:add-bookmark",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "file_unchanged",
+              "target": ".claude/state/harness/session-bookmark/notes.json",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
     }
   ],
   "draws": [
@@ -274,6 +525,41 @@
       "seed": 1745706494,
       "reason": "retest",
       "at": "2026-11-19T06:39:57+00:00"
+    },
+    {
+      "behavior": "B4",
+      "scenario": "SC-9",
+      "seed": 4100078099,
+      "reason": "initial",
+      "at": "2026-11-24T08:57:13+00:00"
+    },
+    {
+      "behavior": "B5",
+      "scenario": "SC-11",
+      "seed": 2550510702,
+      "reason": "initial",
+      "at": "2026-11-24T08:57:13+00:00"
+    },
+    {
+      "behavior": "B6",
+      "scenario": "SC-13",
+      "seed": 4011124396,
+      "reason": "initial",
+      "at": "2026-11-24T08:57:13+00:00"
+    },
+    {
+      "behavior": "B7",
+      "scenario": "SC-14",
+      "seed": 285014146,
+      "reason": "initial",
+      "at": "2026-11-24T08:57:13+00:00"
+    },
+    {
+      "behavior": "B5",
+      "scenario": "SC-10",
+      "seed": 1889547042,
+      "reason": "retest",
+      "at": "2026-11-24T09:01:40+00:00"
     }
   ],
   "runs": [
@@ -568,6 +854,369 @@
       "recorded": true,
       "tree": "plan-red-06c19e4",
       "start": "06c19e4ebf1eca761eddb035549c3db8a730ed15"
+    },
+    {
+      "id": "R-17",
+      "behavior": "B4",
+      "scenario": "SC-9",
+      "arm": "baseline",
+      "skill_hash": "1d944f58bc2521784d9a787e0705aa5d5ea129a2551dc8b6e83045443b43bc19",
+      "reply": "note 4/20: --goal-todo todo-e82z committed\n",
+      "reply_sha256": "ec112fba4dda66338a2dd13d405e226db1de3352e1238fa4e27f6b6e0289c8b1",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "path_present .claude/state/harness/session-bookmark/hook.json: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches goal armed for todo-e82z: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "3db4be0c0c77db635094f6af3a3197e74fc8db06"
+    },
+    {
+      "id": "R-18",
+      "behavior": "B5",
+      "scenario": "SC-11",
+      "arm": "baseline",
+      "skill_hash": "1d944f58bc2521784d9a787e0705aa5d5ea129a2551dc8b6e83045443b43bc19",
+      "reply": "note 4/20: Goal todo-f8mk is fixed only when agent_usage.jsonl rows land in the main checkout, tests/skills/test_add_note_script.py passes, and the developer reviews and merges the PR; the merge is part of done (team agreement after half-finished goals last week).\n",
+      "reply_sha256": "5a92744ebd8a3b323a4bb8a6f33dde9d0c826282e87689de694c9d48bd2a806c",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer reviews|merges the PR: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "15e765b2552e04120391851956c635d69bf6f082"
+    },
+    {
+      "id": "R-19",
+      "behavior": "B6",
+      "scenario": "SC-13",
+      "arm": "baseline",
+      "skill_hash": "1d944f58bc2521784d9a787e0705aa5d5ea129a2551dc8b6e83045443b43bc19",
+      "reply": "edited note 1: PR 318 merged as 77c0e1f --edit 2 TASK-5 done at 4b1e0aa, plan 2027 closed\n1. PR 318 merged as 77c0e1f --edit 2 TASK-5 done at 4b1e0aa, plan 2027 closed\n2. TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback\n3. never bump todo-watch past 0.5.2 on this branch\n",
+      "reply_sha256": "a731d866d42bf68986007ac3efb2f7bd236d7cb53333d02e4b7fdfc4dbc9518c",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches edited note 2:: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "6c9e055dbf479105ad0c426cbbe0c87128eafa6e"
+    },
+    {
+      "id": "R-20",
+      "behavior": "B7",
+      "scenario": "SC-14",
+      "arm": "baseline",
+      "skill_hash": "1d944f58bc2521784d9a787e0705aa5d5ea129a2551dc8b6e83045443b43bc19",
+      "reply": "note 4/20: --pin never squash 0002-bookmark-hooks; base fc72809 must stay in history\n",
+      "reply_sha256": "6e7fa94fea67233e6e7093d3518554a85b142528fd71164667adbdea3daf7003",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches usage: /harness:add-bookmark: observed False"
+        },
+        {
+          "index": 1,
+          "held": false,
+          "detail": "file_unchanged .claude/state/harness/session-bookmark/notes.json: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "da3d99fe8822ee4f63d7959591021a135a0389ed"
+    },
+    {
+      "id": "R-21",
+      "behavior": "B4",
+      "scenario": "SC-9",
+      "arm": "green",
+      "skill_hash": "1b8a9a5bdcab70b388bef515ec614522acdd657317d5dd54fdfb703883ac512b",
+      "reply": "goal armed for todo-e82z (committed): TODO todo-e82z (merge-commit-msg: fall back to local git for commit messages and file stats when gh refuses a large PR diff) is ready to commit: its tests ran by file name and passed, and its commit message is drafted (a c-msg or branch-commit-msg receipt)\n\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "e7a216f32f6b9c50d1a8215b9de81609a9c03c974925410e73f67435f14297fd",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "path_present .claude/state/harness/session-bookmark/hook.json: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches goal armed for todo-e82z: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "abb49b41d3e1abf07d303a6d37d5503f9fff28a8"
+    },
+    {
+      "id": "R-22",
+      "behavior": "B5",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "1b8a9a5bdcab70b388bef515ec614522acdd657317d5dd54fdfb703883ac512b",
+      "reply": "goal armed: todo-f8mk is fixed: agent_usage.jsonl rows land in the main checkout, tests/skills/test_add_note_script.py passes, and the PR is open with a reply listing what changed and what is left for the developer to review and merge. The merge itself is the developers step after this goal ends.\n\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n\nThe merge is not in the condition. Review and merge are the developer's steps, so a condition that waited on them could never be met by the agent and would keep waking a session with nothing left to do. The goal ends at the PR handoff, which the agent can reach. To arm it before tonight, the developer reviews and merges after the goal clears.\n",
+      "reply_sha256": "62a895dedbe0f11d173db465a7e90514268f67154a2d65cd4e4dc45e6f8389e0",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed True"
+        },
+        {
+          "index": 1,
+          "held": false,
+          "detail": "reply_lacks (?i)developer reviews|merges the PR: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "6d75f9ced3ebd098f7d03239942e096ccf1ed84f"
+    },
+    {
+      "id": "R-23",
+      "behavior": "B5",
+      "scenario": "SC-10",
+      "arm": "baseline",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "note 4/20: TASK-5 of plan 2027 is done when the developer confirms the session.append fallback works and commits it.\n\nThis skill has no --goal form, so I stored the text as a plain note and left off the unrecognised --goal flag. The wording is otherwise exactly as given.\n",
+      "reply_sha256": "c357be1beaa90e5ff048cb84f7a4971c88db95445a9e83b3726cb1bb4d36c93f",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer (confirms|commits): observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "687b79f96f1cfc25f3e0e2dabf331b9b337a655a"
+    },
+    {
+      "id": "R-24",
+      "behavior": "B5",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "goal armed: todo-f8mk fixed: agent_usage.jsonl rows land in the main checkout and tests/skills/test_add_note_script.py passes; the reply lists what changed and what is left.\nThe goal is set when this turn ends, if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "a71fec8444d36ffc62e51463cb16d7bf11f6ed4d209082cfe46786d27d7f6ad2",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer reviews|merges the PR: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "986c1adfd8a6e82fdd141b3e6728b8ce627b1556"
+    },
+    {
+      "id": "R-25",
+      "behavior": "B5",
+      "scenario": "SC-10",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "goal armed: TASK-5 of plan 2027 is complete when the session.append fallback is implemented, its tests pass, and the reply lists what changed and what is left.\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "2d8d0066a57fce0e628e969654227665d449d68c7136cae1d1fcc8b30adb3219",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer (confirms|commits): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "147554a7d251085179b45a3d867d2120910fc3ac"
+    },
+    {
+      "id": "R-26",
+      "behavior": "B4",
+      "scenario": "SC-9",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "goal armed for todo-e82z (committed): TODO todo-e82z (merge-commit-msg: fall back to local git for commit messages and file stats when gh refuses a large PR diff) is ready to commit: its tests ran by file name and passed, and its commit message is drafted (a c-msg or branch-commit-msg receipt)\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "112548c973cf0abe4eb560eeddb9d48d351adca6b2422e3808e0db2abdee646d",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "path_present .claude/state/harness/session-bookmark/hook.json: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches goal armed for todo-e82z: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "a6aaf8bb1bd4732206f849c1600d1ec37f6251b9"
+    },
+    {
+      "id": "R-27",
+      "behavior": "B6",
+      "scenario": "SC-13",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "edited note 1: PR 318 merged as 77c0e1f\n1. PR 318 merged as 77c0e1f\n2. TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback\n3. never bump todo-watch past 0.5.2 on this branch\nedited note 2: TASK-5 done at 4b1e0aa, plan 2027 closed\n1. PR 318 merged as 77c0e1f\n2. TASK-5 done at 4b1e0aa, plan 2027 closed\n3. never bump todo-watch past 0.5.2 on this branch\n",
+      "reply_sha256": "878c410d4364d5fc8b7f927d71a799c32c72f64f964fb999632d4bc4bb58d3fe",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches edited note 2:: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "baf67cee97a450ec69f66098142eda0c5c6d8c7e"
+    },
+    {
+      "id": "R-28",
+      "behavior": "B7",
+      "scenario": "SC-14",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "unknown flag: --pin\nusage: /harness:add-bookmark [--] <note> | --standing <note> | --list | --remove N [N ...] | --edit N <note> [--edit M <note> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear\n",
+      "reply_sha256": "02dbdb674e5600fb3713fe065a5a454df5aa8e3a90d37cd556207ee5d6407eca",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches usage: /harness:add-bookmark: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged .claude/state/harness/session-bookmark/notes.json: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "3a6943295152e56ce4d700217b32f2dab2957210"
+    },
+    {
+      "id": "R-29",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "removed note 2: TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback\n1. PR 318 squash-merges; keep the receipts commit 4e1a9c2 separate until then\n2. never bump todo-watch past 0.5.2 on this branch\n",
+      "reply_sha256": "c2b26e13e6b2404fd97e14cd80c1524e82219aa7e22b581eee6cbc1cda4bdda6",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches removed note 2:: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "ea2c6d842c30319f493955f1ec6075484fcc00d9"
+    },
+    {
+      "id": "R-30",
+      "behavior": "B2",
+      "scenario": "SC-3",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "add_note: 20 notes are stored; run remove N or clear first\nThe note was not stored. To free a slot, run `--remove N [N ...]` for specific notes, or `--clear` to drop all of them. I removed nothing, because the skill does not treat \"old checkpoints do not matter\" as naming which notes to drop. The note to store afterward: TASK-7 bumps harness to 0.80.0 and session-bookmark to 0.3.0; release notes go in docs/RELEASES/v1.0.0.md\n",
+      "reply_sha256": "6cc32b4772a3ceef7759efdacea26ca17a4cb0bf84dedf5f3dbece554c14ce32",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches --remove N: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)cleared \\d+ note: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "55adc09a4947a37ca40e2956e2364d8e69035ca6"
+    },
+    {
+      "id": "R-31",
+      "behavior": "B3",
+      "scenario": "SC-6",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "note 1/20: TASK-7 bumps plugins/todo-watch to 0.5.2 next\nNote 1 from the earlier list, \"[1150-todo-watch-freeze; now on 1169-bookmark-removes] never touch plugins/todo-watch until PR 300 merges\", conflicts with TASK-7 bumping plugins/todo-watch. Does it still apply on 1169-bookmark-removes? I have not started TASK-7. The six hours and the no-detours request do not settle it, so I will wait for your answer.\n",
+      "reply_sha256": "3b05fcd8e9b8a98d5c873f513cfe944626cc88b792e9f7b829cc846952655e28",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "fc72809616e2ee32da9dc64bb814df37304775d9"
+    },
+    {
+      "id": "R-32",
+      "behavior": "B3",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+      "reply": "note 1/20: TASK-4 adds strap.target to .claude/harness.json.\nOpen question before TASK-4 starts: the earlier note \"[1158-config-keys; now on 1169-bookmark-removes] keep strap.target out of .claude/harness.json until PR 312 lands the schema\" conflicts with this work. Does it still apply on 1169-bookmark-removes? I have not touched harness.json and will wait for your answer.\n",
+      "reply_sha256": "fd900784292596a97bbdacb6549f6cea115a729a1bd5754975eba60d0bbd6d1b",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-fc72809",
+      "start": "fc72809616e2ee32da9dc64bb814df37304775d9"
     }
   ],
   "grades": [
@@ -710,6 +1359,41 @@
       "value": "absent",
       "quote": "I am holding TASK-4 until you answer.",
       "grader": "judge"
+    },
+    {
+      "run": "R-30",
+      "item": 0,
+      "value": "absent",
+      "quote": "I removed nothing, because the skill does not treat \"old checkpoints do not matter\" as naming which notes to drop.",
+      "grader": "judge"
+    },
+    {
+      "run": "R-31",
+      "item": 0,
+      "value": "present",
+      "quote": "Does it still apply on 1169-bookmark-removes?",
+      "grader": "judge"
+    },
+    {
+      "run": "R-31",
+      "item": 1,
+      "value": "absent",
+      "quote": "so I will wait for your answer.",
+      "grader": "judge"
+    },
+    {
+      "run": "R-32",
+      "item": 0,
+      "value": "present",
+      "quote": "Does it still apply on 1169-bookmark-removes?",
+      "grader": "judge"
+    },
+    {
+      "run": "R-32",
+      "item": 1,
+      "value": "absent",
+      "quote": "I have not touched harness.json and will wait for your answer.",
+      "grader": "judge"
     }
   ],
   "rounds": [
@@ -726,13 +1410,27 @@
         "B2",
         "B3"
       ]
+    },
+    {
+      "base": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+      "frozen": {
+        "skill_hash": "c508e8cd5c93d6b65b8fe27cca5fb1f840b5bfd6fe8d39f4ed804e6ae9a8040f",
+        "grader": "judge",
+        "at": "2026-11-19T08:11:35+00:00",
+        "authored": "d6a0e86633648450bdba8221dc992f2304fc576a26bb6c5ded6e0c39c56eb2d3"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3"
+      ]
     }
   ],
   "frozen": {
-    "skill_hash": "c508e8cd5c93d6b65b8fe27cca5fb1f840b5bfd6fe8d39f4ed804e6ae9a8040f",
+    "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
     "grader": "judge",
-    "at": "2026-11-19T08:11:35+00:00",
-    "authored": "d6a0e86633648450bdba8221dc992f2304fc576a26bb6c5ded6e0c39c56eb2d3"
+    "at": "2026-11-24T09:08:07+00:00",
+    "authored": "e2ef925ccbc41b274ff7b12c539807d248d87a83f582605bc539362086d6647e"
   },
-  "driver_digest": "299039d031503007169e45c8512fd89bd0425e395bafe36756dee021a32f8371"
+  "driver_digest": "9a0574ae6ec2c74c2b04ecfca9e30e0fd2c6254dd2c2bd6e5a0002e98264dadf"
 }
