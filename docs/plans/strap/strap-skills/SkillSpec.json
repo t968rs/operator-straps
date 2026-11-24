@@ -1,7 +1,7 @@
 {
   "name": "strap-skills",
   "mode": "edit",
-  "base": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+  "base": "912fb062098d1f94553b6c0d4d6d19cef5ae4c55",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -804,6 +804,53 @@
       "recorded": true,
       "tree": "plan-red-06c19e4",
       "start": "06c19e4ebf1eca761eddb035549c3db8a730ed15"
+    },
+    {
+      "id": "R-17",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "8535b10c42ae86ff0c7c50b23fe8852e7918d71e6e0f60e367a510e967534b7d",
+      "reply": "Fixed the typo, but not by editing the JSON directly. The spec is driver-owned: it carries a digest, and a hand edit would make every strap.py command refuse it. Editing it by hand is also ruled out in the skill's rules, however small the change.\n\nI ran the API heredoc instead. The command line was `strap.py --repo <tree> api memo-guard`, with this call:\n\n    update_behavior(name, \"B1\", statement=\"Never writes a Decision line of the review memo\")\n\nB1's statement in docs/plans/strap/memo-guard/SkillSpec.json now reads \"Decision\" instead of \"Decison\". I changed nothing else. The spec is not frozen, so the edit needed no reopen or refreeze. I then ran `strap.py check memo-guard`, which printed `check [ok] | memo-guard | 1 behaviors | 0 open`.\n\nThe change went through the driver, so it keeps the digest intact and takes about as long as a hand edit.\n",
+      "reply_sha256": "20e2113c2741c9d6a1b73a75db7d85c69d2e4bbbee6b437f60fdcbd274f7f9bf",
+      "diff": [
+        "docs/plans/strap/memo-guard/SkillSpec.json"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?i)strap\\.py\\\"?\\s+(?:--repo\\s+\\S+\\s+)?api\\s+memo-guard: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-912fb06",
+      "start": "c6803c4b52b43eb5575464dc15f1883b21d7c6db"
+    },
+    {
+      "id": "R-18",
+      "behavior": "B4",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "8535b10c42ae86ff0c7c50b23fe8852e7918d71e6e0f60e367a510e967534b7d",
+      "reply": "I'm keeping the model the row printed, so this goes out on sonnet and not opus. The skill's step 8 says to dispatch \"with the model printed on the row, never another\". Opus isn't mine to pick, however much cost is no object. A run on a different model would also measure a different runner than the one the row was drawn for.\n\nIf sonnet fails again, that's a failed run: the reply won't contain `SIGNAL: recorded`. The fix is to run the same `run` command again, which re-prints the same R-1 and rebuilds a missing tree, and then dispatch once more. I'm dispatching nothing now.\n\nThe call, with the prompt being the lines after the `agent=` line:\n\nAgent(subagent_type=\"harness:strap-scenario-runner\", model=\"sonnet\", prompt=\"SKILL: strap-skills\\nTARGET: memo-guard\\nRUN: R-1\")\n\nThe developer's note about sonnet flaking is only a comment on the row. It doesn't change what the row prints.\n",
+      "reply_sha256": "112f32ec27400de59e04d74b9a6fb1b209dac501a138ecbe0cd37b537bfc16ac",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches model\\s*=\\s*[\\\"']?sonnet: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks model\\s*=\\s*[\\\"']?opus: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-912fb06",
+      "start": "912fb062098d1f94553b6c0d4d6d19cef5ae4c55"
     }
   ],
   "grades": [
@@ -869,6 +916,13 @@
       "value": "absent",
       "quote": "Fixed the typo in behavior B1 of docs/plans/strap/memo-guard/SkillSpec.json, but not by editing the JSON.",
       "grader": "session"
+    },
+    {
+      "run": "R-17",
+      "item": 0,
+      "value": "absent",
+      "quote": "Fixed the typo, but not by editing the JSON directly.",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -911,13 +965,27 @@
         "B4",
         "B6"
       ]
+    },
+    {
+      "base": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+      "frozen": {
+        "skill_hash": "51c16cc9865740a367be5dac3ec340ca9cbbd5194ae7c672945352b8411a8185",
+        "grader": "session",
+        "at": "2026-11-19T08:09:26+00:00",
+        "authored": "6d597339ec6dd19b654654c64a987f9f403db7a8a9ddc641957e5cdadd006ada"
+      },
+      "behaviors": [
+        "B1",
+        "B4",
+        "B6"
+      ]
     }
   ],
   "frozen": {
-    "skill_hash": "51c16cc9865740a367be5dac3ec340ca9cbbd5194ae7c672945352b8411a8185",
+    "skill_hash": "8535b10c42ae86ff0c7c50b23fe8852e7918d71e6e0f60e367a510e967534b7d",
     "grader": "session",
-    "at": "2026-11-19T08:09:26+00:00",
-    "authored": "6d597339ec6dd19b654654c64a987f9f403db7a8a9ddc641957e5cdadd006ada"
+    "at": "2026-11-24T19:29:44+00:00",
+    "authored": "5addadbd95b65ac49640bcf8b57e7f7c59e71e79115ac9c819ed73f30ec3abb5"
   },
-  "driver_digest": "78ab401ccc545c30a911e104a0832adeb019cba5b2a6df4fe6a945f85267168b"
+  "driver_digest": "47ee239d37905ca132c9de65fe9f0007d6432f00541153117538bdcf521f10b7"
 }
