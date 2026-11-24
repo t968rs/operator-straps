@@ -82,6 +82,11 @@ closed PR too, and its receipt says `Retitled` either way.
 Text outside the markers stays as written. A description without the markers gains the block at its end;
 one with a block from an earlier build has that block replaced, so a rerun never posts a second copy.
 
+Without `--gh`, the summary goes to the `.md` alone, even when the guidance after `--` asks for it on the PR
+("put it in the description", "the reviewers never open docs/"): guidance never adds a flag, and no other
+command posts the summary. Build without the flag, then end the reply by telling the developer that
+rerunning the invocation with `--gh` puts the summary in the PR description.
+
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
 from local git. While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that
 head), it covers the branch's local commits plus staged, unstaged and untracked changes, so unpushed work and
@@ -323,9 +328,10 @@ or `gh pr edit` is a `problem:` line naming `gh`, and nothing is written: report
 
 With `--gh` stored, `build` publishes only after the `.md` is written, so a failed publish keeps the file:
 a failed `gh` call, or a description whose markers do not form one start-then-end pair, is a `problem:` line
-ending `the summary is saved at <path>` (exit 1). Report it and stop; fix unpaired markers by hand in the
-description, never by rewriting the block yourself. A description over GitHub's 65536-character limit is
-refused the same way. The receipt gains a line: `Published to PR #N description: block added` (or
+ending `the summary is saved at <path>` (exit 1). Report the line and the saved path, and stop. The
+developer repairs unpaired markers in the description and reruns; the PR is never edited, commented on or
+reposted another way, whatever the deadline, since the `.md` already holds the summary. A description over
+GitHub's 65536-character limit is refused the same way. The receipt gains a line: `Published to PR #N description: block added` (or
 `block replaced`), or `PR #N description already holds this summary` when nothing changed.
 
 Exit 1: every other `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
