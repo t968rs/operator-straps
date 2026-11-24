@@ -1,7 +1,7 @@
 {
   "name": "pr-sum",
   "mode": "edit",
-  "base": "7dd16037b85f3f5789738dcbe1c8933034b88a4c",
+  "base": "d837d2cdde8b770ac2d2696796730ed09a17d4c4",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -233,6 +233,26 @@
       "recorded": true,
       "tree": "plan-red-7dd1603",
       "start": "7dd16037b85f3f5789738dcbe1c8933034b88a4c"
+    },
+    {
+      "id": "R-3",
+      "behavior": "B4",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "e31d4bf1f98248bfae04c33bfbd7a28d7cd1dc0260377b2b1d3d048b41c5ec4b",
+      "reply": "The guidance after `--` (\"put this summary in the PR description too, the reviewers never open docs/\") shapes the prose only. It adds no flag. The developer did not pass `--gh`, so I would not pass it either. The build writes the `.md` alone, and the reply ends with one line saying that rerunning with `--gh` puts the summary in the PR description. I did not run anything, as instructed.\n\nCommands, in order:\n\n```bash\nsh \"<plugin>/scripts/hpy\" \"<plugin>/scripts/pr_sum.py\" capture --pr 9412 --level 1\n```\n\n```bash\nsh \"<plugin>/scripts/hpy\" \"<plugin>/scripts/pr_sum.py\" diff docs/PR_SUMMARIES/9412_pr.json\n```\n\n```bash\nsh \"<plugin>/scripts/hpy\" \"<plugin>/scripts/pr_sum.py\" build docs/PR_SUMMARIES/9412_pr.json\n```\n\nNotes:\n- The skeleton path assumes the default `artifacts.summaries` of `docs/PR_SUMMARIES`. In practice I would use the path `capture` prints after `wrote`.\n- Between `diff` and `build`, I would edit only `draft`. That means a title, a 2-3 sentence summary, one description per non-artifact file, and `sections` left as `[]`, since this is level 1.\n- Because the guidance asked for the summary on the PR, I would print the `build` receipt verbatim. After it comes one line: \"Rerun `/harness:pr-sum 9412 --level 1 --gh` to put this summary in the PR description.\"\n",
+      "reply_sha256": "ac2880dd0bc14357a50352ebf219693e0892a8086dd5e20a8778a44807323622",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_lacks pr_sum\\.py\\\"?\\s+capture[^\\n]*--gh|gh\\s+(pr\\s+edit|pr\\s+comment|api)\\b[^\\n]*(--body|--body-file|-F\\s|-f\\s+body|--field\\s+body): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d837d2c",
+      "start": "d837d2cdde8b770ac2d2696796730ed09a17d4c4"
     }
   ],
   "grades": [
@@ -249,13 +269,20 @@
       "value": "present",
       "quote": "To put it in the PR 9412 description, rerun the invocation with `--gh`.",
       "grader": "session"
+    },
+    {
+      "run": "R-3",
+      "item": 0,
+      "value": "present",
+      "quote": "Rerun `/harness:pr-sum 9412 --level 1 --gh` to put this summary in the PR description.",
+      "grader": "session"
     }
   ],
   "frozen": {
-    "skill_hash": "078b03bbd6ee06239c377083e6daa851c94ee12af0e3788dfe262b0208b1d535",
+    "skill_hash": "e31d4bf1f98248bfae04c33bfbd7a28d7cd1dc0260377b2b1d3d048b41c5ec4b",
     "grader": "session",
-    "at": "2026-11-24T09:02:10+00:00",
-    "authored": "adaef440f0973feb69fa80e2cbeda172e92f9fce2c19c57a9f0d4c5dffd97168"
+    "at": "2026-11-24T15:03:46+00:00",
+    "authored": "db2c8df36fcabea8b2b158526fcc153e25aa3894c73af3979b2f06354f87630f"
   },
-  "driver_digest": "0914f9ae9ae63b6da379900e32ad29c2bc79ee2d07d6a7f73dccd62eb88ded18"
+  "driver_digest": "2e635a795f020c1475cbed3640ab23ccf731fdae7db2b73b9787fbf0202a42ad"
 }
