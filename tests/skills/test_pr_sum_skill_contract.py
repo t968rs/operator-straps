@@ -28,6 +28,14 @@ def test_argument_hint_names_the_auto_title_flag() -> None:
     assert "[--auto-title]" in skill_parts(SKILL)[0].get("argument-hint", "")
 
 
+def test_argument_hint_offers_every_level() -> None:
+    assert "[--level 0|1|2|3]" in skill_parts(SKILL)[0].get("argument-hint", "")
+
+
+def test_argument_hint_names_the_gh_flag() -> None:
+    assert "[--gh]" in skill_parts(SKILL)[0].get("argument-hint", "")
+
+
 def test_skill_gates_retitle_on_the_auto_title_flag() -> None:
     text = _text()
     assert "`--auto-title` is the developer's consent to rename the PR" in text

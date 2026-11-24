@@ -1,7 +1,7 @@
 ---
 name: pr-sum
 description: 'Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule'
-argument-hint: "PR [--level 1|2|3] [--min-viz [N]] [--auto-title] [--no-auto-title] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]"
+argument-hint: "PR [--level 0|1|2|3] [--min-viz [N]] [--auto-title] [--no-auto-title] [--gh] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]"
 model: sonnet
 effort: medium
 context: fork
@@ -22,13 +22,14 @@ reads it from there. No `--level` means 2.
 
 | Level | Output                                                                                              |
 |-------|-----------------------------------------------------------------------------------------------------|
+| 0     | The Summary alone: no file descriptions, Files Changed, Relocated, delta table or sections.         |
 | 1     | Prose only: Summary, Files Changed, Relocated. No sections.                                         |
 | 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols.                    |
 | 3     | Level 2 plus: up to 5 flows, every shape diagram once (two more: Sequence Diagram, Data Flow).      |
 
-Every level adds the delta table under the Summary when any file is machine-generated.
+Every level but 0 adds the delta table under the Summary when any file is machine-generated.
 
-`--min-viz [N]` applies at level 3 only (ignored at levels 1 and 2). `build` then requires N diagram blocks
+`--min-viz [N]` applies at level 3 only (ignored at levels 0 to 2). `build` then requires N diagram blocks
 (default 3): fenced, over 200 characters between the fences, and holding an arrow (`→ ► ▶ ▼ ▲ ◄ ← ↑ ↓ ➜ ⟶ ->
 =>`), counted across the Summary and every section. `capture` arms a Stop-hook sentinel, so the session cannot
 end before `build` succeeds.
@@ -54,15 +55,15 @@ what to leave out of the Summary): it shapes the agent's writing only, never a c
 breaks a `build` rule. Everything below reads the part before the token.
 
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
-the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3`,
-`--min-viz [N]`, `--auto-title` and `--no-auto-title`, plus the source flags `--local`, `--remote-head` and `--committed-only` and `--repo DIR`;
+the branch or `gh pr list`. The other arguments are the developer's flags: `--level 0|1|2|3`,
+`--min-viz [N]`, `--auto-title` and `--no-auto-title`, `--gh`, plus the source flags `--local`, `--remote-head` and `--committed-only` and `--repo DIR`;
 pass them through unchanged. Any other flag, a `--level` or `--min-viz` value holding anything but digits, `--auto-title`
 together with `--no-auto-title`, or `--local` together with
-`--remote-head` is a problem to report; stop. Never choose a level, a `--min-viz` count, `--auto-title`, a source flag or a
+`--remote-head` is a problem to report; stop. Never choose a level, a `--min-viz` count, `--auto-title`, `--gh`, a source flag or a
 repo yourself. A `--repo DIR` is added to the `diff` and `build` commands below as well.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]] [--auto-title | --no-auto-title] [--local | --remote-head] [--committed-only] [--repo DIR]
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]] [--auto-title | --no-auto-title] [--gh] [--local | --remote-head] [--committed-only] [--repo DIR]
 ```
 
 `--auto-title` is the developer's consent to rename the PR. `"auto_title": true` in the project's
@@ -74,6 +75,12 @@ its line what `build` will do with the PR title. When the PR title is not a one-
 title is kept, and so is a merged PR's title; an unusable title on an open or closed (unmerged) PR is
 replaced. Unlike `merge-commit-msg --auto-title`, which refuses a PR that is not open, `build` retitles a
 closed PR too, and its receipt says `Retitled` either way.
+
+`--gh` is the developer's consent to write the PR description. `capture` stores it in the skeleton, and
+`build`, after it saves the `.md`, puts that same markdown into the description between
+`<!-- pr-sum:start -->` and `<!-- pr-sum:end -->` (one `gh pr view` read, then `gh pr edit --body-file -`).
+Text outside the markers stays as written. A description without the markers gains the block at its end;
+one with a block from an earlier build has that block replaced, so a rerun never posts a second copy.
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
 from local git. While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that
@@ -114,7 +121,7 @@ It prints `delta [ok] | source +A/-D (net +N), F files | total +A/-D (net +N), F
 with `--json` the same numbers plus the excluded paths; a failure exits 1 with one `problem:` line. Header
 totals are local `git diff --numstat` sums and can differ slightly from GitHub's. Rerunning `capture` refreshes
 `facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR); the level
-flags and the auto-title choice are stored fresh on every capture, so repeat them on a rerun.
+flags, the auto-title choice and `--gh` are stored fresh on every capture, so repeat them on a rerun.
 
 ## Step 2 — Read what changed
 
@@ -171,13 +178,15 @@ It must also be ASCII on one line; `build` refuses anything else.
 paragraphs. Asides that qualify a number go on their own line as `***Note:*** ...` with a blank line above and
 below.
 
+- Level 0: one paragraph of 1-3 sentences on what changed and why, whatever the size.
 - Level 1: 2-3 sentences up to 1000 changed lines; 1-2 more per additional 1000.
 - Levels 2 and 3: a first paragraph of 2-3 sentences on what changed and why; then a second paragraph on the
   shape of the change.
 
-**`descriptions`** — one line per file: what changed in it, from the diff. Backtick identifiers.
+**`descriptions`** — one line per file: what changed in it, from the diff. Backtick identifiers. Level 0
+renders no file table, so leave every slot empty there; `build` does not check them.
 
-**`sections`** — level 1: leave `[]` and stop here. Levels 2 and 3: `[{"heading": ..., "body": [...]}]`, in the
+**`sections`** — levels 0 and 1: leave `[]` and stop here. Levels 2 and 3: `[{"heading": ..., "body": [...]}]`, in the
 order below; `build` rejects other headings, extra sections and a different order.
 
 ### 1. Behavior flows (when behavior changed or was added)
@@ -312,6 +321,13 @@ title before it writes. When it retitles the PR, it does so before writing the s
 or `gh pr edit` is a `problem:` line naming `gh`, and nothing is written: report it and stop. The receipt gains a second line: `Retitled PR #N: '<old>' ->
 '<new>'`, or `PR #N title kept: ...`.
 
+With `--gh` stored, `build` publishes only after the `.md` is written, so a failed publish keeps the file:
+a failed `gh` call, or a description whose markers do not form one start-then-end pair, is a `problem:` line
+ending `the summary is saved at <path>` (exit 1). Report it and stop; fix unpaired markers by hand in the
+description, never by rewriting the block yourself. A description over GitHub's 65536-character limit is
+refused the same way. The receipt gains a line: `Published to PR #N description: block added` (or
+`block replaced`), or `PR #N description already holds this summary` when nothing changed.
+
 Exit 1: every other `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
 to it), fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
@@ -339,7 +355,8 @@ to it), fix the draft and rerun. Exit 0 writes
 | Flow steps or diagrams not in the diff                    | Each step traces to removed or added lines                      |
 | Long paths or sentences in table cells                    | Key block above, bullets below                                  |
 | Idiosyncratic glyphs (◆◈⊙)                                | The flow grammar and the Status values                          |
-| Sections in a level 1 draft                               | Level 1 has none; `[]`                                          |
+| Sections in a level 0 or 1 draft                          | Levels 0 and 1 have none; `[]`                                  |
 | Padding a diagram to pass `--min-viz`                     | Each block shows a real flow from the diff                      |
 | Choosing the level without the developer                  | No `--level` means 2                                            |
 | Adding `--auto-title`, or running `gh pr edit`, unasked   | Only the developer's flag or `auto_title` key; `build` renames  |
+| Adding `--gh`, or pasting the summary into the PR, unasked | Only the developer's `--gh`; `build` writes the marked block   |
