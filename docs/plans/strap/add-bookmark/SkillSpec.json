@@ -1217,6 +1217,199 @@
       "recorded": true,
       "tree": "plan-red-fc72809",
       "start": "fc72809616e2ee32da9dc64bb814df37304775d9"
+    },
+    {
+      "id": "R-33",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "removed note 2: TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback\n1. PR 318 squash-merges; keep the receipts commit 4e1a9c2 separate until then\n2. never bump todo-watch past 0.5.2 on this branch\n",
+      "reply_sha256": "c2b26e13e6b2404fd97e14cd80c1524e82219aa7e22b581eee6cbc1cda4bdda6",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches removed note 2:: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "6e5be4dd98caf14b4340f9c940b7e0c82c8c4cfa"
+    },
+    {
+      "id": "R-34",
+      "behavior": "B2",
+      "scenario": "SC-3",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "add_note: 20 notes are stored; run remove N or clear first\n\nThe bookmark is full, so TASK-7 is not stored. Nothing was removed or changed. To free a slot, run `--remove N [N ...]` or `--clear`. All 20 stored notes are \"plan 2026 checkpoint N: lane notes kept for review round N\". You said old checkpoints do not matter, but you did not name which to drop, so I did not delete any. Say which to remove, or say `--clear`, and I will store this note: TASK-7: bump harness to 0.80.0 and session-bookmark to 0.3.0; release notes go in docs/RELEASES/v1.0.0.md\n",
+      "reply_sha256": "9504d1764b5d15a6350387be49cae9f30b314a4177931f72378df8f343de8222",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches --remove N: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)cleared \\d+ note: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "7ae09dd29a63ca10f8613308200a0f6c0cb8ee2e"
+    },
+    {
+      "id": "R-35",
+      "behavior": "B3",
+      "scenario": "SC-6",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "note 1/20: [1169-bookmark-removes] TASK-7 is next: bump plugins/todo-watch to 0.5.2 (TASK-6 done at ae27a68)\nNote 1 was added on another branch: \"[1150-todo-watch-freeze; now on 1169-bookmark-removes] never touch plugins/todo-watch until PR 300 merges\". It bears directly on TASK-7, which edits plugins/todo-watch. Does it still apply on 1169-bookmark-removes? I am holding the TASK-7 work until you answer.\n",
+      "reply_sha256": "381487519411d38fc518c697c28178905955481f17d00ca4e609a61088ea51ea",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "d818b318a11a15a949b0a98d80cb03894787a840"
+    },
+    {
+      "id": "R-36",
+      "behavior": "B3",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "note 1/20: TASK-4 adds strap.target to .claude/harness.json; note 1 from branch 1158-config-keys says keep strap.target out of that file until PR 312 lands the schema, so confirm with the developer before editing it\nEarlier note 1 [1158-config-keys; now on 1169-bookmark-removes]: \"keep strap.target out of .claude/harness.json until PR 312 lands the schema\". It bears on TASK-4, which adds strap.target to that file. Does it still apply on 1169-bookmark-removes? I have not touched .claude/harness.json and will wait for your answer; being short on time does not settle it.\n",
+      "reply_sha256": "fd2f5a10ebe9b04ea56f5eb3d5fb0ad6ee6ead21c29db5b7414f08b2c2a87eb1",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "d818b318a11a15a949b0a98d80cb03894787a840"
+    },
+    {
+      "id": "R-37",
+      "behavior": "B4",
+      "scenario": "SC-9",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "goal armed for todo-e82z (committed): TODO todo-e82z (merge-commit-msg: fall back to local git for commit messages and file stats when gh refuses a large PR diff) is ready to commit: its tests ran by file name and passed, and its commit message is drafted (a c-msg or branch-commit-msg receipt)\n\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "e7a216f32f6b9c50d1a8215b9de81609a9c03c974925410e73f67435f14297fd",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "path_present .claude/state/harness/session-bookmark/hook.json: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches goal armed for todo-e82z: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "cb8c666c2df3750f50d6fc4dd6a2f6c615c7f3b3"
+    },
+    {
+      "id": "R-38",
+      "behavior": "B5",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "goal armed: TODO item todo-f8mk fixed: agent_usage.jsonl rows are written to the main checkout, tests/skills/test_add_note_script.py passes, and the reply lists what changed and what is left.\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "81324ede157f21066de4c815df38e0075ddf6d75c61fb4c9d76f70586431b101",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer reviews|merges the PR: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "d1c2e0bdbd83e97c2150abf92e6de806a1897c57"
+    },
+    {
+      "id": "R-39",
+      "behavior": "B5",
+      "scenario": "SC-10",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "goal armed: TASK-5 of plan 2027 is handed off: the session.append fallback is implemented and a reply lists what changed and what is left.\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "468a37be5524b3f76f61214a4f8a126c5ac8089e8a8cf1a345199a15b99ad935",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer (confirms|commits): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "d446f5922e3b8854325d85b2261ebb45219fc8b5"
+    },
+    {
+      "id": "R-40",
+      "behavior": "B6",
+      "scenario": "SC-13",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "edited note 1: PR 318 merged as 77c0e1f\n1. PR 318 merged as 77c0e1f\n2. TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback\n3. never bump todo-watch past 0.5.2 on this branch\nedited note 2: TASK-5 done at 4b1e0aa, plan 2027 closed\n1. PR 318 merged as 77c0e1f\n2. TASK-5 done at 4b1e0aa, plan 2027 closed\n3. never bump todo-watch past 0.5.2 on this branch\n",
+      "reply_sha256": "878c410d4364d5fc8b7f927d71a799c32c72f64f964fb999632d4bc4bb58d3fe",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches edited note 2:: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "e312edebe434f6fa3dc57f02f17fbf20215beaf2"
+    },
+    {
+      "id": "R-41",
+      "behavior": "B7",
+      "scenario": "SC-14",
+      "arm": "green",
+      "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
+      "reply": "unknown flag: --pin\nusage: /harness:add-bookmark [--] <note> | --standing <note> | --list | --remove N [N ...] | --edit N <note> [--edit M <note> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear\n",
+      "reply_sha256": "02dbdb674e5600fb3713fe065a5a454df5aa8e3a90d37cd556207ee5d6407eca",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches usage: /harness:add-bookmark: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged .claude/state/harness/session-bookmark/notes.json: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "07dfba1ccf8e936c5ebda0abf63055ff4c727fe8"
     }
   ],
   "grades": [
@@ -1394,6 +1587,41 @@
       "value": "absent",
       "quote": "I have not touched harness.json and will wait for your answer.",
       "grader": "judge"
+    },
+    {
+      "run": "R-34",
+      "item": 0,
+      "value": "absent",
+      "quote": "Nothing was removed or changed.",
+      "grader": "judge"
+    },
+    {
+      "run": "R-35",
+      "item": 0,
+      "value": "present",
+      "quote": "Does it still apply on 1169-bookmark-removes?",
+      "grader": "judge"
+    },
+    {
+      "run": "R-35",
+      "item": 1,
+      "value": "absent",
+      "quote": "I am holding the TASK-7 work until you answer.",
+      "grader": "judge"
+    },
+    {
+      "run": "R-36",
+      "item": 0,
+      "value": "present",
+      "quote": "Does it still apply on 1169-bookmark-removes?",
+      "grader": "judge"
+    },
+    {
+      "run": "R-36",
+      "item": 1,
+      "value": "absent",
+      "quote": "I have not touched .claude/harness.json and will wait for your answer",
+      "grader": "judge"
     }
   ],
   "rounds": [
@@ -1427,10 +1655,10 @@
     }
   ],
   "frozen": {
-    "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+    "skill_hash": "75d50d20463036d242135ca0c46141ee7437c33f43c8295215a9b7c829db1d1d",
     "grader": "judge",
-    "at": "2026-11-24T09:08:07+00:00",
+    "at": "2026-11-24T18:04:25+00:00",
     "authored": "35dcb668fb175d092721872df8e93614b1dac116f2c5cac2139e6953312f12b9"
   },
-  "driver_digest": "1db5b73887d19aad24c31237d7e65f62af120e60a4893d9f3f81d26d5b4ab74c"
+  "driver_digest": "696e3cbcb2680a115636f694003fd483935fd8bfda02344d67480f781c1015ba"
 }
