@@ -189,6 +189,7 @@ test as tautological.
 - The test can fail only through a panic, crash, or missing selector
 - The test fails on every intentional change, never on accidental breakage
 - Expected values are hidden behind loops, builders, or helpers
+- Expected values were copied from the code's own output (a snapshot of today's behavior)
 - The test greps source text, or asserts a removed symbol stays removed
 - The test would still matter if only the framework remained
 - The test exists for coverage, checking no side effect or outcome

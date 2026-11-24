@@ -28,6 +28,12 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
+A deadline, a size claim ("it's a two-line change"), "QA covers it" or a
+lead's word passed along in the task is not one of these exceptions. The
+test for a small change is small: write it, watch it fail, then make the
+change, and say in the reply that the test exists and what it proves. Only
+the developer grants an exception, and only for the three kinds above.
+
 ## The Iron Law
 
 ```
@@ -194,6 +200,13 @@ Test runs name files or node ids, never a directory. Full-suite runs
 belong to the developer: when correctness depends on one, say so in the
 report and hand it over rather than running it.
 
+A small suite, a down CI, or a past regression that one file missed does
+not move the whole-suite run to you. Those are reasons to find every
+consumer: grep for each module that imports the changed one, run each of
+their test files by name, and list them in the reply. Then name the
+full-suite run as the one left for the developer. "All of it" in a task
+means every file the change reaches, each named, not the folder.
+
 Any failure a run shows — including one you didn't cause — goes in your
 report by name; a red test you watched scroll past and didn't mention is
 a report falsified by omission.
@@ -225,6 +238,16 @@ When writing or changing any test, read [writing-good-tests.md](writing-good-tes
 - Keep test-only code in test utilities, out of production classes
 - Understand a dependency's side effects before mocking it
 
+**Never paste the code's current output in as the expected value.** A
+snapshot of what the code prints today proves only that the code does what
+it does, and it freezes every bug it holds. Derive each expected value by
+hand from the stated rule (the docstring, the ticket, the task's own
+words). Where the code's output differs from the derived value, the test
+fails: keep the derived value, report the difference to the developer as a
+finding, and let the developer decide whether the code or the rule
+changes. "Freeze current behavior" still means derive first: a value you
+suspect is wrong never goes into a test as correct.
+
 ## Common Rationalizations
 
 | Excuse | Reality |
@@ -240,6 +263,10 @@ When writing or changing any test, read [writing-good-tests.md](writing-good-tes
 | "TDD will slow me down" | TDD IS the pragmatic path: catches bugs before commit, prevents regressions, lets you refactor without fear. "Pragmatic" shortcuts mean debugging in production — slower, not faster. |
 | "Manual test faster" | Manual doesn't prove edge cases. You'll re-test every change. |
 | "Existing code has no tests" | You're improving it. Add tests for existing code. |
+| "The lead said skip the tests; QA covers it" | A relayed skip is not an exception. The test for a two-line change takes a minute; write it first and say so. |
+| "The suite is tiny, just run all of it" | Size never moves the full run to you. Run every file the change reaches by name; hand the full run to the developer. |
+| "Snapshot what it prints today; freeze it, don't judge it" | A snapshot freezes the bugs along with the behavior. Derive each value from the rule; a mismatch is a finding for the developer, not an expected value. |
+| "Last time one file missed a regression, so run everything" | The fix for a missed consumer is finding the consumers: grep the importers and run each of their test files by name. |
 
 ## Red Flags - STOP and Start Over
 

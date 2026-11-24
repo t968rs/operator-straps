@@ -1,6 +1,6 @@
 ---
 name: strap-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes, and the superpowers-lt:systematic-debugging skill is not installed.
+description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes.
 ---
 
 # Systematic Debugging
@@ -186,7 +186,7 @@ You MUST complete each phase before proceeding to the next.
    - Test passes now?
    - No other tests broken?
    - Issue actually resolved?
-   - Use the `superpowers-lt:verification-before-completion` skill (when installed) before claiming success
+   - Before claiming success, run the tests that prove the fix by file name and read their output
 
 4. **If Fix Doesn't Work**
    - STOP
