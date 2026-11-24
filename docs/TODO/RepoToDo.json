@@ -57,12 +57,12 @@
   },
   "counts": {
     "items": 73,
-    "needs_decision": 42,
+    "needs_decision": 43,
     "trackers": 0,
-    "close_candidates": 38,
+    "close_candidates": 40,
     "by_status": {
-      "NEEDS_DECISION": 42,
-      "OPEN": 31
+      "NEEDS_DECISION": 43,
+      "OPEN": 30
     },
     "by_impact": {
       "dev_velocity": 40,
@@ -74,10 +74,10 @@
     },
     "by_loe": {
       "XS": 4,
-      "S": 24,
+      "S": 22,
       "M": 32,
-      "L": 12,
-      "XL": 1
+      "L": 13,
+      "XL": 2
     },
     "sources_absorbed": {
       "gh_issue": 65,
@@ -566,129 +566,8 @@
       "why_ranked": "Severity 2 missing guard path that leaves T4 warnings uncleared without a forbidden hand edit, dev_velocity impact, S size."
     },
     {
-      "id": "todo-n48z",
-      "rank": 9,
-      "title": "pr-sum: add --level 0, brief summary text only (no tables, no diagrams)",
-      "keyword": "pr-sum",
-      "kind": "feature",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#268",
-          "url": "https://github.com/t968rs/operator-straps/issues/268"
-        }
-      ],
-      "gh_issues": [
-        268
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue asks for a minimum-effort level: brief summary text, no tables, no diagrams. Checked: levels are `LEVELS = (1, 2, 3)` with `DEFAULT_LEVEL = 2` (plugins/harness/lib/harness_lib/pr_summary.py:48-49); capture takes `--level` with `choices=LEVELS` (plugins/harness/scripts/pr_sum.py:376) and build refuses a skeleton level outside LEVELS (:260-261). Level 1 is already prose only but still emits Files Changed and Relocated (plugins/harness/skills/pr-sum/SKILL.md:25), and every level adds the delta table when a file is machine-generated (:29).",
-      "proposed_change": "Add level 0 to LEVELS: Summary prose only, with no Files Changed, Relocated or delta table; build refuses sections at level 0 as at level 1. Update the level tables in plugins/harness/skills/pr-sum/SKILL.md and README.md, the argument hints, and tests in tests/lib/test_pr_summary.py, tests/scripts/test_pr_sum.py and tests/skills/test_pr_sum_skill_contract.py; bump the harness version.",
-      "files": [
-        "plugins/harness/lib/harness_lib/pr_summary.py",
-        "plugins/harness/scripts/pr_sum.py",
-        "plugins/harness/skills/pr-sum/SKILL.md",
-        "plugins/harness/skills/pr-sum/README.md",
-        "tests/lib/test_pr_summary.py",
-        "tests/scripts/test_pr_sum.py",
-        "tests/skills/test_pr_sum_skill_contract.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "A new opt-in level inside pr-sum; existing levels unchanged.",
-        "consumers": [
-          "plugins/harness/scripts/pr_sum.py"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "One more level value, a render branch, docs tables and tests."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.4142,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 1.4142,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 missing cheap option, dev_velocity impact, S size."
-    },
-    {
-      "id": "todo-mbt8",
-      "rank": 10,
-      "title": "pr-sum: add --gh to write the summary to the PR description or a comment, still saving the .md",
-      "keyword": "pr-sum",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Should --gh replace the PR body, insert a marked block into it, or post a PR comment that a rerun edits in place?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#269",
-          "url": "https://github.com/t968rs/operator-straps/issues/269"
-        }
-      ],
-      "gh_issues": [
-        269
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "Goals: the agent edits the PR description or a comment directly, and the .md is still saved. Checked: build writes `<summaries>/<NNNN>_<Title>.md` (plugins/harness/scripts/pr_sum.py:334) and touches the PR only through `gh pr edit` for a retitle under --auto-title (plugins/harness/skills/pr-sum/SKILL.md:73, :312); the skill forbids running `gh pr edit` unasked (:345), so publishing the body today is a manual step. The issue leaves open whether the body is replaced or a comment is posted.",
-      "proposed_change": "Add a --gh flag stored in the skeleton at capture, and have build, after writing the .md, publish it with `gh pr edit N --body-file` or `gh pr comment N --body-file` (editing the earlier comment on a rerun), reporting a gh failure as a problem: line with the .md kept. Update SKILL.md, README.md and the forbidden-actions table, and add tests in tests/scripts/test_pr_sum.py with gh stubbed.",
-      "files": [
-        "plugins/harness/scripts/pr_sum.py",
-        "plugins/harness/skills/pr-sum/SKILL.md",
-        "plugins/harness/skills/pr-sum/README.md",
-        "tests/scripts/test_pr_sum.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "Opt-in flag inside pr-sum; writes to GitHub only when asked.",
-        "consumers": [
-          "plugins/harness/scripts/pr_sum.py"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "One flag, one gh call path with a rerun rule, docs and stubbed tests."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.4142,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 1.4142,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 manual step on every summary, dev_velocity impact, S size."
-    },
-    {
       "id": "todo-5rze",
-      "rank": 11,
+      "rank": 9,
       "title": "strap: refreeze review-local, stale since pr_review.py changed in 0ae8c1c (#239) and again in 757277a",
       "keyword": "strap",
       "kind": "skill",
@@ -753,7 +632,7 @@
     },
     {
       "id": "todo-67gw",
-      "rank": 12,
+      "rank": 10,
       "title": "plan.py relink writes the base and tag without checking anchors and sweeps at the new base",
       "kind": "bug",
       "status": "OPEN",
@@ -813,7 +692,7 @@
     },
     {
       "id": "todo-5qsm",
-      "rank": 13,
+      "rank": 11,
       "title": "strap relink keeps the bare 'pass --to REF' hint and writes a --to base without checking it",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -873,7 +752,7 @@
     },
     {
       "id": "todo-yu6v",
-      "rank": 14,
+      "rank": 12,
       "title": "Working refs: clear another branch's override (`/harness:working --clear --branch NAME`)",
       "kind": "feature",
       "status": "OPEN",
@@ -929,7 +808,7 @@
     },
     {
       "id": "todo-9yns",
-      "rank": 15,
+      "rank": 13,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "keyword": "merge-commit-msg",
       "kind": "feature",
@@ -991,7 +870,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 16,
+      "rank": 14,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "keyword": "pr-review",
       "kind": "bug",
@@ -1052,7 +931,7 @@
     },
     {
       "id": "todo-g3zz",
-      "rank": 17,
+      "rank": 15,
       "title": "a-w attach drops a receipts plan's gitignored live.js, so the target's HTML PIP shows every item pending: rebuild live.js on attach and warn in plan.py check",
       "keyword": "plan_live",
       "kind": "bug",
@@ -1121,7 +1000,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 18,
+      "rank": 16,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1183,7 +1062,7 @@
     },
     {
       "id": "todo-2r6p",
-      "rank": 19,
+      "rank": 17,
       "title": "Narrow the PostToolUse Write|Edit|Bash hook that launches validate_pr_json_schema.py",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1242,7 +1121,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 20,
+      "rank": 18,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "keyword": "d-w",
       "kind": "skill",
@@ -1302,7 +1181,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 21,
+      "rank": 19,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "keyword": "branch-commit-msg",
       "kind": "feature",
@@ -1360,7 +1239,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 22,
+      "rank": 20,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "keyword": "write-plan",
       "kind": "skill",
@@ -1421,7 +1300,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 23,
+      "rank": 21,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "keyword": "roast-my-code",
       "kind": "skill",
@@ -1481,7 +1360,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 24,
+      "rank": 22,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "keyword": "strap",
       "kind": "feature",
@@ -1541,7 +1420,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 25,
+      "rank": 23,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "keyword": "branch-commit-msg",
       "kind": "bug",
@@ -1604,7 +1483,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 26,
+      "rank": 24,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "keyword": "pr-review",
       "kind": "skill",
@@ -1664,7 +1543,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 27,
+      "rank": 25,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "keyword": "pr-reviewer",
       "kind": "feature",
@@ -1729,7 +1608,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 28,
+      "rank": 26,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1789,7 +1668,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 29,
+      "rank": 27,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "keyword": "todo_sync",
       "kind": "feature",
@@ -1851,7 +1730,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 30,
+      "rank": 28,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1914,7 +1793,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 31,
+      "rank": 29,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "keyword": "add_todo",
       "kind": "feature",
@@ -1974,7 +1853,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 32,
+      "rank": 30,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2032,7 +1911,7 @@
     },
     {
       "id": "todo-e2jv",
-      "rank": 33,
+      "rank": 31,
       "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
       "kind": "feature",
       "status": "OPEN",
@@ -2099,7 +1978,7 @@
     },
     {
       "id": "todo-af2e",
-      "rank": 34,
+      "rank": 32,
       "title": "Pydantic model for the TODO catalog item, with agent-facing read/write helpers",
       "keyword": "TodoCatalog",
       "kind": "feature",
@@ -2168,7 +2047,7 @@
     },
     {
       "id": "todo-zes6",
-      "rank": 35,
+      "rank": 33,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "keyword": "pr-team",
       "kind": "feature",
@@ -2228,7 +2107,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 36,
+      "rank": 34,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2283,7 +2162,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 37,
+      "rank": 35,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "keyword": "parallel2",
       "kind": "skill",
@@ -2345,7 +2224,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 38,
+      "rank": 36,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "keyword": "strap_scaffold",
       "kind": "bug",
@@ -2396,7 +2275,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 39,
+      "rank": 37,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2444,7 +2323,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 40,
+      "rank": 38,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2519,7 +2398,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 41,
+      "rank": 39,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "keyword": "end-of-branch",
       "kind": "skill",
@@ -2578,7 +2457,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 42,
+      "rank": 40,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "keyword": "HARNESS_RULES",
       "kind": "skill",
@@ -2635,7 +2514,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 43,
+      "rank": 41,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "keyword": "parallel2",
       "kind": "feature",
@@ -2699,7 +2578,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 44,
+      "rank": 42,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "keyword": "pr-team-orchestrator",
       "kind": "feature",
@@ -2760,7 +2639,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 45,
+      "rank": 43,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "keyword": "write-plan",
       "kind": "feature",
@@ -2822,7 +2701,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 46,
+      "rank": 44,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "keyword": "fold-in-review",
       "kind": "feature",
@@ -2890,7 +2769,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 47,
+      "rank": 45,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "keyword": "strap",
       "kind": "feature",
@@ -2967,7 +2846,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 48,
+      "rank": 46,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3027,7 +2906,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 49,
+      "rank": 47,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3103,8 +2982,70 @@
       "why_ranked": "Severity 2 missing driver step that write-plan already requires (a manual route exists), dev_velocity impact, L size."
     },
     {
+      "id": "todo-ea49",
+      "rank": 48,
+      "title": "harness: rebase-plan skill: plan and check restructures of existing branch commits, sharing branch-commit-msg piping",
+      "keyword": "rebase-plan",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "When a commit must be split across result blocks, does rebase-plan route the branch to `branch-commit-msg --fresh` (the issue leans this way) or emit `edit` stops with reset instructions; and is per-block file-set validation (approximate when one file changes in several commits) accepted as the shared bisect check?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#324",
+          "url": "https://github.com/t968rs/operator-straps/issues/324"
+        }
+      ],
+      "gh_issues": [
+        324
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "New `harness:rebase-plan` skill that rearranges a branch's existing commits (pick/fixup/reword/move) into bisect-clean blocks and emits a `git rebase -i` todo list plus a ps1 run through `GIT_SEQUENCE_EDITOR`, instead of branch-commit-msg's mixed-reset rebuild. Motivation (from the issue, unverified here): a consuming-project PR whose first rebase left two stray commits and broke pytest collection (test files landing before their registry entries). Script steps: `capture` (per-commit file sets, rebase-in-progress, ahead/behind), `analyze` (collection breaks, message drift, conflict risk, split needed), `build` (checks the agent's plan, writes todo list, rewords, receipt) and `check` (tree identity against the old head, plan match naming strays). Shared pieces checked in the tree: `capture_branch` (plugins/harness/scripts/branch_commit_msg.py:162) captures paths against the merge base, so a per-commit `commit^..commit` variant is new work; `_registry_targets` (branch_commit_msg.py:206), `_validation_problems` (:526) and `edit_problems` (:550) take a `BranchCommitDocument` (plugins/harness/lib/harness_lib/branch_commits.py:147); `project_canned_message` is at plugins/harness/lib/harness_lib/canned_messages.py:81; `document_to_ps1` at plugins/harness/scripts/txt_to_commit_dict.py:128. The issue's `commit_buckets` does not exist; the bucketing function is `commit_bucket` (branch_commits.py:107). No rebase-plan skill or script exists yet under plugins/.",
+      "proposed_change": "Write a short spec settling the two open choices (split routing; scope of the shared validation), turn it into a plan with `harness:write-plan`, then strap the skill with `harness:strap-skills` test-first: add a per-commit capture beside `capture_branch` returning `CapturedPath` records plus sha/subject/body, map the proposed result blocks to a `BranchCommitDocument` so `_validation_problems` and `edit_problems` run unchanged, add `capture`/`analyze`/`build`/`check` subcommands, a todo-list-plus-ps1 writer parallel to `document_to_ps1`, and a messenger-run SKILL.md with `context: fork` and the branch-commit-msg receipt shape.",
+      "code_snippet": "plugins/harness/scripts/branch_commit_msg.py:162\ndef capture_branch(repo: Path, merge_base: str) -> List[CapturedPath]:\n    \"\"\"Capture every path differing from ``merge_base`` (committed, staged, unstaged, untracked).",
+      "files": [
+        "plugins/harness/scripts/branch_commit_msg.py",
+        "plugins/harness/lib/harness_lib/branch_commits.py",
+        "plugins/harness/lib/harness_lib/canned_messages.py",
+        "plugins/harness/scripts/txt_to_commit_dict.py",
+        "plugins/harness/skills/branch-commit-msg/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "A new skill, but it refactors branch-commit-msg's capture and shares its validation, so branch-commit-msg behavior must stay unchanged.",
+        "consumers": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/scripts/txt_to_commit_dict.py"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Spec, plan and a strapped skill with four script subcommands, a per-commit capture, a todo-list/ps1 writer and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing guard against stray and collection-breaking commits after a rebase, dev_velocity impact, L size."
+    },
+    {
       "id": "todo-zj3h",
-      "rank": 50,
+      "rank": 49,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "keyword": "test-driven-development",
       "kind": "skill",
@@ -3167,7 +3108,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 51,
+      "rank": 50,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "keyword": "Spec-Sheet-Lite",
       "kind": "skill",
@@ -3227,7 +3168,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 52,
+      "rank": 51,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3288,7 +3229,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 53,
+      "rank": 52,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "keyword": "strap",
       "kind": "test",
@@ -3347,7 +3288,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 54,
+      "rank": 53,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "keyword": "bubble-memo",
       "kind": "feature",
@@ -3406,7 +3347,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 55,
+      "rank": 54,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "keyword": "SkillSpec",
       "kind": "bug",
@@ -3460,7 +3401,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 56,
+      "rank": 55,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "keyword": "write-plan",
       "kind": "skill",
@@ -3515,7 +3456,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 57,
+      "rank": 56,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "keyword": "pr-sum",
       "kind": "skill",
@@ -3572,7 +3513,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 58,
+      "rank": 57,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3626,7 +3567,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 59,
+      "rank": 58,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "keyword": "strap-debugging",
       "kind": "skill",
@@ -3687,7 +3628,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 60,
+      "rank": 59,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "keyword": "skill-tests",
       "kind": "test",
@@ -3743,7 +3684,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 61,
+      "rank": 60,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3798,7 +3739,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 62,
+      "rank": 61,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3849,7 +3790,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 63,
+      "rank": 62,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3906,7 +3847,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 64,
+      "rank": 63,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "keyword": "diagnosing-superpowers",
       "kind": "skill",
@@ -3960,7 +3901,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 65,
+      "rank": 64,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "keyword": "writing-skills",
       "kind": "skill",
@@ -4016,7 +3957,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 66,
+      "rank": 65,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "keyword": "plan_render_html",
       "kind": "feature",
@@ -4075,6 +4016,71 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 1 cosmetic page chrome, docs_tooling impact, S size."
+    },
+    {
+      "id": "todo-9ne6",
+      "rank": 66,
+      "title": "`write-plan`: declared data shapes, and an opt-in repo guard against untyped structures",
+      "keyword": "write-plan",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Does rule A.6 (undeclared shape) exempt private helpers of one module or require every new structure to be declared, and does the shape_guard baseline live under `.claude/` or beside the project's test fixtures?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#334",
+          "url": "https://github.com/t968rs/operator-straps/issues/334"
+        }
+      ],
+      "gh_issues": [
+        334
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Two parts. A: a `shapes[]` plan field (name, module, kind, introduced_by, members with name/type/meaning and an optional `untyped` waiver) that `plan.py check` refuses on untyped members (`Any`, `object`, `Mapping[str, Any]`, bare containers), positional tuple aliases, multi-bool shapes without `flag_combinations`, and a module outside the introducing item's files; `record`/`verify` then AST-check declared shapes against the tree and fail on undeclared new structures. Skill text gains a search-before-declaring step, a Step 3 `shapes[]` row and a PIP table per shape. B: an opt-in `shape_guard` config block (off in defaults) and `scripts/shape_guard.py` with `check`, `baseline` (shrink-only ratchet) and `init`, wired into `pr_review.py capture` structural guards, fixer briefs, `plan.py record` and `harness:doctor`. Checked in the tree: `decisions`, `values` and `formats` sit in plugins/harness/lib/harness_lib/plan_models.py:452-458 with no `shapes`; `plan.py` has `check`, `record` and `verify` subcommands (plugins/harness/scripts/plan.py:1092, :1121, :1131); structural guards run through `run_guards`/`guards_check` (plugins/harness/scripts/pr_review.py:333, :496); no `shape_guard` exists under plugins/. The motivating `Tuple[Any, bool, bool]` alias lives in a consuming project and is unverified here. The new config key needs the four-place touch (defaults.json, harness.schema.json, config.py, README key table).",
+      "proposed_change": "Settle the open questions, then plan and strap in two parts. A: add a `Shape` model and `shapes[]` to plan_models.py, check rules A.1-A.4 in `plan.py check`, AST rules A.5-A.6 in `record`/`verify`, and the write-plan SKILL.md and PIP render changes. B: add the `shape_guard` key (defaults.json, harness.schema.json, config.py dataclass and builder, README), `scripts/shape_guard.py` (`check`, `baseline`, `init`) reading by AST with the `# untyped:` waiver, hook it into pr_review capture guards, fixer briefs, `plan.py record` and doctor, all gated on `enabled`; enable it on lib/harness_lib with a generated baseline. Pytest covers each acceptance case in the issue.",
+      "code_snippet": "plugins/harness/lib/harness_lib/plan_models.py:452\n    decisions: List[Decision] = Field(default_factory=list, description=(\n        \"Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. \"",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_models.py",
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/harness/skills/doctor/SKILL.md",
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/lib/harness_lib/config.py"
+      ],
+      "blast_radius": {
+        "level": "L",
+        "reasoning": "Changes the plan model and plan.py check/record/verify for every plan, adds a config key and touches pr_review capture and fixer briefs; the guard half is gated off by default.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "XL",
+        "reasoning": "A new plan field with six check rules including AST comparison, plus a new guard script with baseline ratchet, a config key in four places and four integration surfaces, all strapped with tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.4082,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 16,
+          "blast_factor": 1.5,
+          "cost": 24.0,
+          "base_score": 0.4082,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing guard letting untyped structures pass plan freeze and review, dev_velocity impact, XL size."
     },
     {
       "id": "todo-8thf",
@@ -4827,6 +4833,24 @@
       "evidence": "PR #292 (merge a9f71c3, merged to main 2026-11-16 per `gh pr view 292`) ships both halves the issue asked for: bdeb4f8 adds the catalog lock with write locks and leases, c6bc3df holds it on every catalog write and adds the `inbox` and `lease` subcommands, e1914f2 adds the `scratch_folder` key (plugins/harness/config/defaults.json:13) and the TODO inbox under <scratch_folder>/todo-inbox/, 0b4a42f routes todo-editor adds through `inbox put` with the drain as `add --inbox`, and 1c49686 covers the lock CLI, drain triggers and `scratch_folder`. PR #312 (3a34045) later added `lease acquire --wait` and `inbox put --update`. `gh issue view 277` reports OPEN. The catalog item for #277 was retired in this run.",
       "recommended_action": "Close #277 citing PR #292 (a9f71c3).",
       "related_todo_ids": []
+    },
+    {
+      "number": 268,
+      "title": "Add `pr-sum <no> --level 0` Summary Level",
+      "url": "https://github.com/t968rs/operator-straps/issues/268",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Branch 0006-pr-sum-updates (PR #339) implements it: c2876e4 (Refs: #268) adds 0 to `LEVELS` (plugins/harness/lib/harness_lib/pr_summary.py:48), renders Summary only at level 0 (no delta table, sections, Files Changed or Relocated), forbids sections at levels 0 and 1, lets `capture --level` accept 0 and adds the level 0 cases to tests/lib/test_pr_summary.py and tests/scripts/test_pr_sum.py; 55868e5 documents it in the pr-sum SKILL.md and README.md and bumps harness to 0.85.0; ca25be5 refines the level 0 wording. `gh pr view 339` reports OPEN (not merged); `gh issue view 268` reports OPEN. The catalog item for #268 was retired in this run.",
+      "recommended_action": "Close #268 once PR #339 merges to main (c2876e4, 55868e5).",
+      "related_todo_ids": []
+    },
+    {
+      "number": 269,
+      "title": "Add `--gh` Flag to `pr-sum`",
+      "url": "https://github.com/t968rs/operator-straps/issues/269",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Branch 0006-pr-sum-updates (PR #339) implements it, settling the open choice as a marked block in the PR description: befb479 adds the `pr_body` module that puts a summary in a PR description as a marked block; c2876e4 (Refs: #269) adds `capture --gh` stored in the skeleton (plugins/harness/scripts/pr_sum.py:421) and has `build` publish the saved .md through `publish_saved` (plugins/harness/scripts/pr_sum.py:358), keeping the .md when a publish fails, with `TestGhPublish` in tests/scripts/test_pr_sum.py; cf9fe06 matches markers as whole lines and keeps CRLF bodies; 55868e5, 9729298 and ca25be5 document --gh, the rerun line and the consent rule. `gh pr view 339` reports OPEN (not merged); `gh issue view 269` reports OPEN. The catalog item for #269 was retired in this run.",
+      "recommended_action": "Close #269 once PR #339 merges to main (befb479, c2876e4, cf9fe06).",
+      "related_todo_ids": []
     }
   ],
   "retired_ids": [
@@ -4858,7 +4882,9 @@
     "todo-v62t",
     "todo-v8mh",
     "todo-jrz2",
-    "todo-5v8j"
+    "todo-5v8j",
+    "todo-n48z",
+    "todo-mbt8"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
