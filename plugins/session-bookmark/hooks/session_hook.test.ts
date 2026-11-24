@@ -1,5 +1,5 @@
 import type { Engine } from 'claude-code/testing'
-import type { On } from 'claude-code'
+import type { On, ProcessRunResult } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
 import {
@@ -10,6 +10,7 @@ import {
   hookFileOf,
   markFired,
   MAX_GOAL_CHARS,
+  STAMP_FAILED,
 } from './session_hook'
 
 const GOAL = 'TODO todo-af2e (x) is retired'
@@ -40,7 +41,7 @@ describe('armedSwitch', () => {
     expect(goal.length).toBe(MAX_GOAL_CHARS)
   })
 
-  test('a row-time switch without an item id is armed with a null id', async () => {
+  test('a free-text goal switch without an item id is armed with a null id', async () => {
     expect(armedSwitch(file({}, { todo_id: null }))?.todoId).toBe(null)
   })
 })
@@ -64,22 +65,42 @@ const NOW_MS = 1_800_000_000_000
 
 type Seen = { goals: string[]; writes: Map<string, string>; toasts: string[]; clock: ReturnType<typeof mock.clock> }
 
+/**
+ * The session folders: `dir` is the cwd and CLAUDE_PROJECT_DIR; `tops` maps a folder to its git top level;
+ * `writeFails` refuses every write.
+ */
+type Where = { dir?: string; tops?: Record<string, string>; writeFails?: boolean }
+
 /** A path as the fake disk keys it: forward slashes, no drive (the engine resolves `/repo` to `C:/repo`). */
 const keyOf = (p: string): string =>
   p.replace(/\\/g, '/').replace(/^(?:[^]*?\/)?[A-Za-z]:(?=\/|$)/, '').toLowerCase()
 
-/** Answers env, cwd, files, the clock, `/goal` and toasts from memory; `goalFails` refuses the command. */
-const world = (on: On, files: Record<string, string>, goalFails = false): Seen => {
+const ran = (stdout: string, exitCode = 0): ProcessRunResult => ({
+  exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false,
+})
+
+/** Answers `git rev-parse --show-toplevel` from `tops`; any other folder is no repository. */
+const gitWorld = (on: On, tops: Record<string, string>): void => {
+  on('process.run', (_$, e) => {
+    const top = tops[e.argv[2] ?? '']
+    return { value: top === undefined ? ran('', 128) : ran(`${top}\n`) }
+  })
+}
+
+/** Answers env, cwd, git, files, the clock, `/goal` and toasts from memory; `goalFails` refuses the command. */
+const world = (on: On, files: Record<string, string>, goalFails = false, where: Where = {}): Seen => {
   const clock = mock.clock(on, { now: NOW_MS })
   const seen: Seen = { goals: [], writes: new Map(), toasts: [], clock }
-  mock.env(on, { CLAUDE_PROJECT_DIR: ROOT })
-  on('session.cwd', () => ({ value: '' }))
+  mock.env(on, { CLAUDE_PROJECT_DIR: where.dir ?? ROOT })
+  on('session.cwd', () => ({ value: where.dir ?? '' }))
+  gitWorld(on, where.tops ?? {})
   const disk = new Map(Object.entries(files).map(([path, text]) => [keyOf(path), text]))
   on('fs.read', (_$, e) => {
     const text = seen.writes.get(keyOf(e.path)) ?? disk.get(keyOf(e.path))
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   on('fs.write', (_$, e) => {
+    if (where.writeFails === true) return { deny: 'EACCES' }
     seen.writes.set(keyOf(e.path), e.text)
     return { value: undefined }
   })
@@ -111,18 +132,55 @@ describe('turn.complete fires the switch', () => {
     expect(JSON.parse(seen.writes.get(keyOf(SWITCH)) ?? '{}')[FIRED_KEY]).toEqual({ at: NOW_MS })
   })
 
-  test("a subagent's turn and a fired switch set no goal", async ($, on) => {
-    const seen = world(on, { [SWITCH]: file({ [FIRED_KEY]: { at: 1 } }) })
+  test("a subagent's turn sets no goal and leaves an armed switch armed", async ($, on) => {
+    const seen = world(on, { [SWITCH]: file({}, { start_time: 1763600001.5 }) })
     await endTurn($, seen, 'agent-1')
+    expect(seen.goals).toEqual([])
+    expect(seen.writes.size).toBe(0)
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([GOAL])
+  })
+
+  test('a fired switch sets no goal on a main-loop turn', async ($, on) => {
+    const seen = world(on, { [SWITCH]: file({ [FIRED_KEY]: { at: 1 } }, { start_time: 1763600004.5 }) })
     await endTurn($, seen)
     expect(seen.goals).toEqual([])
   })
 
+  test('a switch under a custom state_dir is found and fires', async ($, on) => {
+    const custom = `${ROOT}/custom/state/${HOOK_PATH}`
+    const seen = world(on, {
+      [`${ROOT}/.claude/harness.json`]: JSON.stringify({ state_dir: 'custom/state' }),
+      [custom]: file({}, { start_time: 1763600003.5 }),
+    })
+    await endTurn($, seen)
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([GOAL])
+  })
+
+  test('a session below the repository top reads the switch under the top level', async ($, on) => {
+    const sub = `${ROOT}/sub`
+    const seen = world(on, { [SWITCH]: file({}, { start_time: 1763600005.5 }) }, false, {
+      dir: sub,
+      tops: { [sub]: ROOT },
+    })
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([GOAL])
+    expect(JSON.parse(seen.writes.get(keyOf(SWITCH)) ?? '{}')[FIRED_KEY]).toEqual({ at: NOW_MS })
+  })
+
   test('a refused /goal leaves the switch armed and says so once', async ($, on) => {
-    const seen = world(on, { [SWITCH]: file() }, true)
+    const seen = world(on, { [SWITCH]: file({}, { start_time: 1763600002.5 }) }, true)
     await endTurn($, seen)
     await endTurn($, seen)
     expect(seen.writes.size).toBe(0)
     expect(seen.toasts).toEqual(['session-bookmark: could not set the goal for todo-af2e'])
+  })
+
+  test('a goal set whose stamp fails says the goal was set, not refused', async ($, on) => {
+    const seen = world(on, { [SWITCH]: file({}, { start_time: 1763600006.5 }) }, false, { writeFails: true })
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([GOAL])
+    expect(seen.toasts).toEqual([`session-bookmark: goal set for todo-af2e; ${STAMP_FAILED}`])
   })
 })

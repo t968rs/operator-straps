@@ -4,8 +4,9 @@ A compaction bookmark kept in session state instead of a file. It stands in for 
 and `SessionStart` compact|resume hooks that write a bookmark file and read it back after compaction.
 
 Nothing in it is specific to one repository: it reads git state, the conversation and the project's notes
-file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's add-bookmark skill; the rest
-depends on no other plugin.
+file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's add-bookmark skill, and the
+session hook switch is written only by the harness plugin's add-bookmark or add-todo skills; the rest depends on
+no other plugin.
 
 ## What it does
 
@@ -68,7 +69,9 @@ A switch for an item:
 ```
 
 - At the end of each main-loop turn (`turn.complete`, no `agentId`), `hooks/session_hook.ts` reads the switch
-  from the session cwd, else `CLAUDE_PROJECT_DIR`. While `fired` is null it queues `/goal <goal>` through
+  under the git top level of the session cwd, else of `CLAUDE_PROJECT_DIR` (the root the harness writers
+  use); when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds a switch is
+  read. While `fired` is null it queues `/goal <goal>` through
   `$.command.run` (the command runs once the session is idle), then stamps `fired: { at }`, so a switch sets
   its goal once. `/goal` is the engine's session-scoped Stop hook: its evaluator keeps the session working until
   the condition holds; `/goal clear` ends it, `add_note.py goal --clear` or `add_todo.py hook --clear` removes
@@ -78,7 +81,10 @@ A switch for an item:
   (tests passed and the commit message is drafted), `developer` (tests passed and a reply hands the item to the
   developer with the files changed and what is left).
 - A refused `/goal` (an unknown command, past a Stop, a host limit) leaves the switch armed and shows one toast;
-  the switch is tried once per mod load, so the next load retries it.
+  the switch is tried once per mod load, so the next load retries it. When `/goal` is set but the `fired`
+  stamp cannot be written, a different toast says the goal was set and the switch is still armed: the next
+  load would set it again, so `add_note.py goal --clear` removes it. A switch re-armed or cleared while
+  `/goal` was queued is left as it is, not stamped.
 - Fallback, should `/goal` be unavailable where the mod runs: a temporary `Stop` hook in
   `.claude/settings.local.json` that the file watcher loads and drops without a restart (issue #282's gate).
   The mod does not write it; a live session confirmed `/goal` runs from `$.command.run`.
@@ -99,6 +105,7 @@ A switch for an item:
 | `session.append` (door `compaction`, main loop) | Marks the bookmark owed when this mod's `session.compact` hook appended none since the last such row or prompt (the fallback in What it does). |
 | `prompt.submit` | Clears the appended mark; a prompt entered while a bookmark is owed carries it as context (trigger `detected`). A slash-command line never carries it. |
 | `session.end` | After `/clear` or a resume, forgets the appended and owed marks. |
+| `turn.complete` (main loop, no `agentId`) | While the hook switch is armed and not fired, queues `/goal <goal>` through `$.command.run` and stamps `fired` (Session hook). |
 | `command.run` on `session-bookmark` | Answers `/session-bookmark` and `/session-bookmark notes` (Command). |
 
 ## State
@@ -119,6 +126,8 @@ A switch for an item:
   when fewer than three prompts followed it.
 - The notes file is per project folder, not per session: two sessions in one repository share their notes, and
   a note nobody clears reaches the next session's bookmark. A linked worktree reads its own file.
+- The hook switch carries no session id either: with two sessions on one checkout, the first to end a main-loop
+  turn after the switch is armed queues the `/goal` and stamps it fired.
 - A session without this mod loaded gets no bookmark at all. Where the mod is enabled in project
   settings, a folder whose workspace trust was never accepted, including a `claude -p` run there,
   ignores those settings and compacts with no bookmark.

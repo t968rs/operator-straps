@@ -49,11 +49,14 @@ export const stateDirOf = (configText: string | undefined): string => {
 /** Whether a path is absolute: POSIX, drive or UNC. */
 const isAbsolute = (path: string): boolean => /^([A-Za-z]:)?[\\/]/.test(path)
 
-/** The notes file under `root`; an absolute `stateDir` is kept as it is. */
-export const notesFileOf = (root: string, stateDir: string): string => {
+/** The file `rel` under `root`'s `stateDir`; an absolute `stateDir` is kept as it is. */
+export const stateFileOf = (root: string, stateDir: string, rel: string): string => {
   const base = isAbsolute(stateDir) ? stateDir : `${cleanPath(root)}/${stateDir}`
-  return `${base}/${NOTES_PATH}`
+  return `${base}/${rel}`
 }
+
+/** The notes file under `root`; an absolute `stateDir` is kept as it is. */
+export const notesFileOf = (root: string, stateDir: string): string => stateFileOf(root, stateDir, NOTES_PATH)
 
 /** A note's text cut to the limit and trimmed; blank and non-text entries read as null. */
 const noteText = (entry: unknown): string | null => {

@@ -1,7 +1,7 @@
 {
   "name": "session-bookmark",
   "version": "0.4.0",
-  "description": "Compaction bookmark: git state, last prompts, session notes and /compact instructions kept in session state and appended to the compacted conversation",
+  "description": "Compaction bookmark: git state, last prompts, session notes and /compact instructions kept in session state and appended to the compacted conversation, and an optional /goal hook switch",
   "author": {
     "name": "Kevin Gabelman"
   },

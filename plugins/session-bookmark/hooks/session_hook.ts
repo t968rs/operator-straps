@@ -1,6 +1,6 @@
 import type { EngineInterface, Register } from 'claude-code'
 
-import { stateDirOf } from './notes'
+import { stateDirOf, stateFileOf } from './notes'
 
 /**
  * Optional session hook: a goal, free text or a TODO item, turned into the session's goal.
@@ -12,21 +12,24 @@ import { stateDirOf } from './notes'
  * runs once the session is idle, then stamps `fired` with the time, so the goal is set once. `/goal` is the engine's session-scoped Stop hook: its evaluator keeps the session going until the
  * condition holds, and `/goal clear` ends it. An installed mod cannot read the harness plugin, so the path,
  * version and keys are copied here; `tests/mods/test_session_bookmark_hook_contract.py` pins them against
- * `harness_lib.add_todo_api`. Every failure leaves the prompt as it was; the hook never throws past `next`.
+ * `harness_lib.add_todo_api`. Every failure leaves the switch armed and the turn's result as it was; the hook
+ * never throws past `next`.
  */
 
 type Dollar = EngineInterface
 
 export const HOOK_PATH = 'session-bookmark/hook.json'
 export const HOOK_SCHEMA_VERSION = 1
-/** The longest goal sent; the engine's `/goal` refuses a longer condition. */
+/** The longest goal sent, in code points: `/goal` refuses a longer condition, and the harness caps the armed condition at the same length. */
 export const MAX_GOAL_CHARS = 500
 /** The built-in command the switch fires. */
 export const GOAL_COMMAND = 'goal'
 /** The switch key stamped once the goal was queued; null while armed. */
 export const FIRED_KEY = 'fired'
+/** How long one `git rev-parse` may run (the bookmark's git timeout). */
+const GIT_TIMEOUT_MS = 5000
 
-/** An armed switch as the mod acts on it: the goal text and the item it names (null before the drain). */
+/** An armed switch as the mod acts on it: the goal text and the item it names (null for a free-text goal). */
 export type HookSwitch = { goal: string; todoId: string | null; startTime: number }
 
 type Json = Readonly<Record<string, unknown>>
@@ -44,17 +47,13 @@ const parse = (text: string): unknown => {
 // ---------------------------------------------------------------------------
 // Pure
 
-/** The switch file under `root`; an absolute `stateDir` is kept as it is. */
-export const hookFileOf = (root: string, stateDir: string): string => {
-  const cleanRoot = root.trim().replace(/\\/g, '/').replace(/\/+$/, '')
-  const base = /^([A-Za-z]:)?[\\/]/.test(stateDir) ? stateDir : `${cleanRoot}/${stateDir}`
-  return `${base}/${HOOK_PATH}`
-}
+/** The switch file under `root`; an absolute `stateDir` is kept as it is (the notes path rule). */
+export const hookFileOf = (root: string, stateDir: string): string => stateFileOf(root, stateDir, HOOK_PATH)
 
-/** The goal cut to the engine's limit, whitespace folded; null when blank. */
+/** The goal cut to the limit in code points (as the harness counts it), whitespace folded; null when blank. */
 const goalText = (value: unknown): string | null => {
   const text = typeof value === 'string' ? value.split(/\s+/).join(' ').trim() : ''
-  return text === '' ? null : text.slice(0, MAX_GOAL_CHARS)
+  return text === '' ? null : Array.from(text).slice(0, MAX_GOAL_CHARS).join('')
 }
 
 /**
@@ -88,9 +87,32 @@ const rootCandidates = async ($: Dollar): Promise<string[]> => {
   return [...new Set([cwd, env].filter((p): p is string => p !== undefined && p.trim() !== ''))]
 }
 
+/** The git top level of `root`, where the harness writers put the switch; null when it is no repository. */
+const gitTop = async ($: Dollar, root: string): Promise<string | null> => {
+  const ran = await $.process
+    .run(['git', '-C', root, 'rev-parse', '--show-toplevel'],
+      { timeoutMs: GIT_TIMEOUT_MS, env: { GIT_OPTIONAL_LOCKS: '0' } })
+    .catch(() => undefined)
+  const top = ran === undefined || ran.exitCode !== 0 ? '' : ran.stdout.trim()
+  return top === '' ? null : top
+}
+
+/**
+ * Folders that may hold the switch: the top level of the first candidate inside a repository (the root the
+ * harness writers resolve, as `bookmark.ts` does for the notes), else the raw candidates. Never throws.
+ */
+const switchRoots = async ($: Dollar): Promise<string[]> => {
+  const candidates = await rootCandidates($)
+  for (const root of candidates) {
+    const top = await gitTop($, root)
+    if (top !== null) return [top]
+  }
+  return candidates
+}
+
 /** The first root's switch path and text; undefined when no root holds one. Never throws. */
 const findSwitch = async ($: Dollar): Promise<{ path: string; text: string } | undefined> => {
-  for (const root of await rootCandidates($)) {
+  for (const root of await switchRoots($)) {
     const clean = root.replace(/\\/g, '/')
     const config = await $.fs.read(`${clean}/.claude/harness.json`).catch(() => undefined)
     const path = hookFileOf(clean, stateDirOf(config))
@@ -103,24 +125,49 @@ const findSwitch = async ($: Dollar): Promise<{ path: string; text: string } | u
 /** Per-load guard: a switch (by start time) is tried at most once per load, so a refusal does not loop. */
 const tried = new Set<number>()
 
+/** The toast's tail when the goal was set but the switch could not be stamped fired. */
+export const STAMP_FAILED = 'could not mark the switch fired (add_note.py goal --clear removes it)'
+
+/** Shows one toast; a refused toast is dropped. Never throws. */
+const toast = ($: Dollar, text: string): void => {
+  try {
+    $.ui.toast(text)
+  } catch {
+    // a refused toast changes nothing else
+  }
+}
+
 /**
- * Queues `/goal` for an armed switch and stamps it fired; a rejected run leaves it armed for the next load
- * and says so in a toast. Never throws.
+ * Stamps the switch fired when its text is still the one read before `/goal` was queued; a switch re-armed or
+ * removed meanwhile is left as it is. Throws when the read or the write fails.
+ */
+const stampFired = async ($: Dollar, found: { path: string; text: string }): Promise<void> => {
+  const current = await $.fs.read(found.path).catch(() => undefined)
+  if (current !== found.text) return
+  await $.fs.write(found.path, markFired(found.text, await $.clock.now()))
+}
+
+/**
+ * Queues `/goal` for an armed switch and stamps it fired. A rejected run leaves it armed for the next load and
+ * says so in a toast; a stamp that fails after the goal was set says that instead, since the next load would
+ * set the goal again until the switch is cleared. Never throws.
  */
 const fire = async ($: Dollar): Promise<void> => {
   const found = await findSwitch($)
   const armed = found === undefined ? null : armedSwitch(found.text)
   if (found === undefined || armed === null || tried.has(armed.startTime)) return
   tried.add(armed.startTime)
+  const item = armed.todoId === null ? '' : ` for ${armed.todoId}`
   try {
     await $.command.run({ command: GOAL_COMMAND, args: armed.goal })
-    await $.fs.write(found.path, markFired(found.text, await $.clock.now()))
   } catch {
-    try {
-      $.ui.toast(`session-bookmark: could not set the goal${armed.todoId === null ? '' : ` for ${armed.todoId}`}`)
-    } catch {
-      // a refused toast leaves the switch armed for the next load
-    }
+    toast($, `session-bookmark: could not set the goal${item}`)
+    return
+  }
+  try {
+    await stampFired($, found)
+  } catch {
+    toast($, `session-bookmark: goal set${item}; ${STAMP_FAILED}`)
   }
 }
 
