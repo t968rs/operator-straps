@@ -1,6 +1,6 @@
 ---
 name: strap-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes, and the superpowers-lt:systematic-debugging skill is not installed.
+description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes.
 ---
 
 # Systematic Debugging
@@ -174,7 +174,7 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible
    - One-off test script if no framework
    - MUST have before fixing
-   - Use the `superpowers-lt:test-driven-development` skill (when installed) for writing proper failing tests
+   - Use the `harness:tdd-strapped` skill for writing proper failing tests
 
 2. **Implement Single Fix**
    - Address the root cause identified
@@ -186,7 +186,7 @@ You MUST complete each phase before proceeding to the next.
    - Test passes now?
    - No other tests broken?
    - Issue actually resolved?
-   - Use the `superpowers-lt:verification-before-completion` skill (when installed) before claiming success
+   - Before claiming success, run the tests that prove the fix by file name and read their output
 
 4. **If Fix Doesn't Work**
    - STOP
@@ -207,7 +207,7 @@ You MUST complete each phase before proceeding to the next.
    - Are we "sticking with it through sheer inertia"?
    - Should we refactor architecture vs. continue fixing symptoms?
 
-   **Discuss with your human partner before attempting more fixes**
+   **Discuss with the developer before attempting more fixes**
 
    This is NOT a failed hypothesis - this is a wrong architecture.
 
@@ -228,9 +228,9 @@ If you catch yourself thinking:
 
 **ALL of these mean: STOP. Return to Phase 1.**
 
-**If 3+ fixes failed:** Question the architecture (see Phase 4.5)
+**If 3+ fixes failed:** Question the architecture (see Phase 4, step 5)
 
-## your human partner's Signals You're Doing It Wrong
+## The Developer's Signals You're Doing It Wrong
 
 **Watch for these redirections:**
 - "Is that not happening?" - You assumed without verifying

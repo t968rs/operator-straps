@@ -54,8 +54,9 @@ These load on their own triggers (or as `/harness:<name>`) and need no configura
 | `efficient-file-reading` | A long file, or one already read, is about to be read again: search first. |
 | `searching-sourcegraph` | A Sourcegraph MCP server is connected and a question needs patterns or call chains. |
 | `spatialist` | A spatial processing monolith is decomposed into packages, or test failures are triaged after an API change. |
-| `strap-debugging` | A bug or test failure needs a diagnosis and `superpowers-lt:systematic-debugging` is not installed. |
+| `strap-debugging` | A bug, test failure or unexpected behavior needs a root-cause diagnosis before any fix. |
 | `subagent-reporting` | A long-running subagent may be silently blocked. |
+| `tdd-strapped` | A feature, fix or refactor is about to be written, or a test or mock is about to change: failing test first, test runs named by file, full-suite runs left to the developer. |
 
 ## Bundled Mods and Dashboard Views
 | Goal                    | Where             | Mods               | Description                                                                                                                                                                                          | Notes                                                                                                                                                                                                                                                                                                                                                     |
@@ -160,7 +161,6 @@ claude plugin install todo-watch@operator-straps
 claude plugin install bubble-stamp@operator-straps
 claude plugin install parallel2-lanes@operator-straps
 claude plugin install arc-straps@operator-straps
-claude plugin install superpowers-lt@operator-straps   # optional: process skills; harness:strap-debugging stands in when absent
 ```
 
 Upgrading from 0.x: see [Upgrading from 0.7](docs/RELEASES/v1.0.0.md#upgrading-from-07).
