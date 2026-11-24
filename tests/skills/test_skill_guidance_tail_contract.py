@@ -30,6 +30,7 @@ _INVOCABLE = [
 _KNOWLEDGE = [
     "agent-permissions", "consumer-contract-audit", "decompose-module", "efficient-file-reading",
     "searching-sourcegraph", "spatialist", "strap-debugging", "subagent-reporting", "tdd-strapped",
+    "writing-comments",
 ]
 
 

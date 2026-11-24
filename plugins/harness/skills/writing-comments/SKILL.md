@@ -8,8 +8,8 @@ description: Use when writing or editing Python `#` comments, when creating a Py
 Two kinds of `#` comment carry this convention, both defined in `${CLAUDE_SKILL_DIR}/comment_format.md`:
 
 - **Section dividers** give a module an outline: a rule / title / rule banner per top-level group and a
-  `# -- name ----` line per group inside one, every divider line exactly `comments.divider_width` long
-  (default 88), indentation included.
+  `# -- name ----` line per group inside one, every rule and minor line exactly `comments.divider_width`
+  long (default 88), indentation included; title and sentence lines are free length.
 - **Process comments** state what the code cannot show: why a branch wins, an ordering the code depends on,
   an invariant, an outside constraint. One line where it fits; never a restatement of the next line, never a
   PR, review, ticket or plan id.
@@ -31,8 +31,10 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/writing-com
 ```
 
 It prints one `major` or `minor` line per divider and one `flag` line per divider off the convention. Fix
-every flag in the lines written, rerun until none is left, and name the command's last output in the reply.
-Never count dashes by eye: the command measures the width.
+every flag in the lines written, rerun until none is left, and end the reply with `comment_sections.py` by
+name and its last output, so a reader can tell the outline was measured.
+Never count dashes by eye: the command measures the width, and a `width` flag ends `-> <canonical line>`,
+the exact rule or minor line to paste at that comment's indentation.
 
 ## Scope
 
@@ -49,6 +51,6 @@ Never count dashes by eye: the command measures the width.
 | Creating a module with two or more groups | Major dividers per group, minor inside; run the command; clear its flags |
 | Creating a one-group module | No dividers |
 | Asked to outline an existing module | Run the command first, then add or rewrite dividers; rerun until no flag |
-| Editing one function in a module with odd dividers | Leave the dividers; mention them if asked |
+| Editing one function in a module with odd dividers | Leave dividers outside the rewritten block; rewrite the one heading a block the work rewrites; offer a section pass in the reply |
 | Asked for "thorough" comments | More reasons, stated fully; never narration |
 | A comment would repeat the line below it | Delete it |

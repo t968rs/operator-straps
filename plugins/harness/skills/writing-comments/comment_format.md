@@ -6,8 +6,9 @@ covers `#` comments only.
 
 ## Section dividers
 
-Every divider line is exactly the project's `comments.divider_width` long (default 88), indentation
-included. `comment_sections.py` measures it; never count dashes by eye.
+Every rule and minor divider line is exactly the project's `comments.divider_width` long (default 88),
+indentation included; title and sentence lines are free length. `comment_sections.py` measures it and prints
+the canonical line on each `width` flag; never count dashes by eye.
 
 ### Major: a banner per top-level group
 
@@ -45,7 +46,8 @@ indentation and still ends at the width.
 | `### ======= PROCESSING CLASSES ============ ###` | `style` |
 | `# ----------------------------------------- scaffold` (title after the dash run) | `style` |
 | a rule with no title, or a rule and title with no closing rule | `banner` |
-| a rule or minor line shorter or longer than the width | `width` |
+| `# -- helpers` (a minor line with no closing dash run) | `style` |
+| a rule or minor line shorter or longer than the width, `# -- helpers --` included | `width` |
 
 An existing non-canonical divider is rewritten only when the work rewrites the block it heads, or on an
 explicit ask for a section pass. A module the work does not change keeps every comment as it is.
@@ -109,7 +111,10 @@ It prints the outline and the flags of each file, in line order:
 ```
 src/mod.py:12: major Row helpers
 src/mod.py:40: minor quoting
-src/mod.py:77: flag width: # -- writers ------------------------------------------------------------
+src/mod.py:77: minor writers
+src/mod.py:77: flag width: # -- writers --- -> # -- writers ---------------------------------------------------------------------------
 ```
 
-or `src/mod.py: no dividers`. It writes nothing. A `problem:` line names a path to fix.
+or `src/mod.py: no dividers`. A `width` flag ends `-> <canonical line>`: the rule or minor line at that
+comment's indentation and the project's width, ready to paste over the flagged one. It writes nothing. A `problem:` line on stderr (exit 1, nothing on stdout) names what to fix: a missing or
+non-`.py` path, source that does not tokenize, no path given, or an invalid configuration.

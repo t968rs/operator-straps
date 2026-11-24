@@ -389,6 +389,60 @@
       "recorded": true,
       "tree": "plan-red-e4d9108",
       "start": "e4d9108d85a22c959ca166262223aa12629a5d4f"
+    },
+    {
+      "id": "R-5",
+      "behavior": "B4",
+      "scenario": "SC-6",
+      "arm": "green",
+      "skill_hash": "4c7a0cd5a592040864ba480ac8b2e1f9c9612ce8b91118271fd7f4d4dcf024a4",
+      "reply": "Created sandbox/cache/lru.py. It has two key helpers, an LRUCache class and a default_cache() factory, so it holds several groups. I gave each group a major divider and split the class body with minor dividers.\n\nThe section command first flagged every rule and minor line as `width`, because I had written them two characters too long. I pasted the canonical lines it gave and reran. Its last output:\n\nsandbox/cache/lru.py:7: major Key helpers\nsandbox/cache/lru.py:26: major LRUCache\nsandbox/cache/lru.py:34: minor lifecycle\nsandbox/cache/lru.py:45: minor access\nsandbox/cache/lru.py:66: minor maintenance\nsandbox/cache/lru.py:87: major Default cache\n\nNo flags are left. The file has one process comment, the reason eviction runs after the insert.\n\n```python\n\"\"\"Least-recently-used cache with key helpers and a shared default instance.\"\"\"\n\nfrom collections import OrderedDict\nfrom typing import Any, Hashable, Optional, Tuple\n\n\n# --------------------------------------------------------------------------------------\n# Key helpers\n# --------------------------------------------------------------------------------------\n\n\ndef make_key(*parts: Any) -> Tuple[str, ...]:\n    \"\"\"Build a cache key from the given parts.\"\"\"\n    return tuple(str(part) for part in parts)\n\n\ndef normalize_key(key: Any) -> Hashable:\n    \"\"\"Return a hashable, canonical form of a key.\"\"\"\n    if isinstance(key, (list, tuple)):\n        return make_key(*key)\n    if isinstance(key, str):\n        return (key.strip().lower(),)\n    return (str(key),)\n\n\n# --------------------------------------------------------------------------------------\n# LRUCache\n# --------------------------------------------------------------------------------------\n\n\nclass LRUCache:\n    \"\"\"Bounded mapping that drops the least recently used entry when full.\"\"\"\n\n    # -- lifecycle ---------------------------------------------------------------------\n\n    def __init__(self, capacity: int = 128) -> None:\n        if capacity < 1:\n            raise ValueError(\"capacity must be at least 1\")\n        self.capacity = capacity\n        self._data: \"OrderedDict[Hashable, Any]\" = OrderedDict()\n        self._hits = 0\n        self._misses = 0\n        self._evictions = 0\n\n    # -- access ------------------------------------------------------------------------\n\n    def get(self, key: Any, default: Optional[Any] = None) -> Any:\n        \"\"\"Return the value for key, marking it most recently used.\"\"\"\n        norm = normalize_key(key)\n        if norm not in self._data:\n            self._misses += 1\n            return default\n        self._data.move_to_end(norm)\n        self._hits += 1\n        return self._data[norm]\n\n    def put(self, key: Any, value: Any) -> None:\n        \"\"\"Store a value, evicting the oldest entry when over capacity.\"\"\"\n        norm = normalize_key(key)\n        self._data[norm] = value\n        self._data.move_to_end(norm)\n        # Eviction runs after the insert so an update of an existing key never evicts.\n        while len(self._data) > self.capacity:\n            self.evict()\n\n    # -- maintenance -------------------------------------------------------------------\n\n    def evict(self) -> Optional[Hashable]:\n        \"\"\"Remove and return the least recently used key, or None when empty.\"\"\"\n        if not self._data:\n            return None\n        key, _ = self._data.popitem(last=False)\n        self._evictions += 1\n        return key\n\n    def stats(self) -> dict:\n        \"\"\"Return hit, miss, eviction and size counters.\"\"\"\n        return {\n            \"hits\": self._hits,\n            \"misses\": self._misses,\n            \"evictions\": self._evictions,\n            \"size\": len(self._data),\n            \"capacity\": self.capacity,\n        }\n\n\n# --------------------------------------------------------------------------------------\n# Default cache\n# --------------------------------------------------------------------------------------\n\n_default: Optional[LRUCache] = None\n\n\ndef default_cache() -> LRUCache:\n    \"\"\"Return the shared cache, creating it on first use.\"\"\"\n    global _default\n    if _default is None:\n        _default = LRUCache()\n    return _default\n```\n",
+      "reply_sha256": "2afac215e6b79f3d4e815c62e1adb74637285dd5ee67610f8dda38bb6a00b8f8",
+      "diff": [
+        "sandbox/cache/lru.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?m)^# -{86}$: observed True"
+        },
+        {
+          "index": 1,
+          "held": false,
+          "detail": "reply_matches comment_sections: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e1bb8a1",
+      "start": "e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8"
+    },
+    {
+      "id": "R-6",
+      "behavior": "B4",
+      "scenario": "SC-6",
+      "arm": "green",
+      "skill_hash": "4e6709655d505ab156db1601cbad2e573b971f3274e95f634de3cd5b254b1c58",
+      "reply": "Created sandbox/cache/lru.py. It has two groups (key helpers, then the cache class and its factory), so I gave it major dividers per group, plus minor dividers inside LRUCache. Process comments state reasons only: why keys are normalized, and why eviction runs after the insert. The first measure flagged every divider for width. I replaced them with the canonical lines and reran until no flag was left.\n\n```python\n\"\"\"Least-recently-used cache with key helpers and a shared default instance.\"\"\"\n\nfrom collections import OrderedDict\nfrom typing import Any, Hashable, Optional\n\n\n# --------------------------------------------------------------------------------------\n# Key helpers\n# --------------------------------------------------------------------------------------\n\ndef make_key(*parts: Any) -> tuple:\n    \"\"\"Build a cache key from the given parts.\"\"\"\n    return tuple(normalize_key(part) for part in parts)\n\n\ndef normalize_key(key: Any) -> Hashable:\n    \"\"\"Return a hashable form of the key.\"\"\"\n    # Lists and dicts are unhashable; equal contents must map to the same key.\n    if isinstance(key, (list, tuple)):\n        return tuple(normalize_key(item) for item in key)\n    if isinstance(key, dict):\n        return tuple(sorted((k, normalize_key(v)) for k, v in key.items()))\n    if isinstance(key, str):\n        return key.strip().lower()\n    return key\n\n\n# --------------------------------------------------------------------------------------\n# LRU cache\n# --------------------------------------------------------------------------------------\n\nclass LRUCache:\n    \"\"\"Fixed-capacity cache that drops the least recently used entry.\"\"\"\n\n    def __init__(self, capacity: int = 128) -> None:\n        if capacity < 1:\n            raise ValueError(\"capacity must be at least 1\")\n        self.capacity = capacity\n        self._data: \"OrderedDict[Hashable, Any]\" = OrderedDict()\n        self._hits = 0\n        self._misses = 0\n        self._evictions = 0\n\n    # -- access ------------------------------------------------------------------------\n\n    def get(self, key: Any, default: Optional[Any] = None) -> Any:\n        \"\"\"Return the value for the key, marking it most recently used.\"\"\"\n        norm = normalize_key(key)\n        if norm not in self._data:\n            self._misses += 1\n            return default\n        self._hits += 1\n        self._data.move_to_end(norm)\n        return self._data[norm]\n\n    def put(self, key: Any, value: Any) -> None:\n        \"\"\"Store the value, evicting the oldest entry when full.\"\"\"\n        norm = normalize_key(key)\n        self._data[norm] = value\n        self._data.move_to_end(norm)\n        # Eviction runs after the insert so an update never evicts its own key.\n        while len(self._data) > self.capacity:\n            self.evict()\n\n    # -- eviction and stats ------------------------------------------------------------\n\n    def evict(self) -> Optional[Hashable]:\n        \"\"\"Drop the least recently used entry and return its key.\"\"\"\n        if not self._data:\n            return None\n        key, _ = self._data.popitem(last=False)\n        self._evictions += 1\n        return key\n\n    def stats(self) -> dict:\n        \"\"\"Return hit, miss, eviction and size counters.\"\"\"\n        return {\n            \"hits\": self._hits,\n            \"misses\": self._misses,\n            \"evictions\": self._evictions,\n            \"size\": len(self._data),\n            \"capacity\": self.capacity,\n        }\n\n\n# --------------------------------------------------------------------------------------\n# Shared instance\n# --------------------------------------------------------------------------------------\n\n_default: Optional[LRUCache] = None\n\n\ndef default_cache() -> LRUCache:\n    \"\"\"Return the shared cache, creating it on first use.\"\"\"\n    global _default\n    if _default is None:\n        _default = LRUCache()\n    return _default\n```\n\nOutline measured with comment_sections.py; last output, no flags:\n\n```\nsandbox/cache/lru.py:7: major Key helpers\nsandbox/cache/lru.py:28: major LRU cache\nsandbox/cache/lru.py:44: minor access\nsandbox/cache/lru.py:65: minor eviction and stats\nsandbox/cache/lru.py:86: major Shared instance\n```\n",
+      "reply_sha256": "1c8ce000c90aac8f94c63475bd51efbce1da360d59190bbc980816a55e99199c",
+      "diff": [
+        "sandbox/cache/lru.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?m)^# -{86}$: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches comment_sections: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e1bb8a1",
+      "start": "e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8"
     }
   ],
   "grades": [
@@ -419,13 +473,27 @@
       "value": "present",
       "quote": "Per the skill I gave it a major divider per group and minor dividers inside the class body",
       "grader": "session"
+    },
+    {
+      "run": "R-5",
+      "item": 0,
+      "value": "present",
+      "quote": "I gave each group a major divider and split the class body with minor dividers.",
+      "grader": "session"
+    },
+    {
+      "run": "R-6",
+      "item": 0,
+      "value": "present",
+      "quote": "so I gave it major dividers per group, plus minor dividers inside LRUCache",
+      "grader": "session"
     }
   ],
   "frozen": {
-    "skill_hash": "1876d239d15bb7ee5d7261aa1a21e6fcef3de309dcaab689062d3d60e522a80a",
+    "skill_hash": "4e6709655d505ab156db1601cbad2e573b971f3274e95f634de3cd5b254b1c58",
     "grader": "session",
-    "at": "2026-11-24T07:48:28+00:00",
+    "at": "2026-11-24T08:07:31+00:00",
     "authored": "303544743a911a6294eebafb7f58d37b5654d7c925d79229f26c10b9916b2f42"
   },
-  "driver_digest": "09f5c6bcea18c03887c618777fd62b1397db2e7a81739583976fd7d73ca04198"
+  "driver_digest": "5dbb97fcbeee0669fdef289ac318de13c741343f326a4282ac37b02c9bdda057"
 }
