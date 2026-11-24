@@ -44,9 +44,30 @@ class TestMergeBlock:
         with pytest.raises(BodyError, match="pr-sum markers"):
             merge_block(body, "S")
 
+    def test_markers_quoted_inline_are_text_not_a_block(self) -> None:
+        body = f"The block sits between `{START}` and `{END}`; see also `{START}`."
+        assert merge_block(body, "S") == (f"{body}\n\n{START}\nS\n{END}", False)
+
+    def test_a_summary_quoting_markers_inline_is_found_again(self) -> None:
+        summary = f"# PR #339: x\n\n## Summary\n\nThe block sits between `{START}` and `{END}`.\n"
+        first, _ = merge_block("Hand text.", summary)
+        assert merge_block(first, summary) == (first, True)
+
+    @pytest.mark.parametrize("marker", [START, END])
+    def test_a_summary_with_a_marker_line_is_refused(self, marker: str) -> None:
+        with pytest.raises(BodyError, match="line of its own"):
+            merge_block("Hand text.", f"# PR #7: x\n\n{marker}\n")
+
     def test_a_body_over_the_github_limit_is_refused(self) -> None:
         with pytest.raises(BodyError, match="65536"):
             merge_block("", "x" * 65_536)
+
+    def test_a_body_of_exactly_the_github_limit_is_accepted(self) -> None:
+        room = 65_536 - len(START) - len(END) - 2
+        merged, _ = merge_block("", "x" * room)
+        assert len(merged) == 65_536
+        with pytest.raises(BodyError, match="65536"):
+            merge_block("", "x" * (room + 1))
 
 
 class _Gh:
@@ -56,9 +77,11 @@ class _Gh:
         self.body, self.fail = body, fail
         self.calls: List[List[str]] = []
         self.edits: List[str] = []
+        self.cwds: List[object] = []
 
     def __call__(self, argv: Sequence[str], **kwargs: object) -> object:
         self.calls.append(list(argv))
+        self.cwds.append(kwargs.get("cwd"))
         verb = argv[2]
         if verb == self.fail:
             return _Done(1, "", "HTTP 403: forbidden")
@@ -88,6 +111,7 @@ class TestPublish:
             ["gh", "pr", "edit", "7", "--body-file", "-"],
         ]
         assert gh.edits == [f"Hand text.\n\n{START}\nS\n{END}"]
+        assert gh.cwds == [tmp_path, tmp_path]
 
     def test_replaces_an_earlier_block(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         gh = self._install(monkeypatch, _Gh(f"{START}\nold\n{END}"))
@@ -97,6 +121,15 @@ class TestPublish:
     def test_an_unchanged_block_is_not_written(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         gh = self._install(monkeypatch, _Gh(f"Intro\n\n{START}\nS\n{END}"))
         assert publish(7, tmp_path, "S") == "PR #7 description already holds this summary"
+        assert gh.edits == []
+
+    def test_a_block_stored_with_crlf_is_not_written_again(
+            self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        merged, _ = merge_block("Hand text.", "# PR #7: x\n\n## Summary\n\nAdds a.\n")
+        gh = self._install(monkeypatch, _Gh(merged.replace("\n", "\r\n")))
+        summary = "# PR #7: x\n\n## Summary\n\nAdds a.\n"
+        assert publish(7, tmp_path, summary) == "PR #7 description already holds this summary"
         assert gh.edits == []
 
     @pytest.mark.parametrize("verb", ["view", "edit"])

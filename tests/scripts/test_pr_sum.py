@@ -3,10 +3,11 @@
 The script is loaded by absolute path from the plugin. Git-backed tests get a throwaway upstream project
 (base branch ``main``, a ``harness.json`` that moves the summaries directory and the test root) and a clone
 whose branch carries the PR's commits, both copied from a module template built once; the clone's
-configuration is activated before each test. ``gh`` is bypassed by constructing ``PrMeta`` directly. The
-script is the only end-to-end caller of harness_lib.pr_summary (``render_summary`` through ``build``) and
-of the head-mode capture in harness_lib.branch_capture (``capture_paths`` and ``path_diff`` against a
-commit), so both modules are exercised here as well.
+configuration is activated before each test. ``gh`` is bypassed by constructing ``PrMeta`` directly and,
+for ``--gh`` builds, by replacing ``publish`` with a recorder (the gh calls of ``harness_lib.pr_body`` are
+tested in tests/lib/test_pr_body.py). The script is the only end-to-end caller of harness_lib.pr_summary
+(``render_summary`` through ``build``) and of the head-mode capture in harness_lib.branch_capture
+(``capture_paths`` and ``path_diff`` against a commit), so both modules are exercised here as well.
 """
 from __future__ import annotations
 
@@ -1126,7 +1127,7 @@ class TestCaptureLevels:
         assert sentinel.read_text(encoding="utf-8").splitlines()[3] == str(count)
         assert f"--min-viz armed: {count} diagram blocks" in capsys.readouterr().out
 
-    @pytest.mark.parametrize("level", ["1", "2"])
+    @pytest.mark.parametrize("level", ["0", "1", "2"])
     def test_min_viz_below_level_three_is_ignored(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
             monkeypatch: pytest.MonkeyPatch, level: str,
@@ -1356,6 +1357,7 @@ class TestGhPublish:
             raise script.BodyError("gh pr edit 1234 failed: HTTP 403")
 
         monkeypatch.setattr(script, "publish", refuse)
+        sentinel = min_viz_sentinel.arm(active(), 1234, 3)
         with pytest.raises(script.CaptureError) as excinfo:
             script.run_build(clone, self._payload(script, pr_repo, gh=True))
         assert excinfo.value.problems == [
@@ -1363,6 +1365,7 @@ class TestGhPublish:
             f"{_SUMMARIES}/1234_Feature_a_a_change.md",
         ]
         assert (clone / _SUMMARIES / "1234_Feature_a_a_change.md").is_file()
+        assert not sentinel.exists()
 
     def test_a_draft_defect_publishes_nothing(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], published: list,

@@ -351,19 +351,21 @@ def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     text = render_summary(facts, draft, level)
     target.write_text(text, encoding="utf-8")
     min_viz_sentinel.clear(active(), facts.number)
-    note += [publish_saved(repo, facts.number, text, target)] if gh else []
+    note += [publish_saved(repo, facts.number, text, target, done=note)] if gh else []
     return target, "\n".join([receipt(repo, target, facts, draft), *note])
 
 
-def publish_saved(repo: Path, pr: int, text: str, target: Path) -> str:
+def publish_saved(repo: Path, pr: int, text: str, target: Path, done: Sequence[str] = ()) -> str:
     """Publish the saved summary ``text`` into PR ``pr``'s description; return the receipt line.
 
-    A failure raises ``CaptureError`` naming ``target``, which stays on disk.
+    A failure raises ``CaptureError`` naming ``target``, which stays on disk, followed by each ``done``
+    receipt line (an auto-title outcome already applied on GitHub), so the failure still reports it.
     """
     try:
         return publish(pr, repo, text)
     except BodyError as exc:
-        raise CaptureError([f"{exc}; the summary is saved at {_shown(repo, target)}"]) from exc
+        lines = [f"{exc}; the summary is saved at {_shown(repo, target)}"]
+        raise CaptureError(lines + [f"{line} (done before the publish failed)" for line in done]) from exc
 
 
 def _repo_parent() -> argparse.ArgumentParser:

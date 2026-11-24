@@ -454,9 +454,9 @@ def _body_problems(name: str, section: PrSection) -> List[str]:
     return problems + _flow_problems(name, section, blocks)
 
 
-def _prose(draft: PrDraft) -> str:
-    """Every drafted string, for the vendor-name and glyph checks."""
-    return "\n".join(text for _, text in _draft_fields(draft))
+def _prose(draft: PrDraft, level: int = DEFAULT_LEVEL) -> str:
+    """Every drafted string render_summary emits at ``level``, for the vendor-name and glyph checks."""
+    return "\n".join(text for _, text in _draft_fields(draft, level))
 
 
 def _section_fields(index: int, section: PrSection) -> List[Tuple[str, str]]:
@@ -465,19 +465,23 @@ def _section_fields(index: int, section: PrSection) -> List[Tuple[str, str]]:
     return [(f"section {index + 1} heading", section.heading), (f"{named} body", section.body)]
 
 
-def _draft_fields(draft: PrDraft) -> List[Tuple[str, str]]:
-    """``(label, text)`` of every drafted string, labelled for a problem line."""
+def _draft_fields(draft: PrDraft, level: int = DEFAULT_LEVEL) -> List[Tuple[str, str]]:
+    """``(label, text)`` of every drafted string, labelled for a problem line.
+
+    Descriptions join the list only above level 0, where no Files Changed table renders them.
+    """
     fields = [("title", draft.title), ("summary", draft.summary)]
-    fields += [(f"description for `{_visible(path)}`", text) for path, text in draft.descriptions.items()]
+    if level > 0:
+        fields += [(f"description for `{_visible(path)}`", text) for path, text in draft.descriptions.items()]
     for index, section in enumerate(draft.sections):
         fields += _section_fields(index, section)
     return fields
 
 
-def _control_problems(draft: PrDraft) -> List[str]:
+def _control_problems(draft: PrDraft, level: int = DEFAULT_LEVEL) -> List[str]:
     """One line per drafted string that holds C0 control characters (tab, LF and CR excepted) or DEL."""
     problems = []
-    for label, text in _draft_fields(draft):
+    for label, text in _draft_fields(draft, level):
         found = sorted(set(_CONTROL.findall(text)))
         if found:
             codes = ", ".join(f"U+{ord(char):04X}" for char in found)
@@ -497,9 +501,9 @@ def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -
     problems += [] if draft.summary.strip() else ["draft summary is empty"]
     problems += _description_problems(facts, draft) if level > 0 else []
     problems += _section_problems(draft, level)
-    problems += [f"vendor name {name!r} in the draft" for name in vendor_names(_prose(draft))]
-    problems += glyph_problems(_prose(draft), "the draft")
-    return problems + _control_problems(draft)
+    problems += [f"vendor name {name!r} in the draft" for name in vendor_names(_prose(draft, level))]
+    problems += glyph_problems(_prose(draft, level), "the draft")
+    return problems + _control_problems(draft, level)
 
 
 _DELTA_HEADER = ("Delta", "Files", "+", "-", "Net")
