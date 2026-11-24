@@ -45,7 +45,7 @@ _LEVEL3_SHAPE_HEADINGS = (*_SHAPE_HEADINGS, "Sequence Diagram", "Data Flow")
 _SYMBOLS_HEADING = "Changed Symbols"
 _KIND_ORDER = ("flow", "shape", "symbols")
 _MAX_FLOWS = {2: 3, 3: 5}
-LEVELS = (1, 2, 3)
+LEVELS = (0, 1, 2, 3)
 DEFAULT_LEVEL = 2
 
 
@@ -423,11 +423,11 @@ def _table_cells(body: str) -> List[str]:
 def _section_problems(draft: PrDraft, level: int) -> List[str]:
     """Section checks.
 
-    Sections required (levels 2 and 3) or forbidden (level 1); the layout checks; every heading set; fenced
-    lines within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``; and the flow
-    checks of ``Behavior:`` and ``New Behavior:`` sections.
+    Sections required (levels 2 and 3) or forbidden (levels 0 and 1); the layout checks; every heading
+    set; fenced lines within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``;
+    and the flow checks of ``Behavior:`` and ``New Behavior:`` sections.
     """
-    if level == 1:
+    if level <= 1:
         misplaced = ["sections are for levels 2 and 3; remove them or build with --level 2"]
         return misplaced if draft.sections else []
     if not draft.sections:
@@ -489,12 +489,13 @@ def _control_problems(draft: PrDraft) -> List[str]:
 def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> List[str]:
     """Every defect in ``draft``, one line each; empty when the summary can be built.
 
-    ``level`` 1 is plain, 2 the visual layout, 3 the visual layout with more diagram types.
+    ``level`` 0 is the Summary alone (no file descriptions needed, since no Files Changed table renders),
+    1 is plain, 2 the visual layout, 3 the visual layout with more diagram types.
     """
     problems = [] if draft.title.strip() else ["draft title is empty"]
     problems += ["draft title spans more than one line"] if "\n" in draft.title.strip() else []
     problems += [] if draft.summary.strip() else ["draft summary is empty"]
-    problems += _description_problems(facts, draft)
+    problems += _description_problems(facts, draft) if level > 0 else []
     problems += _section_problems(draft, level)
     problems += [f"vendor name {name!r} in the draft" for name in vendor_names(_prose(draft))]
     problems += glyph_problems(_prose(draft), "the draft")
@@ -599,10 +600,15 @@ def _header(facts: PrFacts, title: str) -> List[str]:
     ]
 
 
-def render_summary(facts: PrFacts, draft: PrDraft) -> str:
-    """Summary markdown: header, Summary, delta table, drafted sections, Files Changed, Relocated."""
-    table = delta_table(facts)
+def render_summary(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> str:
+    """Summary markdown: header, Summary, delta table, drafted sections, Files Changed, Relocated.
+
+    Level 0 stops after the Summary: no table of any kind follows it.
+    """
     lines = [*_header(facts, draft.title), "", "## Summary", "", draft.summary.strip()]
+    if level == 0:
+        return "\n".join(lines) + "\n"
+    table = delta_table(facts)
     lines += ["", table] if table else []
     for section in draft.sections:
         lines += ["", f"## {section.heading.strip()}", "", section.body.strip()]

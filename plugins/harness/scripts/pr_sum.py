@@ -17,12 +17,12 @@
     HEAD SHA only, so it cannot tell sibling worktrees at one commit apart.
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
-    descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 1|2|3`` stores the
-    summary level in the skeleton (default 2; 1 prose only, 2 the visual layout,
+    descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 0|1|2|3`` stores
+    the summary level in the skeleton (default 2; 0 the Summary alone, 1 prose only, 2 the visual layout,
     3 the visual layout with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and
     arms the Stop-hook sentinel that holds the session until ``build`` succeeds. ``--auto-title`` stores
     ``auto_title``; without the flag the project's ``auto_title`` key decides, and ``--no-auto-title``
-    turns it off for one capture. The flags are stored fresh on every capture.
+    turns it off for one capture. ``--gh`` stores ``gh``. The flags are stored fresh on every capture.
 ``diff FILE [--path P ...]``
     The PR's diff under the ``commit_diff`` budgets: paths read in full until ``PR_BLOCK_BUDGET`` changed
     lines are spent, and output capped at ``PR_CHAR_BUDGET`` characters (later sections keep only their
@@ -34,13 +34,16 @@
     Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. The level and the
     ``--min-viz`` count come from the skeleton (a skeleton without a level builds at level 2): levels 2 and 3
     require the visual sections and cap their table cells, level 3 also requires the stored count of diagram
-    blocks, level 1 forbids sections. At levels 2 and 3 the vertical alignment pass (``pr_align``) runs
-    first and saves any section body it changed back to the skeleton, whether or not validation then
-    passes. A successful build clears the PR's ``--min-viz`` sentinel. With ``auto_title`` stored, ``build``
-    reads the PR again (``gh pr view``) and, when the PR is not merged and its title fails the
+    blocks, levels 0 and 1 forbid sections, and level 0 needs no file descriptions and renders no table.
+    At levels 2 and 3 the vertical alignment pass (``pr_align``) runs first and saves any section body it
+    changed back to the skeleton, whether or not validation then passes. A successful build clears the
+    PR's ``--min-viz`` sentinel. With ``auto_title`` stored, ``build`` reads the PR again
+    (``gh pr view``) and, when the PR is not merged and its title fails the
     ``Word(scope): summary`` check of ``harness_lib.pr_title``, sets the draft title as the PR title
     (``gh pr edit``) before it writes; a draft title that fails the same check is a problem, and nothing is
-    written or retitled. A usable PR title is kept.
+    written or retitled. A usable PR title is kept. With ``gh`` stored, ``build`` then publishes the saved
+    markdown into the PR description as a marked block (``harness_lib.pr_body``); a failed publish is a
+    problem that names the saved file, which stays.
 
 Roots: the project (git top level of ``--repo``, which must lie inside a git checkout, else of the working
 directory) holds every input and output; ``<summaries>`` is its ``.claude/harness.json``
@@ -52,8 +55,8 @@ Every failure exits 1 with one ``problem: ...`` line per defect on stderr.
 Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
-        [--no-fetch] [--remote-head | --local] [--committed-only] [--out FILE] [--level 1|2|3]
-        [--min-viz [N]] [--auto-title | --no-auto-title] [--repo DIR]
+        [--no-fetch] [--remote-head | --local] [--committed-only] [--out FILE] [--level 0|1|2|3]
+        [--min-viz [N]] [--auto-title | --no-auto-title] [--gh] [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE
@@ -76,6 +79,7 @@ from harness_lib.branch_capture import CaptureError, git  # noqa: E402
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
 from harness_lib.diff_delta import DeltaError  # noqa: E402
 from harness_lib.pr_align import align_draft  # noqa: E402
+from harness_lib.pr_body import BodyError, publish  # noqa: E402
 from harness_lib.pr_capture import (  # noqa: E402
     PrMeta,
     budgeted_diff,
@@ -243,16 +247,20 @@ def run_diff(repo: Path, payload: Mapping[str, object], paths: Sequence[str] = (
 
 def receipt(repo: Path, target: Path, facts: PrFacts, draft: PrDraft) -> str:
     """One-line chat receipt."""
-    try:
-        shown = target.resolve().relative_to(repo.resolve()).as_posix()
-    except ValueError:
-        shown = target.as_posix()
     title = draft.title.strip()
-    return f"Saved: {shown} — Merge PR #{facts.number}: {title} ({facts.head} -> {facts.base})"
+    return f"Saved: {_shown(repo, target)} — Merge PR #{facts.number}: {title} ({facts.head} -> {facts.base})"
+
+
+def _shown(repo: Path, target: Path) -> str:
+    """``target`` relative to ``repo`` in POSIX form, or as given when it lies outside ``repo``."""
+    try:
+        return target.resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError:
+        return target.as_posix()
 
 
 def skeleton_level(payload: Mapping[str, object]) -> int:
-    """Level stored in a skeleton: 1, 2 or 3; ``DEFAULT_LEVEL`` for a skeleton written before levels
+    """Level stored in a skeleton: 0, 1, 2 or 3; ``DEFAULT_LEVEL`` for a skeleton written before levels
     existed. Raise ``CaptureError`` for any other stored value."""
     level = payload.get("level")
     if level is None:
@@ -270,12 +278,17 @@ def skeleton_min_viz(payload: Mapping[str, object]) -> int:
     return value
 
 
+def skeleton_flag(payload: Mapping[str, object], key: str) -> bool:
+    """Boolean flag ``key`` stored in a skeleton; False when absent. Raise ``CaptureError`` for a non-bool."""
+    value = payload.get(key, False)
+    if not isinstance(value, bool):
+        raise CaptureError([f"skeleton {key} must be true or false, not {value!r}; rerun capture"])
+    return value
+
+
 def skeleton_auto_title(payload: Mapping[str, object]) -> bool:
     """``auto_title`` stored in a skeleton; False when absent. Raise ``CaptureError`` for a non-bool."""
-    value = payload.get("auto_title", False)
-    if not isinstance(value, bool):
-        raise CaptureError([f"skeleton auto_title must be true or false, not {value!r}; rerun capture"])
-    return value
+    return skeleton_flag(payload, "auto_title")
 
 
 def needs_retitle(meta: PrMeta) -> bool:
@@ -318,13 +331,14 @@ def build_problems(facts: PrFacts, draft: PrDraft, level: int, minimum: int) -> 
 def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     """Validate the draft, write the summary markdown, and return its path and the receipt.
 
-    The level, ``--min-viz`` count and ``auto_title`` come from the skeleton; the draft is validated and
-    rendered after the alignment pass of its level. With ``auto_title`` the PR is read again and retitled
-    (``apply_auto_title``) before the summary is written, and the receipt gains that outcome as a second
-    line. A successful build clears the PR's sentinel.
+    The level, ``--min-viz`` count, ``auto_title`` and ``gh`` come from the skeleton; the draft is validated
+    and rendered after the alignment pass of its level. With ``auto_title`` the PR is read again and
+    retitled (``apply_auto_title``) before the summary is written, and the receipt gains that outcome as a
+    line. With ``gh`` the saved markdown is then published (``publish_saved``), adding its line. A
+    successful build clears the PR's sentinel, before any publish.
     """
     facts = _facts(payload)
-    level, minimum = skeleton_level(payload), skeleton_min_viz(payload)
+    level, minimum, gh = skeleton_level(payload), skeleton_min_viz(payload), skeleton_flag(payload, "gh")
     meta = gh_metadata(repo, facts.number) if skeleton_auto_title(payload) else None
     draft = align_draft(_draft(payload), level)
     problems = build_problems(facts, draft, level, minimum)
@@ -334,9 +348,22 @@ def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     target = summaries_dir(repo) / summary_filename(facts.number, draft.title)
     note = [apply_auto_title(repo, meta, draft)] if meta else []
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(render_summary(facts, draft), encoding="utf-8")
+    text = render_summary(facts, draft, level)
+    target.write_text(text, encoding="utf-8")
     min_viz_sentinel.clear(active(), facts.number)
+    note += [publish_saved(repo, facts.number, text, target)] if gh else []
     return target, "\n".join([receipt(repo, target, facts, draft), *note])
+
+
+def publish_saved(repo: Path, pr: int, text: str, target: Path) -> str:
+    """Publish the saved summary ``text`` into PR ``pr``'s description; return the receipt line.
+
+    A failure raises ``CaptureError`` naming ``target``, which stays on disk.
+    """
+    try:
+        return publish(pr, repo, text)
+    except BodyError as exc:
+        raise CaptureError([f"{exc}; the summary is saved at {_shown(repo, target)}"]) from exc
 
 
 def _repo_parent() -> argparse.ArgumentParser:
@@ -374,8 +401,8 @@ def _parser() -> argparse.ArgumentParser:
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
     cap.add_argument(
         "--level", type=int, choices=LEVELS, default=DEFAULT_LEVEL,
-        help=f"Summary level stored in the skeleton (default {DEFAULT_LEVEL}): 1 prose only, "
-             "2 flows, one shape diagram and Changed Symbols, 3 more diagram types.",
+        help=f"Summary level stored in the skeleton (default {DEFAULT_LEVEL}): 0 the Summary alone, "
+             "1 prose only, 2 flows, one shape diagram and Changed Symbols, 3 more diagram types.",
     )
     cap.add_argument(
         "--min-viz", type=int, nargs="?", const=DEFAULT_MIN_VIZ, default=None, metavar="N",
@@ -387,6 +414,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Store auto_title: build sets the draft title as the PR title when the PR title fails the "
              "Word(scope): summary check (gh pr edit). Default: harness.json auto_title; --no-auto-title "
              "turns it off for this run.",
+    )
+    cap.add_argument(
+        "--gh", action="store_true",
+        help="Store gh: build also publishes the summary into the PR description as a marked block "
+             "(gh pr edit), replacing the block an earlier build wrote; the .md is saved either way.",
     )
     diff = sub.add_parser("diff", parents=common, help="Print the PR diff under the read budgets.")
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
@@ -449,10 +481,12 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
     )
     keys = level_keys(args.level, args.min_viz)
     auto_title = resolve_auto_title(args.auto_title)
-    _write_skeleton(out, {**payload, **keys, **({"auto_title": True} if auto_title else {})})
+    flags = {**({"auto_title": True} if auto_title else {}), **({"gh": True} if args.gh else {})}
+    _write_skeleton(out, {**payload, **keys, **flags})
     dropped = dropped_descriptions(previous, payload)
     note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args, dropped)
     note += auto_title_note(meta) if auto_title else ""
+    note += " (--gh: build publishes the summary into the PR description)" if args.gh else ""
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
     return 0
 

@@ -945,13 +945,14 @@ class TestBuildAlignment:
         assert saved["summary"] == ""
         assert saved["sections"][0]["body"] == "\n".join(self._ALIGNED)
 
-    def test_level_one_skeleton_is_not_rewritten(
-            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+    @pytest.mark.parametrize("level", [0, 1])
+    def test_prose_level_skeleton_is_not_rewritten(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path, level: int,
     ) -> None:
         clone, _, head = pr_repo
         captured = script.capture_payload(clone, _meta(script, head), fetch=False)
         sections = [{"heading": "Behavior: diff read", "body": _FLOW_BODY}, _SYMBOLS_SECTION]
-        payload = {**_filled(captured, sections), "level": 1}
+        payload = {**_filled(captured, sections), "level": level}
         skeleton = tmp_path / "1234_pr.json"
         skeleton.write_text(json.dumps(payload), encoding="utf-8")
         before = skeleton.read_bytes()
@@ -986,6 +987,22 @@ class TestBuildLevels:
         clone, _, head = pr_repo
         filled = _filled(script.capture_payload(clone, _meta(script, head), fetch=False), sections)
         return {**filled, **keys}
+
+    def test_level_zero_writes_the_summary_without_tables(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        captured = script.capture_payload(clone, _meta(script, head), fetch=False)
+        draft = {**captured["draft"], "title": "Feature(a): `a` change", "summary": "Changes `a`."}
+        out, _ = script.run_build(clone, {**captured, "draft": draft, "level": 0})
+        text = out.read_text(encoding="utf-8")
+        assert text.endswith("## Summary\n\nChanges `a`.\n")
+        assert "| Machine-generated |" not in text and "<details>" not in text
+
+    def test_level_zero_rejects_sections(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+        payload = self._payload(script, pr_repo, _level3_sections(1), level=0)
+        with pytest.raises(script.CaptureError, match="sections are for levels 2 and 3"):
+            script.run_build(pr_repo[0], payload)
 
     def test_level_one_leaves_out_commits(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, [], level=1))
@@ -1089,7 +1106,7 @@ class TestCaptureLevels:
         assert payload["level"] == 2 and "min_viz" not in payload
         assert not min_viz_sentinel.sentinel_path(active(), 1234).exists()
 
-    @pytest.mark.parametrize("level", ["1", "2", "3"])
+    @pytest.mark.parametrize("level", ["0", "1", "2", "3"])
     def test_level_is_stored(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
             monkeypatch: pytest.MonkeyPatch, level: str,
@@ -1136,7 +1153,7 @@ class TestCaptureLevels:
         payload = self._capture(script, monkeypatch, pr_repo, tmp_path, "--level", "2")
         assert not sentinel.exists() and "min_viz" not in payload
 
-    @pytest.mark.parametrize("flags", [("--level", "0"), ("--level", "4"), ("--min-viz", "x")])
+    @pytest.mark.parametrize("flags", [("--level", "-1"), ("--level", "4"), ("--min-viz", "x")])
     def test_bad_flag_values_are_rejected(self, script: ModuleType, flags: Tuple[str, ...]) -> None:
         with pytest.raises(SystemExit):
             script._parser().parse_args(["capture", "--pr", "1", *flags])
@@ -1278,6 +1295,90 @@ class TestAutoTitle:
         with pytest.raises(script.CaptureError, match="gh pr edit 1234 failed"):
             script.run_build(clone, self._payload(script, pr_repo, auto_title=True))
         assert not (clone / _SUMMARIES).exists()
+
+
+class TestGhPublish:
+    """``capture --gh`` stores ``gh``; ``build`` then saves the summary and publishes that same markdown into
+    the PR description (``publish``), adding the outcome to the receipt."""
+
+    @pytest.fixture()
+    def published(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch) -> list:
+        calls: list = []
+
+        def record(pr: int, repo: Path, text: str) -> str:
+            calls.append((pr, repo, text))
+            return f"Published to PR #{pr} description: block added"
+
+        monkeypatch.setattr(script, "publish", record)
+        return calls
+
+    def _payload(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], **keys: object,
+    ) -> Dict[str, object]:
+        clone, _, head = pr_repo
+        filled = _filled(script.capture_payload(clone, _meta(script, head), fetch=False))
+        return {**filled, "level": 1, **keys}
+
+    def test_capture_stores_the_flag_fresh(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _, head = pr_repo
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        out = tmp_path / "1234_pr.json"
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--out", str(out), "--repo", str(clone)]
+        assert script.main([*argv, "--gh"]) == 0
+        assert json.loads(out.read_text(encoding="utf-8"))["gh"] is True
+        assert "--gh: build publishes the summary into the PR description" in capsys.readouterr().out
+        assert script.main(argv) == 0
+        assert "gh" not in json.loads(out.read_text(encoding="utf-8"))
+
+    def test_build_publishes_the_saved_markdown(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], published: list,
+    ) -> None:
+        clone = pr_repo[0]
+        out, text = script.run_build(clone, self._payload(script, pr_repo, gh=True))
+        assert published == [(1234, clone, out.read_text(encoding="utf-8"))]
+        assert text.splitlines()[-1] == "Published to PR #1234 description: block added"
+
+    def test_build_without_the_flag_publishes_nothing(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], published: list,
+    ) -> None:
+        _, text = script.run_build(pr_repo[0], self._payload(script, pr_repo))
+        assert not published and len(text.splitlines()) == 1
+
+    def test_a_failed_publish_keeps_the_markdown(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        clone = pr_repo[0]
+
+        def refuse(*_args: object) -> str:
+            raise script.BodyError("gh pr edit 1234 failed: HTTP 403")
+
+        monkeypatch.setattr(script, "publish", refuse)
+        with pytest.raises(script.CaptureError) as excinfo:
+            script.run_build(clone, self._payload(script, pr_repo, gh=True))
+        assert excinfo.value.problems == [
+            "gh pr edit 1234 failed: HTTP 403; the summary is saved at "
+            f"{_SUMMARIES}/1234_Feature_a_a_change.md",
+        ]
+        assert (clone / _SUMMARIES / "1234_Feature_a_a_change.md").is_file()
+
+    def test_a_draft_defect_publishes_nothing(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], published: list,
+    ) -> None:
+        payload = self._payload(script, pr_repo, gh=True)
+        payload["draft"]["summary"] = ""
+        with pytest.raises(script.CaptureError, match="draft summary is empty"):
+            script.run_build(pr_repo[0], payload)
+        assert not published
+
+    def test_malformed_flag_asks_for_a_capture(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], published: list,
+    ) -> None:
+        with pytest.raises(script.CaptureError, match="gh must be true or false.*rerun capture"):
+            script.run_build(pr_repo[0], self._payload(script, pr_repo, gh="yes"))
+        assert not published
 
 
 class TestCli:

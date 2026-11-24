@@ -526,6 +526,23 @@ class TestConnectorAlignment:
 
 
 class TestDraftLevels:
+    def test_level_zero_needs_no_descriptions(self) -> None:
+        assert draft_problems(_facts(), _draft(descriptions={}), level=0) == []
+        assert draft_problems(_facts(), _draft(descriptions={}), level=1) == [
+            "no description for `src/pkg/a.py`",
+        ]
+
+    def test_level_zero_rejects_sections(self) -> None:
+        draft = _draft(sections=(_FLOW, _SYMBOLS))
+        assert draft_problems(_facts(), draft, level=0) == [
+            "sections are for levels 2 and 3; remove them or build with --level 2",
+        ]
+
+    def test_level_zero_still_needs_title_and_summary(self) -> None:
+        assert draft_problems(_facts(), _draft(title="", summary=" "), level=0) == [
+            "draft title is empty", "draft summary is empty",
+        ]
+
     def test_level_one_is_plain(self) -> None:
         assert draft_problems(_facts(), _draft(), level=1) == []
 
@@ -606,6 +623,20 @@ class TestRenderSummary:
         assert "<details><summary>Relocated 1 files</summary>" in text
         assert "| `b.md` | `docs/old/` | `docs/new/` |" in text
         assert text.endswith("</details>\n")
+
+    def test_level_zero_is_the_header_and_summary_alone(self) -> None:
+        text = render_summary(_facts(), _draft(), level=0)
+        assert text == (
+            "# PR #7: Feature(a): `a` parameter\n\n**Branch:** 0007-demo\n**Base:** dev\n"
+            "**Date:** 2026-10-10\n**Files Changed:** 3 (+43 / -1 lines, 1 relocated)\n\n"
+            "## Summary\n\nAdds `a`.\n"
+        )
+
+    @pytest.mark.parametrize("level", [1, 2])
+    def test_levels_above_zero_keep_the_tables(self, level: int) -> None:
+        text = render_summary(_facts(), _draft(), level=level)
+        assert "| Delta " in text and "<summary>Files Changed (2)</summary>" in text
+        assert "<summary>Relocated 1 files</summary>" in text
 
     @pytest.mark.parametrize("working, line", [
         (True, "**Source:** local branch at `hhhhhhh`, plus uncommitted changes\n"),
