@@ -1,0 +1,579 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 342,
+  "pr_title": "Feature(add-bookmark): session hook switch for `/goal`",
+  "branch": "0007-add-bookmark-hook",
+  "base_branch": "main",
+  "base_sha": "0a263eee4ed3b34b4e7630ce8251c6ae923df6b6",
+  "head_sha": "a761e07c892a5c76676fb31f627ab54d8c819939",
+  "review_date": "2026-11-24",
+  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4",
+  "stats": {
+    "additions": 5953,
+    "deletions": 2533,
+    "files_changed": 65,
+    "source": {
+      "additions": 4520,
+      "deletions": 1018,
+      "files_changed": 61
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)",
+    "adv_code_plans (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/config.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/tests.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/docs.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/overall.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/roast.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0342/pr342_20261124T230302Z/findings/adv_code_plans.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "FreezeLedgerEntry.schema.json matches LedgerEntry.model_json_schema() at the head: the rename enum member and the from_name property (NAME_PATTERN, null default, description, title) agree with freeze_ledger.py:41 and :93-94, so test_schema_file_matches_model holds.",
+    "The from_name pattern is the shared NAME_PATTERN, so it stays in step with strap skill names; it stays optional and nullable, and existing ledger entries still validate under additionalProperties false.",
+    "session_hook.test.ts drives the real turn.complete hook through engine fakes (fs, git, clock, /goal, toast) and covers subagent turns, foreign sessions, an unreadable session id, a custom state_dir, a subfolder cwd and the set-but-unstamped toast.",
+    "test_session_bookmark_hook_contract.py pins the path, version, goal limit, fired key and session key against the harness writers by writing real switch files, so the copies in the mod cannot drift silently.",
+    "test_strap_rename.py tests rename end to end on real git projects: tag placement under the new stem, a clean check followed by a refreeze, the exact-move commit tag, rollback when the commit fails (fault injection on sl.commit, not a mock chain), and each refusal leaving the spec in place.",
+    "test_bookmark_skill_contract.py's agent regex now uses `bookmark(?![a-z-])`, so `harness:bookmark-noter` is still caught after the rename.",
+    "test_no_closing_waits_on_the_developer is parametrized over every Closing member, guarding the rule that a /goal condition the agent cannot meet keeps the session looping.",
+    "test_add_todo.py `_hook` strips CLAUDE_CODE_SESSION_ID from the subprocess env, so the session assertions stay hermetic when run inside an agent session.",
+    "The three private `_adder` copies (freeze_git, plan_lock, strap_lock) collapse into one public freeze_git.adder; its docstring explains why `--reverse` is dropped and why `-M100%` stops near-identical entries of other skills from matching.",
+    "strap_lock.owners() maps each ledger entry to the stem its tags were made under, so check, reconcile and drift still find a renamed skill's pre-rename tags without rewriting any write-once entry.",
+    "cmd_rename preflights the tags and collects every refusal before touching disk, and `_move_back` puts the spec folder, ledger folder and spec bytes back on a failed write.",
+    "The hook switch is written through a sibling temp file and replace, and the mod stamps `fired` only when the file still holds the text it read, so a switch re-armed or cleared meanwhile is never overwritten.",
+    "Binding the switch to CLAUDE_CODE_SESSION_ID, with null meaning any session, stops a parallel session in the same checkout from picking up another session's /goal.",
+    "Goal length is counted in code points on both sides (Python len, TS Array.from), so the Python 500-character refusal and the mod's cut agree.",
+    "bookmark SKILL.md routing table and reply rules (goal armed lines, goal: cleared/none, removed note per number, one missing number drops none) match add_note.py exactly.",
+    "session-bookmark README's Session hook section matches session_hook.ts: session_id binding, null id fires anywhere, once-per-load guard, both toast cases, and no stamp on a switch re-armed mid-run.",
+    "The round-4 freeze and lock ledger blobs for SKILL.md, add_note.py, the contract test and SkillSpec.json all match the PR head, so the lock is honest.",
+    "The rename is complete in the docs: no live doc outside release history still names /harness:add-bookmark, and the schemas README and strap-skills SKILL.md add `rename` to every kind, tag and ledger-writer list.",
+    "add-todo SKILL.md Step 4.5 gives an exact rule for picking the item id when a shared drain lists other runs' items, and its printed line matches add_todo.py _hook.",
+    "The add-bookmark to bookmark rename is complete in live material: plugins/, tests/, README.md and the session-bookmark mod all name /harness:bookmark and skills/bookmark/. The old name survives only in historical releases, freeze ledgers and as a deliberate trigger phrase.",
+    "remove N [N ...] matches its documented contract: sorted(set(numbers)) reads every number against one listing, and _pick raises before write_notes, so one missing number drops none (add_note.py:181-188, SKILL.md:71-73).",
+    "The goal subcommand refuses contradictory flag mixes (--clear with text, --closed-by without --todo, text with --todo) in the script, and SKILL.md screens the same forms before any command runs.",
+    "The bookmark SKILL.md, README.md and the root README agree on the flag set, the 300/500-character limits and the three closings. The README Goals table matches the _CONDITIONS clauses in add_todo_models.py.",
+    "The strap-skills rename section matches strap.py's _rename_problems refusals: not frozen, old folder still on disk, new SKILL.md missing, part missing, spec folder taken. Its 'reopened and not yet refrozen' claim matches reopen clearing frozen (strap.py:1027).",
+    "Relative links in bookmark/README.md resolve (../../../session-bookmark/README.md, ../add-todo/SKILL.md), as does ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md.",
+    "strap_lock.owners() maps each ledger entry to the name its tags were made under, so entries from before the rename keep their old-stem tags. test_strap_rename.py shows that check stays clean and the refreeze tags under the new stem.",
+    "freeze_git.adder replaces two private copies (plan_lock, strap_lock) with one lookup. The -M100% choice and why --reverse is dropped are documented, and a test pins the near-duplicate-entry case.",
+    "cmd_rename runs preflight and every refusal before anything moves, and rolls the spec folder, its bytes and the ledger back on a failed commit; a fault-injection test covers the rollback.",
+    "The hook switch is written through a temp file and replace. The mod stamps `fired` only when the file text is unchanged since it was read, and a per-load start_time guard keeps a refused /goal from looping.",
+    "test_session_bookmark_hook_contract.py pins HOOK_PATH, the schema version, MAX_GOAL_CHARS and SESSION_KEY on both sides of the Python/TypeScript boundary, and checks that both writers store the arming session.",
+    "The session_hook.ts tests run against engine fakes and cover subagent turns, another session's switch, an unreadable session id, a refused /goal and a failed stamp.",
+    "Each Closing condition is one the agent can meet by its own actions, and a test rejects any wording that would leave /goal waiting on the developer.",
+    "The add-bookmark to bookmark rename is complete outside historical records: no live doc, test, hint string or mod comment still names /harness:add-bookmark, and the breaking change is called out in v1.1.0 with the session-bookmark version to pair.",
+    "The new `rename` ledger kind lands in lockstep across freeze_ledger.py, the generated FreezeLedgerEntry.schema.json, schemas/README.md (kinds, key fields, state), strap.py's docstring, the strap-skills SKILL.md and README, and test_freeze_ledger's schema pin.",
+    "The hook switch's cross-plugin contract (path, version, goal limit, fired and session_id keys) is copied in session_hook.ts and pinned by test_session_bookmark_hook_contract.py, following the notes.ts pattern.",
+    "The three hook writers (add_note.py goal, add_note.py goal --todo, add_todo.py hook) and their receipts match word for word across the bookmark SKILL.md, the bookmark README, the add-todo SKILL.md Step 4.5, the top-level README and the session-bookmark README.",
+    "freeze_git.adder merges the duplicated _adder helpers from plan_lock.py and strap_lock.py into one lookup, and its docstring explains the --follow and -M100% choices.",
+    "session_hook.ts stamps `fired` only when the file still holds the text read before `/goal` was queued, so a switch re-armed or cleared mid-flight is left alone.",
+    "The session binding fails closed: an unreadable `$.session.id()` never fires a session-bound switch, and the TS tests cover owned, foreign and unreadable ids against a fake engine, not stubs.",
+    "freeze_git.adder replaces two copy-pasted `_adder` helpers (plan_lock, strap_lock) with one lookup that follows exact moves, and the `-M100%` rationale is documented and pinned by test_the_rename_entry_commit_tag_names_the_commit_that_added_it.",
+    "cmd_rename computes the pending entry and preflights tags before touching disk, and test_rename_moves_both_folders_back_when_the_commit_fails proves the rollback restores spec bytes and ledger.",
+    "test_session_bookmark_hook_contract.py pins path, version, goal limit, fired and session keys across the Python writer and the TS reader, the right guard for a mod that cannot import the plugin.",
+    "`remove N...` resolves every number against one listing and drops none when one is missing, with tests for both paths.",
+    "freeze_git.adder with --follow -M100% dates moved ledger entries to their original add commits; probe (probes/adder_follow.py) on a folder git-mv plus a new rename entry returned c1, c2 and the rename commit respectively.",
+    "session_hook.ts stamps fired only when the file text is unchanged since the read, so a switch re-armed between /goal and the stamp is not clobbered.",
+    "The per-load tried guard is keyed by start_time and set only after ownership passes, so another session's switch is never consumed and a refusal never loops.",
+    "strap_lock.owners walks entries newest-first, so chained renames (a->b->c) map each entry to the stem its tags were made under.",
+    "cmd_rename preflights every tag and rolls both folders and the spec bytes back on a failure inside the save/move/commit block.",
+    "All 221 in-scope Python tests pass at the PR head, and test_select_tests and test_no_repo_literals stay green with the new and renamed test files.",
+    "session_hook.test.ts gives every test its own start_time, so the module-level `tried` set never leaks a fired state from one test into another.",
+    "test_session_bookmark_hook_contract.py pins HOOK_PATH, HOOK_SCHEMA_VERSION, MAX_GOAL_CHARS, FIRED_KEY and SESSION_KEY against harness_lib, and checks that both writers store the session or null.",
+    "test_strap_rename.py covers each refusal path (not moved, never frozen, locked, existing ledger or spec, bad name, leftover folder, part not moved) plus the rollback when the commit fails.",
+    "The tightened agent regex in test_bookmark_skill_contract.py still flags `harness:bookmark-noter`, because the inner lookahead rejects a trailing name character.",
+    "The deletion of docs/plans/strap/add-bookmark/SkillSpec.json is the move half of a strap rename: docs/plans/strap/bookmark/SkillSpec.json is added, the fixtures and r1.1-r2.2 ledger entries move R100, and r3.5-rename.json records from_name add-bookmark as freeze_ledger.py documents.",
+    "The r4.3 lock entry's blob hashes for the spec, both fixtures, SKILL.md, add_note.py and the contract test all match the PR head (git rev-parse), so the locked state is reproducible.",
+    "A read-only probe of strap.py spec_problems and stale_line on bookmark and strap-skills returns no problems and no stale line; the frozen skill_hash b92e3d247f44 matches the commit message's refreeze.",
+    "No runtime, test or tool file outside historical ledger entries and PR review records still names the old docs/plans/strap/add-bookmark path."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "strap.py rename rewrites every whole-word use of the old name in behavior text",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "tests/scripts/test_strap_rename.py",
+          "docs/plans/strap/bookmark/SkillSpec.json"
+        ],
+        "lines": "846-859,1106-1136",
+        "reviewer": "overall, roast, adv_code_runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_renamed_behaviors replaces the old skill name, as a whole word, in every behavior statement, scenario task, tempts, check target and judged subject. That is safe for a distinctive name like add-bookmark, but this repository already has skills named with plain words (bookmark, working, doctor). Renaming bookmark to another name would turn 'the compaction bookmark' into '<new> compaction', and renaming working would rewrite 'working tree' in the same way. The swap is silent: the [done] line counts re-pointed parts but no text substitutions, so the developer gets no cue to review the frozen spec's rewritten statements before the refreeze. strap-skills SKILL.md (rename paragraph) and strap.py's docstring describe the swap as safe.\n\nAlso (roast, adv_code_runtime): _renamed_behaviors swaps every whole-word occurrence of the old name in statements, task, tempts, judged subjects and check targets (after repoint). The lookarounds only exclude [a-z0-9-], so a common-word name hits prose and path segments: the bookmark spec this PR moved already has 'docs/RELEASES/v1.1.0.md lists the bookmark goal subcommand' in B4 SC-8's task, and a target like 'hooks/bookmark.ts' or a regex check would be rewritten too. Nothing reports which fields changed, so a frozen spec gets edited silently and the author finds out from a green that now tests a different sentence. Fine for add-bookmark; a trap for the next rename of bookmark.\n\nAlso (adv_code_runtime): _renamed_scenario applies swap(repoint(check.target)) to every check, path kinds included. The swap regex only excludes [a-z0-9-] around the old name, so a path target that is not under the old skill folder but has the old name as a file stem or segment bounded by '/', '.' or '_' is rewritten to a file that does not exist (and the same over-match hits task, tempts, judged subjects and statements that name such a file). A frozen spec renamed this way gets a path_present/file_unchanged check that points nowhere, and the next green run fails or passes for the wrong reason.\n\nAttack: With a frozen spec named `bookmark` holding a scenario check {kind: path_present, target: 'plugins/session-bookmark/hooks/bookmark.ts'}, run `strap.py rename bookmark session-note` (after moving the skill folder). repoint leaves the target alone (not under the old skill folder, not a named path), then swap turns it into 'plugins/session-bookmark/hooks/session-note.ts'. Reproduced at the regex level: re.compile(r'(?<![a-z0-9-])bookmark(?![a-z0-9-])').sub('session-note', 'plugins/session-bookmark/hooks/bookmark.ts') -> 'plugins/session-bookmark/hooks/session-note.ts'; likewise spec `notes` -> `memo` turns '.claude/state/harness/session-bookmark/notes.json' into '.../memo.json'. Probe: docs/_scratch/pr_review/0342/pr342_20261124T230302Z/probes/rename_swap.py (no spec in this repo hits it today).",
+        "fix": [
+          "Limit the text swap to invocation and path forms (`/harness:<name>`, `harness:<name>`, `skills/<name>/`, a backticked `<name>`) and leave bare words alone.",
+          "Or keep the whole-word swap, print one `swapped: <behavior id> <field>` line per changed field in the rename output, and have strap-skills SKILL.md tell the agent to show those lines to the developer before the greens run.",
+          "Limit the swap to invocation and path forms (`harness:<name>`, `/<name>`, `skills/<name>/`) instead of every whole word.",
+          "Keep the broad swap but print one `swapped: <behavior>/<scenario> <field>` line per changed field so the author reviews them before the greens.",
+          "For check kinds file_unchanged, file_changed, path_present and path_absent apply only repoint(check.target), not swap; keep swap for reply_matches/reply_lacks targets.",
+          "Tighten the swap lookarounds to also exclude '.', '_' and '/' after the name when the text is a path (or skip swap for any token that looks like a path)."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "bookmark exit-1 rule sends a TODO catalog read failure to the notes --clear remedy",
+        "file": "plugins/harness/skills/bookmark/SKILL.md",
+        "files": [
+          "plugins/harness/skills/bookmark/SKILL.md",
+          "plugins/harness/skills/bookmark/commands/add_note.py"
+        ],
+        "lines": "108-111",
+        "reviewer": "skill_package, docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md lines 108-111 tell the session, for 'an unreadable file', to relay the message and add one line naming --clear. The new goal --todo path in add_note.py:236-238 prints 'the TODO catalog at <path> cannot be read' and '... is not a JSON object'. Those are unreadable files too, so the rule as written has the session suggest /harness:bookmark --clear, which drops every stored note and does nothing for the catalog. The rule was written for the notes file, before the goal path added a second file the script reads.\n\nAlso (docs): SKILL.md lines 108-111 list the `add_note:` exit-1 cases and what to do with each. For `goal --todo`, `_goal_catalog` in add_note.py (lines 228-242) can also refuse with 'no TODO catalog at ...; create it with todo_sync.py init', 'the TODO catalog at ... cannot be read', '... is not a JSON object' and the `ids.require_stable` legacy-id error. None of these is listed. The catalog 'cannot be read' message fits the rule 'for an unreadable file, add one line naming `--clear`', but `--clear` wipes the notes file and does nothing for the catalog, so the reply would point the developer at a destructive and unrelated fix.\n\nAlso (overall): The exit-1 paragraph says 'for an unreadable file, add one line naming --clear'. The goal path adds a second unreadable file, the TODO catalog ('the TODO catalog at X cannot be read'), but --clear drops the session notes and does nothing for the catalog. The 'no TODO catalog ... todo_sync.py init' and rank-tied-id refusals are not listed either.",
+        "fix": [
+          "Scope the remedy to the notes file in SKILL.md:108-111: 'for an unreadable notes file (a message naming notes.json and run clear), add one line naming --clear; for a TODO catalog that cannot be read, is not a JSON object or does not exist, relay the message alone'.",
+          "Alternatively, prefix the catalog messages in add_note.py:232-238 with 'goal --todo:' and list that prefix in SKILL.md:108-111 as relay-only, no retry and no --clear line.",
+          "Add a sentence after line 111: 'Any other `add_note:` line from `--goal-todo` (no catalog, an unreadable catalog, legacy ids) is relayed verbatim with no retry and no `--clear` line; `--clear` concerns the notes file only.' The spec is Locked (r4.3), so the edit needs `strap.py reopen bookmark`, greens and a refreeze.",
+          "On the next bookmark reopen, change 'an unreadable file' to 'an unreadable notes file', and list the catalog refusals (missing, unreadable, rank-tied ids) as relayed without a retry and without the --clear line."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Arming-session test passes when the --todo run fails",
+        "file": "tests/skills/test_add_note_script.py",
+        "lines": "342-351",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_goal_records_the_arming_session ignores the return codes of its `_run` calls. If the second call (`goal --todo <id> --closed-by retired`) returned 1 without writing, the switch would still hold the first call's `session_id` == \"sess-1\", so the line 348 assertion passes without exercising the todo-item writer. The test name says the todo path records the session, but nothing checks it.\n\nAlso (adv_code_tests): test_goal_records_the_arming_session ignores the return code of the `goal --todo` run and checks only the session key. The switch still holds `sess-1` from the free-text run before it, so the line 348 assertion holds even when the `--todo` branch refuses and writes nothing. The test never proves that the item path records the arming session.\n\nAttack: Monkeypatch `add_note._todo_goal` to raise `NoteError` (any break in the --todo branch that occurs before `write_hook_switch`, plugins/harness/skills/bookmark/commands/add_note.py:281), then run the test's sequence: `goal -- ship it` with CLAUDE_CODE_SESSION_ID=sess-1, then `goal --todo <first id> --closed-by retired`. The second run returns 1 and writes nothing, yet the switch still reads `session_id == \"sess-1\"` (with `hook.todo_id` None), so the assertion at tests/skills/test_add_note_script.py:348 passes. Confirmed with a probe run against the PR head.",
+        "fix": [
+          "Assert `_run(...) == 0` on each of the three calls, and after the --todo call also assert `_switch(project)[\"hook\"][\"todo_id\"] == _first_id(project)` so the value read is the one that call wrote.",
+          "Assert `_run(...) == 0` for each of the three `_run` calls in the test, and after the `--todo` run also assert `_switch(project)[\"hook\"][\"todo_id\"] == _first_id(project)`, so the session check reads a switch the todo path wrote."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Free-text goal form checks are vacuous prefix matches",
+        "file": "tests/skills/test_bookmark_skill_contract.py",
+        "files": [
+          "tests/skills/test_bookmark_skill_contract.py",
+          "plugins/harness/skills/bookmark/SKILL.md"
+        ],
+        "lines": "65-69,76-81",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_skill_runs_the_script_through_the_launcher_with_each_subcommand asserts f\"NOTE goal --\" in the body, but that string is a prefix of \"NOTE goal --todo\" and \"NOTE goal --clear\", which the same loop also requires; the free-text `NOTE goal -- '<goal>'` row (SKILL.md:55) can be deleted and the test still passes. test_skill_hints_every_form has the same hole: \"--goal\" is a substring of \"--goal-todo\" and \"--goal-clear\", so dropping `--goal <condition>` from argument-hint (SKILL.md:4) goes unnoticed.",
+        "fix": [
+          "Pin the free-text forms with a delimiter that only they carry: use \"goal -- '\" (or \"goal -- \" with the trailing space) in the subcommand tuple, and \"--goal <\" in the hint forms tuple."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Top-level README omits the hook switch from the session-bookmark row and the state_dir key",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/session-bookmark/.claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json"
+        ],
+        "lines": "72,225-238,629",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "Both plugin.json and marketplace.json now describe session-bookmark as having 'an optional /goal hook switch'. README.md:72 (the Post-Compaction Context feature row) still lists only git state, prompts, notes and /compact instructions. The state_dir row of the key table (README.md:629) lists `session-bookmark/notes.json` but not the new `session-bookmark/hook.json`. The bookmark section's bullets (README.md:225-238) cover notes only: they give no goal limit (500), no switch location and no rule that only the arming session fires the switch. Neither table matches the new file the mod reads.",
+        "fix": [
+          "Add `session-bookmark/hook.json` (the /goal hook switch) next to `session-bookmark/notes.json` in the state_dir row, add one clause on the optional /goal hook to the README.md:72 row, and add one bullet under the bookmark section: the goal limit, the switch path and the arming-session binding, pointing at plugins/session-bookmark/README.md (Session hook)."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "v1.1.0 change lines label the goal features with the removed skill name",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "61,65",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The '#342 Feat(add-bookmark)' and '#342 Fix(add-bookmark)' lines (61, 65) describe `--goal`, `--goal-todo`, `--goal-clear`, multi-note `--remove`/`--edit` and the unknown-flag stop. These ship in the same release that removes `/harness:add-bookmark` (Breaking changes, line 9), so no v1.1.0 user can run them under that name. A reader who skims Changes can try `/harness:add-bookmark --goal` and find no such command.",
+        "fix": [
+          "Rename the scopes on lines 61 and 65 to `bookmark` (for example '#342 Feat(bookmark): ...').",
+          "Or keep the scopes and add '(now `/harness:bookmark`)' after the first command on line 61."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "v1.1.0 notes report a stale strap state for the bookmark spec",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "docs/plans/freezes/skill/bookmark/r4.3-lock.json",
+          "docs/plans/freezes/skill/bookmark/r4.2-freeze.json"
+        ],
+        "lines": "65-84",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The #342 Fix line ends 'refrozen at `75d50d204630` after review' (line 69) and the #344 Change line says the moved spec 'awaits its greens and `freeze bookmark --refreeze`' (lines 79-80). At the PR head the ledger goes further: r4.1-reopen on base 192b993, r4.2-freeze at b92e3d247f44 and r4.3-lock (docs/plans/freezes/skill/bookmark/), and SkillSpec.json's `frozen.skill_hash` is b92e3d247f44. This file becomes the GitHub release body, so it would describe a spec as waiting for a refreeze when it is already frozen and locked.\n\nAlso (docs): The intro (lines 3-5) says each change line is 'tagged with its PR number', and every other line in Changes starts with `#NNN`. The last line, 'Fix(harness, session-bookmark): the hook switch is bound to the session that armed it' (line 81), has no tag, although it comes from commit 192b993 on this PR's branch.\n\nAlso (overall): Line 69 says the bookmark spec was 'refrozen at 75d50d204630 after review', and line 80 says the renamed spec 'awaits its greens and freeze bookmark --refreeze'. At the head, the ledger holds a round 4 reopen on 192b993, a freeze at b92e3d247f44 (r4.2) and a lock (r4.3), so the spec is Locked. The last bullet (line 81, session binding) has no PR number, although the file's header asks for one per line.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:68-69 says the bookmark strap round 3 was 'refrozen at `75d50d204630` after review', and :77-80 says the spec 'moved with `strap.py rename` (ledger entry r3.5) and awaits its greens and `freeze bookmark --refreeze`'. At the head, the greens ran (R-43 to R-47), round 4 was reopened on base 192b993, refrozen at b92e3d247f44 (docs/plans/freezes/skill/bookmark/r4.2-freeze.json) and locked (r4.3-lock.json). The strap-skills spec was also reopened, refrozen and locked (r5.1 to r5.3) with no line. This file becomes the GitHub release body, so the stale state ships to readers.\n\nAlso (system_shape): The file's header (docs/RELEASES/v1.1.0.md:4-6) says each change line is 'tagged with its PR number'. Every other change line starts with '#NNN', but the last one, 'Fix(harness, session-bookmark): the hook switch is bound to the session that armed it' (:81-85), has no tag. It came from commit 192b993 on this PR's branch.\n\nAlso (roast): Line 69 says round 3 was refrozen at 75d50d204630 and line 80 says the renamed spec awaits its greens and `freeze bookmark --refreeze`; the head has round 4 refrozen at b92e3d247f44 (r4.2) and locked (r4.3). The session-binding bullet on line 81 also has no PR tag, against the file's own 'tagged with its PR number' rule.",
+        "fix": [
+          "Line 69: replace 'refrozen at `75d50d204630` after review.' with 'refrozen at `75d50d204630` after review; round 4 (base `192b993`) re-proves it after the session-binding fix, frozen at `b92e3d247f44` and locked (ledger r4.3).'",
+          "Lines 79-80: replace 'and awaits its greens and `freeze bookmark --refreeze`.' with '; round 4 re-ran the greens under the new name, refroze and locked it.'",
+          "Line 81: prefix the entry with '#342 ' so it reads '- #342 Fix(harness, session-bookmark): the hook switch is bound ...'.",
+          "Rewrite line 69 to name round 4 (base 192b993, refrozen at b92e3d247f44, locked r4.3). Replace the 'awaits its greens' clause on line 80 with the r4 refreeze, and prefix line 81 with `#342`.",
+          "Replace 'refrozen at `75d50d204630` after review' with the round 4 state (reopened on `192b993`, refrozen at `b92e3d247f44`, locked as r4.3), and drop 'awaits its greens and `freeze bookmark --refreeze`' from the #344 Change line.",
+          "Prefix the line with '#342 ': '- #342 Fix(harness, session-bookmark): the hook switch is bound ...'.",
+          "Line 80: replace 'and awaits its greens and `freeze bookmark --refreeze`' with 'then reopened as round 4 on base `192b993`, refrozen at `b92e3d247f44` and locked'. Line 81: prefix the bullet with '#342 '."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Strap freeze and lock entries pin __pycache__ bytecode digests",
+        "file": "docs/plans/freezes/skill/strap-skills/r5.3-lock.json",
+        "files": [
+          "docs/plans/freezes/skill/strap-skills/r5.3-lock.json",
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "docs/plans/freezes/skill/strap-skills/r5.2-freeze.json",
+          "plugins/harness/lib/harness_lib/plan_lock.py"
+        ],
+        "lines": "40-44",
+        "reviewer": "overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The new strap-skills r5.2 freeze and r5.3 lock entries list two `__pycache__/*.cpython-315-pytest-9.2.0.pyc` files under `ignored`. plan_lock.snapshot leaves out ignored bytecode because a rerun rewrites it. strap_lock does not: after the planned test reruns, _drift_lines prints `drift:` for the Locked strap-skills spec, and a lock gate on a clone without those .pyc files refuses on `current.get(path) != digest`.\n\nAlso (roast): strap_lock.snapshot hashes every ignored file of the set, bytecode included, so the strap-skills r5.3 lock (and its r5.2 freeze) records `__pycache__/*.cpython-315-pytest-9.2.0.pyc` digests. The next pytest run, or another interpreter, rewrites them and `_drift_lines` reports `drift:`; `_file_problems` would refuse on them too. plan_lock already learned this lesson (`_bytecode`, `kept_ignored`); strap_lock did not get the memo.",
+        "fix": [
+          "Apply plan_lock's bytecode filter (`_bytecode`) to the ignored map in the strap snapshot as well, and skip bytecode paths in strap_lock._drift_lines and the lock gate so existing entries stop reporting them.",
+          "Move plan_lock's `_bytecode` filter to freeze_git and apply it in strap_lock.snapshot; filter existing entries' `ignored` through the same `kept_ignored` in `_file_problems` and `_drift_lines`, as plan_lock does."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "read_hook_switch has no caller",
+        "file": "plugins/harness/lib/harness_lib/add_todo_api.py",
+        "lines": "33-35,114-122",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "add_todo_api.read_hook_switch is exported in __all__ but nothing in plugins/, tests/ or any skill doc calls it. The mod parses the switch itself (session_hook.ts armedSwitch), and both Python writers only write or unlink.\n\nAlso (roast): read_hook_switch is exported in __all__ but nothing calls it and no test touches it; the only reader of the switch is session_hook.ts. Untested public surface waiting to drift from the TS parser.",
+        "fix": [
+          "Delete read_hook_switch and drop it from __all__.",
+          "Or give it a caller: a pinning test in tests/mods/test_session_bookmark_hook_contract.py, or a `hook --show` / `goal --show` status line.",
+          "Delete read_hook_switch and its __all__ entry.",
+          "Or give it a caller (for example `_clear` reporting whether the removed switch had fired) and a test."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "a whole TodoHook with a placeholder title just to carry the closing",
+        "file": "plugins/harness/lib/harness_lib/add_todo_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/add_todo_models.py",
+          "plugins/harness/lib/harness_lib/add_todo_api.py",
+          "plugins/harness/scripts/add_todo.py",
+          "tests/scripts/test_add_todo.py"
+        ],
+        "lines": "68-70,94-102",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "AddTodoRequest.hook is a TodoHook, but the row only ever reads `hook.closed_by`. To build it, todo_hook(closing) invents PENDING_DESC to satisfy min_length and stamps a time.time() nobody reads, and two docstrings explain that this hook is never written. An Optional[Closing] says the same thing without the fake.",
+        "fix": [
+          "Type AddTodoRequest.hook as Optional[Closing], emit `Hook: {request.hook.value}`, and drop PENDING_DESC and the item-less branch of todo_hook (make `item` required)."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "MAX_DESC_CHARS docstring claims the goal always fits; a long id truncates the closing clause",
+        "file": "plugins/harness/lib/harness_lib/add_todo_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/add_todo_models.py",
+          "tests/scripts/test_add_todo.py"
+        ],
+        "lines": "203-204,259-262",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "add_todo_models.py:204 says a description at MAX_DESC_CHARS 'with the id and the closing clause ... stays under MAX_GOAL_CHARS'. todo_id has no length bound, and TodoHook.goal() (:259-262) cuts the joined text at 500, which cuts the closing clause (the evaluator's test) first. tests/scripts/test_add_todo.py relies on that cut with a 200-char id. The claim holds only for ids under about 60 characters.",
+        "fix": [
+          "Reword to 'with a catalog id (`todo-xxxx`) and the closing clause it stays under MAX_GOAL_CHARS; goal() cuts anything longer'.",
+          "Or cut `desc` instead of the joined text so the closing clause always survives."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "A rename ledger entry validates without from_name, and owners() then misattributes earlier tags",
+        "file": "plugins/harness/lib/harness_lib/freeze_ledger.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/freeze_ledger.py",
+          "plugins/harness/lib/harness_lib/strap_lock.py"
+        ],
+        "lines": "93-94",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "LedgerEntry.from_name is optional for every kind, so a `rename` entry without it (or a non-rename entry with one) passes validation. strap_lock.owners() skips a rename that has no from_name, so every earlier entry is mapped to the new name, and check/reconcile then report their old-stem tags as untagged and may create duplicate commit tags under the new stem.",
+        "fix": [
+          "Add a model_validator on LedgerEntry requiring from_name exactly when kind == rename, and regenerate schemas/FreezeLedgerEntry.schema.json (an if/then on kind)."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "add_todo.py hook --clear silently ignores --todo/--closed-by, unlike add_note.py goal --clear",
+        "file": "plugins/harness/scripts/add_todo.py",
+        "files": [
+          "plugins/harness/scripts/add_todo.py",
+          "plugins/harness/skills/bookmark/commands/add_note.py",
+          "tests/scripts/test_add_todo.py"
+        ],
+        "lines": "142-144,755-757",
+        "reviewer": "runtime, adv_code_runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "main() takes the clear branch whenever `args.clear` is set (line 142), so `hook --clear --todo X --closed-by committed` removes the switch and exits 0 without arming anything. add_note.py goal refuses the same mix ('goal --clear takes no text, --todo or --closed-by'). A caller that meant to re-arm ends up with no switch and no error.\n\nAlso (adv_code_runtime): main() takes the clear branch whenever args.clear is set, so a mixed call that also names an item to arm removes the armed switch and reports success instead of refusing. add_note.py goal refuses the same mix ('goal --clear takes no text, --todo or --closed-by'), so the two writers of the same switch disagree.\n\nAttack: Arm a switch (`add_todo.py hook --todo <id> --closed-by retired`), then run `add_todo.py hook --todo <id> --closed-by committed --clear`: it prints 'hook: cleared', exits 0 and deletes <state_dir>/session-bookmark/hook.json, whereas `add_note.py goal --todo <id> --closed-by committed --clear` exits 1 with 'goal --clear takes no text, --todo or --closed-by'.\n\nAlso (overall, system_shape): main() takes the clear path whenever --clear is set and drops any --todo or --closed-by given with it. add_note.py goal refuses the same combination ('goal --clear takes no text, --todo or --closed-by'), so the two writers of one switch disagree on a mixed invocation, and `hook --clear --todo X --closed-by retired` deletes the switch the caller probably meant to arm.\n\nAlso (system_shape): Commit 452929e says both drivers refuse hook and goal inputs the same way. add_note.py goal() (skills/bookmark/commands/add_note.py, the `if args.clear` branch) refuses `--clear` combined with text, --todo or --closed-by. add_todo.py main() (scripts/add_todo.py:755-757) clears the switch as soon as `args.clear` is set and silently drops any --todo or --closed-by given with it. The two writers of one switch file therefore handle the same mixed input differently.",
+        "fix": [
+          "In add_todo.py, refuse `--clear` combined with `--todo` or `--closed-by` with a Refused('hook --clear takes no --todo or --closed-by'), matching add_note.py.",
+          "Or put --clear and --todo in an argparse mutually exclusive group.",
+          "In main (or _clear), raise Refused('hook --clear takes no --todo or --closed-by') when args.clear is combined with args.todo or args.closed_by, mirroring add_note.py goal.",
+          "In add_todo.py, when args.clear is set together with args.todo or args.closed_by, raise Refused('hook --clear takes no --todo or --closed-by') before calling _clear, and add a test next to test_hook_clear_removes_the_switch.",
+          "In add_todo.py, before `_clear`, raise Refused('hook --clear takes no --todo or --closed-by') when either is set, and add a test beside test_hook_clear_removes_the_switch.",
+          "Or document in the add_todo.py docstring that `hook --clear` ignores the other flags."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "rename leaves planned test copies under the old name-made filename",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "docs/plans/freezes/skill/bookmark/r4.2-freeze.json",
+          "docs/plans/freezes/skill/bookmark/r4.3-lock.json",
+          "plugins/harness/lib/harness_lib/plan_red.py"
+        ],
+        "lines": "1182-1205",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "cmd_rename re-points each planned test node's file half (tests/skills/test_add_bookmark_skill_contract.py -> test_bookmark_skill_contract.py) but leaves the planned copy in the moved spec folder at its old filename. plan_red.test_sources looks up `<spec>/tests/<node file>` and silently skips a missing one, so an open mechanical behavior on a renamed spec would run red without its planned file. The PR's own ledger shows the mismatch: r4.2-freeze and r4.3-lock record docs/plans/strap/bookmark/tests/tests/skills/test_add_bookmark_skill_contract.py while every node now names test_bookmark_skill_contract.py.",
+        "fix": [
+          "In cmd_rename, after the spec folder moves, rename each `<spec dir>/tests/<old name-made path>` to its paired new path from `named_paths` (and roll it back in `_move_back`).",
+          "Refuse the rename while a planned copy sits at an old name-made path, naming the file to move."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "add-todo Step 4 says a problem: line ends the run, but Step 4.5 continues after the lock problem line",
+        "file": "plugins/harness/skills/add-todo/SKILL.md",
+        "lines": "92-106",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "add-todo SKILL.md:92 says 'A problem: line ends the run'. The exceptions that follow (partial landing, a lock held by todo_sync.py add --inbox) say what to report, but not that the run continues. The new Step 4.5 (lines 101-103) expects the session to go on after the lock line and take the id from the todo-watch summary. A session that stops at line 92 under --hook never arms the switch and never says it was not armed.",
+        "fix": [
+          "In add-todo SKILL.md:92-96, say that the run continues to Step 4.5 under --hook after the lock and partial-landing lines, for example: 'A problem: line ends the run, except the two cases below, which go on to Step 4.5 under --hook'."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "add_note.py docstring says only the arming session fires the switch, but an unset session id binds none",
+        "file": "plugins/harness/skills/bookmark/commands/add_note.py",
+        "lines": "14-18",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (add_note.py:15-16) says 'The switch records the arming session (CLAUDE_CODE_SESSION_ID), so only that session fires it.' goal() passes arming_session(os.environ), which returns None when the variable is unset or blank (add_todo_api.py:54-56). hook_switch then documents a None session as 'any session'. add_todo.py's docstring states that exception ('any session when unset'); add_note.py's does not.",
+        "fix": [
+          "Change add_note.py:15-16 to: 'The switch records the arming session (CLAUDE_CODE_SESSION_ID), so only that session fires it; with the variable unset, any session does.'"
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Two copies of the hook's catalog guard that disagree on an unreadable catalog",
+        "file": "plugins/harness/skills/bookmark/commands/add_note.py",
+        "files": [
+          "plugins/harness/skills/bookmark/commands/add_note.py",
+          "plugins/harness/scripts/add_todo.py",
+          "plugins/harness/lib/harness_lib/add_todo_api.py"
+        ],
+        "lines": "222-259",
+        "reviewer": "runtime, skill_package, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "add_note.py `_goal_catalog` re-implements the todo.folder / catalog-exists / require_stable guard that add_todo.py builds from `_ready`, `_load`, `_refuse_legacy` and `_item`, and its docstring says it refuses 'like add_todo.py hook'. They diverge: add_note refuses an unreadable or non-object catalog with 'cannot be read' / 'is not a JSON object', while add_todo.py's `_refuse_legacy` lets it pass and `_item` then reports the misleading 'hook: no catalog item <id>'. The same switch is therefore refused with different causes depending on which writer armed it.\n\nAlso (skill_package): _goal_catalog, _todo_goal and _clear_goal (add_note.py:224-259) copy add_todo.py's _ready, _load, _refuse_legacy, _item and _clear (scripts/add_todo.py:75-125): the same todo.folder check, the same missing-catalog message, the same require_stable call and the same unlink. The _goal_catalog docstring says it refuses 'like add_todo.py hook', but the copies differ. add_todo.py skips the legacy-id check on an unreadable catalog and then reports 'hook: no catalog item <id>'. add_note.py reports 'cannot be read'. Two entry points now arm the same switch with different refusal behavior, and a later change has to be made in both places.\n\nAlso (overall): add_note.py _goal_catalog repeats add_todo.py's _ready, _load and _refuse_legacy checks (todo.folder set, catalog file present, JSON object, require_stable), and the two copies have already drifted. When the catalog is unreadable, add_note says 'the TODO catalog at X cannot be read', but add_todo.py hook falls through _load to `{}` and reports the misleading 'hook: no catalog item <id>'.\n\nAlso (roast): add_note._goal_catalog re-implements add_todo's _ready/_load/_refuse_legacy/_item to 'refuse like add_todo.py hook', and the copies disagree: `add_todo.py hook --todo X` on an unreadable catalog passes _ready and then reports 'hook: no catalog item X', while `add_note.py goal --todo X` says the catalog cannot be read. `hook --clear --todo X --closed-by retired` silently clears, while `goal --clear` with the same extras is refused. Two writers of one switch file should share one gate.",
+        "fix": [
+          "Move one catalog loader (todo.folder check, exists check, JSON-object check, ids.require_stable, catalog_item lookup) into harness_lib.add_todo_api, raising a single error type, and call it from both add_todo.py hook and add_note.py goal --todo.",
+          "At minimum, make add_todo.py `_item` refuse an unreadable catalog with 'the TODO catalog at <path> cannot be read' instead of 'no catalog item'.",
+          "Move the gate into harness_lib.add_todo_api (for example a hook_catalog(cfg) that returns the catalog dict or raises a shared refusal, and a clear_switch(path) that returns whether a file was removed), then call it from both add_note.py goal and add_todo.py hook/_clear.",
+          "Alternatively, keep both copies, make add_todo.py report an unreadable catalog the way add_note.py does, and drop 'refused like add_todo.py hook' from the _goal_catalog docstring.",
+          "Move one `load_catalog(cfg) -> Dict` into harness_lib.add_todo_api that raises a single error type with the four messages, and call it from add_todo.py `_hook` and add_note.py `_todo_goal`.",
+          "Or, at minimum, make add_todo.py `_item` refuse an unreadable or non-object catalog with its own message instead of treating it as an empty one.",
+          "Move the catalog load and refusals (no todo.folder, no catalog, unreadable, rank-tied ids, unknown id) into add_todo_api behind one function raising one error type, and call it from both drivers.",
+          "Make `add_todo.py hook --clear` refuse `--todo`/`--closed-by`, as `add_note.py goal --clear` does."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Negative fire tests rely on undocumented unique start_time values",
+        "file": "plugins/session-bookmark/hooks/session_hook.test.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/session_hook.test.ts",
+          "plugins/session-bookmark/hooks/session_hook.ts"
+        ],
+        "lines": "75-79,134-218",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "session_hook.ts keeps a module-level `tried` Set keyed by `startTime` (session_hook.ts:133) that persists across tests, and `fire` returns early on a tried start time before the session check. Each test therefore hand-picks a distinct `start_time` (1763600000.5 through 1763600009.5) with no comment saying why. A new test that reuses one would make the negative tests (\"another session's switch\", \"a session whose id cannot be read\", \"a subagent's turn\") pass because of the guard rather than the behavior they name. The `Where` doc comment (lines 75-78) also omits the `session` field.\n\nAlso (tests): stampFired (session_hook.ts:147-155) documents that a switch re-armed or removed while `/goal` was queued is left alone, so the new switch is not stamped fired. No test in session_hook.test.ts covers this: every fake `command.run` leaves the disk unchanged, so removing the `current !== found.text` comparison would not fail any test.",
+        "fix": [
+          "Add a comment at the `file`/`hook` fixture stating that every test needs its own start_time because of the per-load `tried` guard, and document `session` in the `Where` comment.",
+          "Replace the hand-written start times with a counter helper (e.g. `const freshStart = (() => { let n = 0; return () => 1763600000.5 + ++n })()`) so collisions cannot happen.",
+          "Add a turn.complete test whose `command.run` handler writes a new switch text (a different goal or start_time) to `seen.writes` before returning, then assert the new text is still unstamped (`armedSwitch(...)` is not null)."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Stamp-failed toast names a harness script path instead of the user command",
+        "file": "plugins/session-bookmark/hooks/session_hook.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/session_hook.ts",
+          "plugins/session-bookmark/README.md"
+        ],
+        "lines": "136",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "session_hook.ts:136 sets STAMP_FAILED to 'could not mark the switch fired (add_note.py goal --clear removes it)'. plugins/session-bookmark/README.md (Session hook, the 'A refused /goal' bullet) repeats 'add_note.py goal --clear'. The mod's other user-facing hint, NOTES_UNREADABLE_TEXT (bookmark.ts:80), names the slash command (`/harness:bookmark --clear`), and the bookmark skill documents `--goal-clear` as the way to remove a switch. A developer reading the toast cannot run add_note.py by that bare name: it sits under the harness plugin cache, with no hpy prefix.",
+        "fix": [
+          "Change STAMP_FAILED to '... (/harness:bookmark --goal-clear removes it)' and the matching README sentence. Update session_hook.test.ts if it pins the text."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "fire() checks and records the per-load guard across an await, so two overlapping turn ends can both queue /goal",
+        "file": "plugins/session-bookmark/hooks/session_hook.ts",
+        "lines": "173-178",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "fire() is started unawaited on every main-loop turn.complete. It tests tried.has(armed.startTime) at line 176, then awaits ownsSwitch() (a $.session.id() call) before tried.add() at line 178. Two fire() calls in flight at once (two turn ends close together, each also awaiting findSwitch's git rev-parse) can both pass the has() check before either adds, and both run $.command.run('/goal ...') for the same switch. The guard's doc comment (line 132) promises a switch is tried at most once per load.",
+        "fix": [
+          "Resolve ownership before the guard and make check-and-add synchronous: `if (!(await ownsSwitch($, armed))) return; if (tried.has(armed.startTime)) return; tried.add(armed.startTime)` with no await between has() and add().",
+          "Alternatively keep a module-level in-flight promise and skip fire() while one is pending."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Hook contract docstring omits the second writer and the session key",
+        "file": "tests/mods/test_session_bookmark_hook_contract.py",
+        "lines": "1-7",
+        "reviewer": "tests, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says only `add_todo.py hook` writes the switch and that session_hook.ts copies \"the path, version, goal limit and the fired key\". The tests also pin `write_goal_switch` (the `add_note.py goal` writer, lines 52-57) and `SESSION_KEY` (lines 60-73), and session_hook.ts:8 names both writers.\n\nAlso (system_shape): tests/mods/test_session_bookmark_hook_contract.py:1-7 says the test pins the switch that 'add_todo.py hook' writes, and that session_hook.ts copies 'the path, version, goal limit and the fired key'. The test also pins the free-text writer (`write_goal_switch`, used by add_note.py goal), SESSION_KEY and the CLAUDE_CODE_SESSION_ID source (lines 52-80), and the registration in register.ts.",
+        "fix": [
+          "Reword lines 1-7 to name both writers (`add_todo.py hook` and `add_note.py goal`) and add the session key to the list of copied names.",
+          "Reword the docstring: 'Pin the hook switch `add_todo.py hook` and `add_note.py goal` write ... copies the path, version, goal limit, the `fired` key and the `session_id` key.'"
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Module docstrings lag the new tests",
+        "file": "tests/scripts/test_add_todo.py",
+        "files": [
+          "tests/scripts/test_add_todo.py",
+          "tests/skills/test_add_note_script.py"
+        ],
+        "lines": "1-4",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_add_todo.py's docstring describes only `add_todo.py row`, but the file now also tests the `hook` subcommand, TodoHook.goal and the Closing conditions (lines 112-197). test_add_note_script.py's docstring says `remove` and `edit` \"change one note by its listed number\", but test_remove_takes_several_numbers_from_one_listing (line 363) removes several, and the new `goal` subcommand tests are not mentioned.",
+        "fix": [
+          "Extend the test_add_todo.py docstring with a sentence on `hook` arming the session-bookmark switch from a catalog item and closing; in test_add_note_script.py say `remove` takes one or more listed numbers and `goal` arms the hook switch."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 342 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":28,\"first_sha\":\"540f6d889e42672dcead605ec202affba1377112\",\"headRefName\":\"0007-add-bookmark-hook\",\"headRefOid\":\"a761e07c892a5c76676fb31f627ab54d8c819939\",\"last_sha\":\"a761e07c892a5c76676fb31f627ab54d8c819939\",\"mergeCommit\":null,\"number\":342,\"state\":\"OPEN\",\"title\":\"Feature(add-bookmark): session hook switch for `/goal`\",\"url\":\"https://github.com/t968rs/operator-straps/pull/342\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests",
+          "adv_code_plans"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests",
+          "adv_refute_adv_code_plans"
+        ],
+        "result": "OK (42 checked, 0 refuted, 3 code findings)",
+        "counts": {
+          "findings_checked": 42,
+          "findings_refuted": 0,
+          "findings_upheld": 42,
+          "code_findings": 3
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0007-add-bookmark-hook",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0007-add-bookmark-hook",
+        "head_ref_name": "0007-add-bookmark-hook",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "D  docs/PR_REVIEWS/0342_0007_add_bookmark_hook.json",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "540f6d889e42672dcead605ec202affba1377112",
+        "head_sha": "4587f6eb022b135f6da71dff131963a3e8a0e735",
+        "base_ancestor_command": "git merge-base --is-ancestor 540f6d889e42672dcead605ec202affba1377112 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4587f6eb022b135f6da71dff131963a3e8a0e735 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  }
+}
