@@ -8,7 +8,7 @@
   "base_sha": "0a263eee4ed3b34b4e7630ce8251c6ae923df6b6",
   "head_sha": "a761e07c892a5c76676fb31f627ab54d8c819939",
   "review_date": "2026-11-24",
-  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4",
+  "verdict": "READY TO MERGE - 22 of 22 findings resolved, 0 bubbled",
   "stats": {
     "additions": 5953,
     "deletions": 2533,
@@ -575,5 +575,139 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - No edit in this part: r4.2-freeze.json and r4.3-lock.json are the ledger the release notes cite as the true state (round 4 frozen at b92e3d247f44, locked r4.3); the v1.1.0.md text is the other part's fix; docs/RELEASES/v1.1.0.md: line 69 now names round 4 (base 192b993, frozen at b92e3d247f44, locked r4.3); the #344 Change line replaces the awaits-greens clause with the round 4 re-run, refreeze and lock; the session-binding Fix line is prefixed with #342."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - cmd_rename moves each planned test copy in the moved spec folder's tests/ from the old node file to the re-pointed one (_planned_test_moves, _move_planned_tests), rolls them back in _move_back, and counts them in the [done] line; docstring, SKILL.md and a test cover it. Ledger r4.2/r4.3: historical entries, left as recorded; plan_red.py: lookup unchanged, the copy now sits where it looks"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - Module docstring names both writers (add_todo.py hook, add_note.py goal), the arming session, and adds the session_id key to the copied names"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - Path check targets (file_unchanged/file_changed/path_present/path_absent) are only re-pointed, never swapped; rename prints one 'swapped: <behavior>[/<scenario>] <field>' line per rewritten text field; strap-skills SKILL.md warns about plain-word names and tells the agent to show those lines before the greens; strap.py docstring updated; test added. SkillSpec.json: frozen spec, no text to change"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - README.md: added the optional /goal hook switch to the Post-Compaction Context row (line 72), hook.json to the state_dir row (line 629), and a bookmark-section bullet (before line 238) giving the 500-character goal limit, the switch path, the arming-session binding and --goal-clear, pointing at plugins/session-bookmark/README.md Session hook."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - docs/RELEASES/v1.1.0.md: renamed the #342 Feat and #342 Fix scopes on the add-bookmark change lines to bookmark."
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - plugins/session-bookmark/README.md: the refused /goal bullet now names /harness:bookmark --goal-clear instead of add_note.py goal --clear, matching the STAMP_FAILED toast the other part changes to. session_hook.ts is the other part's file and was not edited here.; STAMP_FAILED now names '/harness:bookmark --goal-clear' instead of 'add_note.py goal --clear'; the test imports the constant, so no pinned text changed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - MAX_DESC_CHARS docstring now says the goal fits with a catalog id (todo-xxxx) and goal() cuts anything longer, closing clause first; test_add_todo.py: its 200-char-id cut test already matches the reworded claim"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - _clear now refuses --clear mixed with --todo or --closed-by (Refused 'hook --clear takes no --todo or --closed-by', exit 1, switch kept), matching add_note.py goal; module docstring notes it; test_hook_clear_refuses_an_item_or_closing added beside test_hook_clear_removes_the_switch; add_note.py: already present, goal() refuses --clear with text, --todo or --closed-by (add_note.py:267-269); the add_todo.py refusal belongs to the other part"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - test_add_todo.py docstring covers the hook subcommand, TodoHook.goal and Closing; test_add_note_script.py docstring says remove takes one or more listed numbers and goal arms/clears the hook switch"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - test_goal_records_the_arming_session asserts each _run returns 0 and that the switch after the --todo run holds hook.todo_id == _first_id(project) before checking the session"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - Moved plan_lock's bytecode filter to freeze_ledger (is_bytecode, kept_ignored); plan_lock uses it, strap_lock.snapshot drops ignored bytecode before hashing, and strap_lock._file_problems and _drift_lines compare only kept_ignored(entry.ignored), so existing entries holding .pyc digests no longer drift or refuse; r5.2-freeze.json and r5.3-lock.json: write-once ledger entries left as written, their .pyc keys are now skipped on read"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - session_hook.test.ts: comment at the hook fixture stating each turn.complete test needs its own start_time because of the per-load tried guard, and the Where comment now documents session; session_hook.ts: cited for the guard, needs no edit for this issue"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - fire() resolves ownsSwitch before the per-load guard, then checks and adds tried with no await between, so overlapping turn ends cannot both queue /goal"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - add-todo SKILL.md Step 4: the problem-line rule now says it ends the run except the partial-landing and lock cases, which go on to Step 4.5 under --hook"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - AddTodoRequest.hook is now Optional[Closing] and dispatch_row emits `Hook: {request.hook.value}`; PENDING_DESC and the item-less branch of todo_hook are gone (item required); the driver passes Closing(args.hook); TodoHook docstring and test updated to match"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - read_hook_switch kept and given a caller: tests/mods/test_session_bookmark_hook_contract.py reads back a written switch and gets None for a missing file, another version and non-JSON (outside fixer waves)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - LedgerEntry._from_name_for_rename requires from_name exactly on rename entries (freeze_ledger.py), with the if/then/else regenerated into schemas/FreezeLedgerEntry.schema.json (outside fixer waves)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - add_note.py module docstring now says only the arming session fires the switch, and with CLAUDE_CODE_SESSION_ID unset any session does"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - one catalog gate in add_todo_api (catalog_file, require_stable_ids, hook_catalog raising CatalogRefused for no todo.folder, no catalog, unreadable, not a JSON object, rank-tied ids; clear_switch for the unlink); add_todo.py hook (_item) and add_note.py goal --todo (_todo_goal) both call hook_catalog, so an unreadable catalog is refused as 'cannot be read' from either writer; _goal_catalog and _clear_goal removed, add_todo _ready/_refuse_legacy/_clear reuse the shared helpers (row keeps its lenient unreadable-catalog pass)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - SKILL.md exit-1 rule scopes the --clear line to an unreadable notes file (message naming notes.json and run clear) and relays a refused TODO catalog (missing, cannot be read, not a JSON object, rank-tied ids) alone with no retry and no --clear line; add_note.py: catalog messages unchanged, no edit needed for I2"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "12dfb0c (working-tree snapshot; developer commits) - tests/skills/test_bookmark_skill_contract.py pins the free-text forms as --goal < and goal -- ' instead of bare prefixes, so deleting the free-text rows from SKILL.md fails the test (outside fixer waves)"
+    }
+  ]
 }
