@@ -10,19 +10,22 @@ status or merge claims.
 ## Invoking it
 
 ```
-/harness:pr-sum PR [--level 1|2|3] [--min-viz [N]] [--auto-title | --no-auto-title] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]
+/harness:pr-sum PR [--level 0|1|2|3] [--min-viz [N]] [--auto-title | --no-auto-title] [--gh] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]
 ```
 
 | Argument           | Effect                                                                              |
 |--------------------|-------------------------------------------------------------------------------------|
 | `PR`               | The PR number. Required; never guessed from the branch.                             |
-| `--level 1\|2\|3`  | How much the summary draws. No `--level` means 2.                                   |
+| `--level 0..3`     | How much the summary draws. No `--level` means 2.                                   |
 | `--min-viz [N]`    | Level 3 only: `build` requires N diagram blocks (default 3).                        |
 | `--auto-title`     | When the PR title is not a one-line ASCII `Word(scope): summary` subject distinct    |
 |                    | from the branch name, `build` makes the draft title the PR title (`gh pr edit`).    |
 |                    | A usable or merged PR title is kept; an unusable title on an open or closed          |
 |                    | (unmerged) PR is replaced. Default: the `auto_title` key; `--no-auto-title` turns it |
 |                    | off for one run.                                                                     |
+| `--gh`             | After saving the `.md`, `build` writes the same markdown into the PR description,   |
+|                    | between `<!-- pr-sum:start -->` and `<!-- pr-sum:end -->`. Text outside the markers |
+|                    | stays; a rerun replaces the block instead of adding a second one.                   |
 | `--local`          | Reads the checked-out branch when it is not the PR branch: staged and unstaged     |
 |                    | changes included, untracked files left out.                                          |
 | `--remote-head`    | Reads the committed PR head `gh` reports, even on the PR branch.                    |
@@ -30,7 +33,8 @@ status or merge claims.
 | `--repo DIR`       | Names the project when the session runs elsewhere.                                  |
 | `-- <guidance>`    | Free text after a standalone `--`: steers the prose only, never a flag or a check.  |
 
-The agent never picks a level, a `--min-viz` count, `--auto-title`, a source flag or a repo on its own.
+The agent never picks a level, a `--min-viz` count, `--auto-title`, `--gh`, a source flag or a repo on its
+own.
 
 ## Output
 
@@ -42,11 +46,12 @@ markdown is script output: changes go into the skeleton's `draft`, then `build` 
 
 | Level | Adds                                                                                              |
 |-------|---------------------------------------------------------------------------------------------------|
+| 0     | The Summary alone: title and a few sentences; no table, no file descriptions, no sections.       |
 | 1     | Prose only: title, Summary, Files Changed with one description per file, Relocated. No sections.  |
 | 2     | Default. Up to 3 behavior flows, at most one shape diagram, and a Changed Symbols table.          |
 | 3     | Level 2 plus up to 5 flows and every matching shape diagram once (Sequence Diagram, Data Flow).   |
 
-Every level adds a Source / Machine-generated / Total delta table under the Summary when any file is
+Every level but 0 adds a Source / Machine-generated / Total delta table under the Summary when any file is
 machine-generated (harness outputs, `exclusions` matches, Artifact commits). The script writes that table.
 
 ## The flow
@@ -61,7 +66,7 @@ capture --pr NNN ──► skeleton <NNNN>_pr.json: facts (script-owned) + draft
 diff SKELETON ──► the patch, source first, then tests, then docs; --path for cut sections
      │
      ▼
-agent writes draft: title, summary, descriptions, sections (levels 2 and 3)
+agent writes draft: title, summary, descriptions (levels 1 to 3), sections (levels 2 and 3)
      │
      ▼
 build SKELETON ──► alignment pass (levels 2 and 3), saved back to the skeleton
@@ -70,7 +75,10 @@ build SKELETON ──► alignment pass (levels 2 and 3), saved back to the skel
 checks pass? ──no──► problem: lines; fix the draft, rerun build
      │yes
      ▼
-<NNNN>_<Title>.md written, receipt printed
+<NNNN>_<Title>.md written ──► with --gh: marked block written into the PR description
+     │
+     ▼
+receipt printed
 ```
 
 - **Capture** reads the PR number, title and base from one `gh pr view`; the content comes from local git. On
@@ -79,7 +87,8 @@ checks pass? ──no──► problem: lines; fix the draft, rerun build
 - **Diff** prints the patch within a line budget and a 60k-character cap. A working-tree skeleton is refused
   once the branch or HEAD moved since capture.
 - **Build** checks the draft against the skeleton's level and writes the markdown, or exits 1 with one
-  `problem:` line per defect.
+  `problem:` line per defect. With `--gh`, a failed publish (gh failure, unpaired markers, a body over 65536
+  characters) exits 1 after the `.md` is written; the `problem:` line names the saved file.
 
 ## Behavior flows
 
@@ -117,7 +126,7 @@ padded by hand.
 
 ## Examples
 
-`Examples/` holds rendered summaries by level; `Examples/Level-2.md` is a level 2 summary of a PR to this
+`Examples/` holds rendered summaries by level, 0 to 3; `Examples/Level-2.md` is a level 2 summary of a PR to this
 skill, with a stacked `Behavior:` flow and a Changed Symbols table.
 
 ## Related
@@ -128,4 +137,5 @@ skill, with a stacked `Behavior:` flow and a Changed Symbols table.
 - `../../lib/harness_lib/pr_summary.py`: layout and the `build` checks.
 - `../../lib/harness_lib/pr_compare.py`: the comparison fence checks.
 - `../../lib/harness_lib/pr_align.py`: the alignment pass.
+- `../../lib/harness_lib/pr_body.py`: the `--gh` marked block and its `gh` calls.
 - `../pr-review/README.md`: the review flow, which this skill never reads for content.
