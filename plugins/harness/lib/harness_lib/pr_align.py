@@ -42,8 +42,8 @@ _UP_GLYPHS = "│▼├└"
 
 
 def align_draft(draft: PrDraft, level: int) -> PrDraft:
-    """``draft`` with every section body aligned; unchanged at level 1."""
-    if level == 1:
+    """``draft`` with every section body aligned; unchanged at levels 0 and 1, which forbid sections."""
+    if level <= 1:
         return draft
     sections = tuple(
         PrSection(s.heading, align_body(s.body, _section_kind(s.heading, level) == "flow"))
