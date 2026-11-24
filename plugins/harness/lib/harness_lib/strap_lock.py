@@ -151,13 +151,18 @@ def lock_set(root: Path, spec: SkillSpec) -> List[str]:
 
 
 def snapshot(root: Path, paths: Sequence[str]) -> Snapshot:
-    """The tree of the not-gitignored files of ``paths`` and the sha256 of the gitignored ones."""
+    """The tree of the not-gitignored files of ``paths`` and the sha256 of the gitignored ones.
+
+    Ignored bytecode (``__pycache__``, ``*.pyc``) is left out: a rerun or another interpreter rewrites it,
+    so its digest would make ``check`` report drift and the lock gate refuse.
+    """
     try:
         tree, files = fg.build_tree(root, paths)
         _, ignored = fg.members(root, paths)
     except fg.FreezeGitError as exc:
         raise LockRefused([str(exc)]) from None
-    return Snapshot(tree=tree, files=files, ignored=fg.ignored_digests(root, ignored))
+    kept = [path for path in ignored if not fl.is_bytecode(path)]
+    return Snapshot(tree=tree, files=files, ignored=fg.ignored_digests(root, kept))
 
 
 def worktree_blobs(root: Path, paths: Sequence[str]) -> Dict[str, str]:
@@ -473,9 +478,10 @@ def _file_problems(root: Path, last: LedgerEntry) -> List[str]:
             problems.append(f"{path}: not committed at HEAD as frozen; commit the freeze first")
         elif work.get(path) != blob:
             problems.append(f"{path}: the working tree differs from the freeze")
-    current = fg.ignored_digests(root, sorted(last.ignored))
+    ignored = fl.kept_ignored(last.ignored)
+    current = fg.ignored_digests(root, sorted(ignored))
     problems += [f"{path}: ignored file differs from the freeze" for path, digest in
-                 sorted(last.ignored.items()) if current.get(path) != digest]
+                 sorted(ignored.items()) if current.get(path) != digest]
     return problems
 
 
@@ -580,8 +586,9 @@ def _drift_lines(root: Path, spec: SkillSpec, found: Sequence[LedgerEntry]) -> L
     tag = _tree_tag(owners(spec.name, found)[(lock.round, lock.seq)], lock)
     work = worktree_blobs(root, sorted(held.files))
     paths = [p for p, blob in sorted(held.files.items()) if work.get(p) != blob]
-    current = fg.ignored_digests(root, sorted(held.ignored))
-    paths += [p for p, digest in sorted(held.ignored.items()) if p in current and current[p] != digest]
+    ignored = fl.kept_ignored(held.ignored)
+    current = fg.ignored_digests(root, sorted(ignored))
+    paths += [p for p, digest in sorted(ignored.items()) if p in current and current[p] != digest]
     return [f"drift: {path} differs from {tag}" for path in paths]
 
 

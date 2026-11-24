@@ -1,7 +1,8 @@
 """``strap.py rename``: a frozen spec follows its skill to a new name.
 
 The skill folder moves first (by hand, with ``git mv``); ``rename`` then moves the spec folder and the ledger
-folder to the new name, re-points the parts under the old skill folder, writes a ``rename`` entry naming
+folder to the new name, re-points the parts under the old skill folder and the planned test copies, names
+each text field the name swap rewrote, writes a ``rename`` entry naming
 the old name and tags the base under the new stem. Entries written before the rename keep their tags under
 the old stem, so ``check`` reports nothing untagged, and the next refreeze tags under the new stem.
 """
@@ -115,6 +116,52 @@ def test_rename_repoints_planned_test_nodes_and_path_check_targets(frozen: str, 
                               NEW)
     assert renamed.behaviors[-2].tests[0].node == f"{new_paths[-1]}::test_b1"
     assert renamed.behaviors[-1].scenarios[0].checks[0].target == new_paths[2]
+
+
+def test_rename_leaves_path_check_targets_to_the_repoint_and_names_each_swap(frozen: str, strap: Strap,
+                                                                            driver) -> None:
+    """A path check whose file stem is the old name names another file, so only the re-point touches it;
+    each text field the swap rewrote gets a ``swapped:`` line for the developer's review."""
+    from harness_lib import strap_models as sm
+    ok(strap("check", NAME))
+    other = f"plugins/session-x/hooks/{NAME}.ts"
+    checks = [sm.Check(kind="path_present", target=other, expect_baseline=False, expect_green=True),
+              sm.Check(kind="reply_matches", target=f"usage: /harness:{NAME}",
+                       expect_baseline=False, expect_green=True)]
+    scenario = sm.Scenario(id="SC-1", task=f"Run /harness:{NAME}.", tempts="x",
+                           pressures=["time", "authority", "pragmatic"], checks=checks)
+    behavior = sm.Behavior(id="B9", statement="s", kind="judgment", type="discipline", rationale="r",
+                           scenarios=[scenario])
+    spec = driver.load(NAME)
+    spec = spec.model_copy(update={"behaviors": [*spec.behaviors, behavior]})
+    renamed = driver._renamed(spec, NEW)
+    moved = renamed.behaviors[-1].scenarios[0].checks
+    assert [check.target for check in moved] == [other, f"usage: /harness:{NEW}"]
+    swaps = [line for line in driver.swapped_lines(spec, renamed) if " B9" in line]
+    assert swaps == ["swapped: B9/SC-1 task", "swapped: B9/SC-1 checks[1].target"]
+
+
+def test_rename_moves_a_planned_test_copy_with_its_node(frozen: str, strap: Strap, driver,
+                                                        project: Path) -> None:
+    """A planned copy at the old contract test path follows the node, so ``red`` still finds it."""
+    from harness_lib import strap_models as sm
+    ok(strap("check", NAME))
+    spec = driver.load(NAME)
+    old_test = driver.named_paths(spec)[-1]
+    new_test = driver.named_paths(spec.model_copy(update={"name": NEW}))[-1]
+    node = sm.PlannedTest(node=f"{old_test}::test_b1", red="AssertionError")
+    mechanical = sm.Behavior(id="B8", statement="s", kind="mechanical", rationale="r", tests=[node])
+    spec = spec.model_copy(update={"behaviors": [*spec.behaviors, mechanical]})
+    renamed = driver._renamed(spec, NEW)
+    tests = project / PLANS / "strap" / NEW / "tests"
+    write(project, f"{PLANS}/strap/{NEW}/tests/{old_test}", '"""Planned."""\n')
+    moves = driver._planned_test_moves(spec, renamed)
+    assert [(a.resolve(), b.resolve()) for a, b in moves] == [((tests / old_test).resolve(),
+                                                               (tests / new_test).resolve())]
+    done: list = []
+    driver._move_planned_tests(moves, done)
+    assert done == moves
+    assert (tests / new_test).is_file() and not (tests / old_test).exists()
 
 
 def test_rename_tags_the_base_under_the_new_stem(frozen: str, strap: Strap, project: Path) -> None:

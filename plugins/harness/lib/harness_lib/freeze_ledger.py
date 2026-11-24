@@ -17,7 +17,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Dict, Iterable, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from harness_lib.plan_enums import RecordScheme
 from harness_lib.strap_models import NAME_PATTERN
@@ -29,6 +29,11 @@ _SHA40 = r"^[0-9a-f]{40}$"
 _SHA64 = r"^[0-9a-f]{64}$"
 Sha40 = Annotated[str, Field(pattern=_SHA40)]
 Sha64 = Annotated[str, Field(pattern=_SHA64)]
+_RENAME_RULE = {
+    "if": {"properties": {"kind": {"const": "rename"}}, "required": ["kind"]},
+    "then": {"properties": {"from_name": {"type": "string"}}, "required": ["from_name"]},
+    "else": {"properties": {"from_name": {"type": "null"}}},
+}
 
 
 class EntryKind(str, Enum):
@@ -68,8 +73,11 @@ class LedgerError(Exception):
 class LedgerEntry(BaseModel):
     # The dialect and id make the generated file self-describing, like every sibling schema: a validator
     # registry that loads the schemas folder needs ``$schema`` to pick the draft.
+    # ``if``/``then``/``else`` mirrors ``_from_name_for_rename``: a rename names its earlier subject, and no
+    # other kind carries one.
     model_config = ConfigDict(extra="forbid", regex_engine="python-re",
-                              json_schema_extra={"$schema": SCHEMA_DIALECT, "$id": SCHEMA_ID})
+                              json_schema_extra={"$schema": SCHEMA_DIALECT, "$id": SCHEMA_ID,
+                                                 **_RENAME_RULE})
 
     kind: EntryKind
     round: int = Field(ge=1)
@@ -101,6 +109,14 @@ class LedgerEntry(BaseModel):
         datetime.fromisoformat(value)
         return value
 
+    @model_validator(mode="after")
+    def _from_name_for_rename(self) -> "LedgerEntry":
+        if self.kind == EntryKind.rename and not self.from_name:
+            raise ValueError("a rename entry needs from_name")
+        if self.kind != EntryKind.rename and self.from_name is not None:
+            raise ValueError(f"from_name belongs to a rename entry, not {self.kind.value}")
+        return self
+
 
 def plan_stem(plan_id: str, slug: str) -> str:
     return f"plan/{plan_id}-{slug}"
@@ -116,6 +132,20 @@ def ledger_dir(plans_dir: Path, stem: str) -> Path:
 
 def entry_name(entry: LedgerEntry) -> str:
     return f"r{entry.round}.{entry.seq}-{entry.kind.value}.json"
+
+
+def is_bytecode(path: str) -> bool:
+    """True for interpreter bytecode: a file inside a ``__pycache__`` folder or ending in ``.pyc``.
+
+    A rerun or another interpreter rewrites it, so a freeze leaves it out of ``ignored``.
+    """
+    return "__pycache__" in path.split("/") or path.endswith(".pyc")
+
+
+def kept_ignored(ignored: Dict[str, str]) -> Dict[str, str]:
+    """``ignored`` without bytecode paths, so an entry written before a snapshot dropped them compares
+    only the ignored files a current freeze records."""
+    return {path: digest for path, digest in ignored.items() if not is_bytecode(path)}
 
 
 def entry_text(entry: LedgerEntry) -> str:

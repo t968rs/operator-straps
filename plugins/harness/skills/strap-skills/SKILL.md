@@ -343,13 +343,19 @@ writes land where `record-run` looks.
     It refuses a spec that is not frozen (never frozen, or reopened and not yet refrozen) or is Locked, an
     old skill folder still on disk (remove any leftover untracked files there), a new `SKILL.md` that is
     missing, a part missing at its new path, and a new name that already has a spec or ledger folder. It moves the spec folder and the ledger folder to the
-    new name (entry files unchanged), re-points each part, planned test node (its file half) and check
+    new name (entry files unchanged), re-points each part, planned test node (its file half), planned test
+    copy in the spec folder's `tests/` and check
     target under the old skill folder or at a path made from the old name, appends a `rename` entry naming the old name and tags the base
     `base/skill/<new-name>/r<N>`. Entries written before the rename keep their tags under the old stem;
     later ones tag under the new. The moved parts no longer hash to the stamp, so the `stale:` line follows:
     run and grade the greens, then `freeze <new-name> --refreeze`. The old name, as a whole word, becomes the
-    new one in each behavior statement and scenario (task, `tempts`, check targets, judged subjects), so a
-    check that pins the invocation expects the new name; recorded replies keep their text.
+    new one in each behavior statement and scenario (task, `tempts`, reply check targets, judged subjects),
+    so a check that pins the invocation expects the new name; path check targets are only re-pointed, and
+    recorded replies keep their text. The swap is blind to meaning: a name that is a plain word (`bookmark`,
+    `working`) also rewrites prose such as "the compaction bookmark". The run prints one
+    `swapped: <behavior>[/<scenario>] <field>` line per rewritten field; show those lines to the developer
+    before the greens run, and correct a wrong rewrite only on the developer's call (after `reopen`, since
+    a frozen spec refuses text edits).
 
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
     the `bump:` line from step 5 when one printed, and the `push:` line the freeze printed. The developer

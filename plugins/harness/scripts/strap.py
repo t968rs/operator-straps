@@ -54,8 +54,9 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
 ``rename <name> <new-name>``
     After the skill folder moved to ``<new-name>`` (frontmatter included), move a frozen, unlocked spec's
     folder and ledger folder to the new name, re-point the parts under the old skill folder or at a path
-    made from the old name (contract test, models, api, driver), replace the old name in behavior statements
-    and scenario text (recorded replies stay), write a
+    made from the old name (contract test, models, api, driver), with their planned test copies and path
+    check targets, replace the old name as a whole word in behavior statements and scenario text (path check
+    targets and recorded replies stay), print one ``swapped:`` line per rewritten field for review, write a
     ``rename`` entry naming the old one and tag the base under the new stem. The parts' hash changes, so
     the greens run again before ``freeze --refreeze``. Entries before the rename keep their old-stem tags.
 ``api <name>``
@@ -93,13 +94,14 @@ from harness_lib.branch_capture import CaptureError, git, git_out
 from harness_lib.config import active, activate, load_config
 from harness_lib.freeze_ledger import LedgerError
 from harness_lib.plan_enums import ItemStatus
+from harness_lib.plan_lanes import node_file
 from harness_lib.plan_enums import RedException as PlanRed
 from harness_lib.plan_models import ActionItem, ActionPlan, PlannedTest
 from harness_lib.project import project_root
 from harness_lib.strap_lint import lint_project_skill, lint_python, lint_skill
 from harness_lib.strap_models import (
-    Arm, Behavior, BehaviorKind, BehaviorState, Draw, DrawReason, Frozen, Grader, GradeValue, Part, PartKind,
-    Round, Run, Scenario, SkillSpec, SpecMode,
+    Arm, Behavior, BehaviorKind, BehaviorState, Check, CheckKind, Draw, DrawReason, Frozen, Grader,
+    GradeValue, Part, PartKind, Round, Run, Scenario, SkillSpec, SpecMode,
 )
 from harness_lib.strap_profile import Profile, new_fields, profile_of
 from harness_lib.strap_scaffold import named_paths, planned_parts, render_parts
@@ -1103,15 +1105,47 @@ def _renamed_path(path: str, named: Dict[str, str], old: str, new: str) -> str:
     return new + path[len(old):] if path.startswith(old) else path
 
 
+_PATH_CHECKS = frozenset({CheckKind.FILE_UNCHANGED, CheckKind.FILE_CHANGED, CheckKind.PATH_PRESENT,
+                          CheckKind.PATH_ABSENT})
+
+
+def _renamed_target(check: Check, swap: Callable[[str], str], repoint: Callable[[str], str]) -> str:
+    """A path check's target re-pointed only (a file stem or segment equal to the old name names another
+    file); any other check's target re-pointed, then swapped."""
+    target = repoint(check.target)
+    return target if check.kind in _PATH_CHECKS else swap(target)
+
+
 def _renamed_scenario(scenario: Scenario, swap: Callable[[str], str],
                       repoint: Callable[[str], str]) -> Scenario:
-    """``scenario`` with ``swap`` applied to its task, ``tempts``, check targets and judged subjects; a check
-    target that is a moved path is first re-pointed by ``repoint``."""
+    """``scenario`` with ``swap`` applied to its task, ``tempts``, reply check targets and judged subjects;
+    a path check target is only re-pointed by ``repoint``."""
     return scenario.model_copy(update={
         "task": swap(scenario.task), "tempts": swap(scenario.tempts),
-        "checks": [check.model_copy(update={"target": swap(repoint(check.target))})
+        "checks": [check.model_copy(update={"target": _renamed_target(check, swap, repoint)})
                    for check in scenario.checks],
         "judged": [item.model_copy(update={"of": swap(item.of)}) for item in scenario.judged]})
+
+
+def _scenario_swaps(old: Scenario, new: Scenario) -> List[str]:
+    """The text fields of ``old`` the swap rewrote, as ``<scenario> <field>`` labels."""
+    pairs = [("task", old.task, new.task), ("tempts", old.tempts, new.tempts)]
+    pairs += [(f"checks[{i}].target", a.target, b.target)
+              for i, (a, b) in enumerate(zip(old.checks, new.checks)) if a.kind not in _PATH_CHECKS]
+    pairs += [(f"judged[{i}].of", a.of, b.of) for i, (a, b) in enumerate(zip(old.judged, new.judged))]
+    return [f"{old.id} {field}" for field, before, after in pairs if before != after]
+
+
+def swapped_lines(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
+    """One ``swapped: <behavior>[/<scenario>] <field>`` line per text field the rename rewrote, for the
+    developer to review before the greens run."""
+    lines: List[str] = []
+    for old, new in zip(spec.behaviors, renamed.behaviors):
+        if old.statement != new.statement:
+            lines.append(f"swapped: {old.id} statement")
+        for a, b in zip(old.scenarios, new.scenarios):
+            lines += [f"swapped: {old.id}/{label}" for label in _scenario_swaps(a, b)]
+    return lines
 
 
 def _renamed_node(node: str, repoint: Callable[[str], str]) -> str:
@@ -1170,8 +1204,31 @@ def _rename_problems(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
     return problems
 
 
-def _move_back(old: str, new: str, spec_file: Tuple[Path, bytes]) -> None:
-    """Undo a rename that failed part way: both folders back under ``old``, the spec's bytes restored."""
+def _planned_test_moves(spec: SkillSpec, renamed: SkillSpec) -> List[Tuple[Path, Path]]:
+    """Each planned test copy in the moved spec folder at a node file the rename re-pointed, paired with its
+    new path; a copy that is absent, or whose new path is taken, stays."""
+    tests = _strap_dir(renamed.name) / "tests"
+    pairs = {node_file(a.node): node_file(b.node) for old, new in zip(spec.behaviors, renamed.behaviors)
+             for a, b in zip(old.tests, new.tests)}
+    return [(tests / a, tests / b) for a, b in pairs.items()
+            if a != b and (tests / a).is_file() and not (tests / b).exists()]
+
+
+def _move_planned_tests(moves: List[Tuple[Path, Path]], done: List[Tuple[Path, Path]]) -> None:
+    """Move each planned copy to its new path, recording each finished move in ``done`` for ``_move_back``."""
+    for source, target in moves:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        source.rename(target)
+        done.append((source, target))
+
+
+def _move_back(old: str, new: str, spec_file: Tuple[Path, bytes],
+               moved: Sequence[Tuple[Path, Path]] = ()) -> None:
+    """Undo a rename that failed part way: the planned test copies at their old paths, both folders back
+    under ``old``, the spec's bytes restored."""
+    for source, target in reversed(moved):
+        if target.is_file() and not source.exists():
+            target.rename(source)
     if sl.folder(new).is_dir() and not sl.folder(old).exists():
         sl.move_ledger(new, old)
     if _strap_dir(new).is_dir() and not _strap_dir(old).exists():
@@ -1192,17 +1249,19 @@ def cmd_rename(args: argparse.Namespace) -> int:
     sl.preflight(root, pending)
     before = spec_bytes(spec.name)
     _strap_dir(spec.name).rename(_strap_dir(renamed.name))
+    copies: List[Tuple[Path, Path]] = []
     try:
+        _move_planned_tests(_planned_test_moves(spec, renamed), copies)
         save(renamed)
         sl.move_ledger(spec.name, renamed.name)
         lines = sl.commit(root, pending)
     except (*PROBLEMS, sl.LockRefused):
-        _move_back(spec.name, renamed.name, before)
+        _move_back(spec.name, renamed.name, before, copies)
         raise
     moved = sum(1 for a, b in zip(spec.parts, renamed.parts) if a.path != b.path)
     print(f"rename [done] | {spec.name} -> {renamed.name} | {moved} part(s) re-pointed | "
-          f"ledger {sl.stem(spec.name)} -> {sl.stem(renamed.name)}")
-    _print_lines([line for line in [stale_line(renamed)] if line] + lines)
+          f"{len(copies)} planned test(s) moved | ledger {sl.stem(spec.name)} -> {sl.stem(renamed.name)}")
+    _print_lines([line for line in [stale_line(renamed)] if line] + swapped_lines(spec, renamed) + lines)
     return 0
 
 

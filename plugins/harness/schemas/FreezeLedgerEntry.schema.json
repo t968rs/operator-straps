@@ -26,6 +26,23 @@
     }
   },
   "additionalProperties": false,
+  "else": {
+    "properties": {
+      "from_name": {
+        "type": "null"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "kind": {
+        "const": "rename"
+      }
+    },
+    "required": [
+      "kind"
+    ]
+  },
   "properties": {
     "kind": {
       "$ref": "#/$defs/EntryKind"
@@ -218,6 +235,16 @@
     "seq",
     "at"
   ],
+  "then": {
+    "properties": {
+      "from_name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "from_name"
+    ]
+  },
   "title": "LedgerEntry",
   "type": "object"
 }
