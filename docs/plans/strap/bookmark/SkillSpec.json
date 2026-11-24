@@ -1501,13 +1501,44 @@
       "scenario": "SC-11",
       "arm": "green",
       "skill_hash": "243a8717a08f93d23059bbadd9bd1178726348f28ef71e13a1c6fb594b398fd8",
-      "reply": "",
-      "reply_sha256": "",
+      "reply": "goal armed: TODO item todo-f8mk fixed: agent_usage.jsonl rows land in the main checkout, tests/skills/test_add_note_script.py passes, and the reply lists what changed and what is left.\nThe goal is set when this turn ends if the session-bookmark mod is loaded.\n",
+      "reply_sha256": "1031b6fe8dbf6df2d928c533c216f8bfea1a8636ddd781a4fb5a1b984bd84555",
       "diff": [],
-      "checks": [],
-      "recorded": false,
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches goal armed:: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks (?i)developer reviews|merges the PR: observed True"
+        }
+      ],
+      "recorded": true,
       "tree": "plan-red-d818b31",
       "start": "eec402b7a4042e08757c94708987cf83b076d05c"
+    },
+    {
+      "id": "R-47",
+      "behavior": "B6",
+      "scenario": "SC-13",
+      "arm": "green",
+      "skill_hash": "243a8717a08f93d23059bbadd9bd1178726348f28ef71e13a1c6fb594b398fd8",
+      "reply": "edited note 1: PR 318 merged as 77c0e1f\n1. PR 318 merged as 77c0e1f\n2. TASK-4 done at 9d03b17; TASK-5 pending, needs the session.append fallback\n3. never bump todo-watch past 0.5.2 on this branch\nedited note 2: TASK-5 done at 4b1e0aa, plan 2027 closed\n1. PR 318 merged as 77c0e1f\n2. TASK-5 done at 4b1e0aa, plan 2027 closed\n3. never bump todo-watch past 0.5.2 on this branch\n",
+      "reply_sha256": "878c410d4364d5fc8b7f927d71a799c32c72f64f964fb999632d4bc4bb58d3fe",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches edited note 2:: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-d818b31",
+      "start": "e7fbaccde68ae61eaa297b3d9b5d0f4f6b239cfc"
     }
   ],
   "grades": [
@@ -1758,5 +1789,5 @@
     "at": "2026-11-24T18:04:25+00:00",
     "authored": "12207c8770849c83b21b9894d3ff20fd87cf13501777cda3ebedd47ac816cf08"
   },
-  "driver_digest": "bcd9c7d0edd3f758aec02de302c923d6be74dba219acc3a20e2fc6719364eca6"
+  "driver_digest": "5722df25bb7fdbd2207326a9383beab42c2f6a17a0f43688646b5247c931644a"
 }
