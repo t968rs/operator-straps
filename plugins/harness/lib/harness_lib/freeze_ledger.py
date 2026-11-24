@@ -1,9 +1,11 @@
-"""The freeze ledger: one write-once JSON file per freeze, lock, unlock, arm, reopen or relink.
+"""The freeze ledger: one write-once JSON file per freeze, lock, unlock, arm, reopen, relink or rename.
 
 A subject (a plan or a strap skill) owns a folder ``<plans>/freezes/<stem>/`` where ``<stem>`` is
 ``plan/<no>-<slug>`` or ``skill/<name>``. Each entry is a file named ``r<N>.<k>-<kind>.json``: ``N`` the
 round, ``k`` a sequence that counts across kinds. A file is written once and never rewritten, so the folder
-is an append-only history and the subject's state is a pure function of its entries.
+is an append-only history and the subject's state is a pure function of its entries. A renamed strap
+skill's folder moves whole to its new stem, its files unchanged, and gains a ``rename`` entry naming the
+old one (``from_name``); the entries before it keep their tags under the old stem.
 
 ``schemas/FreezeLedgerEntry.schema.json`` is ``LedgerEntry.model_json_schema()`` and is never edited by hand.
 """
@@ -18,6 +20,7 @@ from typing import Annotated, Dict, Iterable, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from harness_lib.plan_enums import RecordScheme
+from harness_lib.strap_models import NAME_PATTERN
 
 FREEZES_DIR = "freezes"
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -35,6 +38,7 @@ class EntryKind(str, Enum):
     arm = "arm"
     reopen = "reopen"
     relink = "relink"
+    rename = "rename"
 
 
 class LedgerState(str, Enum):
@@ -86,6 +90,8 @@ class LedgerEntry(BaseModel):
     old_base: Optional[Sha40] = None
     new_base: Optional[Sha40] = None
     match: Optional[Literal["patch-id", "ref"]] = None
+    from_name: Optional[str] = Field(default=None, pattern=NAME_PATTERN,
+                                     description="A rename entry's earlier subject name.")
 
     @field_validator("at")
     @classmethod
@@ -148,7 +154,7 @@ def load_entries(folder: Path) -> List[LedgerEntry]:
 
 
 def state(entries: Iterable[LedgerEntry]) -> LedgerState:
-    """The state after the highest entry; ``reopen`` and ``relink`` leave the state before them."""
+    """The state after the highest entry; ``reopen``, ``relink`` and ``rename`` leave the state before it."""
     current = LedgerState.none
     for entry in sorted(entries, key=lambda e: (e.round, e.seq)):
         current = _STATE_OF_KIND.get(entry.kind, current)

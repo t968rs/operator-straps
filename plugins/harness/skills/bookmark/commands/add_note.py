@@ -236,7 +236,7 @@ def _goal_catalog(cfg: Any) -> Dict[str, Any]:
     if not isinstance(data, dict):
         raise NoteError(f"the TODO catalog at {cfg.todo.catalog} is not a JSON object")
     try:
-        ids.require_stable(data, "add-bookmark goal")
+        ids.require_stable(data, "bookmark goal")
     except TodoSyncError as exc:
         raise NoteError(str(exc)) from exc
     return data

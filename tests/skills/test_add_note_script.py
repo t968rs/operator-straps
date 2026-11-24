@@ -1,4 +1,4 @@
-"""Behavioral tests for the harness add-bookmark command ``commands/add_note.py``.
+"""Behavioral tests for the harness bookmark command ``commands/add_note.py``.
 
 The script keeps the session notes the session-bookmark mod prints in its bookmark. Each test runs it against
 a throwaway project built by ``make_project`` (a git repository on branch ``main``) and reads the notes file
@@ -29,7 +29,7 @@ _NOTES_REL = ".claude/state/harness/session-bookmark/notes.json"
 
 @pytest.fixture(scope="module")
 def script(plugin_root: Path) -> ModuleType:
-    path = plugin_root / "skills" / "add-bookmark" / "commands" / "add_note.py"
+    path = plugin_root / "skills" / "bookmark" / "commands" / "add_note.py"
     assert path.exists(), f"missing {path}"
     spec = importlib.util.spec_from_file_location("add_note", path)
     assert spec is not None and spec.loader is not None

@@ -178,7 +178,7 @@ After configuring your project below, open Claude Code in that repository and in
 /harness:d-w HEAD
 /harness:a-w my-branch --committed
 /harness:a-w HEAD
-/harness:add-bookmark keep the public API frozen until PR 60 merges
+/harness:bookmark keep the public API frozen until PR 60 merges
 ```
 
 Replace `123` with your PR number. `pr-review` runs the full review-and-fix workflow; `/harness:pr-review 123 -a`
@@ -195,31 +195,31 @@ A plugin bumps its patch for fixes and docs and its minor for new features or co
 bump can also carry a break, which the release's Breaking changes section names. `claude plugin update
 <name>@operator-straps` picks up a new version.
 
-### add-bookmark
+### bookmark
 
-`/harness:add-bookmark` stores notes that survive compaction. The session-bookmark mod prints them above the
+`/harness:bookmark` stores notes that survive compaction. The session-bookmark mod prints them above the
 `/compact` instructions, so a constraint or reminder stays visible after the summary.
 
 ```text
-/harness:add-bookmark keep the public API frozen until PR 60 merges
-/harness:add-bookmark --standing run the tests through pytest -c pyproject.toml
-/harness:add-bookmark --list
-/harness:add-bookmark --edit 2 keep the public API frozen until PR 61 merges
-/harness:add-bookmark --remove 2
-/harness:add-bookmark --clear
+/harness:bookmark keep the public API frozen until PR 60 merges
+/harness:bookmark --standing run the tests through pytest -c pyproject.toml
+/harness:bookmark --list
+/harness:bookmark --edit 2 keep the public API frozen until PR 61 merges
+/harness:bookmark --remove 2
+/harness:bookmark --clear
 ```
 
 | Form                                         | Effect                                                              |
 |----------------------------------------------|---------------------------------------------------------------------|
-| `/harness:add-bookmark [--] <note text>`     | Store one note on the current branch (a leading `--` is optional)   |
-| `/harness:add-bookmark --standing <text>`    | Store one note with no branch; it applies on every branch           |
-| `/harness:add-bookmark --list`               | Print the stored notes, numbered                                    |
-| `/harness:add-bookmark --remove N [N ...]`   | Drop each note N of the `--list` numbering, in one call, and print the list |
-| `/harness:add-bookmark --edit N <text> [--edit M <text> ...]` | Replace the text of note N (and of M, ...), keeping each branch, and print the list |
-| `/harness:add-bookmark --clear`              | Drop every stored note                                              |
-| `/harness:add-bookmark --goal <condition>`   | Arm a session goal from the text; the mod runs `/goal <condition>` when the turn ends |
-| `/harness:add-bookmark --goal-todo <id> <retired\|committed\|developer>` | Arm the goal of TODO item `<id>`, closed by the given closing clause |
-| `/harness:add-bookmark --goal-clear`         | Remove an armed goal before it fires                                |
+| `/harness:bookmark [--] <note text>`         | Store one note on the current branch (a leading `--` is optional)   |
+| `/harness:bookmark --standing <text>`        | Store one note with no branch; it applies on every branch           |
+| `/harness:bookmark --list`                   | Print the stored notes, numbered                                    |
+| `/harness:bookmark --remove N [N ...]`       | Drop each note N of the `--list` numbering, in one call, and print the list |
+| `/harness:bookmark --edit N <text> [--edit M <text> ...]` | Replace the text of note N (and of M, ...), keeping each branch, and print the list |
+| `/harness:bookmark --clear`                  | Drop every stored note                                              |
+| `/harness:bookmark --goal <condition>`       | Arm a session goal from the text; the mod runs `/goal <condition>` when the turn ends |
+| `/harness:bookmark --goal-todo <id> <retired\|committed\|developer>` | Arm the goal of TODO item `<id>`, closed by the given closing clause |
+| `/harness:bookmark --goal-clear`             | Remove an armed goal before it fires                                |
 | `/session-bookmark notes`                    | Print the same numbered list through the mod, with no model turn    |
 
 - The session that runs the command writes the stored line, so a note that points at the conversation
@@ -272,7 +272,7 @@ arguments:
 - Split rule and limits: `plugins/harness/reference/skill_arguments.md`. Text before the token is the skill's own
   arguments, text after it is guidance. Guidance never reaches a command line and never waives a skill rule, a
   harness rule or the project's CLAUDE.md.
-- Skills whose whole argument is free text (`c-msg`, `check-runlogs`, `add-bookmark`) take a leading `--` as
+- Skills whose whole argument is free text (`c-msg`, `check-runlogs`, `bookmark`) take a leading `--` as
   optional. `fold-in-review` looks for the token on the last line only, since pasted output holds `--` lines.
 - `pr-review` forwards guidance to every reviewer and fixer prompt (under `-a`, through the Workflow's
   `args.guidance` to every reviewer and refuter prompt), `pr-team` to each reviewer prompt file,

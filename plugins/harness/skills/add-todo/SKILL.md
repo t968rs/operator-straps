@@ -23,7 +23,7 @@ and `<note>` are the same invocation. With flags and no `--` token, the text aft
 |---|---|---|
 | `--issue` | A GitHub issue is filed for the item and recorded as its source. | Off: the item stays local, with a dated `note` source. |
 | `-r N`, `--research N` | How far the agent reads before it drafts, 0 to 3; the level also picks the agent's model. | 0 |
-| `--hook C` | Once added, the item becomes the session's goal (`/goal`), closed when it is `retired`, ready to commit (`committed`: tests passed, commit message drafted) or handed to the `developer` (tests passed, files changed and what is left reported) (Step 4.5). An item already in the catalog takes `/harness:add-bookmark --goal-todo <id> <closing>` instead. | Off: no goal. |
+| `--hook C` | Once added, the item becomes the session's goal (`/goal`), closed when it is `retired`, ready to commit (`committed`: tests passed, commit message drafted) or handed to the `developer` (tests passed, files changed and what is left reported) (Step 4.5). An item already in the catalog takes `/harness:bookmark --goal-todo <id> <closing>` instead. | Off: no goal. |
 
 | Level | The agent |
 |---|---|

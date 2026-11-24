@@ -652,13 +652,6 @@ def _base_lines(repo: Path, plan: pm.ActionPlan, stem: str, scenario: bool,
     return lines
 
 
-def _adder(repo: Path, path: str) -> Optional[str]:
-    done = git(repo, "--literal-pathspecs", "log", "--diff-filter=A", "--reverse", "--format=%H", "HEAD",
-               "--", path)
-    found = done.stdout.split() if done.returncode == 0 else []
-    return found[0] if found else None
-
-
 def _entry_lines(repo: Path, plan_file: Path, stem: str, entry: LedgerEntry,
                  held: Optional[Set[str]] = None, folded: Optional[Set[str]] = None) -> List[str]:
     """``untagged:`` for a non-history entry's tree, unless a tree tag holds it or it is in ``held`` (the
@@ -671,7 +664,7 @@ def _entry_lines(repo: Path, plan_file: Path, stem: str, entry: LedgerEntry,
     if entry.tree and _peel(repo, tree_tag(stem, entry.kind.value, entry.seq)) != entry.tree \
             and entry.tree not in (held or ()):
         lines.append(f"untagged: {entry.tree[:7]} ({role} tree)")
-    adder = _adder(repo, rel(repo, folder_of(plan_file, stem) / fl.entry_name(entry)))
+    adder = fg.adder(repo, rel(repo, folder_of(plan_file, stem) / fl.entry_name(entry)))
     tagged = git(repo, "tag", "--list", f"{_entry_stem(stem, entry)}-commit*").stdout.split()
     if adder and not tagged and not commit_folded(_entry_stem(stem, entry), folded or set()):
         lines.append(f"untagged: {adder[:7]} ({role} commit)")

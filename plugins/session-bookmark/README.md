@@ -4,8 +4,8 @@ A compaction bookmark kept in session state instead of a file. It stands in for 
 and `SessionStart` compact|resume hooks that write a bookmark file and read it back after compaction.
 
 Nothing in it is specific to one repository: it reads git state, the conversation and the project's notes
-file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's add-bookmark skill, and the
-session hook switch is written only by the harness plugin's add-bookmark or add-todo skills; the rest depends on
+file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's bookmark skill, and the
+session hook switch is written only by the harness plugin's bookmark or add-todo skills; the rest depends on
 no other plugin.
 
 ## What it does
@@ -18,14 +18,14 @@ no other plugin.
 - The same bookmark is appended to the compacted conversation as its last message, opening with
   `POST-COMPACT BOOKMARK (session-bookmark)`. The model reads it on the next request, so a mid-turn
   auto-compaction is covered too, and a resumed transcript already holds it.
-- Notes added with the `harness:add-bookmark` skill print in a `## Session Notes` section, after the last
+- Notes added with the `harness:bookmark` skill print in a `## Session Notes` section, after the last
   user messages and before the `/compact` instructions. They are read at each compaction from
   `<state_dir>/session-bookmark/notes.json` under the git top level of the session cwd, else of
   `CLAUDE_PROJECT_DIR`; when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds
   a notes file is read. `state_dir` comes from `.claude/harness.json` (default
   `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
   other-version file means no notes section; a note stays until it is removed or cleared with
-  `/harness:add-bookmark`.
+  `/harness:bookmark`.
 - Each note prints as the skill's `--list` does: a standing note as its text alone, a note added on the
   bookmark's branch as `[<branch>] <text>`, and a note added on another branch as
   `[<branch>; now on <current>] <text>`. When any note carries the `now on` marker, one hint line under
@@ -53,9 +53,9 @@ no other plugin.
 A goal, free text or a TODO item, can be made the session's goal. Three harness-plugin routes write the hook
 switch, `<state_dir>/session-bookmark/hook.json`:
 
-- `harness:add-bookmark --goal <condition>` (`add_note.py goal`): a free-text goal; the switch's `todo_id` is
+- `harness:bookmark --goal <condition>` (`add_note.py goal`): a free-text goal; the switch's `todo_id` is
   null and it carries only `goal`, `start_time` and `todo_id`.
-- `harness:add-bookmark --goal-todo <id> <closing>` (`add_note.py goal --todo <id> --closed-by <closing>`): an
+- `harness:bookmark --goal-todo <id> <closing>` (`add_note.py goal --todo <id> --closed-by <closing>`): an
   item already in the catalog.
 - `harness:add-todo --hook <closing>`: marks the run, and once the inbox drain lands the item,
   `add_todo.py hook --todo <id> --closed-by <closing>` arms it.
@@ -94,7 +94,7 @@ A switch for an item:
 | Name | Does |
 |------|------|
 | `/session-bookmark` | Prints the bookmark held in this session's state, or says none is held. `$.state` is promised to survive a reload, not a resume, so a resumed session can answer none while its transcript still carries a bookmark message. |
-| `/session-bookmark notes` | Reads the notes file live (no compaction needed) and prints every stored note (no 20-note cut, so a hand-edited file holding more still numbers as the script does) with the same numbering and branch markers as `/harness:add-bookmark --list`, the hint line first when a note is from another branch, or `no notes`. A file the script would refuse (not JSON, no notes list, another version) answers `notes file unreadable; /harness:add-bookmark --clear resets it`; the compaction bookmark still prints no notes section for it. Answers with text and no model turn. Any other argument prints `usage: /session-bookmark [notes]`. |
+| `/session-bookmark notes` | Reads the notes file live (no compaction needed) and prints every stored note (no 20-note cut, so a hand-edited file holding more still numbers as the script does) with the same numbering and branch markers as `/harness:bookmark --list`, the hint line first when a note is from another branch, or `no notes`. A file the script would refuse (not JSON, no notes list, another version) answers `notes file unreadable; /harness:bookmark --clear resets it`; the compaction bookmark still prints no notes section for it. Answers with text and no model turn. Any other argument prints `usage: /session-bookmark [notes]`. |
 
 ## Hooks
 
