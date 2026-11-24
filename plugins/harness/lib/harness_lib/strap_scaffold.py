@@ -123,6 +123,13 @@ def scaffold_parts(spec: SkillSpec, project: Optional[Path] = None) -> List[Part
     return parts
 
 
+def named_paths(spec: SkillSpec) -> List[str]:
+    """The part paths made from ``spec.name``: SKILL.md, models, api, driver and contract test, in that order;
+    ``strap.py rename`` pairs the old name's with the new name's."""
+    profile = profile_of(spec)
+    return [profile.skill_md, profile.models, profile.api, profile.driver, _contract_path(spec.name)]
+
+
 def _planned_mechanics(spec: SkillSpec, part: Part, root: Path) -> bool:
     """A new skill gets models and api modules; an edit keeps only those that exist, since its driver may
     already own the mechanics."""

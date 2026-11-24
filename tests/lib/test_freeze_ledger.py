@@ -127,7 +127,8 @@ def test_state_tracks_lock_arm_and_unlock() -> None:
     assert fl.current_round(reopened) == 2
     assert fl.current_round(entries) == 1
     assert {s.value for s in fl.LedgerState} == {"none", "frozen", "locked", "armed", "unlocked"}
-    assert {k.value for k in fl.EntryKind} == {"freeze", "lock", "unlock", "arm", "reopen", "relink"}
+    assert {k.value for k in fl.EntryKind} == {"freeze", "lock", "unlock", "arm", "reopen", "relink",
+                                                "rename"}
 
 
 def test_next_seq_counts_past_taken_tag_seqs() -> None:
@@ -177,3 +178,17 @@ def test_schema_file_matches_model() -> None:
     text = schema_path.read_text(encoding="utf-8")
     assert json.loads(text) == fl.LedgerEntry.model_json_schema()
     assert text.endswith("\n") and "\r" not in text
+
+
+def test_rename_entry_names_the_old_subject_and_keeps_the_state(tmp_path: Path) -> None:
+    """A ``rename`` entry records ``from_name`` and, like ``relink``, leaves the state before it."""
+    from harness_lib import freeze_ledger as fl
+
+    rename = fl.LedgerEntry.model_validate({**_fields("rename", seq=2), "from_name": "add-bookmark"})
+    folder = fl.ledger_dir(tmp_path, "skill/bookmark")
+    fl.write_entry(folder, _make(fl, "freeze"))
+    fl.write_entry(folder, rename)
+    found = fl.load_entries(folder)
+    assert [e.kind.value for e in found] == ["freeze", "rename"]
+    assert found[-1].from_name == "add-bookmark"
+    assert fl.state(found) == fl.LedgerState.frozen

@@ -34,6 +34,7 @@ measure the skill as it would run in real use.
 | "refreeze c-msg after the driver change" | Greens rerun and graded on the new content hash, then `freeze --refreeze`; the `freeze [done]` line ends with `was <old hash>`. `check` printing `stale:` is the usual cue. |
 | "reopen write-plan for the new retry rules" | A new round on a frozen or locked spec: the earlier freeze stays in `rounds`, `base` moves, and the new behaviors start again at classification. Commit the frozen round first. |
 | "relink strap-skills" after a rebase or squash | `base` re-pointed at its rewritten commit when `check` shows it `off-history:`. |
+| "rename add-bookmark to bookmark" | After the skill folder moves (`git mv`, frontmatter `name` set), `strap.py rename` moves the frozen spec and its ledger to the new name and re-points the parts; greens and a refreeze follow. |
 | "lock strap-skills" | The spec becomes final: no draws, runs, grades or refreeze until a reopen. |
 
 What stays the developer's:
@@ -85,5 +86,5 @@ Fixture `.py` files must be tracked, because a fresh clone must be able to run t
 - `../../agents/strap-scenario-runner.md`, `../../agents/strap-judge.md`: the runner and the judge.
 - `templates/`: what `scaffold` renders.
 - `../../lib/harness_lib/strap_lock.py`, `../../lib/harness_lib/freeze_ledger.py`: the ledger, the tags and the
-  lock, reopen and relink steps.
+  lock, reopen, relink and rename steps.
 - `../../schemas/FreezeLedgerEntry.schema.json`: the shape of a ledger entry file.

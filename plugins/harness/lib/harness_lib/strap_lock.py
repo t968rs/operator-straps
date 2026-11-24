@@ -88,6 +88,18 @@ def entries(name: str) -> List[LedgerEntry]:
         raise LockRefused(exc.problems) from None
 
 
+def owners(name: str, found: Sequence[LedgerEntry]) -> Dict[Tuple[int, int], str]:
+    """``{(round, seq): name}``: the skill name each entry was written under, the stem of its tags. An entry
+    before a ``rename`` belongs to that rename's ``from_name``; the rename and later entries to ``name``."""
+    owner: Dict[Tuple[int, int], str] = {}
+    current = name
+    for entry in sorted(found, key=lambda e: (e.round, e.seq), reverse=True):
+        owner[(entry.round, entry.seq)] = current
+        if entry.kind == EntryKind.rename and entry.from_name:
+            current = entry.from_name
+    return owner
+
+
 def round_of(spec: SkillSpec) -> int:
     """The spec's current round: one past its earlier rounds."""
     return len(spec.rounds) + 1
@@ -289,6 +301,37 @@ def relinked(root: Path, spec: SkillSpec, pending: Pending) -> Pending:
     return dataclasses.replace(pending, entries=found_new)
 
 
+def rename_pending(root: Path, spec: SkillSpec, new_name: str) -> Pending:
+    """The ``rename`` entry of ``spec`` under ``new_name`` (history first on a legacy spec), and the base tag
+    under the new stem unless one there already holds the base. Refused for a Locked spec and for a name
+    whose ledger folder exists."""
+    found = entries(spec.name)
+    if is_locked(spec, found):
+        raise LockRefused([LOCKED.format(name=spec.name)])
+    target = folder(new_name)
+    if target.exists():
+        raise LockRefused([f"{_rel(root, target)} exists; {new_name} already has a ledger"])
+    earlier = history(root, spec, found)
+    round_ = round_of(spec)
+    taken = [*fg.tag_seqs(root, stem(spec.name), round_), *fg.tag_seqs(root, stem(new_name), round_)]
+    entry = LedgerEntry(kind=EntryKind.rename, round=round_,
+                        seq=fl.next_seq([*found, *earlier], round_, taken), at=now(), base=spec.base,
+                        from_name=spec.name)
+    tags: Dict[str, Tuple[str, str]] = {}
+    if spec.base and not _base_held(root, new_name, round_, spec.base):
+        tags[fg.base_tag(stem(new_name), round_)] = (spec.base, f"{new_name}: base of round {round_}")
+    return Pending(new_name, [*earlier, entry], tags)
+
+
+def move_ledger(old_name: str, new_name: str) -> None:
+    """Move ``old_name``'s ledger folder, files unchanged, to ``new_name``'s; no folder, nothing moves."""
+    source = folder(old_name)
+    if source.is_dir():
+        target = folder(new_name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        source.rename(target)
+
+
 def base_pending(name: str, base: str) -> Pending:
     """No entry; only the round-1 base tag of a new edit spec."""
     return Pending(name, [], {fg.base_tag(stem(name), 1): (base, f"{name}: base of round 1")})
@@ -360,7 +403,8 @@ def reconcile(root: Path, name: str) -> Tuple[List[str], List[str]]:
         found = entries(name)
     except LockRefused as exc:
         return [], [f"warn: {line}" for line in exc.problems]
-    rows = [(_entry_stem(name, e), _entry_rel(root, name, e), e.history) for e in found]
+    owner = owners(name, found)
+    rows = [(_entry_stem(owner[(e.round, e.seq)], e), _entry_rel(root, name, e), e.history) for e in found]
     with _tagger(root):
         return fg.reconcile(root, rows)
 
@@ -499,22 +543,25 @@ def _base_lines(root: Path, spec: SkillSpec, scenario: bool) -> List[str]:
 
 
 def _adder(root: Path, rel: str) -> Optional[str]:
-    done = git(root, "--literal-pathspecs", "log", "--diff-filter=A", "--reverse", "--format=%H", "HEAD",
+    """The oldest commit that added ``rel``, followed across a rename's move; ``--reverse`` stays off with
+    ``--follow``."""
+    done = git(root, "--literal-pathspecs", "log", "--follow", "--diff-filter=A", "--format=%H", "HEAD",
                "--", rel)
     found = done.stdout.split() if done.returncode == 0 else []
-    return found[0] if found else None
+    return found[-1] if found else None
 
 
-def _entry_lines(root: Path, name: str, entry: LedgerEntry) -> List[str]:
-    """``untagged:`` for a non-history entry's tree and, once committed, its commit."""
+def _entry_lines(root: Path, name: str, entry: LedgerEntry, owner: str) -> List[str]:
+    """``untagged:`` for a non-history entry's tree and, once committed, its commit; ``owner`` is the name
+    the entry was written under (its tags' stem)."""
     if entry.history:
         return []
     role = f"{entry.kind.value} r{entry.round}.{entry.seq}"
     lines = []
-    if entry.tree and _peel(root, _tree_tag(name, entry)) != entry.tree:
+    if entry.tree and _peel(root, _tree_tag(owner, entry)) != entry.tree:
         lines.append(f"untagged: {entry.tree[:7]} ({role} tree)")
     adder = _adder(root, _entry_rel(root, name, entry))
-    tagged = git(root, "tag", "--list", f"{_entry_stem(name, entry)}-commit*").stdout.split()
+    tagged = git(root, "tag", "--list", f"{_entry_stem(owner, entry)}-commit*").stdout.split()
     if adder and not tagged:
         lines.append(f"untagged: {adder[:7]} ({role} commit)")
     return lines
@@ -538,7 +585,7 @@ def _drift_lines(root: Path, spec: SkillSpec, found: Sequence[LedgerEntry]) -> L
         return []
     lock = max((e for e in found if e.kind == EntryKind.lock), key=lambda e: (e.round, e.seq))
     held = fl.held(found, EntryKind.lock) or lock
-    tag = _tree_tag(spec.name, lock)
+    tag = _tree_tag(owners(spec.name, found)[(lock.round, lock.seq)], lock)
     work = worktree_blobs(root, sorted(held.files))
     paths = [p for p, blob in sorted(held.files.items()) if work.get(p) != blob]
     current = fg.ignored_digests(root, sorted(held.ignored))
@@ -556,5 +603,7 @@ def check_lines(root: Path, spec: SkillSpec) -> List[str]:
     created, warns = reconcile(root, spec.name)
     lines = tag_lines(root, created) + warns + _base_lines(root, spec, scenario)
     if not scenario:
-        lines += [line for entry in found for line in _entry_lines(root, spec.name, entry)]
+        owner = owners(spec.name, found)
+        lines += [line for entry in found
+                  for line in _entry_lines(root, spec.name, entry, owner[(entry.round, entry.seq)])]
     return lines + _stamp_lines(spec, found) + _drift_lines(root, spec, found)

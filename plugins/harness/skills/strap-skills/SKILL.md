@@ -266,7 +266,8 @@ writes land where `record-run` looks.
     A command prints its status line first, then one `tag: <name> -> <sha7>` line per tag it created, then one
     `push: git push origin <names>` line for the developer to run; tree tags never travel with
     `push --follow-tags`. A tag name that already sits on another object refuses the command before anything
-    is written. Every ledger-writing `strap.py` command (`new --edit`, `freeze`, `reopen`, `lock`, `relink`)
+    is written. Every ledger-writing `strap.py` command (`new --edit`, `freeze`, `reopen`, `lock`, `relink`,
+    `rename`)
     reconciles the ledger by tagging the commit that added each committed entry file, and `check` does too
     (it writes refs, never files); the other commands do not, so a committed entry gets its `-commit` tag at
     the next `check` or ledger write. A tag step that fails after the entry is
@@ -329,6 +330,26 @@ writes land where `record-run` looks.
     It matches `base` to its rewritten counterpart by `git patch-id` among HEAD's ancestors (or takes `--to`,
     an ancestor of HEAD), re-points `base`, appends a `relink` entry and tags the new base
     `base/skill/<name>/r<N>-<m>`; the old tags stay.
+
+    **Rename a skill.** A spec is tied to its skill's folder name, so a renamed skill takes its spec along.
+    Move the skill folder first (`git mv`, then set the frontmatter `name`), on a frozen spec that is not
+    Locked, then run
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" rename <name> <new-name>
+    ```
+
+    Move every part whose path is made from the name too: the contract test
+    (`test_<snake>_skill_contract.py`) and, for a harness skill, its models, API and driver modules. It
+    refuses a spec never frozen or Locked, a skill folder not yet moved, a part missing at its new path, and a
+    new name that already has a spec or ledger folder. It moves the spec folder and the ledger folder to the
+    new name (entry files unchanged), re-points each part under the old skill folder or at a path made from
+    the old name, appends a `rename` entry naming the old name and tags the base
+    `base/skill/<new-name>/r<N>`. Entries written before the rename keep their tags under the old stem;
+    later ones tag under the new. The moved parts no longer hash to the stamp, so the `stale:` line follows:
+    run and grade the greens, then `freeze <new-name> --refreeze`. The old name, as a whole word, becomes the
+    new one in each behavior statement and scenario (task, `tempts`, check targets, judged subjects), so a
+    check that pins the invocation expects the new name; recorded replies keep their text.
 
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
     the `bump:` line from step 5 when one printed, and the `push:` line the freeze printed. The developer

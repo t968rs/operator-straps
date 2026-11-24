@@ -9,7 +9,8 @@
         "unlock",
         "arm",
         "reopen",
-        "relink"
+        "relink",
+        "rename"
       ],
       "title": "EntryKind",
       "type": "string"
@@ -195,6 +196,19 @@
       ],
       "default": null,
       "title": "Match"
+    },
+    "from_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "A rename entry's earlier subject name.",
+      "title": "From Name"
     }
   },
   "required": [

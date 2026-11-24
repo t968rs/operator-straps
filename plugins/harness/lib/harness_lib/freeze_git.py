@@ -209,11 +209,12 @@ def ensure_tag(repo: PathLike, name: str, target: str, message: str) -> Optional
 
 
 def _adder(repo: PathLike, rel: str) -> Optional[str]:
-    """The oldest commit on HEAD's history that added ``rel``; None when none did."""
-    log = _out(repo, "--literal-pathspecs", "log", "--diff-filter=A", "--reverse", "--format=%H",
+    """The oldest commit on HEAD's history that added ``rel``, followed across a move (a renamed strap
+    skill's ledger); None when none did. ``--reverse`` stays off: it does not mix with ``--follow``."""
+    log = _out(repo, "--literal-pathspecs", "log", "--follow", "--diff-filter=A", "--format=%H",
                "HEAD", "--", rel)
     lines = log.split()
-    return lines[0] if lines else None
+    return lines[-1] if lines else None
 
 
 def _commit_tags(repo: PathLike, stem_tag: str) -> Dict[int, str]:
