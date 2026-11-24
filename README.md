@@ -161,7 +161,6 @@ claude plugin install todo-watch@operator-straps
 claude plugin install bubble-stamp@operator-straps
 claude plugin install parallel2-lanes@operator-straps
 claude plugin install arc-straps@operator-straps
-claude plugin install superpowers-lt@operator-straps   # optional: process skills; harness bundles its own debugging and TDD skills
 ```
 
 Upgrading from 0.x: see [Upgrading from 0.7](docs/RELEASES/v1.0.0.md#upgrading-from-07).

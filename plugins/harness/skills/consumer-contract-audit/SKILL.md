@@ -148,7 +148,7 @@ with the prior that this fixture has bitten before.
 
 ## Cross-references
 
-Skills outside this plugin apply when installed.
+Related skills (those outside this plugin apply when installed):
 
 - **Plan writing** (e.g. `superpowers-lt:writing-plans`) — when a spec touches a shared mutable fixture, the spec is incomplete without a `Consumers` section enumerating each consumer's contract. This skill is the audit; the spec section is the deliverable.
 - **Test-driven development** (`harness:tdd-strapped`) — pair unit tests (invariant pinning) with caller-perspective contract tests (e.g., "register → fail-at-launch → summary sees it"). Two test surfaces, both required for shared state.

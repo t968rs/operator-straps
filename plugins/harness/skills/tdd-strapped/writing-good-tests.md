@@ -49,7 +49,10 @@ contains an exact line proves only that the source is the source. Run
 scripts against controlled inputs and assert outputs, side effects, or
 exit codes. Documents that instruct agents are tested by the consuming
 agent's behavior (`harness:strap-skills`); prose for humans earns no
-test at all.
+test at all. One exception: a structural guard on what a loader or
+another skill consumes — frontmatter fields, a cross-skill pointer, a
+link that resolves, no pointer to a plugin that may be absent — is a
+legitimate contract test. Free-form prose still earns no text test.
 
 **Your code, not the framework.** Test the contract your code makes at
 its boundaries — the route you register, the query you emit, the payload
@@ -191,6 +194,8 @@ test as tautological.
 - Expected values are hidden behind loops, builders, or helpers
 - Expected values were copied from the code's own output (a snapshot of today's behavior)
 - The test greps source text, or asserts a removed symbol stays removed
+  (a structural guard on frontmatter, a cross-skill pointer, a link, or
+  no pointer to an absent plugin is a contract test, not this sign)
 - The test would still matter if only the framework remained
 - The test exists for coverage, checking no side effect or outcome
 - An assertion checks a `*-mock` test ID, or fails if you remove the mock

@@ -24,7 +24,7 @@ def test_the_skill_triggers_on_its_own() -> None:
     meta, body = skill_parts(_SKILL)
     assert meta["description"].startswith("Use when")
     assert "not installed" not in meta["description"], "the trigger waits on another plugin being absent"
-    assert "superpowers" not in meta["description"] + body, "a pointer names the source plugin"
+    assert "superpowers" not in (meta["description"] + body).lower(), "a pointer names the source plugin"
 
 
 def test_check_runlogs_loads_the_bundled_skill() -> None:
@@ -38,4 +38,4 @@ def test_the_troubleshooting_rule_names_the_bundled_skill() -> None:
     rule = re.search(r"^- \*\*Troubleshooting:\*\*.*?(?=^- )", text, re.M | re.S)
     assert rule, "HARNESS_RULES.md has no Troubleshooting rule"
     assert "harness:strap-debugging" in rule.group(0)
-    assert "superpowers" not in rule.group(0), "the rule names the source skill"
+    assert "superpowers" not in rule.group(0).lower(), "the rule names the source skill"

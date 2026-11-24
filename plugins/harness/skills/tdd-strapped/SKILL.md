@@ -82,7 +82,7 @@ Write one minimal test showing what should happen.
 ```typescript
 test('retries failed operations 3 times', async () => {
   let attempts = 0;
-  const operation = () => {
+  const operation = async () => {
     attempts++;
     if (attempts < 3) throw new Error('fail');
     return 'success';
@@ -130,6 +130,12 @@ Confirm:
 - Fails because feature missing (not typos)
 
 **Test passes?** You're testing existing behavior. Fix test.
+
+**Testing behavior that already exists on purpose?** (a test for existing
+code, a characterization test) It passes on its first run by design. Watch
+it fail instead by mutating the production code temporarily (the Mutation
+Check in [writing-good-tests.md](writing-good-tests.md)), confirm the test
+goes red for the expected reason, then restore the code and confirm green.
 
 **Test errors?** Fix error, re-run until it fails correctly.
 
@@ -272,7 +278,7 @@ suspect is wrong never goes into a test as correct.
 
 - Code before test
 - Test after implementation
-- Test passes immediately
+- A test for new behavior passes immediately
 - Can't explain why test failed
 - Tests added "later"
 - Rationalizing "just this once"
@@ -327,7 +333,7 @@ Extract validation for multiple fields if needed.
 
 Before marking work complete:
 
-- [ ] Every new function/method has a test
+- [ ] Every new function/method that validates, normalizes, defaults, derives, enforces or causes a side effect has a test; trivial code is covered through the first consumer-visible result that depends on it
 - [ ] Watched each test fail before implementing
 - [ ] Each test failed for expected reason (feature missing, not typo)
 - [ ] Wrote minimal code to pass each test

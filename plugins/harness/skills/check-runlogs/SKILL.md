@@ -42,9 +42,9 @@ Previous run log: <second path, or none>
 Project root: <absolute project root>
 Question: <question>
 
-Load the harness:strap-debugging skill. Apply its Phases 1-3 (root cause investigation, pattern analysis, hypothesis) to this run, through
-the steps below. Diagnose only: propose no patch and change nothing, because the fix belongs to the main
-session.
+Load the harness:strap-debugging skill. Apply its Phases 1-3 (root cause investigation, pattern analysis,
+hypothesis) to this run, through the steps below. Diagnose only: propose no patch and change nothing,
+because the fix belongs to the main session.
 
 1. The log may be large. Grep it first (Traceback, Error, FAILED, failed, ERROR, assert, Exception,
    warnings, the summary line), then Read around each hit with offset and limit.
@@ -67,4 +67,5 @@ Unknowns: what the log cannot answer, and the command that would answer it.
 
 Relay the agent's reply as it stands, with the log path. Do not re-read the log in the main session; when the
 reply leaves a question open, send the agent a follow-up instead. A fix starts only once the developer agrees,
-and follows systematic debugging's Phase 4: a failing test first, then one change, then the run again.
+and follows `harness:strap-debugging` Phase 4 (`harness:tdd-strapped` for the failing test): a failing
+test first, then one change, then the run again.
