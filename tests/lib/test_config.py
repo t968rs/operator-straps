@@ -229,7 +229,7 @@ def test_comments_divider_width_default_and_override(make_project) -> None:
     assert load_config(make_project()).comments.divider_width == 88
     override = load_config(make_project({"comments": {"divider_width": 100}}, name="p2"))
     assert override.comments.divider_width == 100
-    for index, bad in enumerate([0, "88", None, 1.5, True]):
+    for index, bad in enumerate([0, 5, "88", None, 1.5, True]):
         with pytest.raises(ConfigError):
             load_config(make_project({"comments": {"divider_width": bad}}, name=f"bad{index}"))
     with pytest.raises(ConfigError):
@@ -238,6 +238,7 @@ def test_comments_divider_width_default_and_override(make_project) -> None:
 
 @pytest.mark.parametrize("bad", [
     {"divider_width": 0},
+    {"divider_width": 5},
     {"divider_width": "88"},
     {"divider_width": None},
     {"divider_width": 1.5},
@@ -248,6 +249,14 @@ def test_invalid_comments_raise_without_jsonschema(make_project, monkeypatch: py
                                                    bad: dict) -> None:
     monkeypatch.setitem(sys.modules, "jsonschema", None)
     with pytest.raises(ConfigError, match=r"^comments"):
+        load_config(make_project({"comments": bad}))
+
+
+@pytest.mark.parametrize("bad", ["x", [], 88])
+def test_a_non_object_comments_section_raises_without_jsonschema(
+        make_project, monkeypatch: pytest.MonkeyPatch, bad) -> None:
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    with pytest.raises(ConfigError, match=r"^comments: must be an object"):
         load_config(make_project({"comments": bad}))
 
 
