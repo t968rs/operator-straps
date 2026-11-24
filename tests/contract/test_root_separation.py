@@ -250,13 +250,16 @@ CASES = {
                                       str(r / "src" / "a.py")], None),
     "docstring-dispatch": lambda r, t: (["skills/writing-docstrings/commands/docstring_dispatch.py", "-p",
                                          str(r / "src" / "a.py"), str(r / "src" / "b.py")], None),
+    "comment-sections": lambda r, t: (["skills/writing-comments/commands/comment_sections.py",
+                                       str(r / "src" / "a.py")], None),
     "arc-meta apply_rc": lambda r, t: _arc_rc_args(r),
     "arc-help-pages apply_help": lambda r, t: _arc_help_args(r),
 }
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
 MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
-                            "docstring-dispatch", "arc-meta apply_rc", "todo_sync retire", "todo_sync split",
+                            "docstring-dispatch", "comment-sections", "arc-meta apply_rc", "todo_sync retire",
+                            "todo_sync split",
                             "todo_sync refresh", "todo_sync migrate-ids", "arc-help-pages apply_help",
                             "stop gates hook"})
 
