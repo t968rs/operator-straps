@@ -5,7 +5,7 @@ The row is the ``agent=`` line, then the prompt's header lines. The session appe
 ``Context:`` lines, so the developer's text never passes through a command line.
 
 The hook switch is ``<state_dir>/session-bookmark/hook.json``: ``{"version": 1, "hook": {<TodoHook>,
-"goal"}, "fired": null}``; a free-text goal (``add_note.py goal``, the add-bookmark skill) stores
+"goal"}, "fired": null}``; a free-text goal (``add_note.py goal``, the bookmark skill) stores
 ``{"goal", "start_time", "todo_id": null}`` as its hook. The mod
 (``plugins/session-bookmark/hooks/session_hook.ts``) runs ``/goal <goal>`` while ``fired`` is null, then
 stamps ``fired``; ``tests/mods/test_session_bookmark_hook_contract.py`` pins the names both sides share.

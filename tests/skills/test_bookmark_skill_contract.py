@@ -1,4 +1,4 @@
-"""Guard test: the add-bookmark skill and ``add_note.py`` agree.
+"""Guard test: the bookmark skill and ``add_note.py`` agree.
 
 The skill runs in the main session, the only context that holds the facts a note refers to; the script stores
 the line it is given. Both are named in prose, so the test pins the names, the launcher and the limits they
@@ -15,9 +15,9 @@ import pytest
 
 WALK_ROOTS = ("plugins/",)
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2] / "plugins" / "harness"
-_SKILL = _PLUGIN_ROOT / "skills" / "add-bookmark" / "SKILL.md"
+_SKILL = _PLUGIN_ROOT / "skills" / "bookmark" / "SKILL.md"
 _AGENT = _PLUGIN_ROOT / "agents" / "bookmark-noter.md"
-_SCRIPT = _PLUGIN_ROOT / "skills" / "add-bookmark" / "commands" / "add_note.py"
+_SCRIPT = _PLUGIN_ROOT / "skills" / "bookmark" / "commands" / "add_note.py"
 
 
 def _text(path: Path) -> str:
@@ -44,7 +44,7 @@ def script():
 
 def test_skill_runs_in_the_main_session() -> None:
     meta = _frontmatter(_SKILL)
-    assert meta["name"] == "add-bookmark"
+    assert meta["name"] == "bookmark"
     for key in ("context", "agent"):
         assert key not in meta, f"{key} would run the note writer without the session's context"
     assert "model" not in meta, "model would hand note writing to a different model than the session's"
@@ -52,7 +52,7 @@ def test_skill_runs_in_the_main_session() -> None:
 
 def test_skill_body_names_no_agent_to_dispatch() -> None:
     body = _text(_SKILL)
-    assert re.search(r"harness:(?!add-bookmark)[a-z-]+", body) is None, "skill names another agent"
+    assert re.search(r"harness:(?!bookmark)[a-z-]+", body) is None, "skill names another agent"
     assert "subagent" not in body.lower(), "skill body mentions a subagent"
 
 

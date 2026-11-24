@@ -1,4 +1,4 @@
-# add-bookmark
+# bookmark
 
 Keeps short notes that survive compaction, and arms a session goal. The `session-bookmark` mod prints the
 notes in the `## Session Notes` section of the bookmark it adds at every compaction, so a constraint or
@@ -12,7 +12,7 @@ reminder outlives the summary. The agent writes each note from your text, swappi
 ## Invoking it
 
 ```
-/harness:add-bookmark [--] <note>
+/harness:bookmark [--] <note>
 ```
 
 | Arguments | Effect |
@@ -35,12 +35,12 @@ To look at the notes without a model turn, run `/session-bookmark notes`.
 ## Examples
 
 ```
-/harness:add-bookmark -- do not push until PR 12 is merged
-/harness:add-bookmark --standing run the linter with caching off before claiming lint passes
-/harness:add-bookmark --remove 2 5
-/harness:add-bookmark --edit 1 keep commit abc1234 in history; no squash merge
-/harness:add-bookmark --goal tests/test_parser.py passes and a commit message is drafted
-/harness:add-bookmark --goal-todo todo-k7qf committed
+/harness:bookmark -- do not push until PR 12 is merged
+/harness:bookmark --standing run the linter with caching off before claiming lint passes
+/harness:bookmark --remove 2 5
+/harness:bookmark --edit 1 keep commit abc1234 in history; no squash merge
+/harness:bookmark --goal tests/test_parser.py passes and a commit message is drafted
+/harness:bookmark --goal-todo todo-k7qf committed
 ```
 
 ## Notes

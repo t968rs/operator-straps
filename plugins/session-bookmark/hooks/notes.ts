@@ -1,7 +1,7 @@
 /**
- * The session notes the `harness:add-bookmark` skill stores and the bookmark prints.
+ * The session notes the `harness:bookmark` skill stores and the bookmark prints.
  *
- * The skill's script (`plugins/harness/skills/add-bookmark/commands/add_note.py`) writes
+ * The skill's script (`plugins/harness/skills/bookmark/commands/add_note.py`) writes
  * `<state_dir>/session-bookmark/notes.json` under the project root: `{ "version": 1, "notes": [{ "added",
  * "branch", "text" }] }`, where a note without a usable `branch` applies on every branch. An installed mod sits
  * in its own plugin cache folder and cannot read the harness plugin, so the names, limits and the printed line

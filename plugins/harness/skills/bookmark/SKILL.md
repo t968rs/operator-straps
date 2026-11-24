@@ -1,10 +1,10 @@
 ---
-name: add-bookmark
-description: Use when asked to add a note, reminder or instruction to the compaction bookmark (on the current branch or as a standing note for every branch), to list, remove, edit or clear the notes already added, or to arm a session goal (/goal) the session-bookmark mod sets when the turn ends, free text or a TODO item. Triggers on "add-bookmark", "add to the bookmark", "remember this across compaction", "bookmark note", "remove a bookmark note", "edit bookmark note", "standing bookmark note", "bookmark goal", "arm a goal", "set the session goal". The notes enter the session-bookmark mod's bookmark above the /compact instructions.
+name: bookmark
+description: Use when asked to add a note, reminder or instruction to the compaction bookmark (on the current branch or as a standing note for every branch), to list, remove, edit or clear the notes already added, or to arm a session goal (/goal) the session-bookmark mod sets when the turn ends, free text or a TODO item. Triggers on "bookmark", "add-bookmark", "add to the bookmark", "remember this across compaction", "bookmark note", "remove a bookmark note", "edit bookmark note", "standing bookmark note", "bookmark goal", "arm a goal", "set the session goal". The notes enter the session-bookmark mod's bookmark above the /compact instructions.
 argument-hint: "-- <note text> | --standing <note text> | --list | --remove N [N ...] | --edit N <note text> [--edit M <note text> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear"
 ---
 
-# add-bookmark: add a note to the compaction bookmark
+# bookmark: add a note to the compaction bookmark
 
 The `session-bookmark` mod appends a bookmark to the conversation at every compaction. Notes added here print
 in its `## Session Notes` section, after the last user messages and before the `/compact` instructions, so a
@@ -77,7 +77,7 @@ line and stops; run no command. The same holds for a word after the numbers of `
 number, for an `--edit N` group with no text, for `--standing` and `--goal` with no text, and for `--goal-todo`
 without both an id and one of `retired`, `committed`, `developer`.
 
-Usage line: `usage: /harness:add-bookmark [--] <note> | --standing <note> | --list | --remove N [N ...] | --edit N <note> [--edit M <note> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear`
+Usage line: `usage: /harness:bookmark [--] <note> | --standing <note> | --list | --remove N [N ...] | --edit N <note> [--edit M <note> ...] | --clear | --goal <condition> | --goal-todo <id> <retired|committed|developer> | --goal-clear`
 
 `add_note.py` stores at most 20 notes, at most 300 characters each, and one goal of at most 500 characters.
 

@@ -77,7 +77,7 @@ export const NOTES_USAGE = `usage: /${COMMAND} [${NOTES_ARG}]`
 /** The notes reply when none are stored (the script's `list` says the same). */
 const NO_NOTES_TEXT = 'no notes'
 /** The notes reply for a file the script would refuse (not JSON, no notes list, another version). */
-export const NOTES_UNREADABLE_TEXT = 'notes file unreadable; /harness:add-bookmark --clear resets it'
+export const NOTES_UNREADABLE_TEXT = 'notes file unreadable; /harness:bookmark --clear resets it'
 const COMMAND_DESCRIPTION =
   `Show the compaction bookmark saved in this session; \`${NOTES_ARG}\` shows the stored session notes`
 /** Triggers that install a compaction (precompute installs nothing). */
@@ -260,7 +260,7 @@ const capture = async ($: Dollar): Promise<Capture> => {
 }
 
 /**
- * The stored notes as `add-bookmark --list` numbers them, every usable note with no `MAX_NOTES` cut, against
+ * The stored notes as `bookmark --list` numbers them, every usable note with no `MAX_NOTES` cut, against
  * the branch checked out now; a file the script refuses is reported, not shown as empty. Never throws.
  */
 const liveNotesText = async ($: Dollar): Promise<string> => {

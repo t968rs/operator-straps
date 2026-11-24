@@ -24,7 +24,7 @@ export type Bookmark = {
   /** The last user prompts before the compaction, newest last; a previous compaction's summary can be one. */
   lastMessages: string[]
   /**
-   * Session notes added with the `harness:add-bookmark` skill, oldest first, each with the branch it was added
+   * Session notes added with the `harness:bookmark` skill, oldest first, each with the branch it was added
    * on (null: standing); [] when none are stored. A bookmark an earlier mod version stored holds plain strings,
    * which `formatBookmark` reads as standing notes.
    */
