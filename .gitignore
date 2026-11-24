@@ -245,3 +245,4 @@ docs/plans/**/.gitignore
 docs/TODO/Snapshots/TODO_Snapshot*
 docs/TODO/Snapshots/todo_live.js
 docs/plans/**/lanes.json
+docs/_harness/agent_usage.jsonl
