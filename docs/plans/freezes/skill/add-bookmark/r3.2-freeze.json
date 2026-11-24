@@ -1,0 +1,25 @@
+{
+  "kind": "freeze",
+  "round": 3,
+  "seq": 2,
+  "tree": "920e61648d89890e47e6029b60187c5b3a48b588",
+  "files": {
+    "docs/plans/strap/add-bookmark/fixtures/notes20/.claude/state/harness/session-bookmark/notes.json": "40bbd7f2ef33097917521de53339999c6fce9f01",
+    "docs/plans/strap/add-bookmark/fixtures/notes3/.claude/state/harness/session-bookmark/notes.json": "d6d6973024a88cf9d131f5ec37a43578a3269ee5",
+    "plugins/harness/skills/add-bookmark/SKILL.md": "a703fafb2e978e641edada9eca0ed470517cbcc9",
+    "plugins/harness/skills/add-bookmark/commands/add_note.py": "be530632230ae094a77b31704900cda9430bc234",
+    "tests/skills/test_add_bookmark_skill_contract.py": "40b652d307057d5b9987b4b8ef541f40f78fb88f"
+  },
+  "ignored": {},
+  "at": "2026-11-24T09:08:07+00:00",
+  "base": "fc72809616e2ee32da9dc64bb814df37304775d9",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
+  "grader": "judge",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

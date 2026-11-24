@@ -88,6 +88,12 @@ def test_skill_states_the_goal_limit_and_the_meetable_rule(script) -> None:
     assert "never waits on the developer" in body.lower(), "no rule that the agent can meet the goal itself"
 
 
+def test_skill_stops_on_an_unknown_leading_flag() -> None:
+    body = _text(_SKILL)
+    assert "| any other word that begins with `--` |" in body, "an unknown flag falls through to a stored note"
+    assert "unknown flag: <word>" in body, "no line naming the unknown flag"
+
+
 def test_skill_names_the_turn_free_notes_view() -> None:
     assert "/session-bookmark notes" in _text(_SKILL), "skill never names the view that needs no model turn"
 
