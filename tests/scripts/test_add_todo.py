@@ -22,7 +22,8 @@ from _todo_helpers import CATALOG_REL, LEGACY_CATALOG, TODO_DIR, config, todo_fi
 from conftest import GIT_ENV, PLUGIN_ROOT  # noqa: E402
 from harness_lib import add_todo_api  # noqa: E402
 from harness_lib.add_todo_api import HOOK_REL, dispatch_row  # noqa: E402
-from harness_lib.add_todo_models import AddTodoRequest, Closing, ResearchLevel, TodoHook  # noqa: E402
+from harness_lib.add_todo_models import (  # noqa: E402
+    MAX_DESC_CHARS, MAX_GOAL_CHARS, AddTodoRequest, Closing, ResearchLevel, TodoHook)
 
 SCRIPT = PLUGIN_ROOT / "scripts" / "add_todo.py"
 
@@ -123,7 +124,9 @@ def test_the_goal_names_the_item_and_its_closing_clause() -> None:
     hook = TodoHook(closed_by=Closing.COMMITTED, desc="catalog item model", start_time=1.0,
                     todo_id="todo-af2e")
     assert hook.goal() == f"TODO todo-af2e (catalog item model) {Closing.COMMITTED.condition}"
-    assert len(TodoHook(closed_by=Closing.RETIRED, desc="x" * 300, start_time=0, todo_id="t").goal()) <= 500
+    long_goal = TodoHook(closed_by=Closing.DEVELOPER, desc="x" * MAX_DESC_CHARS, start_time=0,
+                         todo_id="t" * 200).goal()
+    assert len(long_goal) == MAX_GOAL_CHARS
 
 
 @pytest.mark.parametrize("closing", list(Closing))

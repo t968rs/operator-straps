@@ -29,7 +29,9 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
-from harness_lib.add_todo_models import MAX_GOAL_CHARS  # noqa: E402
+from harness_lib.add_todo_models import MAX_GOAL_CHARS, Closing  # noqa: E402
+
+CLOSINGS = [member.value for member in Closing]
 
 NOTES_REL = "session-bookmark/notes.json"
 NOTES_VERSION = 1
@@ -206,7 +208,10 @@ def clear(path: Path) -> str:
 
 
 def _goal_text(words: List[str]) -> str:
-    """The free-text goal, or ``NoteError`` when it is blank or longer than ``/goal`` takes."""
+    """The free-text goal, or ``NoteError`` when it is blank or longer than ``/goal`` takes.
+
+    The length counts code points, the unit ``TodoHook.goal`` and the mod's ``Array.from`` cut both use.
+    """
     text = " ".join(" ".join(words).split())
     if not text:
         raise NoteError("goal is blank")
@@ -215,17 +220,32 @@ def _goal_text(words: List[str]) -> str:
     return text
 
 
-def _todo_goal(cfg: Any, todo_id: str, closed_by: str) -> Any:
-    """The ``TodoHook`` for a catalog item; ``NoteError`` without a TODO folder or for an unknown id."""
-    from harness_lib.add_todo_api import catalog_item, todo_hook
-    from harness_lib.add_todo_models import Closing
+def _goal_catalog(cfg: Any) -> Dict[str, Any]:
+    """The TODO catalog, refused like ``add_todo.py hook``: no TODO folder, no catalog, or rank-tied ids."""
+    from harness_lib.todo_sync import ids
+    from harness_lib.todo_sync.errors import TodoSyncError
     if not cfg.todo.enabled or cfg.todo.catalog is None:
         raise NoteError("goal --todo needs todo.folder in .claude/harness.json")
+    catalog = cfg.path(cfg.todo.catalog)
+    if not catalog.is_file():
+        raise NoteError(f"no TODO catalog at {cfg.todo.catalog}; create it with todo_sync.py init")
     try:
-        data = json.loads(cfg.path(cfg.todo.catalog).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        data = {}
-    item = catalog_item(data if isinstance(data, dict) else {}, todo_id)
+        data = json.loads(catalog.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        raise NoteError(f"the TODO catalog at {cfg.todo.catalog} cannot be read") from None
+    if not isinstance(data, dict):
+        raise NoteError(f"the TODO catalog at {cfg.todo.catalog} is not a JSON object")
+    try:
+        ids.require_stable(data, "add-bookmark goal")
+    except TodoSyncError as exc:
+        raise NoteError(str(exc)) from exc
+    return data
+
+
+def _todo_goal(cfg: Any, todo_id: str, closed_by: str) -> Any:
+    """The ``TodoHook`` for a catalog item; ``NoteError`` for a refused catalog or an unknown id."""
+    from harness_lib.add_todo_api import catalog_item, todo_hook
+    item = catalog_item(_goal_catalog(cfg), todo_id)
     if item is None:
         raise NoteError(f"no catalog item {todo_id}")
     return todo_hook(Closing(closed_by), item)
@@ -243,6 +263,8 @@ def goal(cfg: Any, args: argparse.Namespace) -> str:
     from harness_lib.add_todo_api import HOOK_REL, write_goal_switch, write_hook_switch
     path = cfg.path(cfg.state_dir) / HOOK_REL
     if args.clear:
+        if args.text or args.todo is not None or args.closed_by is not None:
+            raise NoteError("goal --clear takes no text, --todo or --closed-by")
         return _clear_goal(path)
     if args.todo is None:
         if args.closed_by is not None:
@@ -253,7 +275,7 @@ def goal(cfg: Any, args: argparse.Namespace) -> str:
     if args.text:
         raise NoteError("goal takes text or --todo ID, not both")
     if args.closed_by is None:
-        raise NoteError("goal --todo needs --closed-by retired|committed|developer")
+        raise NoteError(f"goal --todo needs --closed-by {'|'.join(CLOSINGS)}")
     hook = _todo_goal(cfg, args.todo, args.closed_by)
     write_hook_switch(path, hook)
     return f"goal armed for {hook.todo_id} ({hook.closed_by.value}): {hook.goal()}"
@@ -262,7 +284,7 @@ def goal(cfg: Any, args: argparse.Namespace) -> str:
 def _goal_parser(sub: Any) -> None:
     goal_cmd = sub.add_parser("goal", help="arm the session-bookmark hook switch with a /goal")
     goal_cmd.add_argument("--todo", help="a TODO catalog id the goal names")
-    goal_cmd.add_argument("--closed-by", choices=["retired", "committed", "developer"],
+    goal_cmd.add_argument("--closed-by", choices=CLOSINGS,
                           help="what closes a --todo goal")
     goal_cmd.add_argument("--clear", action="store_true", help="remove the switch")
     goal_cmd.add_argument("text", nargs="*")
@@ -308,7 +330,7 @@ def main(argv: Optional[list] = None) -> int:
     from harness_lib.config import ConfigError
     try:
         print(run(parse_args(argv)))
-    except (NoteError, ConfigError, OSError) as exc:
+    except (NoteError, ConfigError, OSError, ValueError) as exc:
         print(f"add_note: {exc}", file=sys.stderr)
         return 1
     return 0

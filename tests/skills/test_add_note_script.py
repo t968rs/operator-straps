@@ -10,11 +10,18 @@ from __future__ import annotations
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Dict, List
 
 import pytest
+
+from harness_lib import add_todo_api
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from _todo_helpers import CATALOG_REL, config, todo_files  # noqa: E402
 
 WALK_ROOTS = ()  # walks only the notes folder of a make_project repo
 _NOTES_REL = ".claude/state/harness/session-bookmark/notes.json"
@@ -332,7 +339,7 @@ def test_remove_and_edit_refuse_a_malformed_file(script, make_project, capsys) -
     assert "clear" in capsys.readouterr().err
 
 
-_HOOK_REL = ".claude/state/harness/session-bookmark/hook.json"
+_HOOK_REL = f".claude/state/harness/{add_todo_api.HOOK_REL}"
 
 
 def _switch(project: Path) -> Dict[str, object]:
@@ -340,14 +347,10 @@ def _switch(project: Path) -> Dict[str, object]:
 
 
 def _todo_project(make_project) -> Path:
-    import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
-    from _todo_helpers import config, todo_files
     return make_project(config(), files=todo_files())
 
 
 def _first_id(project: Path) -> str:
-    from _todo_helpers import CATALOG_REL
     return json.loads((project / CATALOG_REL).read_text(encoding="utf-8"))["items"][0]["id"]
 
 
@@ -355,7 +358,7 @@ def test_goal_arms_the_switch_with_the_text(script, make_project, capsys) -> Non
     project = make_project(config={})
     assert _run(script, project, "goal", "--", "the", "tests", "in", "test_x.py", "pass") == 0
     stored = _switch(project)
-    assert stored["version"] == 1 and stored["fired"] is None
+    assert stored["version"] == add_todo_api.HOOK_VERSION and stored["fired"] is None
     assert stored["hook"]["goal"] == "the tests in test_x.py pass"
     assert stored["hook"]["todo_id"] is None and isinstance(stored["hook"]["start_time"], float)
     assert capsys.readouterr().out.strip() == "goal armed: the tests in test_x.py pass"
@@ -409,6 +412,16 @@ def test_goal_clear_removes_the_switch(script, make_project, capsys) -> None:
     assert _run(script, project, "goal", "--clear") == 0
     assert capsys.readouterr().out.splitlines() == ["goal: cleared", "goal: none"]
     assert not (project / _HOOK_REL).exists()
+
+
+def test_goal_clear_refuses_text_or_a_closing(script, make_project, capsys) -> None:
+    project = make_project(config={})
+    _run(script, project, "goal", "--", "ship it")
+    capsys.readouterr()
+    assert _run(script, project, "goal", "--clear", "--", "some", "text") == 1
+    assert _run(script, project, "goal", "--clear", "--closed-by", "retired") == 1
+    assert "--clear" in capsys.readouterr().err
+    assert _switch(project)["hook"]["goal"] == "ship it"
 
 
 def test_a_new_goal_replaces_a_fired_switch(script, make_project) -> None:

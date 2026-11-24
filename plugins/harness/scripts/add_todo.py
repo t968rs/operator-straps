@@ -16,8 +16,8 @@
     ``hook: armed <id> (<closing>); goal: <goal>``. An id the catalog does not hold is refused (exit 1).
 
 ``hook --clear``
-    Remove the switch, fired or not; prints ``hook: cleared`` or ``hook: none``. The goal itself, once set,
-    ends with ``/goal clear``.
+    Remove the switch, fired or not; prints ``hook: cleared`` or ``hook: none``. Needs no ``todo.folder`` or
+    catalog, so it also clears a free-text switch. The goal itself, once set, ends with ``/goal clear``.
 
 ``--repo`` (default: the working directory) names a directory inside the project.
 """
@@ -108,18 +108,26 @@ def _item(catalog: Path, todo_id: str) -> Dict[str, Any]:
     return item
 
 
+def _switch_path(cfg: HarnessConfig) -> Path:
+    """The hook switch file under ``state_dir``."""
+    return cfg.path(cfg.state_dir) / HOOK_REL
+
+
+def _clear(cfg: HarnessConfig) -> str:
+    """Remove the switch, fired or not; needs no TODO catalog. Returns the line to print."""
+    path = _switch_path(cfg)
+    if not path.is_file():
+        return "hook: none"
+    path.unlink()
+    return "hook: cleared"
+
+
 def _hook(cfg: HarnessConfig, catalog: Path, args: argparse.Namespace) -> str:
-    """Arm or clear the switch; returns the line to print."""
-    path = cfg.path(cfg.state_dir) / HOOK_REL
-    if args.clear:
-        if not path.is_file():
-            return "hook: none"
-        path.unlink()
-        return "hook: cleared"
+    """Arm the switch for a catalog item; returns the line to print."""
     if not args.todo or not args.closed_by:
         raise Refused("hook needs --todo <id> and --closed-by, or --clear")
     hook = todo_hook(Closing(args.closed_by), _item(catalog, args.todo))
-    write_hook_switch(path, hook)
+    write_hook_switch(_switch_path(cfg), hook)
     return f"hook: armed {hook.todo_id} ({hook.closed_by.value}); goal: {hook.goal()}"
 
 
@@ -128,11 +136,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parser().parse_args(argv)
     try:
         cfg = activate(load_config(project_root(args.repo)))
+        if args.command == "hook" and args.clear:
+            print(_clear(cfg))
+            return 0
         catalog = _ready(cfg)
         if args.command == "hook":
             print(_hook(cfg, catalog, args))
             return 0
-    except (ConfigError, Refused, OSError) as exc:
+    except (ConfigError, Refused, OSError, ValueError) as exc:
         print(f"problem: {' '.join(str(exc).split())}", file=sys.stderr)
         return 1
     hook = None if args.hook is None else todo_hook(Closing(args.hook))

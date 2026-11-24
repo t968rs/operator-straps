@@ -78,11 +78,15 @@ def write_goal_switch(path: Path, goal: str, start_time: float) -> Dict[str, Any
 
 def todo_hook(closing: Closing, item: Optional[Dict[str, Any]] = None,
               now: Optional[float] = None) -> TodoHook:
-    """The hook for ``closing``: tied to ``item`` (its id and title) once it exists, else row-time pending."""
+    """The hook for ``closing``: tied to ``item`` (its id and title) once it exists.
+
+    Without ``item`` it is the row-time hook: ``dispatch_row`` reads only its closing for the ``Hook:`` line,
+    and it is never written as a switch.
+    """
     start = time.time() if now is None else now
     if item is None:
         return TodoHook(closed_by=closing, desc=PENDING_DESC, start_time=start)
-    title = " ".join(str(item.get("title") or item["id"]).split())[:MAX_DESC_CHARS]
+    title = (" ".join(str(item.get("title") or "").split()) or str(item["id"]))[:MAX_DESC_CHARS]
     return TodoHook(closed_by=closing, desc=title, start_time=start, todo_id=str(item["id"]))
 
 

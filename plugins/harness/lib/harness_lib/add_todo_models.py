@@ -15,7 +15,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 MAX_GOAL_CHARS = 500
-"""The longest ``/goal`` condition: the approval dialog shows the whole condition."""
+"""The longest ``/goal`` condition: the engine's ``/goal`` refuses a longer condition."""
 MAX_DESC_CHARS = 300
 """The longest hook description; with the id and the closing clause it stays under ``MAX_GOAL_CHARS``."""
 
@@ -66,14 +66,16 @@ _CONDITIONS = {
 }
 
 PENDING_DESC = "the item this add-todo run adds"
-"""A row-time hook's description: the item has no id or title until the inbox drain lands it."""
+"""A row-time hook's placeholder description: the row only carries the closing (the ``Hook:`` line); the
+item has no id or title yet, and no row-time hook is ever written as a switch."""
 
 
 class TodoHook(BaseModel):
     """An optional session goal tied to one TODO item: the hook switch the session-bookmark mod fires.
 
-    ``start_time`` is epoch seconds (``datetime.timestamp()``); ``todo_id`` is unset until the drain gives the
-    item its id.
+    ``start_time`` is epoch seconds (``datetime.timestamp()``). A written switch always comes from a catalog
+    item (``add_todo.py hook``, ``add_note.py goal --todo``), so its ``todo_id`` is set; ``todo_id`` is unset
+    only on the row-time hook, which carries just the closing to the dispatch row and is never written.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
