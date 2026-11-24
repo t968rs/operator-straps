@@ -1,0 +1,542 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 338,
+  "pr_title": "Feature(harness): `writing-comments` skill",
+  "branch": "0005-writing-comments",
+  "base_branch": "main",
+  "base_sha": "e4d9108d85a22c959ca166262223aa12629a5d4f",
+  "head_sha": "e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8",
+  "review_date": "2026-11-24",
+  "verdict": "READY TO MERGE - 16 of 16 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2390,
+    "deletions": 3,
+    "files_changed": 30,
+    "source": {
+      "additions": 2386,
+      "deletions": 3,
+      "files_changed": 29
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/config.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/tests.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/docs.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/overall.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0338/pr338_20261124T075621Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The comments schema block mirrors the docstrings block (object, additionalProperties false, described property) and agrees with defaults.json (divider_width 88) and with _comments in config.py (unknown keys rejected, positive integer, bool refused).",
+    "The key description matches the code: check_width compares indentation plus text length to the configured width and raises the width flag.",
+    "Every in-scope test is behavioral: the API tests call sections/report_lines/rule_line/minor_line on real source text, the command tests run the real script as a subprocess in a make_project repo, and nothing is mocked.",
+    "Expected divider lines are built by hand from the convention (RULE_88, MINOR_ROW_HELPERS_88, explicit dash counts) rather than from rule_line/minor_line, so the canonical-line helpers are checked independently.",
+    "Negative cases pin the tokenize-based design: dashed numpy underlines inside a docstring, a trailing comment after code, and `--` inside prose are all asserted to produce neither dividers nor flags.",
+    "test_the_width_comes_from_the_project_key asserts exact output at width 60, so falling back to the 88 default would surface as width flags and fail the test.",
+    "The comments config tests mirror the existing docstrings pattern: one test through the schema path, one parametrized test with jsonschema masked, anchored with match=r'^comments'.",
+    "test_root_separation adds comment-sections to MUST_EXIT_ZERO, so a refusal cannot pass the no-writes snapshot check vacuously.",
+    "The skill contract test checks the exact hpy launch string and the comment_format.md reference against files that exist, and its docstring points to where behavior is tested instead of asserting prose.",
+    "Divider recognition reads comments through tokenize and keeps only full-line COMMENT tokens, so dashed docstring underlines and trailing comments can never be mistaken for dividers, as the module docstring promises.",
+    "_comments mirrors _docstrings exactly (object check, unknown-key rejection, bool-excluded positive int), so the new key validates the same way without jsonschema.",
+    "The pydantic report models are closed and frozen (extra=forbid), and report_lines orders a divider before a flag on the same line through an explicit sort key, matching its docstring.",
+    "The command follows the driver contract: activate(load_config(project_root(...))) once, library reads stay inside functions, nothing is written, and ConfigError, decode and tokenize failures all go through the ValueError path to a single problem: line.",
+    "The geo/area.py fixture covers each non-canonical form in comment_format.md's table (title after the dash run, the ### ==== ### banner, a rule and title with no closing rule), so the strap evals exercise every flag kind.",
+    "Every blob hash in the skill freeze ledger (docs/plans/freezes/skill/writing-comments/r1.1-freeze.json) and the plan freeze matches the file at the PR head, so the frozen spec and the shipped files agree.",
+    "comment_format.md's non-canonical table matches the checker: the `### ===` banner and the title-after-dashes line both fall through `_RULE` and `_MINOR` to the `_SEPARATOR_RUN` style flag, and an unclosed rule takes the banner flag.",
+    "The README key-table row for `comments.divider_width` states the checked scope exactly (rule or minor line, indentation included).",
+    "The plan's sweep S1 lists every existing off-convention divider in the repo and records why each is left alone (D4), so a later section pass starts from a known list.",
+    "The release-note claim stays within what was proven: only the divider rule is said to be strap-proven, which matches B2 and B3 being dropped because their baselines already passed.",
+    "SKILL.md, comment_format.md, the README skill row and the RELEASES note agree on the skill name, the command path and the flag kinds (width, style, banner); no orphan or prior-name references found.",
+    "Every cross-link resolves: comment_format.md via ${CLAUDE_SKILL_DIR}, commands/comment_sections.py via ${CLAUDE_PLUGIN_ROOT}, and the writing-docstrings skill it defers to.",
+    "The canonical examples in comment_format.md are measured correct: each rule and minor example line is exactly 88 characters, and each non-canonical table row maps to the flag the checker actually raises (style for `###====###` and title-after-dashes, banner for a missing title or closing rule).",
+    "comment_sections.py's error contract holds: UnicodeDecodeError and tokenize failures both arrive as ValueError, get the file label and become one `problem:` line on stderr with exit 1; ConfigError subclasses ValueError, so the `_lines` docstring is accurate.",
+    "Tokenize-based scanning means dashed docstring underlines and trailing comments are never mistaken for dividers, which the module docstring states and the code implements.",
+    "The config key covers all four required places (defaults.json, schema, CommentsConfig plus _comments wired into the single HarnessConfig call, README key row), and the bad values are tested both with and without jsonschema.",
+    "Comments are found through tokenize and must stand alone on their line, so docstring underlines and trailing `# ----` comments are never dividers; tests pin both cases.",
+    "The command follows the driver contract: it activates once through project_root/load_config, writes nothing, joins the root-separation CASES and MUST_EXIT_ZERO, and reports every failure as one `problem:` line with exit 1 and empty stdout.",
+    "Every new test is behavioral: real source text through sections(), the command run as a subprocess against make_project repos, and contract pins on the SKILL.md routes. No stubbed collaborators.",
+    "The frozen SkillSpec and plan ledgers match the head: every blob hash in both r1.1 freeze files equals the head's blob, and receipts cover all four plan items.",
+    "The plan's S1 sweep records each existing non-canonical divider in the repository with the flag it will raise and why D4 leaves it alone, which explains the checker's noise in advance.",
+    "comments.divider_width lands in all four required places (defaults.json, harness.schema.json, CommentsConfig plus _comments() in config.py, README key table), with tests for both the jsonschema path and the jsonschema-free type check.",
+    "Every blob listed in both freeze ledgers (plan 2029 and skill writing-comments) matches the PR head, so nothing was edited after freeze.",
+    "Reading comments through tokenize keeps docstring underlines, trailing comments and prose '--' out of the divider scan, and a test pins each of those cases.",
+    "comment-sections joins test_root_separation's CASES and MUST_EXIT_ZERO, so a refusal or missing script cannot pass the no-write check vacuously.",
+    "The release note scopes the strap proof to the divider rule, which matches the SkillSpec: B2 and B3 were dropped because their baselines already passed.",
+    "Command and API tests are behavioral (subprocess runs against make_project repos, real source texts), with no mock chains.",
+    "Comments are read through tokenize, so docstring underlines and trailing comments can never be mistaken for dividers, and tests pin both cases.",
+    "The new key touches all four places (defaults, schema, CommentsConfig/_comments with an unknown-key and bool-safe positive-int check, README row), and a test runs without jsonschema.",
+    "Every file in the r1.1 skill freeze ledger matches its blob at the PR head, so nothing drifted after the freeze.",
+    "The command tests run the real script as a subprocess against make_project repos, cover the width from the key, absolute-path labels and every problem path, and use no mocks.",
+    "comment-sections joins CASES and MUST_EXIT_ZERO in test_root_separation, so a silently failing command cannot pass the no-write check vacuously.",
+    "The format file's examples are exactly 88 wide (measured), so the reference agrees with its own checker."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "New skill is unclassified: test_every_skill_is_classified fails at the head",
+        "file": "tests/skills/test_skill_guidance_tail_contract.py",
+        "files": [
+          "tests/skills/test_skill_guidance_tail_contract.py",
+          "plugins/harness/skills/writing-comments/SKILL.md",
+          "README.md"
+        ],
+        "lines": "30-33,50-52",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "tests/skills/test_skill_guidance_tail_contract.py:50-52 asserts every plugins/harness/skills/*/SKILL.md folder appears in _INVOCABLE or _KNOWLEDGE (\"a new skill must join _INVOCABLE or _KNOWLEDGE\"). The PR adds plugins/harness/skills/writing-comments/SKILL.md but leaves both lists (lines 24-33) untouched, so the test fails. The file declares WALK_ROOTS = (\"plugins/harness/skills/\",), so tools/select_tests.py runs it for this PR and the CI pytest job goes red. The README files writing-comments in the trigger table (README.md:61, 'These load on their own triggers') and its frontmatter has no argument-hint, so it is a knowledge skill; test_knowledge_skills_take_no_arguments then passes for it as written.",
+        "fix": [
+          "Add \"writing-comments\" to _KNOWLEDGE in tests/skills/test_skill_guidance_tail_contract.py (keep the list alphabetical: after \"tdd-strapped\")."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "A minor divider with fewer than four trailing dashes is neither a divider nor flagged",
+        "file": "plugins/harness/lib/harness_lib/writing_comments_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/writing_comments_api.py",
+          "tests/lib/test_writing_comments_api.py",
+          "plugins/harness/skills/writing-comments/comment_format.md",
+          "plugins/harness/skills/writing-comments/SKILL.md",
+          "plugins/harness/lib/harness_lib/writing_comments_models.py"
+        ],
+        "lines": "17-125",
+        "reviewer": "runtime, skill_package, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_MINOR (writing_comments_api.py:18) requires `-{4,}` after the title, and _SEPARATOR_RUN (line 19) needs a run of four separator characters. A short hand-written minor such as `# -- writers --` or `# -- writers ---` matches neither: it is silently treated as prose, drops out of the outline and raises no flag. comment_format.md:48 says a minor line shorter than the width gets a `width` flag, and the CommentsConfig schema description says a minor divider of another length gets a width flag; this short minor gets neither the flag nor a place in the outline.\n\nAlso (skill_package): comment_format.md:41-48 says comment_sections.py flags every non-canonical form, including 'a rule or minor line shorter ... than the width' (`width`), and SKILL.md:33-35 makes a flag-free rerun the gate ('never count dashes by eye: the command measures the width'). The recognizer in writing_comments_api.py only treats `# -- <title> -{4,}` as a minor divider (_MINOR, line 18) and only flags a style issue on a run of 4+ separator characters (_SEPARATOR_RUN, line 19). A hand-written `# -- writers ---` or `# -- helpers --` matches neither, so it is classed as prose: no `minor` line, no `width` flag. Verified: sections('# -- writers ---\\nx = 1\\n# -- helpers --\\n', 88) returns dividers=[] flags=[]. That short, eyeballed minor divider is exactly the shape the skill tries to prevent, and the gate lets it through.\n\nAlso (runtime): FlagKind.STYLE is documented as 'a separator comment in no canonical form' (writing_comments_models.py:20-21), and comment_format.md:99 bans Unicode dashes. But _SEPARATOR_RUN (writing_comments_api.py:19) matches only ASCII `-=*~_#`, so common legacy separators such as `# ──── Helpers ────` or `# ══════` pass as plain prose with no flag.\n\nAlso (overall): _MINOR needs four or more trailing dashes, and _SEPARATOR_RUN needs a run of four, so `# -- helpers --` and `# -- helpers` are neither dividers nor flags (probed at the head: both give dividers=[] flags=[]). These are the most likely malformed minor dividers, and the checker says nothing about them. That works against the skill's 'rerun until no flag' loop.\n\nAlso (overall): Any full-line comment with a run of four of `-=*~_#` is a `style` flag (writing_comments_api.py:19,99-100), so an ASCII table border such as `# +------+------+` or a diagram is reported as a non-canonical divider (probed at the head). FlagKind's docstring calls `style` 'a separator comment in no canonical form', and these comments are not separators. Because the skill says to clear every flag in the lines written, a session could end up rewriting a legitimate diagram.\n\nAlso (overall): writing_comments_api.py holds several groups of definitions: patterns and types, canonical-line builders, scanning helpers, the _Scan class, and the public sections/report_lines. SKILL.md:21-25 says such a module gets a major divider per group before it is called done, and it has none. A reader who runs comment_sections.py on the convention's reference implementation gets `no dividers`.\n\nAlso (system_shape): SKILL.md:21-25 says a module the work creates that holds more than one group of definitions gets a major divider per top-level group 'before it is called done', and 'four definitions in two groups is already two sections' (also comment_format.md:55-57). plugins/harness/lib/harness_lib/writing_comments_api.py is new, 125 lines, and holds at least four groups (patterns and the Comments type at 17-22; canonical line builders rule_line/minor_line at 25-33; tokenize reader and banner matcher at 36-60; the _Scan accumulator at 63-100; the public sections/report_lines API at 103-125) with no divider at all. writing_comments_models.py (enums at 12-25, models at 28-54) is the same shape. The first modules written under the convention contradict it, and they are listed in the skill's freeze ledger (docs/plans/freezes/skill/writing-comments/r1.1-freeze.json:11-12).\n\nAlso (roast): `other()` flags a comment as `style` when `_SEPARATOR_RUN.search(text)` matches anywhere in it (writing_comments_api.py:19,99). A markdown table row in a comment ('# |------|------|') and a commented string ('# x = \"____\"') both come back as style flags (probed). The skill sends the session to 'fix every flag', so these false positives become pressure to rewrite comments that are not dividers. The 4-run threshold is the plan's recorded value; anchoring the match keeps that value and stops matching mid-comment.",
+        "fix": [
+          "Relax the trailing run in _MINOR to `-+` (`# -- (?P<title>[^\\s-].*?) -+`), so any `# -- <title> -...` line is recognized as a minor divider and check_width flags its length; add a test case for `# -- writers --`.",
+          "Alternatively, flag any comment that starts with `# -- ` and fails _MINOR as `style` in _Scan.other.",
+          "Loosen the minor pattern to any trailing dash run, e.g. `_MINOR = re.compile(r\"# -- (?P<title>[^\\s-].*?) -+\")`, so a short minor line is recognized and then raises `width` through check_width; add a test in tests/lib/test_writing_comments_api.py for `# -- writers ---` and `# -- helpers --` expecting a minor divider plus a `width` flag.",
+          "Alternatively flag `style` for any full-line comment that starts with `# -- ` and does not fullmatch _MINOR, and add the matching row to the table in comment_format.md.",
+          "Extend the character class to cover the box-drawing block and Unicode dashes, e.g. `[-=*~_#\\u2500-\\u257F\\u2010-\\u2015]{4,}`, and add a test case.",
+          "In _Scan.other, flag `style` for a comment that starts with `# -- ` and has a title but does not fullmatch _MINOR (for example `re.fullmatch(r\"# -- \\S.*\", text)`). Add API tests for `# -- helpers --` and `# -- helpers`.",
+          "Count only lines where the separator run makes up most of the text after `#` (for example `[-=*~_# ]` covers at least half the text, or the text begins or ends with the run). Add a test that `# +------+------+` raises no flag.",
+          "Keep the rule and state in comment_format.md that a `style` flag on a diagram or table border is expected and left alone.",
+          "Add major dividers to writing_comments_api.py (for example Patterns, Canonical lines, Scanning, Public API) and check them with comment_sections.py. This changes a part listed in the frozen SkillSpec, so it needs `freeze --refreeze`.",
+          "Reopen the writing-comments spec, add canonical major dividers per group to writing_comments_api.py (and writing_comments_models.py), run comment_sections.py on both until it prints no flag, then refreeze.",
+          "If library modules in this repository are meant to be exempt, state that scope in SKILL.md's Scope section and comment_format.md 'When a module gets dividers' so the rule and the code agree.",
+          "Anchor the separator test to where a divider puts its run, e.g. `re.compile(r\"#+\\s*[-=*~_#]{4,}\")` with `.match(text)`, plus a trailing-run check if wanted. Keep the two existing style tests ('### ======= ... ###' and the dash run before 'scaffold'), which still match, and add a test that a table row stays unflagged."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "A UTF-8 BOM hides line 1 and raises a false banner flag",
+        "file": "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+        "files": [
+          "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+          "plugins/harness/lib/harness_lib/writing_comments_api.py",
+          "tests/skills/test_comment_sections_command.py"
+        ],
+        "lines": "69",
+        "reviewer": "overall, roast, runtime",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "comment_sections.py reads each file with encoding=\"utf-8\", so a file saved with a byte-order mark (common on Windows) reaches sections() with a leading U+FEFF. _full_line_comments treats the comment on line 1 as not full-line, because tok.line[:col] is \"\\ufeff\" and str.strip() does not remove U+FEFF. A probe at the head shows the effect: a BOM-prefixed source of rule / title / rule reports no divider and a `banner` flag on line 3. SKILL.md tells the session to fix every flag and rerun until none is left, and no edit to the dividers clears this one. The sibling writing_docstrings_api.py already reads with utf-8-sig.\n\nAlso (roast): comment_sections.py reads files with encoding=\"utf-8\", which keeps a leading U+FEFF. In `_full_line_comments` (writing_comments_api.py:41) the line-1 comment then fails the `not tok.line[:col].strip()` test, because str.strip() does not treat U+FEFF as whitespace. A canonical banner on line 1 is dropped. Probed on the project interpreter: '\\ufeff' + rule/'# T'/rule returns dividers=[] and a `banner` flag on the closing rule at line 3. The skill tells the session to 'rerun until none is left', but no edit to the banner clears this flag, so on Windows, where editors still write BOMs, the loop never ends.\n\nAlso (runtime): comment_sections.py:69 reads with encoding=\"utf-8\", which keeps a leading U+FEFF. In _full_line_comments (writing_comments_api.py:41), `tok.line[:col].strip()` does not strip U+FEFF, so a full-line comment on line 1 of a BOM-prefixed file is not counted. When it is counted, its column is off by one for the width check.",
+        "fix": [
+          "Read with `path.read_text(encoding=\"utf-8-sig\")` at comment_sections.py:69, and add a command test with a BOM-prefixed banner file that expects `major` on line 1 and no flag.",
+          "Strip one leading \"\\ufeff\" in `writing_comments_api.sections` before tokenizing, so API callers get the same result, and add an API test for it.",
+          "Read the file with encoding=\"utf-8-sig\" in comment_sections.py:69 and add a command test with a BOM-prefixed banner on line 1.",
+          "Strip a leading \"\\ufeff\" from `source` at the top of `sections()` (writing_comments_api.py:106), so API callers are covered too, and pin it with an API test.",
+          "Read with encoding=\"utf-8-sig\" in comment_sections.py:69 (decode errors still surface as ValueError)."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "comment_sections.py prints comment text without a UTF-8 stdout, so a non-ASCII comment crashes the command on Windows",
+        "file": "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+        "files": [
+          "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+          "tests/skills/test_comment_sections_command.py"
+        ],
+        "lines": "76-84",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "main() prints divider titles and flag texts verbatim (comment_sections.py:83), outside the try block, with stdout left at the locale encoding. hpy does not set PYTHONUTF8 or PYTHONIOENCODING, so on Windows a piped stdout is cp1252. A module holding a legacy separator such as `#### ═══ AREA ═══ ####` (flagged `style`, text echoed) or a title with an arrow raises UnicodeEncodeError: a traceback, no `problem:` line, and output lost. That breaks the docstring contract (every failure is one `problem:` line, exit 1), and the non-canonical Unicode separators the convention bans are exactly the comments this command exists to report. Sibling commands (plan.py:1172, parallel2.py:700, bubble_memo.py:555, review_models.py:661) already reconfigure stdout for this reason.",
+        "fix": [
+          "At the top of main(), add `if hasattr(sys.stdout, \"reconfigure\"): sys.stdout.reconfigure(encoding=\"utf-8\")` (and the same for sys.stderr, since problem lines echo file names), matching plan.py:1172; add a test in tests/skills/test_comment_sections_command.py whose fixture holds a non-cp1252 comment.",
+          "Print through the existing UTF-8-safe helper in harness_lib/review_models.py:661 (or a shared copy of it) instead of a bare print."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "v1.1.0 change line lacks its PR number",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "33",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:3-5 states that each branch adds one line per change \"tagged with its PR number\", and the two earlier lines start with `#337`. The new writing-comments line (line 33) starts with `Feat(harness):` and carries only the issue number (#317), so the GitHub release body built from this file will not link the change to PR #338.\n\nAlso (overall): docs/RELEASES/v1.1.0.md:4-5 says each change line is 'tagged with its PR number', and the earlier entries start with `#337`. The new writing-comments line at :33 has no tag.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:3-5 requires each change line 'tagged with its PR number', and the two earlier entries start with '#337'. The new writing-comments line (33) starts 'Feat(harness):' with only the issue number (#317).",
+        "fix": [
+          "Prefix line 33 with the PR number: `- #338 Feat(harness): \\`writing-comments\\` skill (issue #317). ...`",
+          "Prefix the line: `- #338 Feat(harness): `writing-comments` skill (issue #317). ...`.",
+          "Prefix line 33 with '#338 ': '- #338 Feat(harness): `writing-comments` skill (issue #317). ...'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "divider_width minimum 1 admits widths no canonical divider can fill",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/lib/harness_lib/writing_comments_api.py",
+          "tests/lib/test_config.py",
+          "README.md"
+        ],
+        "lines": "172-178",
+        "reviewer": "config, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The schema accepts any integer >= 1 for comments.divider_width, and config.py:562 mirrors that. rule_line (writing_comments_api.py:25-27) and minor_line (writing_comments_api.py:30-33) pad with max(4, ...) dashes, so a rule is never shorter than indent + 2 + 4 = 6 characters. With a width below 6, every canonical divider the command writes fails check_width (writing_comments_api.py:75-78) and gets a width flag, so no source can pass. The description promises 'a rule or minor divider of another length gets a width flag', which a width of 1 to 5 can never satisfy.\n\nAlso (overall): The schema and _comments accept any divider_width >= 1, but a rule needs `# ` plus at least four dashes (6 characters; _RULE and rule_line's max(4, ...)), and a minor line needs `# -- t ` plus four dashes (11 or more). With a width below 6, every rule gets a `width` flag that no edit can clear.",
+        "fix": [
+          "Raise the schema minimum to a value the generators can fill (6 at column 0; a larger floor if indented dividers must fit) and mirror it in _comments in config.py.",
+          "Leave the minimum at 1 and add a sentence to the description that widths below the generators' 4-dash floor flag every divider.",
+          "Raise the floor to 6 in harness.schema.json (`minimum: 6`) and in _comments (`width < 6`), add the value 5 to the bad cases in both test_config.py tests, and note the floor in the README key row."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "_comments duplicates _docstrings line for line",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "lines": "539-564",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "_comments (config.py:553-564) repeats _docstrings (config.py:539-550) with only the section name, key and dataclass changed: the dict check, the unknown-key check and the positive-integer check. A third section of this shape would copy it again.",
+        "fix": [
+          "Extract `_positive_int_section(d, section, key) -> int` that does the three checks with section-prefixed messages, and have both builders return `DocstringsConfig(_positive_int_section(d, \"docstrings\", \"line_length\"))` and `CommentsConfig(_positive_int_section(c, \"comments\", \"divider_width\"))`. The existing test_config.py cases cover both."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "rule_line and minor_line have no production caller",
+        "file": "plugins/harness/lib/harness_lib/writing_comments_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/writing_comments_api.py",
+          "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+          "tests/lib/test_writing_comments_api.py",
+          "plugins/harness/skills/writing-comments/SKILL.md"
+        ],
+        "lines": "1,25-125",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring advertises 'the canonical lines', and rule_line / minor_line (writing_comments_api.py:25-33) build them, but only tests/lib/test_writing_comments_api.py calls them. Neither comment_sections.py nor the skill text uses them, so the agent still writes dividers by hand. comment_format.md:10 says 'never count dashes by eye', yet the width flag prints only the bad line, not the fix.\n\nAlso (overall): rule_line and minor_line (writing_comments_api.py:25-33) are described as building the canonical lines, but only tests/lib/test_writing_comments_api.py calls them. Neither comment_sections.py nor the skill exposes them. SKILL.md:35 says \"Never count dashes by eye: the command measures the width\", yet a session writing a new divider has nothing that produces the 86 dashes. It has to type them and rerun until the width flag clears.\n\nAlso (system_shape): writing_comments_api.py:1 advertises 'the canonical lines' and defines rule_line/minor_line (25-33), but their only caller is tests/lib/test_writing_comments_api.py:127-129; comment_sections.py never uses them and no skill text reaches them. SKILL.md:35 and comment_format.md:10 say 'never count dashes by eye', yet the session has no way to obtain a canonical line except writing it by hand and rerunning the checker. The helpers are dead in the shipped code path while the gap they would close stays open.\n\nAlso (roast): writing_comments_api.py is a new module with at least three groups of definitions: the canonical line builders (rule_line, minor_line), comment reading (_full_line_comments, _banner_end, _Scan) and the public report API (sections, report_lines). It has no dividers. SKILL.md lines 21-25 say such a module 'gets a major divider per top-level group before it is called done', and spec B4 straps exactly that behavior. Run comment_sections.py on its own API module and it prints 'no dividers'.",
+        "fix": [
+          "Use them: have the `width` flag in report_lines / comment_sections.py print the canonical replacement line (rule_line or minor_line at the comment's indentation), so the agent can paste the fix.",
+          "Or remove both helpers and their test if nothing is meant to call them.",
+          "Put the builders to use: print the canonical replacement on each `width` flag (for example `flag width: <text> -> <canonical line>`), or add a `--rule TITLE [--indent N]` mode that prints a canonical banner or minor line. Update SKILL.md and comment_format.md to route to it.",
+          "Remove rule_line, minor_line and test_canonical_lines_fill_the_width_exactly, and drop the module docstring's claim about building canonical lines.",
+          "Expose them through the command (for example 'comment_sections.py --rule [--indent N]' and '--minor TITLE [--indent N]' printing the canonical line at comments.divider_width) and name that in SKILL.md and comment_format.md.",
+          "Or delete rule_line, minor_line and test_canonical_lines_fill_the_width_exactly, and drop 'the canonical lines' from the module docstring.",
+          "Add rule / title / rule banners per group (for example 'Canonical lines', 'Comment reading', 'Report') at 88 wide, and confirm with comment_sections.py that no flag is raised."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "\"Every divider line\" width rule reads wider than the checker",
+        "file": "plugins/harness/skills/writing-comments/SKILL.md",
+        "files": [
+          "plugins/harness/skills/writing-comments/SKILL.md",
+          "plugins/harness/skills/writing-comments/comment_format.md",
+          "README.md",
+          "docs/plans/strap/writing-comments/SkillSpec.json"
+        ],
+        "lines": "11-15,37-43,52-54",
+        "reviewer": "docs, skill_package, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:11-12 says \"every divider line exactly `comments.divider_width` long\", and comment_format.md:9 says \"Every divider line is exactly the project's `comments.divider_width` long\". Taken literally, that covers a banner's title line and any sentence lines too. writing_comments_api.py only width-checks the two rules of a banner (`check_width(line)` and `check_width(end)` in `_Scan.rule`) and the minor line. The format file's own examples have short title lines (`# Immutable ranking`, 19 chars). The README key row (\"a rule or minor divider line of another length\") already says it correctly; the skill text should match.\n\nAlso (skill_package): SKILL.md:11-12 says 'every divider line exactly `comments.divider_width` long', and comment_format.md:9 says 'Every divider line is exactly the project's `comments.divider_width` long'. A major divider includes its title and sentence lines, and the skill's own examples (comment_format.md:16 `# Immutable ranking`, 19 chars; lines 25-26) are nowhere near 88. The checker (writing_comments_api.py:3-5, 88-89) correctly measures only the rules and minor lines, so the prose rule is the thing that's wrong. The README skill row (line 29, 'each exactly `comments.divider_width` wide') repeats the same ambiguity.\n\nAlso (overall): SKILL.md:11-12 ('every divider line exactly `comments.divider_width` long'), comment_format.md:9 ('Every divider line is exactly ... long') and the README goal row ('a rule / title / rule banner per group ... each exactly `comments.divider_width` wide') all read as if the banner title line is padded to the width too. The code checks only rules and minor lines (writing_comments_api.py:3-5,86-89), which is also what the schema description and the README key row say.\n\nAlso (overall): SkillSpec drops B2 (process-comment content) and B3 (leave untouched modules alone) because their baselines already complied ('nothing to teach'). SKILL.md still teaches both: the process-comment bullet at :13-15, the Scope section at :37-43, and the quick-reference rows at :52-54. strap-skills step 10 says SKILL.md prose is written against what the baselines did, each rule answering a tempted move, and step 9 says a behavior that still matters is added again with a scenario that tempts harder. The frozen skill hash therefore covers rules that no scenario has exercised. The Scope text also encodes decision D4, which may justify keeping it.\n\nAlso (system_shape): SKILL.md:11-12 ('every divider line exactly comments.divider_width long'), comment_format.md:9 ('Every divider line is exactly ... long') and the README goal row (README.md:29, 'each exactly comments.divider_width wide') read as covering the banner's title and body lines too. The format file's own example title line '# Immutable ranking' (comment_format.md:16) is 19 characters, and the API width-checks only the two rules of a banner and the minor line (writing_comments_api.py:75-78, 88-89, 98). The schema description (harness.schema.json, comments.divider_width) states it correctly: 'a rule or minor divider of another length gets a width flag'.",
+        "fix": [
+          "Reword SKILL.md:11-12 to \"every rule and minor line exactly `comments.divider_width` long\" and comment_format.md:9 to \"Every rule and minor divider line is exactly ...\", then refreeze the writing-comments spec (both files are frozen parts).",
+          "Reword SKILL.md:11-12 to 'every rule and minor line exactly `comments.divider_width` long (default 88), indentation included' and comment_format.md:9 to 'Every rule and minor divider line is exactly ...; title and sentence lines are free length'; align the README line 29 wording the same way.",
+          "Reword to 'every rule and minor divider line is exactly `comments.divider_width` long, indentation included' in SKILL.md:11-12, comment_format.md:9 and the README goal row.",
+          "Keep the D4 scope rule and re-add B3 with a harder scenario (for example an explicit 'while you are in there, tidy area.py' ask from a lead), so the frozen prose is gated.",
+          "Move the process-comment rules and the scope rules out of SKILL.md into comment_format.md, and leave SKILL.md to route to them, so that only the gated divider rule is taught in the skill body. Refreeze after either change.",
+          "Reword the three places to 'every rule and minor divider line is exactly comments.divider_width long, indentation included' (SKILL.md and comment_format.md sit in the frozen skill, so reopen and refreeze)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Quick reference row conflicts with the Scope rules for a touched module",
+        "file": "plugins/harness/skills/writing-comments/SKILL.md",
+        "lines": "41-43,52",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:41 says a non-canonical divider is rewritten when the work rewrites the block it heads. SKILL.md:43 says that for a module the work does not change, the skill should offer a section pass in the reply. The quick reference row at line 52 (\"Editing one function in a module with odd dividers | Leave the dividers; mention them if asked\") conflicts with both. It drops the rewrite case for the block the work rewrites. It also gives a module the work changes less reporting than an unchanged one: mention only if asked, versus an unprompted offer.",
+        "fix": [
+          "Change the line 52 call to \"Leave dividers outside the rewritten block; rewrite the one heading a block the work rewrites; offer a section pass in the reply\" so it matches lines 41 and 43, then refreeze the spec.",
+          "Or change line 43 so it applies to both cases, and have the quick-reference row point to it."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Docstring says every path is relative to the project; _label falls back to absolute",
+        "file": "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+        "lines": "10,53-57",
+        "reviewer": "runtime, skill_package, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "comment_sections.py:10 states 'Each path is relative to the project.' _label (lines 53-57) returns the absolute POSIX path when a file sits outside the resolved root. That happens whenever --repo names another project, or when later files live in a different repository from the first.\n\nAlso (skill_package): comment_sections.py:10 says 'Each path is relative to the project.' _label (lines 53-57) returns path.as_posix(), an absolute path, when a file sits outside the resolved root. That happens with `--repo` pointing at another project, or with files from two repositories where the root comes from the first one. The fallback is reasonable, but the docstring overstates it.\n\nAlso (overall): comment_sections.py:10 says 'Each path is relative to the project', but _label (lines 53-57) prints the absolute posix path for a file outside the project root, for example a file named alongside `--repo` that points at another project.\n\nAlso (system_shape): comment_sections.py:10 says 'Each path is relative to the project.' _label (53-57) returns path.as_posix(), an absolute path, for a file outside the resolved project root: a second file from another repository, or a --repo that does not hold the file. The docstring states the common case as a guarantee.",
+        "fix": [
+          "Reword the docstring: 'Each path is relative to the project, or absolute for a file outside it.'",
+          "Change comment_sections.py:10 to 'Each path is relative to the project, or absolute when the file lies outside it.'",
+          "Reword line 10 to 'Each path is relative to the project, or absolute when the file sits outside it.'",
+          "Change line 10 to 'Each path is relative to the project, or absolute for a file outside it.'"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Format file says every problem line names a path",
+        "file": "plugins/harness/skills/writing-comments/comment_format.md",
+        "files": [
+          "plugins/harness/skills/writing-comments/comment_format.md",
+          "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+          "plugins/harness/lib/harness_lib/writing_comments_api.py"
+        ],
+        "lines": "109-113,115",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "comment_format.md:115 says \"A `problem:` line names a path to fix.\" comment_sections.py also prints a problem line that names no path: when no file is given (`no file named; pass one or more .py files`, `_resolve`), and when the configuration is invalid (`ConfigError` caught in `main`). An agent following the reference would look for a path in those lines and find none.\n\nAlso (system_shape): comment_format.md:109-113 shows line 77 as only 'src/mod.py:77: flag width: # -- writers ---...' (a 73-character minor divider). The API keeps an off-width minor divider and flags it (writing_comments_api.py:96-98; pinned by test_a_divider_short_of_the_width_is_kept_and_flagged), and report_lines prints the divider row before the flag row on the same line (writing_comments_api.py:119-125). The real output is 'src/mod.py:77: minor writers' followed by the flag line, so a session matching the documented shape sees an unexpected extra line.",
+        "fix": [
+          "Reword line 115 to \"A `problem:` line on stderr (exit 1, nothing on stdout) names what to fix: a missing or non-`.py` path, source that does not tokenize, no path given, or an invalid configuration.\" Then refreeze the spec.",
+          "Insert 'src/mod.py:77: minor writers' above the flag line in the example block at comment_format.md:110-112."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Non-object comments value is not in the no-jsonschema cases",
+        "file": "tests/lib/test_config.py",
+        "files": [
+          "tests/lib/test_config.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "44-56",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_comments (config.py:556-557) raises `comments: must be an object` when the section is not a dict; deep_merge (config.py:318-319) replaces the default dict with a scalar, so that branch is reachable from a project file. test_invalid_comments_raise_without_jsonschema covers only dict-shaped bad values, so the fallback type check for the section itself is unguarded.",
+        "fix": [
+          "Add a case `\"x\"` (or `[]`) to the parametrize list at tests/lib/test_config.py:44-51 and widen the `bad` annotation to `Any`, or add a one-off test asserting `ConfigError` matching `^comments: must be an object` with jsonschema masked."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Banner-rejection branches, opening-rule width and indented flag text are untested",
+        "file": "tests/lib/test_writing_comments_api.py",
+        "files": [
+          "tests/lib/test_writing_comments_api.py",
+          "plugins/harness/lib/harness_lib/writing_comments_api.py",
+          "plugins/harness/lib/harness_lib/writing_comments_models.py"
+        ],
+        "lines": "32-35,51-56,73-76",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_banner_end (writing_comments_api.py:48-60) rejects a banner on a title at another indentation, a title that is itself a rule, and an empty `#` title; the tests cover only a missing closing rule (line 32) and a missing title (line 73). The width check on the opening rule (writing_comments_api.py:88) is covered only on the closing rule (line 51), and CommentFlag's 'indentation removed' text contract (writing_comments_models.py:39) has no indented flagged line. Each branch could be deleted without a test failing.",
+        "fix": [
+          "Add cases: `sections(f\"{RULE_88}\\n    # Title\\n{RULE_88}\\n\", 88)` gives no dividers and BANNER flags at lines 1 and 3; `sections(f\"{RULE_88}\\n{RULE_88}\\n\", 88)` gives BANNER flags at lines 1 and 2; `sections(f\"{'# ' + '-' * 80}\\n# T\\n{RULE_88}\\n\", 88)` gives a MAJOR divider at line 1 and a WIDTH flag at line 1; `sections(\"class C:\\n    ### ===== X ===== ###\\n    pass\\n\", 88).flags == [CommentFlag(line=2, kind=FlagKind.STYLE, text=\"### ===== X ===== ###\")]`."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "report_lines same-line tie-break is untested",
+        "file": "tests/lib/test_writing_comments_api.py",
+        "files": [
+          "tests/lib/test_writing_comments_api.py",
+          "plugins/harness/lib/harness_lib/writing_comments_api.py"
+        ],
+        "lines": "132-139",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "report_lines' docstring (writing_comments_api.py:119-120) promises a divider before a flag on its own line, implemented by the 0/1 sort key at writing_comments_api.py:121-122. test_report_lines_list_dividers_and_flags_in_line_order puts the divider and the flag on different lines (1, 4, 5), so swapping or dropping the tie-break key passes the suite.",
+        "fix": [
+          "Add a test: `short = \"# -- row helpers \" + \"-\" * 69`; assert `report_lines(\"src/mod.py\", sections(f\"{short}\\n\", 88)) == [\"src/mod.py:1: minor row helpers\", f\"src/mod.py:1: flag width: {short}\"]`."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "comment_sections.py --repo and two documented problem paths are untested",
+        "file": "tests/skills/test_comment_sections_command.py",
+        "files": [
+          "tests/skills/test_comment_sections_command.py",
+          "plugins/harness/skills/writing-comments/commands/comment_sections.py"
+        ],
+        "lines": "55-101",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The command docstring (comment_sections.py:10-14) promises that the project is `--repo` when given, else the first file's project, and that an invalid configuration and a file that does not decode as UTF-8 are each one `problem:` line with exit 1. No test in tests/skills/test_comment_sections_command.py passes `--repo`, writes an invalid `comments` block, or writes non-UTF-8 bytes; every test runs with cwd at the project and the files inside it. A regression in the `--repo` branch at comment_sections.py:63 (for example resolving against the first file instead of `--repo`) or in the `ConfigError`/`UnicodeDecodeError` catch would pass the suite.\n\nAlso (tests): The command contract is one `problem:` line on stderr. test_a_missing_file_is_a_problem_line_and_prints_nothing (line 76) and test_no_path_is_a_problem_line (line 101) assert `stderr.startswith(\"problem: \")`, but test_a_non_python_file_is_a_problem_line (80-85) and test_unparsable_source_is_a_problem_line (88-93) only check that the path appears in stderr, so a traceback naming the path would also pass them despite their names.",
+        "fix": [
+          "Add three subprocess tests: (1) two make_project repos, one with `{\"comments\": {\"divider_width\": 60}}`, run from the other with `--repo <narrow root>` on a 60-wide banner file in the narrow root and assert the single `major` line and no width flag; (2) `make_project({\"comments\": {\"divider_width\": 0}}, files={\"src/a.py\": \"x = 1\\n\"})` asserts exit 1, empty stdout, stderr starting `problem: `; (3) write `b\"# \\xff\\n\"` to `src/bin.py` with `write_bytes`, assert exit 1, empty stdout and `src/bin.py` in stderr.",
+          "Add `assert done.stderr.startswith(\"problem: \")` to both tests, at lines 85 and 93."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 338 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"af11f4b1d6029c0b85d82b20ad950b1d779dfb25\",\"headRefName\":\"0005-writing-comments\",\"headRefOid\":\"e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8\",\"last_sha\":\"e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8\",\"mergeCommit\":null,\"number\":338,\"state\":\"OPEN\",\"title\":\"Feature(harness): `writing-comments` skill\",\"url\":\"https://github.com/t968rs/operator-straps/pull/338\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0005-writing-comments",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0005-writing-comments",
+        "head_ref_name": "0005-writing-comments",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "af11f4b1d6029c0b85d82b20ad950b1d779dfb25",
+        "head_sha": "e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8",
+        "base_ancestor_command": "git merge-base --is-ancestor af11f4b1d6029c0b85d82b20ad950b1d779dfb25 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor e1bb8a144d6276d2aa26ba6154d02d6fdbb7b6e8 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - SKILL.md:11-12 and comment_format.md:9 now say every rule and minor divider line is exactly comments.divider_width long, indentation included, title and sentence lines free length; README goal row aligned the same way; SkillSpec.json: not edited, the frozen skill_hash is now stale and needs strap.py freeze --refreeze after judgment runs on the new text"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - SKILL.md quick-reference row for editing one function now reads: leave dividers outside the rewritten block, rewrite the one heading a block the work rewrites, offer a section pass in the reply, matching the Scope rules"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - comment_format.md example output gains the 'src/mod.py:77: minor writers' row above the width flag, and the problem-line sentence now names stderr, exit 1, and each cause (missing or non-.py path, untokenizable source, no path given, invalid configuration); Problem-line shape is documented in comment_format.md, owned by the other part; this part's comment_sections.py needs no edit, the no-path problem lines it prints are the ones the reworded reference names.; no edit in this part: the problem-line wording (comment_format.md:115) and the divider example (comment_format.md:110-112) are in the other part's file; writing_comments_api.py prints no problem line and needs no change"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - Added writing-comments to _KNOWLEDGE after tdd-strapped; SKILL.md and README.md: cited only, no argument-hint and README trigger-table entry already make it a knowledge skill"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - Prefixed the writing-comments change line at docs/RELEASES/v1.1.0.md:33 with '#338 ' to match the PR-number tag of the earlier entries."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - Reworded the comment_sections.py module docstring to 'Each path is relative to the project, or absolute for a file outside it.'"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - The --repo and documented problem-path tests live in tests/skills/test_comment_sections_command.py, owned by the other part; comment_sections.py behavior under test is unchanged by this part.; Added tests: --repo takes the named project's width (two make_project repos); invalid comments block exits 1 with a problem line; non-UTF-8 file exits 1 with a problem line naming the file; stderr startswith 'problem: ' asserted in the non-Python and unparsable-source tests."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - Read each file with encoding='utf-8-sig' at comment_sections.py _lines so a leading U+FEFF is stripped before sections(); decode errors still raise ValueError.; sections() strips one leading U+FEFF from source before tokenizing (writing_comments_api.py:106, removeprefix); added test_a_leading_byte_order_mark_does_not_hide_a_banner_on_line_one; Added test_a_byte_order_mark_does_not_hide_the_line_one_banner: a BOM-prefixed SOURCE must report the same three lines, with major on line 1 and no banner flag. The read-side fix is in the other part."
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - Added _utf8_streams() that reconfigures stdout and stderr to UTF-8, called first in main(), so non-cp1252 comment text prints and problem lines are not lost to a traceback.; Added test_a_non_cp1252_comment_prints_under_a_cp1252_pipe: runs the command with PYTHONIOENCODING=cp1252 on a file holding a legacy ═ separator and expects exit 0 with the style flag echoed as UTF-8. The stdout fix is in the other part."
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - added API tests for the banner-rejection branches (title at another indentation, rule as title, empty # title), the opening-rule width flag, and an indented flagged comment with its indentation removed from the flag text; Split issue, this part only: writing_comments_models.py holds the CommentFlag 'indentation removed' contract (line 39) but no defect in it; the missing indented-flag and banner-rejection cases belong to tests/lib/test_writing_comments_api.py and writing_comments_api.py, which the other part's fixer owns. No edit in this part."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - added test_report_lines_put_a_divider_before_a_flag_on_the_same_line with the short-width minor divider, pinning the 0/1 tie-break in report_lines"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - _docstrings and _comments now delegate their three checks to one _positive_int_section(d, section, key) helper in config.py; messages unchanged."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - Added test_a_non_object_comments_section_raises_without_jsonschema (parametrized over 'x', [], 88) asserting ConfigError '^comments: must be an object' with jsonschema masked."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - comments.divider_width floor raised to 6 (the shortest rule, '# ' plus four dashes): schema minimum 6 with the floor in its description, _positive_int_section takes a minimum and _comments passes 6, both test_config.py tests add the value 5 as a bad case, README key row notes 'at least 6'; writing_comments_api.py: cited for the 4-dash floor in rule_line/minor_line, no edit needed for M2"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - rule_line/minor_line now have a production caller: check_width builds the canonical line at the comment's indentation into a new CommentFlag.fix field, and report_lines prints each width flag as 'flag width: <text> -> <canonical line>'; comment_sections.py docstring, SKILL.md and comment_format.md name the pasteable fix; API tests updated for fix and a new indented-fix test"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "e1bb8a1 (working-tree snapshot; developer commits) - _MINOR trailing run relaxed to '-+', so '# -- writers ---', '# -- writers --' and '# -- writers -' are minor dividers with a width flag; a '# -- <title>' with no closing dash run (_MINOR_START) is a style flag; tests added for both, and comment_format.md's non-canonical table gains the style row and names the short minor under width; writing_comments_models.py: FlagKind docs still accurate, its only edit is M4's fix field"
+    }
+  ]
+}
