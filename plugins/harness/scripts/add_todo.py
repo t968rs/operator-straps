@@ -12,7 +12,8 @@
 ``hook --todo <id> --closed-by retired|committed|developer``
     Arm the hook switch (``<state_dir>/session-bookmark/hook.json``) for a catalog item: the item's title is
     the description, the goal names the item and its closing clause. The session-bookmark mod runs
-    ``/goal <goal>`` when the current main-loop turn ends. Prints
+    ``/goal <goal>`` when the current main-loop turn ends, in the arming session only: the switch records
+    ``CLAUDE_CODE_SESSION_ID`` (any session when unset). Prints
     ``hook: armed <id> (<closing>); goal: <goal>``. An id the catalog does not hold is refused (exit 1).
 
 ``hook --clear``
@@ -25,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
@@ -33,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from harness_lib.add_todo_api import (  # noqa: E402
     HOOK_REL,
+    arming_session,
     catalog_item,
     dispatch_row,
     todo_hook,
@@ -127,7 +130,7 @@ def _hook(cfg: HarnessConfig, catalog: Path, args: argparse.Namespace) -> str:
     if not args.todo or not args.closed_by:
         raise Refused("hook needs --todo <id> and --closed-by, or --clear")
     hook = todo_hook(Closing(args.closed_by), _item(catalog, args.todo))
-    write_hook_switch(_switch_path(cfg), hook)
+    write_hook_switch(_switch_path(cfg), hook, arming_session(os.environ))
     return f"hook: armed {hook.todo_id} ({hook.closed_by.value}); goal: {hook.goal()}"
 
 

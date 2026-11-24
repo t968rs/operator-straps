@@ -65,8 +65,14 @@ A switch for an item:
 ```json
 {"version": 1, "hook": {"closed_by": "retired", "desc": "<item title>", "start_time": 1763600000.5,
  "todo_id": "todo-af2e", "goal": "TODO todo-af2e (<item title>) is retired from the TODO catalog ..."},
- "fired": null}
+ "session_id": "<arming session id>", "fired": null}
 ```
+
+- The writers record the arming session's `CLAUDE_CODE_SESSION_ID` as `session_id`; the mod fires the switch
+  only in the session whose `$.session.id()` matches (the transcript name, the same value). A switch with a
+  null or absent `session_id` (written outside a session) fires in any session. Another
+  session's switch stays armed and untouched, so a session started after `/clear` or one that cannot read its
+  id never fires it; re-arm the goal there.
 
 - At the end of each main-loop turn (`turn.complete`, no `agentId`), `hooks/session_hook.ts` reads the switch
   under the git top level of the session cwd, else of `CLAUDE_PROJECT_DIR` (the root the harness writers
@@ -105,7 +111,7 @@ A switch for an item:
 | `session.append` (door `compaction`, main loop) | Marks the bookmark owed when this mod's `session.compact` hook appended none since the last such row or prompt (the fallback in What it does). |
 | `prompt.submit` | Clears the appended mark; a prompt entered while a bookmark is owed carries it as context (trigger `detected`). A slash-command line never carries it. |
 | `session.end` | After `/clear` or a resume, forgets the appended and owed marks. |
-| `turn.complete` (main loop, no `agentId`) | While the hook switch is armed and not fired, queues `/goal <goal>` through `$.command.run` and stamps `fired` (Session hook). |
+| `turn.complete` (main loop, no `agentId`) | While the hook switch is armed, not fired and armed by this session (or by none), queues `/goal <goal>` through `$.command.run` and stamps `fired` (Session hook). |
 | `command.run` on `session-bookmark` | Answers `/session-bookmark` and `/session-bookmark notes` (Command). |
 
 ## State
@@ -126,8 +132,8 @@ A switch for an item:
   when fewer than three prompts followed it.
 - The notes file is per project folder, not per session: two sessions in one repository share their notes, and
   a note nobody clears reaches the next session's bookmark. A linked worktree reads its own file.
-- The hook switch carries no session id either: with two sessions on one checkout, the first to end a main-loop
-  turn after the switch is armed queues the `/goal` and stamps it fired.
+- The hook switch is one file per checkout: arming a goal in one session replaces any switch another session
+  armed there and has not fired yet.
 - A session without this mod loaded gets no bookmark at all. Where the mod is enabled in project
   settings, a folder whose workspace trust was never accepted, including a `claude -p` run there,
   ignores those settings and compacts with no bookmark.

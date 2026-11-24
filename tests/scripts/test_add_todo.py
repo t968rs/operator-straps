@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pytest
 from pydantic import ValidationError
@@ -109,9 +109,12 @@ def test_driver_rejects_a_note_argument(make_project, extra: List[str]) -> None:
     assert "unrecognized arguments" in done.stderr
 
 
-def _hook(root: Path, *args: str) -> subprocess.CompletedProcess:
+def _hook(root: Path, *args: str, session: Optional[str] = None) -> subprocess.CompletedProcess:
     env = {**os.environ, **GIT_ENV}
     env.pop("CLAUDE_PROJECT_DIR", None)
+    env.pop(add_todo_api.SESSION_ENV, None)
+    if session is not None:
+        env[add_todo_api.SESSION_ENV] = session
     return subprocess.run([sys.executable, str(SCRIPT), "--repo", str(root), "hook", *args],
                           capture_output=True, text=True, encoding="utf-8", env=env)
 
@@ -171,6 +174,15 @@ def test_hook_arms_the_switch_for_a_catalog_item(make_project) -> None:
     stored = json.loads((root / ".claude/state/harness" / HOOK_REL).read_text(encoding="utf-8"))
     assert stored["fired"] is None and stored["hook"]["todo_id"] == item["id"]
     assert stored["hook"]["goal"].endswith(Closing.DEVELOPER.condition)
+
+
+def test_hook_records_the_arming_session(make_project) -> None:
+    root = make_project(config(), files=todo_files())
+    switch = root / ".claude/state/harness" / HOOK_REL
+    _lines(_hook(root, "--todo", _first_item(root)["id"], "--closed-by", "retired", session="sess-1"))
+    assert json.loads(switch.read_text(encoding="utf-8"))[add_todo_api.SESSION_KEY] == "sess-1"
+    _lines(_hook(root, "--todo", _first_item(root)["id"], "--closed-by", "retired"))
+    assert json.loads(switch.read_text(encoding="utf-8"))[add_todo_api.SESSION_KEY] is None
 
 
 def test_hook_refuses_an_unknown_id(make_project) -> None:

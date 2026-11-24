@@ -57,6 +57,29 @@ def test_a_free_text_goal_switch_has_the_keys_the_mod_reads(hook_ts: str, tmp_pa
     assert stored["hook"] == {"goal": "the tests in test_x.py pass", "start_time": 2.5, "todo_id": None}
 
 
+def test_the_session_key_matches(hook_ts: str) -> None:
+    assert ts_string(hook_ts, "SESSION_KEY") == add_todo_api.SESSION_KEY
+
+
+def test_both_writers_store_the_arming_session_or_null(hook_ts: str, tmp_path: Path) -> None:
+    key = ts_string(hook_ts, "SESSION_KEY")
+    hook = TodoHook(closed_by=Closing.RETIRED, desc="catalog item model", start_time=1.5, todo_id="todo-af2e")
+    item_path, text_path = tmp_path / "item.json", tmp_path / "text.json"
+    add_todo_api.write_hook_switch(item_path, hook, session_id="sess-1")
+    add_todo_api.write_goal_switch(text_path, "ship it", 2.5, session_id="sess-2")
+    assert json.loads(item_path.read_text(encoding="utf-8"))[key] == "sess-1"
+    assert json.loads(text_path.read_text(encoding="utf-8"))[key] == "sess-2"
+    add_todo_api.write_goal_switch(text_path, "ship it", 2.5)
+    assert json.loads(text_path.read_text(encoding="utf-8"))[key] is None
+
+
+def test_the_session_id_comes_from_the_engine_variable() -> None:
+    assert add_todo_api.SESSION_ENV == "CLAUDE_CODE_SESSION_ID"
+    assert add_todo_api.arming_session({"CLAUDE_CODE_SESSION_ID": " sess-1 "}) == "sess-1"
+    assert add_todo_api.arming_session({"CLAUDE_CODE_SESSION_ID": "  "}) is None
+    assert add_todo_api.arming_session({}) is None
+
+
 def test_the_mod_registers_the_session_hook(repo_root: Path) -> None:
     register_ts = (repo_root / _REGISTER_TS_REL).read_text(encoding="utf-8")
     assert "registerSessionHook(on)" in register_ts

@@ -12,7 +12,8 @@ one listing. A note stays until ``remove`` or ``clear``. The mod reads the file 
 ``tests/mods/test_session_bookmark_notes_contract.py`` pins the names both sides share.
 
 ``goal`` arms the mod's hook switch (``<state_dir>/session-bookmark/hook.json``, written through
-``harness_lib.add_todo_api``): the mod runs ``/goal <goal>`` when the current main-loop turn ends. The goal is
+``harness_lib.add_todo_api``): the mod runs ``/goal <goal>`` when the current main-loop turn ends. The switch
+records the arming session (``CLAUDE_CODE_SESSION_ID``), so only that session fires it. The goal is
 free text, or a TODO catalog item with its closing (``--todo``, ``--closed-by``); ``goal --clear`` removes
 the switch. A goal already set ends with ``/goal clear``.
 """
@@ -260,8 +261,9 @@ def _clear_goal(path: Path) -> str:
 
 def goal(cfg: Any, args: argparse.Namespace) -> str:
     """Arm the hook switch with a free-text goal or a catalog item's goal, or clear it."""
-    from harness_lib.add_todo_api import HOOK_REL, write_goal_switch, write_hook_switch
+    from harness_lib.add_todo_api import HOOK_REL, arming_session, write_goal_switch, write_hook_switch
     path = cfg.path(cfg.state_dir) / HOOK_REL
+    session = arming_session(os.environ)
     if args.clear:
         if args.text or args.todo is not None or args.closed_by is not None:
             raise NoteError("goal --clear takes no text, --todo or --closed-by")
@@ -270,14 +272,14 @@ def goal(cfg: Any, args: argparse.Namespace) -> str:
         if args.closed_by is not None:
             raise NoteError("--closed-by needs --todo ID")
         text = _goal_text(args.text)
-        write_goal_switch(path, text, time.time())
+        write_goal_switch(path, text, time.time(), session)
         return f"goal armed: {text}"
     if args.text:
         raise NoteError("goal takes text or --todo ID, not both")
     if args.closed_by is None:
         raise NoteError(f"goal --todo needs --closed-by {'|'.join(CLOSINGS)}")
     hook = _todo_goal(cfg, args.todo, args.closed_by)
-    write_hook_switch(path, hook)
+    write_hook_switch(path, hook, session)
     return f"goal armed for {hook.todo_id} ({hook.closed_by.value}): {hook.goal()}"
 
 

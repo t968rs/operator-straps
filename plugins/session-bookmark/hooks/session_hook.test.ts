@@ -10,6 +10,7 @@ import {
   hookFileOf,
   markFired,
   MAX_GOAL_CHARS,
+  SESSION_KEY,
   STAMP_FAILED,
 } from './session_hook'
 
@@ -27,7 +28,12 @@ describe('hookFileOf', () => {
 
 describe('armedSwitch', () => {
   test('an armed switch gives its goal, item and start time', async () => {
-    expect(armedSwitch(file())).toEqual({ goal: GOAL, todoId: 'todo-af2e', startTime: 1763600000.5 })
+    expect(armedSwitch(file())).toEqual({ goal: GOAL, todoId: 'todo-af2e', startTime: 1763600000.5, sessionId: null })
+  })
+
+  test('the arming session is kept; a blank or non-text one reads as any session', async () => {
+    expect(armedSwitch(file({ [SESSION_KEY]: 'sess-1' }))?.sessionId).toBe('sess-1')
+    for (const id of ['', '  ', 7, null]) expect(armedSwitch(file({ [SESSION_KEY]: id }))?.sessionId).toBe(null)
   })
 
   test('a fired, foreign or goal-less switch is not armed', async () => {
@@ -62,6 +68,7 @@ describe('markFired', () => {
 const ROOT = '/repo'
 const SWITCH = `${ROOT}/.claude/state/harness/${HOOK_PATH}`
 const NOW_MS = 1_800_000_000_000
+const THIS_SESSION = 'sess-this'
 
 type Seen = { goals: string[]; writes: Map<string, string>; toasts: string[]; clock: ReturnType<typeof mock.clock> }
 
@@ -69,7 +76,7 @@ type Seen = { goals: string[]; writes: Map<string, string>; toasts: string[]; cl
  * The session folders: `dir` is the cwd and CLAUDE_PROJECT_DIR; `tops` maps a folder to its git top level;
  * `writeFails` refuses every write.
  */
-type Where = { dir?: string; tops?: Record<string, string>; writeFails?: boolean }
+type Where = { dir?: string; tops?: Record<string, string>; writeFails?: boolean; session?: string }
 
 /** A path as the fake disk keys it: forward slashes, no drive (the engine resolves `/repo` to `C:/repo`). */
 const keyOf = (p: string): string =>
@@ -93,6 +100,7 @@ const world = (on: On, files: Record<string, string>, goalFails = false, where: 
   const seen: Seen = { goals: [], writes: new Map(), toasts: [], clock }
   mock.env(on, { CLAUDE_PROJECT_DIR: where.dir ?? ROOT })
   on('session.cwd', () => ({ value: where.dir ?? '' }))
+  on('session.id', () => ({ value: where.session ?? THIS_SESSION }))
   gitWorld(on, where.tops ?? {})
   const disk = new Map(Object.entries(files).map(([path, text]) => [keyOf(path), text]))
   on('fs.read', (_$, e) => {
@@ -175,6 +183,30 @@ describe('turn.complete fires the switch', () => {
     await endTurn($, seen)
     expect(seen.writes.size).toBe(0)
     expect(seen.toasts).toEqual(['session-bookmark: could not set the goal for todo-af2e'])
+  })
+
+  test('a switch armed by this session fires', async ($, on) => {
+    const seen = world(on, { [SWITCH]: file({ [SESSION_KEY]: THIS_SESSION }, { start_time: 1763600007.5 }) })
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([GOAL])
+  })
+
+  test("another session's switch sets no goal and stays armed for that session", async ($, on) => {
+    const text = file({ [SESSION_KEY]: 'sess-other' }, { start_time: 1763600008.5 })
+    const seen = world(on, { [SWITCH]: text })
+    await endTurn($, seen)
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([])
+    expect(seen.writes.size).toBe(0)
+    expect(seen.toasts).toEqual([])
+  })
+
+  test('a session whose id cannot be read leaves a session-bound switch armed', async ($, on) => {
+    const seen = world(on, { [SWITCH]: file({ [SESSION_KEY]: THIS_SESSION }, { start_time: 1763600009.5 }) },
+      false, { session: '' })
+    await endTurn($, seen)
+    expect(seen.goals).toEqual([])
+    expect(seen.writes.size).toBe(0)
   })
 
   test('a goal set whose stamp fails says the goal was set, not refused', async ($, on) => {

@@ -424,6 +424,18 @@ def test_goal_clear_refuses_text_or_a_closing(script, make_project, capsys) -> N
     assert _switch(project)["hook"]["goal"] == "ship it"
 
 
+def test_goal_records_the_arming_session(script, make_project, monkeypatch) -> None:
+    project = _todo_project(make_project)
+    monkeypatch.setenv(add_todo_api.SESSION_ENV, "sess-1")
+    _run(script, project, "goal", "--", "ship it")
+    assert _switch(project)[add_todo_api.SESSION_KEY] == "sess-1"
+    _run(script, project, "goal", "--todo", _first_id(project), "--closed-by", "retired")
+    assert _switch(project)[add_todo_api.SESSION_KEY] == "sess-1"
+    monkeypatch.delenv(add_todo_api.SESSION_ENV)
+    _run(script, project, "goal", "--", "ship it")
+    assert _switch(project)[add_todo_api.SESSION_KEY] is None
+
+
 def test_a_new_goal_replaces_a_fired_switch(script, make_project) -> None:
     project = make_project(config={})
     _run(script, project, "goal", "--", "first")

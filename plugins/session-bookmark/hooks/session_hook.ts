@@ -7,8 +7,9 @@ import { stateDirOf, stateFileOf } from './notes'
  *
  * `add_todo.py hook` and `add_note.py goal` (harness plugin) write the hook switch,
  * `<state_dir>/session-bookmark/hook.json`: `{ "version": 1, "hook": { "goal", "start_time", "todo_id", ... },
- * "fired": null }`, with `todo_id` null for a free-text goal. While
- * `fired` is null, the end of the next main-loop turn queues `/goal <goal>` through `$.command.run`, which
+ * "session_id": "<id>" | null, "fired": null }`, with `todo_id` null for a free-text goal and `session_id` the
+ * arming session's id (`$.session.id()`), null for any session. While `fired` is null, the end of the next
+ * main-loop turn of that session queues `/goal <goal>` through `$.command.run`, which
  * runs once the session is idle, then stamps `fired` with the time, so the goal is set once. `/goal` is the engine's session-scoped Stop hook: its evaluator keeps the session going until the
  * condition holds, and `/goal clear` ends it. An installed mod cannot read the harness plugin, so the path,
  * version and keys are copied here; `tests/mods/test_session_bookmark_hook_contract.py` pins them against
@@ -26,11 +27,16 @@ export const MAX_GOAL_CHARS = 500
 export const GOAL_COMMAND = 'goal'
 /** The switch key stamped once the goal was queued; null while armed. */
 export const FIRED_KEY = 'fired'
+/** The switch key naming the session that armed it; absent or null lets any session fire it. */
+export const SESSION_KEY = 'session_id'
 /** How long one `git rev-parse` may run (the bookmark's git timeout). */
 const GIT_TIMEOUT_MS = 5000
 
-/** An armed switch as the mod acts on it: the goal text and the item it names (null for a free-text goal). */
-export type HookSwitch = { goal: string; todoId: string | null; startTime: number }
+/**
+ * An armed switch as the mod acts on it: the goal text, the item it names (null for a free-text goal) and
+ * the session that armed it (null for any session).
+ */
+export type HookSwitch = { goal: string; todoId: string | null; startTime: number; sessionId: string | null }
 
 type Json = Readonly<Record<string, unknown>>
 
@@ -68,7 +74,8 @@ export const armedSwitch = (text: string): HookSwitch | null => {
   if (goal === null) return null
   const todoId = typeof data.hook.todo_id === 'string' && data.hook.todo_id !== '' ? data.hook.todo_id : null
   const startTime = typeof data.hook.start_time === 'number' ? data.hook.start_time : 0
-  return { goal, todoId, startTime }
+  const session = typeof data[SESSION_KEY] === 'string' ? data[SESSION_KEY].trim() : ''
+  return { goal, todoId, startTime, sessionId: session === '' ? null : session }
 }
 
 /** The file's text with `fired` stamped `{ at }` (epoch ms); the input unchanged when it is not an object. */
@@ -148,14 +155,26 @@ const stampFired = async ($: Dollar, found: { path: string; text: string }): Pro
 }
 
 /**
- * Queues `/goal` for an armed switch and stamps it fired. A rejected run leaves it armed for the next load and
- * says so in a toast; a stamp that fails after the goal was set says that instead, since the next load would
- * set the goal again until the switch is cleared. Never throws.
+ * True when `armed` may fire in this session: it names no session, or names this one. An id that cannot be
+ * read matches no session-bound switch. Never throws.
+ */
+const ownsSwitch = async ($: Dollar, armed: HookSwitch): Promise<boolean> => {
+  if (armed.sessionId === null) return true
+  const id = await $.session.id().catch(() => undefined)
+  return typeof id === 'string' && id.trim() === armed.sessionId
+}
+
+/**
+ * Queues `/goal` for an armed switch this session owns and stamps it fired. Another session's switch is left
+ * armed, untried. A rejected run leaves it armed for the next load and says so in a toast; a stamp that fails
+ * after the goal was set says that instead, since the next load would set the goal again until the switch is
+ * cleared. Never throws.
  */
 const fire = async ($: Dollar): Promise<void> => {
   const found = await findSwitch($)
   const armed = found === undefined ? null : armedSwitch(found.text)
   if (found === undefined || armed === null || tried.has(armed.startTime)) return
+  if (!(await ownsSwitch($, armed))) return
   tried.add(armed.startTime)
   const item = armed.todoId === null ? '' : ` for ${armed.todoId}`
   try {
