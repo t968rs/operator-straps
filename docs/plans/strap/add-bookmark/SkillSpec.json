@@ -1,7 +1,7 @@
 {
   "name": "add-bookmark",
   "mode": "edit",
-  "base": "fc72809616e2ee32da9dc64bb814df37304775d9",
+  "base": "d818b318a11a15a949b0a98d80cb03894787a840",
   "judge": true,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -1430,7 +1430,7 @@
     "skill_hash": "abf003a20d2a12b75c2f1ff44a68208704c73ce11517f187b9cbe2390f1f1783",
     "grader": "judge",
     "at": "2026-11-24T09:08:07+00:00",
-    "authored": "e2ef925ccbc41b274ff7b12c539807d248d87a83f582605bc539362086d6647e"
+    "authored": "35dcb668fb175d092721872df8e93614b1dac116f2c5cac2139e6953312f12b9"
   },
-  "driver_digest": "9a0574ae6ec2c74c2b04ecfca9e30e0fd2c6254dd2c2bd6e5a0002e98264dadf"
+  "driver_digest": "1db5b73887d19aad24c31237d7e65f62af120e60a4893d9f3f81d26d5b4ab74c"
 }
