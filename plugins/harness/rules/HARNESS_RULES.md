@@ -101,7 +101,7 @@ Schemas, templates and examples ship with the plugin (`schemas/`); a project may
 
 Skills outside this plugin apply when installed.
 
-- **Writing code:** test-driven development; write or adapt the test, watch it fail, then fix.
+- **Writing code:** `harness:tdd-strapped`; write or adapt the test, watch it fail, then fix.
 - **Troubleshooting:** systematic debugging (`superpowers-lt:systematic-debugging`, else the bundled
   `harness:strap-debugging`); finish the diagnosis before proposing a fix.
 - **Creating plans:** a written plan for any multi-task work.

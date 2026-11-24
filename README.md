@@ -56,6 +56,7 @@ These load on their own triggers (or as `/harness:<name>`) and need no configura
 | `spatialist` | A spatial processing monolith is decomposed into packages, or test failures are triaged after an API change. |
 | `strap-debugging` | A bug or test failure needs a diagnosis and `superpowers-lt:systematic-debugging` is not installed. |
 | `subagent-reporting` | A long-running subagent may be silently blocked. |
+| `tdd-strapped` | A feature, fix or refactor is about to be written, or a test or mock is about to change: failing test first, test runs named by file, full-suite runs left to the developer. |
 
 ## Bundled Mods and Dashboard Views
 | Goal                    | Where             | Mods               | Description                                                                                                                                                                                          | Notes                                                                                                                                                                                                                                                                                                                                                     |

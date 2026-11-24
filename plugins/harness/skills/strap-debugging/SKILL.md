@@ -174,7 +174,7 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible
    - One-off test script if no framework
    - MUST have before fixing
-   - Use the `superpowers-lt:test-driven-development` skill (when installed) for writing proper failing tests
+   - Use the `harness:tdd-strapped` skill for writing proper failing tests
 
 2. **Implement Single Fix**
    - Address the root cause identified
