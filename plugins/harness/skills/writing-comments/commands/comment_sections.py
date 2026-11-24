@@ -7,7 +7,9 @@ Prints, per file in the order named, one line per divider and per flag, in line 
     <path>:<line>: major|minor <title>
     <path>:<line>: flag width|style|banner: <comment text>
 
-or ``<path>: no dividers``. Each path is relative to the project. The divider width is the project's
+A ``width`` flag ends `` -> <canonical line>``, the rule or minor line at that comment's indentation and the
+divider width, to paste in its place. A file with neither prints ``<path>: no dividers``. Each path is
+relative to the project, or absolute for a file outside it. The divider width is the project's
 ``comments.divider_width``; the project is ``--repo`` when given, else the one holding the first file. No
 path, a missing file, a file that is not ``.py``, source that does not tokenize or decode as UTF-8 and an
 invalid configuration are each one ``problem:`` line on stderr with exit 1 and nothing on stdout. Nothing is
@@ -66,14 +68,22 @@ def _lines(args: argparse.Namespace) -> List[str]:
     for path in paths:
         label = _label(path, root.resolve())
         try:
-            report = sections(path.read_text(encoding="utf-8"), width)
+            report = sections(path.read_text(encoding="utf-8-sig"), width)
         except ValueError as exc:
             raise ValueError(f"{label}: {exc}") from exc
         lines += report_lines(label, report)
     return lines
 
 
+def _utf8_streams() -> None:
+    """Write stdout and stderr as UTF-8 so non-ASCII comment text prints on every locale."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    _utf8_streams()
     args = _parser().parse_args(argv)
     try:
         lines = _lines(args)

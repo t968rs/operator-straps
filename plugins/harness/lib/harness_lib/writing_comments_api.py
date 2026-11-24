@@ -2,8 +2,9 @@
 
 A rule is ``# `` followed by dashes only. A major divider is a rule, a title comment, any further comment
 lines, then a closing rule, all at one indentation; a minor divider is ``# -- <title> ----``. Each rule and
-minor line fills the divider width exactly, indentation included. Only full-line comments count, read through
-``tokenize``, so a dashed docstring underline or a trailing comment after code is never a divider.
+minor line fills the divider width exactly, indentation included; a ``width`` flag carries the canonical line
+to paste in its place. Only full-line comments count, read through ``tokenize``, so a dashed docstring
+underline or a trailing comment after code is never a divider.
 """
 from __future__ import annotations
 
@@ -15,7 +16,9 @@ from typing import Dict, List, Optional, Tuple
 from harness_lib.writing_comments_models import CommentFlag, Divider, DividerLevel, FlagKind, SectionReport
 
 _RULE = re.compile(r"# -{4,}")
-_MINOR = re.compile(r"# -- (?P<title>[^\s-].*?) -{4,}")
+_MINOR = re.compile(r"# -- (?P<title>[^\s-].*?) -+")
+# A comment opening like a minor divider but with no closing dash run, such as ``# -- helpers``.
+_MINOR_START = re.compile(r"# -- [^\s-]")
 _SEPARATOR_RUN = re.compile(r"[-=*~_#]{4,}")
 
 # Line number -> (column, comment text) of every comment that stands alone on its line.
@@ -72,10 +75,15 @@ class _Scan:
     def flag(self, line: int, kind: FlagKind) -> None:
         self.flags.append(CommentFlag(line=line, kind=kind, text=self.comments[line][1]))
 
-    def check_width(self, line: int) -> None:
+    def check_width(self, line: int, title: Optional[str] = None) -> None:
+        """Flag the rule (``title`` None) or minor line at ``line`` when it misses the width, with the
+        canonical line at its indentation as the fix."""
         col, text = self.comments[line]
-        if col + len(text) != self.width:
-            self.flag(line, FlagKind.WIDTH)
+        if col + len(text) == self.width:
+            return
+        room = self.width - col
+        fix = rule_line("", room) if title is None else minor_line(title, "", room)
+        self.flags.append(CommentFlag(line=line, kind=FlagKind.WIDTH, text=text, fix=fix))
 
     def rule(self, line: int) -> int:
         """Handle the rule at ``line``; returns the last line it consumed."""
@@ -95,15 +103,15 @@ class _Scan:
         minor = _MINOR.fullmatch(text)
         if minor:
             self.dividers.append(Divider(line=line, level=DividerLevel.MINOR, title=minor["title"]))
-            self.check_width(line)
-        elif _SEPARATOR_RUN.search(text):
+            self.check_width(line, minor["title"])
+        elif _MINOR_START.match(text) or _SEPARATOR_RUN.search(text):
             self.flag(line, FlagKind.STYLE)
 
 
 def sections(source: str, width: int) -> SectionReport:
     """The dividers and flags of ``source`` at divider width ``width``; raises ``ValueError`` when the source
     does not tokenize."""
-    scan = _Scan(_full_line_comments(source), width)
+    scan = _Scan(_full_line_comments(source.removeprefix("﻿")), width)
     consumed = 0
     for line in sorted(scan.comments):
         if line <= consumed:
@@ -115,11 +123,18 @@ def sections(source: str, width: int) -> SectionReport:
     return SectionReport(dividers=scan.dividers, flags=sorted(scan.flags, key=lambda f: f.line))
 
 
+def _flag_line(label: str, flag: CommentFlag) -> str:
+    """One flag's report line, with `` -> <fix>`` when the flag carries a canonical replacement."""
+    line = f"{label}:{flag.line}: flag {flag.kind.value}: {flag.text}"
+    return f"{line} -> {flag.fix}" if flag.fix else line
+
+
 def report_lines(label: str, report: SectionReport) -> List[str]:
     """``<label>:<n>: major|minor <title>`` and ``<label>:<n>: flag <kind>: <text>`` in line order (a divider
-    before a flag on its own line), or ``<label>: no dividers`` for a report with neither."""
+    before a flag on its own line), a ``width`` flag ending `` -> <canonical line>``, or
+    ``<label>: no dividers`` for a report with neither."""
     rows = [(d.line, 0, f"{label}:{d.line}: {d.level.value} {d.title}") for d in report.dividers]
-    rows += [(f.line, 1, f"{label}:{f.line}: flag {f.kind.value}: {f.text}") for f in report.flags]
+    rows += [(f.line, 1, _flag_line(label, f)) for f in report.flags]
     if not rows:
         return [f"{label}: no dividers"]
     return [text for _, _, text in sorted(rows)]

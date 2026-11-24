@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,13 +36,15 @@ class Divider(BaseModel):
 
 
 class CommentFlag(BaseModel):
-    """One comment line off the convention, with its text as written (indentation removed)."""
+    """One comment line off the convention, with its text as written (indentation removed); a ``width`` flag
+    also carries ``fix``, the canonical line at the comment's indentation (indentation removed)."""
 
     model_config = _CLOSED
 
     line: int = Field(ge=1)
     kind: FlagKind
     text: str
+    fix: Optional[str] = None
 
 
 class SectionReport(BaseModel):
