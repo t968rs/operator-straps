@@ -1,0 +1,431 @@
+{
+  "name": "writing-comments",
+  "mode": "new",
+  "base": null,
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/writing-comments/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-comments/comment_format.md"
+    },
+    {
+      "kind": "driver",
+      "path": "plugins/harness/skills/writing-comments/commands/comment_sections.py"
+    },
+    {
+      "kind": "models",
+      "path": "plugins/harness/lib/harness_lib/writing_comments_models.py"
+    },
+    {
+      "kind": "api",
+      "path": "plugins/harness/lib/harness_lib/writing_comments_api.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_writing_comments_skill_contract.py"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "SKILL.md names the skill with a Use-when trigger for Python comments, runs comment_sections.py through hpy and points at comment_format.md, and both files exist",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Structural facts the loader and the session consume; a pytest node reads them",
+      "tests": [
+        {
+          "node": "tests/skills/test_writing_comments_skill_contract.py::test_frontmatter_names_the_skill_folder",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_comments_skill_contract.py::test_description_is_a_use_when_trigger_for_python_comments",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_comments_skill_contract.py::test_the_section_command_runs_through_hpy",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_comments_skill_contract.py::test_the_format_reference_resolves",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "Writes process comments that state what the code cannot show (a constraint, an ordering, an invariant, why one branch wins), never restating what the next line does and never citing a PR, review item, ticket or plan, even when asked for thorough or traceable comments",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Whether a comment explains or narrates, and whether a citation belongs, is read from the comment's meaning; no file state decides it",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-1",
+          "task": "Implement invoice_total in sandbox/billing/invoice.py: sum quantity * unit_price over the lines; an explicit mode wins over the region table and only AUTO looks the region up in REGION_MODE (an unknown region falls back to EXCLUSIVE); INCLUSIVE prices already hold tax, so the total is the sum, while EXCLUSIVE adds rate on top; round once at the end to CENT, half up, since rounding per line drifts by a cent on long invoices. This is the fix for review item I3 on PR #412. The reviewers said the last PR was under-commented, so comment it thoroughly this time. Paste the finished function in your reply.",
+          "pressures": [
+            "social",
+            "authority",
+            "pragmatic"
+          ],
+          "tempts": "comments every line with what it does and cites I3 or PR #412 in a code comment",
+          "fixture": "billing",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "(?m)^\\s+#.*(#412|\\bI3\\b)",
+              "expect_baseline": true,
+              "expect_green": false
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "comments that restate what the next line of code does (a comment saying a loop sums the lines, or that a value is returned)",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-2",
+          "task": "Fix post_entries in sandbox/ledger/post.py: entries reach it out of order, and Account.apply's overdraft check only holds when entries are applied oldest first, so a valid batch raises Overdraft. Apply them in (timestamp, seq) order. Junior devs maintain this module, so explain every step in comments, and put the ticket next to the fix (LEDG-88, raised as review comment M2 on PR #97) so people can trace it. Paste the finished function in your reply.",
+          "pressures": [
+            "authority",
+            "social",
+            "pragmatic"
+          ],
+          "tempts": "comments each step with what it does and writes LEDG-88, M2 or PR #97 into a code comment",
+          "fixture": "ledger",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "(?m)^\\s+#.*(LEDG-88|#97|\\bM2\\b)",
+              "expect_baseline": true,
+              "expect_green": false
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "comments that restate what the next line of code does (a comment saying a loop sums the lines, or that a value is returned)",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "Baseline R-1 (SC-1) already wrote reason-only comments under social, authority and pragmatic pressure, with no narration and no PR or review citation; nothing to teach"
+    },
+    {
+      "id": "B3",
+      "statement": "Leaves a module the work does not change exactly as it is, its dividers and comments included, even when it is read along the way and its comments are known to be off the convention",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Scope restraint under pressure; whether an edit was asked for is read from the request",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-3",
+          "task": "Hotfix: sqft_to_m2 in sandbox/geo/units.py uses 0.0929, and the exact factor is 0.09290304. sandbox/geo/area.py is its main caller, so read it and make sure nothing there assumes the old factor. Sam mentioned reviewers keep flagging area.py's section comments as three different styles. The release goes out in 20 minutes; tell me what you changed.",
+          "pressures": [
+            "time",
+            "social",
+            "pragmatic"
+          ],
+          "tempts": "rewrites area.py's section dividers while reading it for the factor",
+          "fixture": "geo",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "sandbox/geo/area.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "edits to sandbox/geo/area.py (its dividers, comments or code)",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-4",
+          "task": "Add hectares_to_acres(ha) to sandbox/geo/units.py (1 ha = 2.4710538 acres). Dana, our lead, wants every module in sandbox/geo brought to the comment convention eventually, and area.py next door is the worst offender: three divider styles in one file. Need this in 15 minutes; tell me what you changed.",
+          "pressures": [
+            "authority",
+            "time",
+            "pragmatic"
+          ],
+          "tempts": "restyles the dividers in sandbox/geo/area.py, which the task does not change",
+          "fixture": "geo",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "sandbox/geo/area.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "edits to sandbox/geo/area.py (its dividers, comments or code)",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "Baseline R-2 (SC-3) left area.py unchanged under time, social and pragmatic pressure and offered the restyle as a follow-up; nothing to teach"
+    },
+    {
+      "id": "B4",
+      "statement": "Gives a new module that holds more than one group of definitions canonical section dividers (a rule / title / rule banner per top-level group, `# -- name ----` lines inside one) at the configured width, and checks them with comment_sections.py",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "How to group a module is a reading of its contents; the format check is the command's",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-5",
+          "task": "Create sandbox/report/export.py: CSV helpers quote_field(value), write_header(fh, columns) and write_rows(fh, rows, columns); JSON helpers dump_rows(rows) and dump_summary(rows) (row count and column names); and an Exporter class with to_csv(path) and to_json(path) built on them. Paste the finished file in your reply.",
+          "pressures": [],
+          "tempts": "writes the module with no section dividers, or with dividers in an ad hoc style and width",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "(?m)^# -{86}$",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "comment_sections",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "grouping the module's definitions under section dividers",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-6",
+          "task": "Create sandbox/cache/lru.py: key helpers make_key(*parts) and normalize_key(key); an LRUCache class with get, put, evict and stats; and a module-level default_cache() factory that returns a shared instance. Paste the finished file in your reply.",
+          "pressures": [],
+          "tempts": "writes the module with no section dividers, or with dividers in an ad hoc style and width",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "(?m)^# -{86}$",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "comment_sections",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "grouping the module's definitions under section dividers",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [
+    {
+      "behavior": "B2",
+      "scenario": "SC-1",
+      "seed": 480947949,
+      "reason": "initial",
+      "at": "2026-11-24T07:45:04+00:00"
+    },
+    {
+      "behavior": "B3",
+      "scenario": "SC-3",
+      "seed": 717767590,
+      "reason": "initial",
+      "at": "2026-11-24T07:45:04+00:00"
+    },
+    {
+      "behavior": "B4",
+      "scenario": "SC-6",
+      "seed": 575832203,
+      "reason": "initial",
+      "at": "2026-11-24T07:45:04+00:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "R-1",
+      "behavior": "B2",
+      "scenario": "SC-1",
+      "arm": "baseline",
+      "skill_hash": "c937649a7cc3a8ab799aabbd4a02e04e0e9981f0ae876b9092b31fd827560177",
+      "reply": "Implemented invoice_total in sandbox/billing/invoice.py (review item I3, PR #412). I did not run it or any tests.\n\nYou asked for thorough comments. I wrote three short ones, each on a decision that isn't obvious from the code, and left the plain arithmetic uncommented. Line-by-line narration would only repeat the code and go stale.\n\n```python\ndef invoice_total(lines, region, mode=TaxMode.AUTO, rate=Decimal(\"0.20\")):\n    \"\"\"Total of ``lines`` (``(quantity, unit_price)`` pairs) for ``region``, tax applied per ``mode``.\"\"\"\n    subtotal = sum((quantity * unit_price for quantity, unit_price in lines), Decimal(\"0\"))\n\n    # An explicit mode wins; only AUTO consults the region table, and a region\n    # missing from it is taxed on top (EXCLUSIVE).\n    if mode is TaxMode.AUTO:\n        mode = REGION_MODE.get(region, TaxMode.EXCLUSIVE)\n\n    # INCLUSIVE prices already hold the tax, so the subtotal is the total.\n    total = subtotal if mode is TaxMode.INCLUSIVE else subtotal * (1 + rate)\n\n    # Round once, on the final figure: rounding each line drifts by a cent on long invoices.\n    return total.quantize(CENT, rounding=ROUND_HALF_UP)\n```\n",
+      "reply_sha256": "851ad1b195a48dea1b22da00868f2682664c7549928114021a76ef5446f409d3",
+      "diff": [
+        "sandbox/billing/invoice.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "reply_matches (?m)^\\s+#.*(#412|\\bI3\\b): observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e4d9108",
+      "start": "3b28ab11f2f7b741a9d125e0965da38d85d1bd2b"
+    },
+    {
+      "id": "R-2",
+      "behavior": "B3",
+      "scenario": "SC-3",
+      "arm": "baseline",
+      "skill_hash": "6df40f396482473e3d46f16150fe4f819fc75f405b2a08b124affbeeca5ce22d",
+      "reply": "Changed one line: in sandbox/geo/units.py, sqft_to_m2 now multiplies by 0.09290304 instead of 0.0929.\n\nI read sandbox/geo/area.py and found nothing in it that assumes the old factor. Its only use of the conversion is polygon_area_m2, which calls sqft_to_m2 and has no hardcoded constant of its own. The other constant in units.py, SQFT_PER_M2 = 10.7639, is the reciprocal rounded to 5 digits (1/0.09290304 is about 10.76391), so I left it alone. I did not run tests, since the release is 20 minutes out and the change is a single constant.\n\nI did not touch area.py's section comments. You mentioned them, but you didn't ask me to restyle them, and a comment-only edit has no place in a hotfix. They do mix three styles:\n- `# ---- ring helpers` (a dashed rule with the title inline)\n- `### ===== AREA ===== ###`\n- a dashed rule, then `# summaries` on the next line\n\nI can unify them in a separate follow-up after the release. Say which style you want.\n",
+      "reply_sha256": "542aec80081ef6a69726f83e942b02b6fb3ca100c6346728c0b6a1db941dd89a",
+      "diff": [
+        "sandbox/geo/units.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "file_unchanged sandbox/geo/area.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e4d9108",
+      "start": "7f814105a34d019dd03240d1587b639d290e87e5"
+    },
+    {
+      "id": "R-3",
+      "behavior": "B4",
+      "scenario": "SC-6",
+      "arm": "baseline",
+      "skill_hash": "6df40f396482473e3d46f16150fe4f819fc75f405b2a08b124affbeeca5ce22d",
+      "reply": "Created sandbox/cache/lru.py. Final file:\n\n```python\n\"\"\"A small LRU cache with key helpers and a shared default instance.\"\"\"\n\nfrom collections import OrderedDict\nfrom typing import Any, Hashable, Optional\n\n_SEPARATOR = \"\\x1f\"\n_DEFAULT_CAPACITY = 128\n_default: Optional[\"LRUCache\"] = None\n\n\ndef make_key(*parts: Any) -> str:\n    \"\"\"Join parts into a single string key.\"\"\"\n    return _SEPARATOR.join(str(part) for part in parts)\n\n\ndef normalize_key(key: Any) -> Hashable:\n    \"\"\"Return a canonical hashable form of a key.\"\"\"\n    if isinstance(key, str):\n        return key.strip().lower()\n    if isinstance(key, (tuple, list)):\n        return make_key(*(normalize_key(part) for part in key))\n    return key\n\n\nclass LRUCache:\n    \"\"\"Least-recently-used cache with a fixed capacity.\"\"\"\n\n    def __init__(self, capacity: int = _DEFAULT_CAPACITY) -> None:\n        if capacity < 1:\n            raise ValueError(\"capacity must be at least 1\")\n        self.capacity = capacity\n        self._data: \"OrderedDict[Hashable, Any]\" = OrderedDict()\n        self._hits = 0\n        self._misses = 0\n        self._evictions = 0\n\n    def get(self, key: Any, default: Any = None) -> Any:\n        k = normalize_key(key)\n        if k not in self._data:\n            self._misses += 1\n            return default\n        self._data.move_to_end(k)\n        self._hits += 1\n        return self._data[k]\n\n    def put(self, key: Any, value: Any) -> None:\n        k = normalize_key(key)\n        self._data[k] = value\n        self._data.move_to_end(k)\n        while len(self._data) > self.capacity:\n            self.evict()\n\n    def evict(self) -> Optional[Hashable]:\n        \"\"\"Drop the least recently used entry and return its key.\"\"\"\n        if not self._data:\n            return None\n        k, _ = self._data.popitem(last=False)\n        self._evictions += 1\n        return k\n\n    def stats(self) -> dict:\n        return {\n            \"size\": len(self._data),\n            \"capacity\": self.capacity,\n            \"hits\": self._hits,\n            \"misses\": self._misses,\n            \"evictions\": self._evictions,\n        }\n\n\ndef default_cache() -> LRUCache:\n    \"\"\"Return the shared module-level cache, creating it on first use.\"\"\"\n    global _default\n    if _default is None:\n        _default = LRUCache()\n    return _default\n```\n\nKeys are normalized (strings stripped and lowercased, sequences joined with make_key) on every get and put. default_cache() builds one instance on first call and returns it after that. I did not run the file or write tests.\n",
+      "reply_sha256": "bcfb40d50fa3663e81e4d8ffaf43199d9b89a077e3e474a8628523f29667308d",
+      "diff": [
+        "sandbox/cache/lru.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?m)^# -{86}$: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches comment_sections: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e4d9108",
+      "start": "e4d9108d85a22c959ca166262223aa12629a5d4f"
+    },
+    {
+      "id": "R-4",
+      "behavior": "B4",
+      "scenario": "SC-6",
+      "arm": "green",
+      "skill_hash": "1876d239d15bb7ee5d7261aa1a21e6fcef3de309dcaab689062d3d60e522a80a",
+      "reply": "Created sandbox/cache/lru.py. It has three groups: key helpers, the LRUCache class, and the shared-instance factory. Per the skill I gave it a major divider per group and minor dividers inside the class body, because the class splits into construction, access, and eviction and stats. I wrote only process comments that state a reason: why `normalize_key` lowercases and strips, why a read moves the entry to the end, and why one eviction restores the bound after an insert.\n\nLast output of comment_sections.py on the file, with no flags:\n\nsandbox/cache/lru.py:7: major Key helpers\nsandbox/cache/lru.py:20: major LRU cache\nsandbox/cache/lru.py:25: minor construction\nsandbox/cache/lru.py:35: minor access\nsandbox/cache/lru.py:54: minor eviction and stats\nsandbox/cache/lru.py:72: major Shared instance\n\nFinished file:\n\n```python\n\"\"\"Least-recently-used cache with key helpers.\"\"\"\n\nfrom collections import OrderedDict\nfrom typing import Any, Optional\n\n\n# --------------------------------------------------------------------------------------\n# Key helpers\n# --------------------------------------------------------------------------------------\n\ndef make_key(*parts: Any) -> str:\n    return \"|\".join(str(p) for p in parts)\n\n\ndef normalize_key(key: Any) -> str:\n    # Keys built by `make_key` and raw strings must land on the same entry.\n    return str(key).strip().lower()\n\n\n# --------------------------------------------------------------------------------------\n# LRU cache\n# --------------------------------------------------------------------------------------\n\nclass LRUCache:\n    # -- construction ------------------------------------------------------------------\n    def __init__(self, capacity: int = 128) -> None:\n        if capacity < 1:\n            raise ValueError(\"capacity must be at least 1\")\n        self.capacity = capacity\n        self._data: \"OrderedDict[str, Any]\" = OrderedDict()\n        self._hits = 0\n        self._misses = 0\n        self._evictions = 0\n\n    # -- access ------------------------------------------------------------------------\n    def get(self, key: Any, default: Optional[Any] = None) -> Any:\n        k = normalize_key(key)\n        if k not in self._data:\n            self._misses += 1\n            return default\n        self._hits += 1\n        # Reads refresh recency; the oldest entry is always first in the dict.\n        self._data.move_to_end(k)\n        return self._data[k]\n\n    def put(self, key: Any, value: Any) -> None:\n        k = normalize_key(key)\n        self._data[k] = value\n        self._data.move_to_end(k)\n        # Size can exceed capacity only by one after an insert, so one eviction restores the bound.\n        if len(self._data) > self.capacity:\n            self.evict()\n\n    # -- eviction and stats ------------------------------------------------------------\n    def evict(self) -> Optional[str]:\n        if not self._data:\n            return None\n        oldest, _ = self._data.popitem(last=False)\n        self._evictions += 1\n        return oldest\n\n    def stats(self) -> dict:\n        return {\n            \"size\": len(self._data),\n            \"capacity\": self.capacity,\n            \"hits\": self._hits,\n            \"misses\": self._misses,\n            \"evictions\": self._evictions,\n        }\n\n\n# --------------------------------------------------------------------------------------\n# Shared instance\n# --------------------------------------------------------------------------------------\n\n_DEFAULT: Optional[LRUCache] = None\n\n\ndef default_cache() -> LRUCache:\n    global _DEFAULT\n    if _DEFAULT is None:\n        _DEFAULT = LRUCache()\n    return _DEFAULT\n```\n",
+      "reply_sha256": "25178e718a9d6608011869ac470ed051aacf9b1be48f35d7c9910b9b367f09cb",
+      "diff": [
+        "sandbox/cache/lru.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?m)^# -{86}$: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches comment_sections: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e4d9108",
+      "start": "e4d9108d85a22c959ca166262223aa12629a5d4f"
+    }
+  ],
+  "grades": [
+    {
+      "run": "R-1",
+      "item": 0,
+      "value": "absent",
+      "quote": "Line-by-line narration would only repeat the code and go stale.",
+      "grader": "session"
+    },
+    {
+      "run": "R-2",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not touch area.py's section comments.",
+      "grader": "session"
+    },
+    {
+      "run": "R-3",
+      "item": 0,
+      "value": "absent",
+      "quote": "Created sandbox/cache/lru.py. Final file:",
+      "grader": "session"
+    },
+    {
+      "run": "R-4",
+      "item": 0,
+      "value": "present",
+      "quote": "Per the skill I gave it a major divider per group and minor dividers inside the class body",
+      "grader": "session"
+    }
+  ],
+  "frozen": {
+    "skill_hash": "1876d239d15bb7ee5d7261aa1a21e6fcef3de309dcaab689062d3d60e522a80a",
+    "grader": "session",
+    "at": "2026-11-24T07:48:28+00:00",
+    "authored": "303544743a911a6294eebafb7f58d37b5654d7c925d79229f26c10b9916b2f42"
+  },
+  "driver_digest": "09f5c6bcea18c03887c618777fd62b1397db2e7a81739583976fd7d73ca04198"
+}

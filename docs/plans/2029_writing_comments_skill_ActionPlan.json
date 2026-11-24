@@ -1,0 +1,479 @@
+{
+  "plan_id": "2029",
+  "plan_created": "2026-11-24",
+  "source_document": null,
+  "documentation": "docs/plans/2029_writing_comments_skill_PIP.html",
+  "branch": "0005-writing-comments",
+  "base_branch": "main",
+  "refs": {
+    "todo_ids": [],
+    "issues": [
+      317
+    ]
+  },
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "comments.divider_width config key",
+      "action": "Add the `comments` section with `divider_width` (default 88, a positive integer) in the four places: `defaults.json`; `harness.schema.json` (an object, additionalProperties false, divider_width an integer with minimum 1, described as read by the writing-comments section command); `config.py` (a frozen `CommentsConfig` dataclass beside `DocstringsConfig`, a `comments: CommentsConfig` field on `HarnessConfig`, a `_comments()` builder mirroring `_docstrings()` with its own unknown-key and positive-integer checks so a load without jsonschema refuses with a message starting `comments`, wired into the one `HarnessConfig(...)` call); and a README key-table row after `docstrings.line_length`.",
+      "files": [
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "README.md",
+        "tests/lib/test_config.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:104-108",
+          "expect": "class DocstringsConfig:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:227",
+          "expect": "docstrings: DocstringsConfig"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:340-342",
+          "expect": "raise ConfigError(f\"{source}: unknown keys {unknown}\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:353",
+          "expect": "return HarnessConfig("
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:365",
+          "expect": "runlogs=_runlogs(m[\"runlogs\"]), docstrings=_docstrings(m[\"docstrings\"]),"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:530",
+          "expect": "def _docstrings(d: Dict[str, Any]) -> DocstringsConfig:"
+        },
+        {
+          "at": "plugins/harness/config/defaults.json:71-73",
+          "expect": "\"docstrings\": { \"line_length\": 110 },"
+        },
+        {
+          "at": "plugins/harness/config/harness.schema.json:164",
+          "expect": "\"docstrings\": {"
+        },
+        {
+          "at": "README.md:653",
+          "expect": "| `docstrings.line_length` | `110`"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/config.py tests/lib/test_config.py",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_config.py::test_comments_divider_width_default_and_override",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad0]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad1]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad2]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad3]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad4]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad5]",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Section checker: models, API, comment_sections.py and its root-separation case",
+      "action": "`writing_comments_models.py`: `DividerLevel` (major, minor), `FlagKind` (width, style, banner), closed pydantic models `Divider(line, level, title)`, `CommentFlag(line, kind, text)` and `SectionReport(dividers, flags)`. `writing_comments_api.py`: `sections(source, width)` reads full-line comments through `tokenize` (so docstring underlines and trailing comments never count; a tokenize error raises ValueError); a rule is `# ` plus dashes only; a major divider is a rule, a title comment, any further comment lines, then a closing rule at the same indent, reported at its first rule; a minor divider matches `# -- <title> ----`; a rule outside a complete banner is a banner flag; any other full-line comment holding a run of 4 or more of `-=*~_#` is a style flag; each rule and minor line whose length (indentation included) is not the width is a width flag. `rule_line(indent, width)`, `minor_line(title, indent, width)` build the canonical lines; `report_lines(label, report)` prints `<label>:<n>: major|minor <title>` and `<label>:<n>: flag <kind>: <text>` in line order, or `<label>: no dividers`. `skills/writing-comments/commands/comment_sections.py <path>...`: activates the project config (width from `comments.divider_width`), labels each file relative to the project, prints the files in the order named; a missing path, a non-`.py` file, an unparsable file or no path is a `problem:` line on stderr, exit 1, nothing on stdout. Add the `comment-sections` case to `CASES` and `MUST_EXIT_ZERO` in test_root_separation.py.",
+      "files": [
+        "plugins/harness/lib/harness_lib/writing_comments_models.py",
+        "plugins/harness/lib/harness_lib/writing_comments_api.py",
+        "plugins/harness/skills/writing-comments/commands/comment_sections.py",
+        "tests/lib/test_writing_comments_api.py",
+        "tests/skills/test_comment_sections_command.py",
+        "tests/contract/test_root_separation.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py:22-25",
+          "expect": "sys.path.insert(0, str(Path(__file__).resolve().parents[3] / \"lib\"))"
+        },
+        {
+          "at": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py:44",
+          "expect": "cfg = activate(load_config(project_root(start)))"
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:249-250",
+          "expect": "\"docstring-tiers\": lambda r, t: ([\"skills/writing-docstrings/commands/docstring_tiers.py\","
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:258",
+          "expect": "MUST_EXIT_ZERO = frozenset({\"strap new\", \"plan new\", \"plan_api write\", \"docstring-tiers\","
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/writing_comments_models.py plugins/harness/lib/harness_lib/writing_comments_api.py plugins/harness/skills/writing-comments/commands/comment_sections.py tests/lib/test_writing_comments_api.py tests/skills/test_comment_sections_command.py tests/contract/test_root_separation.py",
+          "expect": "All checks passed!"
+        },
+        {
+          "run": "python -m pytest tests/contract/test_no_repo_literals.py tests/contract/test_hooks_json_paths.py -q",
+          "expect": "passed, 0 failed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_major_banner_is_one_divider_at_its_first_rule",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_a_banner_may_carry_lines_below_its_title",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_a_rule_and_title_without_a_closing_rule_is_a_banner_flag",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_minor_divider_carries_its_title",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_a_divider_short_of_the_width_is_kept_and_flagged",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_a_banner_rule_past_the_width_is_flagged_on_its_own_line",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_hash_and_equals_banner_is_a_style_flag",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_title_after_the_dash_run_is_a_style_flag",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_a_rule_without_a_title_and_closing_rule_is_a_banner_flag",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_double_dash_inside_prose_is_not_a_divider",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_indentation_counts_toward_the_width",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_dashed_underlines_inside_a_docstring_are_not_comments",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_a_trailing_comment_after_code_is_never_a_divider",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_unparsable_source_raises_value_error",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_canonical_lines_fill_the_width_exactly",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_report_lines_list_dividers_and_flags_in_line_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_comments_api.py::test_report_lines_name_a_file_without_dividers",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_prints_the_outline_and_flags_of_a_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_each_file_is_reported_in_the_order_named",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_the_width_comes_from_the_project_key",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_an_absolute_path_is_reported_relative_to_the_project",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_a_missing_file_is_a_problem_line_and_prints_nothing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_a_non_python_file_is_a_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_unparsable_source_is_a_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_comment_sections_command.py::test_no_path_is_a_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[comment-sections]",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "writing-comments skill through the strap gate",
+      "action": "Run `harness:strap-skills writing-comments` end to end (new, classify, check, red, scaffold, draw, baselines, write, greens, freeze). The checker's code is proven by TASK-2's tests; the spec lists `comment_sections.py` and `comment_format.md` with `add_part` (scaffold keeps the existing models and API modules), and its mechanical behaviors are contract-test pins only: the SKILL.md frontmatter `Use when` trigger and the command run through hpy. Judgment behaviors to classify and strap: (1) a process comment states what the code cannot show (a constraint, an ordering, an invariant, why one branch wins) in one line where it fits, never restates the next line, carries no review, PR or plan citation, and uses third person; (2) dividers go into a module the work creates once it holds more than one group of definitions, or on an explicit ask; an untouched module, or an untouched block's non-canonical divider, stays as it is under `while you are in there` pressure (D4); (3) a section pass runs comment_sections.py, uses major dividers for top-level groups and minor ones inside them, and clears every flag in the blocks it writes. `comment_format.md` states both canonical forms (D2), the width key (D3) and the process-comment rules with the issue's examples.",
+      "files": [
+        "plugins/harness/skills/writing-comments/SKILL.md",
+        "plugins/harness/skills/writing-comments/comment_format.md",
+        "tests/skills/test_writing_comments_skill_contract.py",
+        "docs/plans/strap/writing-comments/SkillSpec.json"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py new writing-comments",
+          "expect": "new [done] | writing-comments",
+          "writes": [
+            "docs/plans/strap/writing-comments/SkillSpec.json"
+          ]
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-comments",
+          "expect": "check [ok]"
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze writing-comments",
+          "expect": "freeze [done] | writing-comments",
+          "writes": [
+            "docs/plans/freezes/skill/writing-comments/r1.1-freeze.json",
+            "tag freeze/skill/writing-comments/r1.1-tree"
+          ]
+        },
+        {
+          "run": "python -m pytest tests/skills/test_writing_comments_skill_contract.py -q",
+          "expect": "passed, 0 failed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "Validation passed"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "README rows, harness 0.84.0 and v1.1.0 notes",
+      "action": "README: a goal-table row for writing-comments beside `Docstrings by tier`, and a row after `tdd-strapped` in the trigger table. Bump harness `plugin.json` 0.83.0 -> 0.84.0 (new skill: minor). `docs/RELEASES/v1.1.0.md` (v1.1.0 is not cut; latest release v1.0.0): the harness row becomes `0.82.1 | 0.84.0`, plus one change line for the skill, the command and the key (#317).",
+      "files": [
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.1.0.md"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "README.md:28",
+          "expect": "| Docstrings by tier | `writing-docstrings`"
+        },
+        {
+          "at": "README.md:59",
+          "expect": "| `tdd-strapped` |"
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.83.0\","
+        },
+        {
+          "at": "docs/RELEASES/v1.1.0.md:11",
+          "expect": "| harness | 0.82.1 | 0.83.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "Validation passed"
+        },
+        {
+          "run": "claude plugin validate --strict .",
+          "expect": "Validation passed"
+        }
+      ]
+    }
+  ],
+  "base_commit": "e4d9108d85a22c959ca166262223aa12629a5d4f",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "What is the writing-comments skill built from?",
+      "options": [
+        {
+          "id": "reference-checker",
+          "summary": "SKILL.md and comment_format.md applied by the session, plus a comment_sections.py command that prints a module's outline and flags dividers off the canonical form"
+        },
+        {
+          "id": "reference-only",
+          "summary": "SKILL.md and comment_format.md only; every behavior scenario-tested"
+        },
+        {
+          "id": "sibling-agent",
+          "summary": "a dispatch driver and a comment-writer agent per file, like writing-docstrings"
+        }
+      ],
+      "chosen": "reference-checker",
+      "rationale": "Developer decision, 2026-11-24. The divider form is decidable by a command; comment quality is not."
+    },
+    {
+      "id": "D2",
+      "question": "Which divider forms are canonical?",
+      "options": [
+        {
+          "id": "two-levels",
+          "summary": "major: rule / title (plus optional lines) / rule; minor: `# -- name ---` to the width; every other separator comment is a style flag"
+        },
+        {
+          "id": "three-levels",
+          "summary": "the two plus `### ===== NAME ===== ###` as a class-group level"
+        },
+        {
+          "id": "any-consistent",
+          "summary": "no canonical form; only mixed styles or widths in one file are flagged"
+        }
+      ],
+      "chosen": "two-levels",
+      "rationale": "Developer decision, 2026-11-24."
+    },
+    {
+      "id": "D3",
+      "question": "Where does the divider width come from?",
+      "options": [
+        {
+          "id": "key-88",
+          "summary": "new key comments.divider_width, default 88"
+        },
+        {
+          "id": "reuse-docstrings",
+          "summary": "docstrings.line_length (110)"
+        }
+      ],
+      "chosen": "key-88",
+      "rationale": "Developer decision, 2026-11-24. 88 is the width of the issue's full-width rule."
+    },
+    {
+      "id": "D4",
+      "question": "When does the skill act on existing code?",
+      "options": [
+        {
+          "id": "new-and-touched",
+          "summary": "fires on writing or editing Python; dividers in modules the work creates or on an explicit ask; comments rewritten only in the code being changed; an untouched module is never restructured unasked"
+        },
+        {
+          "id": "explicit-only",
+          "summary": "fires only on an explicit ask"
+        }
+      ],
+      "chosen": "new-and-touched",
+      "rationale": "Developer decision, 2026-11-24."
+    }
+  ],
+  "values": [
+    {
+      "name": "comments.divider_width default",
+      "value": "88",
+      "source": "issue #317 Goal 1: `# ` plus 86 dashes is 88 characters",
+      "assumes": [
+        "key-88"
+      ]
+    },
+    {
+      "name": "rule line",
+      "value": "`# ` plus dashes until the line, indentation included, is divider_width long",
+      "source": "issue #317 Goal 1, first example",
+      "assumes": [
+        "two-levels"
+      ]
+    },
+    {
+      "name": "minor divider",
+      "value": "`# -- <title> ` plus dashes until the line is divider_width long",
+      "source": "issue #317 Goal 1, `# -- row helpers` example",
+      "assumes": [
+        "two-levels"
+      ]
+    },
+    {
+      "name": "separator run that makes a comment divider-like",
+      "value": "4 or more of - = * ~ _ #",
+      "source": "plan 2029 TASK-2 action; keeps prose `--` out",
+      "assumes": [
+        "two-levels"
+      ]
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "^[[:space:]]*#+ ?[-=]{8,}",
+      "hits": {
+        "plugins/harness/lib/harness_lib/bubble_memo.py": "title after the dash run: style flag; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/hooks/test_check_phase5_sentinel_hook.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/lib/test_bubble_memo.py": "title after the dash run: style flag; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/schemas/test_agent_schemas.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/schemas/test_pr_review_fixture_schemas.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/schemas/test_pr_review_invocation_test_matrix_schema.py": "77-wide banner with lines below its title: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/schemas/test_pr_review_schema_verification_log.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/schemas/test_schema_meta_valid.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/scripts/test_phase4_branch_safety_second_run.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/skills/test_add_note_script.py": "rule and title with no closing rule: banner flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked",
+        "tests/skills/test_terminals_fixer_schema.py": "77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked"
+      }
+    }
+  ],
+  "ledger": "plan/2029-writing-comments-skill"
+}

@@ -1,0 +1,50 @@
+{
+  "plan_id": "2029",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "8fefd1792c0a31c379d2d22d505d90df6ad5202f"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_writing_comments_api.py::test_major_banner_is_one_divider_at_its_first_rule",
+        "tests/lib/test_writing_comments_api.py::test_a_banner_may_carry_lines_below_its_title",
+        "tests/lib/test_writing_comments_api.py::test_a_rule_and_title_without_a_closing_rule_is_a_banner_flag",
+        "tests/lib/test_writing_comments_api.py::test_minor_divider_carries_its_title",
+        "tests/lib/test_writing_comments_api.py::test_a_divider_short_of_the_width_is_kept_and_flagged",
+        "tests/lib/test_writing_comments_api.py::test_a_banner_rule_past_the_width_is_flagged_on_its_own_line",
+        "tests/lib/test_writing_comments_api.py::test_hash_and_equals_banner_is_a_style_flag",
+        "tests/lib/test_writing_comments_api.py::test_title_after_the_dash_run_is_a_style_flag",
+        "tests/lib/test_writing_comments_api.py::test_a_rule_without_a_title_and_closing_rule_is_a_banner_flag",
+        "tests/lib/test_writing_comments_api.py::test_double_dash_inside_prose_is_not_a_divider",
+        "tests/lib/test_writing_comments_api.py::test_indentation_counts_toward_the_width",
+        "tests/lib/test_writing_comments_api.py::test_dashed_underlines_inside_a_docstring_are_not_comments",
+        "tests/lib/test_writing_comments_api.py::test_a_trailing_comment_after_code_is_never_a_divider",
+        "tests/lib/test_writing_comments_api.py::test_unparsable_source_raises_value_error",
+        "tests/lib/test_writing_comments_api.py::test_canonical_lines_fill_the_width_exactly",
+        "tests/lib/test_writing_comments_api.py::test_report_lines_list_dividers_and_flags_in_line_order",
+        "tests/lib/test_writing_comments_api.py::test_report_lines_name_a_file_without_dividers",
+        "tests/skills/test_comment_sections_command.py::test_prints_the_outline_and_flags_of_a_file",
+        "tests/skills/test_comment_sections_command.py::test_each_file_is_reported_in_the_order_named",
+        "tests/skills/test_comment_sections_command.py::test_the_width_comes_from_the_project_key",
+        "tests/skills/test_comment_sections_command.py::test_an_absolute_path_is_reported_relative_to_the_project",
+        "tests/skills/test_comment_sections_command.py::test_a_missing_file_is_a_problem_line_and_prints_nothing",
+        "tests/skills/test_comment_sections_command.py::test_a_non_python_file_is_a_problem_line",
+        "tests/skills/test_comment_sections_command.py::test_unparsable_source_is_a_problem_line",
+        "tests/skills/test_comment_sections_command.py::test_no_path_is_a_problem_line",
+        "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[comment-sections]"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_writing_comments_api.py::test_major_banner_is_one_divider_at_its_first_rule tests/lib/test_writing_comments_api.py::test_a_banner_may_carry_lines_below_its_title tests/lib/test_writing_comments_api.py::test_a_rule_and_title_without_a_closing_rule_is_a_banner_flag tests/lib/test_writing_comments_api.py::test_minor_divider_carries_its_title tests/lib/test_writing_comments_api.py::test_a_divider_short_of_the_width_is_kept_and_flagged tests/lib/test_writing_comments_api.py::test_a_banner_rule_past_the_width_is_flagged_on_its_own_line tests/lib/test_writing_comments_api.py::test_hash_and_equals_banner_is_a_style_flag tests/lib/test_writing_comments_api.py::test_title_after_the_dash_run_is_a_style_flag tests/lib/test_writing_comments_api.py::test_a_rule_without_a_title_and_closing_rule_is_a_banner_flag tests/lib/test_writing_comments_api.py::test_double_dash_inside_prose_is_not_a_divider tests/lib/test_writing_comments_api.py::test_indentation_counts_toward_the_width tests/lib/test_writing_comments_api.py::test_dashed_underlines_inside_a_docstring_are_not_comments tests/lib/test_writing_comments_api.py::test_a_trailing_comment_after_code_is_never_a_divider tests/lib/test_writing_comments_api.py::test_unparsable_source_raises_value_error tests/lib/test_writing_comments_api.py::test_canonical_lines_fill_the_width_exactly tests/lib/test_writing_comments_api.py::test_report_lines_list_dividers_and_flags_in_line_order tests/lib/test_writing_comments_api.py::test_report_lines_name_a_file_without_dividers tests/skills/test_comment_sections_command.py::test_prints_the_outline_and_flags_of_a_file tests/skills/test_comment_sections_command.py::test_each_file_is_reported_in_the_order_named tests/skills/test_comment_sections_command.py::test_the_width_comes_from_the_project_key tests/skills/test_comment_sections_command.py::test_an_absolute_path_is_reported_relative_to_the_project tests/skills/test_comment_sections_command.py::test_a_missing_file_is_a_problem_line_and_prints_nothing tests/skills/test_comment_sections_command.py::test_a_non_python_file_is_a_problem_line tests/skills/test_comment_sections_command.py::test_unparsable_source_is_a_problem_line tests/skills/test_comment_sections_command.py::test_no_path_is_a_problem_line tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[comment-sections]"
+    }
+  },
+  "evidence": "staged tree 8fefd17: 26 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-24",
+  "seal": "7808f875fc4353b6b428bfddf4dcb22c7e51993f0bae01973dd7d3b8968e346e"
+}
