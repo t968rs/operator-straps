@@ -133,7 +133,7 @@ const findSwitch = async ($: Dollar): Promise<{ path: string; text: string } | u
 const tried = new Set<number>()
 
 /** The toast's tail when the goal was set but the switch could not be stamped fired. */
-export const STAMP_FAILED = 'could not mark the switch fired (add_note.py goal --clear removes it)'
+export const STAMP_FAILED = 'could not mark the switch fired (/harness:bookmark --goal-clear removes it)'
 
 /** Shows one toast; a refused toast is dropped. Never throws. */
 const toast = ($: Dollar, text: string): void => {
@@ -173,8 +173,10 @@ const ownsSwitch = async ($: Dollar, armed: HookSwitch): Promise<boolean> => {
 const fire = async ($: Dollar): Promise<void> => {
   const found = await findSwitch($)
   const armed = found === undefined ? null : armedSwitch(found.text)
-  if (found === undefined || armed === null || tried.has(armed.startTime)) return
+  if (found === undefined || armed === null) return
   if (!(await ownsSwitch($, armed))) return
+  // No await between the check and the add: two overlapping turn ends cannot both pass it.
+  if (tried.has(armed.startTime)) return
   tried.add(armed.startTime)
   const item = armed.todoId === null ? '' : ` for ${armed.todoId}`
   try {

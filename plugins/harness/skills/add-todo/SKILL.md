@@ -89,7 +89,7 @@ with `inbox: updated` when only updates landed) and an `overwrote <id> <field>` 
 the same field and both land in the same drain. A refused file stays in the inbox as `<name>.rejected.json`
 beside a `<name>.reason.txt` naming why: report its item as not added. `inbox: empty` means nothing was waiting:
 either the agent queued nothing (its reply says why), or the todo-watch mod already drained the inbox and its
-summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain. When
+summary line arrives as context. A `problem:` line ends the run, except the two cases below, which go on to Step 4.5 under `--hook`: relay it once without rerunning the drain. When
 it reads `problem: inbox: added <ids>; updated <ids>, then: <reason>` (either part alone when only one kind
 landed), those changes landed and only the render, check or file
 cleanup failed: report them as applied. When it names a lock held by `todo_sync.py add --inbox`, the todo-watch mod is draining those items and

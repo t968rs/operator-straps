@@ -14,11 +14,14 @@
     the description, the goal names the item and its closing clause. The session-bookmark mod runs
     ``/goal <goal>`` when the current main-loop turn ends, in the arming session only: the switch records
     ``CLAUDE_CODE_SESSION_ID`` (any session when unset). Prints
-    ``hook: armed <id> (<closing>); goal: <goal>``. An id the catalog does not hold is refused (exit 1).
+    ``hook: armed <id> (<closing>); goal: <goal>``. An id the catalog does not hold, and a catalog that
+    cannot be read or is not a JSON object, is refused (exit 1); ``add_note.py goal --todo`` shares the gate
+    (``add_todo_api.hook_catalog``).
 
 ``hook --clear``
     Remove the switch, fired or not; prints ``hook: cleared`` or ``hook: none``. Needs no ``todo.folder`` or
     catalog, so it also clears a free-text switch. The goal itself, once set, ends with ``/goal clear``.
+    ``--clear`` with ``--todo`` or ``--closed-by`` is refused (exit 1) and leaves the switch in place.
 
 ``--repo`` (default: the working directory) names a directory inside the project.
 """
@@ -36,18 +39,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 from harness_lib.add_todo_api import (  # noqa: E402
     HOOK_REL,
     arming_session,
+    catalog_file,
     catalog_item,
+    clear_switch,
     dispatch_row,
+    hook_catalog,
+    require_stable_ids,
     todo_hook,
     write_hook_switch,
 )
 from harness_lib.add_todo_models import AddTodoRequest, Closing, ResearchLevel  # noqa: E402
 from harness_lib.config import ConfigError, HarnessConfig, activate, load_config  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
-from harness_lib.todo_sync import ids  # noqa: E402
-from harness_lib.todo_sync.errors import TodoSyncError  # noqa: E402
 
-INIT = "todo_sync.py init"
+WHO = "add-todo"
 CLOSINGS = [c.value for c in Closing]
 
 
@@ -72,15 +77,9 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _ready(cfg: HarnessConfig) -> Path:
-    """The catalog path; refuses a project the agent could not add to: no TODO folder, or no catalog yet."""
-    if not cfg.todo.enabled or cfg.todo.catalog is None:
-        raise Refused("add-todo needs todo.folder in .claude/harness.json")
-    catalog = cfg.path(cfg.todo.catalog)
-    if not catalog.is_file():
-        raise Refused(f"no TODO catalog at {cfg.todo.catalog}; create it with {INIT}")
-    _refuse_legacy(catalog)
-    return catalog
+def _ready(cfg: HarnessConfig) -> None:
+    """Refuse a project the agent could not add to: no TODO folder, no catalog yet, or rank-tied ids."""
+    _refuse_legacy(catalog_file(cfg, WHO))
 
 
 def _load(catalog: Path) -> Optional[Dict[str, Any]]:
@@ -95,17 +94,16 @@ def _load(catalog: Path) -> Optional[Dict[str, Any]]:
 def _refuse_legacy(catalog: Path) -> None:
     """Refuse a catalog that still holds TODO-NNN ids; an unreadable catalog is left to the later add."""
     data = _load(catalog)
-    if data is None:
-        return
-    try:
-        ids.require_stable(data, "add-todo")
-    except TodoSyncError as exc:
-        raise Refused(str(exc)) from exc
+    if data is not None:
+        require_stable_ids(data, WHO)
 
 
-def _item(catalog: Path, todo_id: str) -> Dict[str, Any]:
-    """The catalog item with ``todo_id``; refuses an id the catalog does not hold."""
-    item = catalog_item(_load(catalog) or {}, todo_id)
+def _item(cfg: HarnessConfig, todo_id: str) -> Dict[str, Any]:
+    """The catalog item with ``todo_id``, read through the gate ``add_note.py goal --todo`` shares.
+
+    Refuses what ``hook_catalog`` refuses (an unreadable catalog included) and an id the catalog lacks.
+    """
+    item = catalog_item(hook_catalog(cfg, WHO, WHO), todo_id)
     if item is None:
         raise Refused(f"hook: no catalog item {todo_id}")
     return item
@@ -116,20 +114,21 @@ def _switch_path(cfg: HarnessConfig) -> Path:
     return cfg.path(cfg.state_dir) / HOOK_REL
 
 
-def _clear(cfg: HarnessConfig) -> str:
-    """Remove the switch, fired or not; needs no TODO catalog. Returns the line to print."""
-    path = _switch_path(cfg)
-    if not path.is_file():
-        return "hook: none"
-    path.unlink()
-    return "hook: cleared"
+def _clear(cfg: HarnessConfig, args: argparse.Namespace) -> str:
+    """Remove the switch, fired or not; needs no TODO catalog. Returns the line to print.
+
+    Refuses ``--clear`` mixed with ``--todo`` or ``--closed-by``, as ``add_note.py goal --clear`` does.
+    """
+    if args.todo or args.closed_by:
+        raise Refused("hook --clear takes no --todo or --closed-by")
+    return "hook: cleared" if clear_switch(_switch_path(cfg)) else "hook: none"
 
 
-def _hook(cfg: HarnessConfig, catalog: Path, args: argparse.Namespace) -> str:
+def _hook(cfg: HarnessConfig, args: argparse.Namespace) -> str:
     """Arm the switch for a catalog item; returns the line to print."""
     if not args.todo or not args.closed_by:
         raise Refused("hook needs --todo <id> and --closed-by, or --clear")
-    hook = todo_hook(Closing(args.closed_by), _item(catalog, args.todo))
+    hook = todo_hook(Closing(args.closed_by), _item(cfg, args.todo))
     write_hook_switch(_switch_path(cfg), hook, arming_session(os.environ))
     return f"hook: armed {hook.todo_id} ({hook.closed_by.value}); goal: {hook.goal()}"
 
@@ -140,16 +139,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         cfg = activate(load_config(project_root(args.repo)))
         if args.command == "hook" and args.clear:
-            print(_clear(cfg))
+            print(_clear(cfg, args))
             return 0
-        catalog = _ready(cfg)
+        _ready(cfg)
         if args.command == "hook":
-            print(_hook(cfg, catalog, args))
+            print(_hook(cfg, args))
             return 0
     except (ConfigError, Refused, OSError, ValueError) as exc:
         print(f"problem: {' '.join(str(exc).split())}", file=sys.stderr)
         return 1
-    hook = None if args.hook is None else todo_hook(Closing(args.hook))
+    hook = None if args.hook is None else Closing(args.hook)
     request = AddTodoRequest(issue=args.issue, research=ResearchLevel(args.research), hook=hook)
     print("\n".join(dispatch_row(request, cfg.project_root)))
     return 0

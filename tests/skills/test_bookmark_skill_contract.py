@@ -64,7 +64,8 @@ def test_no_agent_runs_the_note_writer() -> None:
 
 def test_skill_hints_every_form() -> None:
     hint = _frontmatter(_SKILL)["argument-hint"]
-    forms = ("--list", "--clear", "--remove", "--edit", "--standing", "--goal", "--goal-todo", "--goal-clear")
+    forms = ("--list", "--clear", "--remove", "--edit", "--standing", "--goal <", "--goal-todo",
+             "--goal-clear")
     for form in forms:
         assert form in hint, f"argument-hint never names {form}"
 
@@ -76,7 +77,7 @@ def test_skill_passes_the_arguments_through() -> None:
 def test_skill_runs_the_script_through_the_launcher_with_each_subcommand() -> None:
     body = _text(_SKILL)
     assert 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/add_note.py"' in body
-    for subcommand in ("add", "add --standing", "list", "remove", "edit", "clear", "goal --", "goal --todo",
+    for subcommand in ("add", "add --standing", "list", "remove", "edit", "clear", "goal -- '", "goal --todo",
                        "goal --clear"):
         assert f"NOTE {subcommand}" in body, f"skill never runs NOTE {subcommand}"
 

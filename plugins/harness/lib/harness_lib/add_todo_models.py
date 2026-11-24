@@ -17,7 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field
 MAX_GOAL_CHARS = 500
 """The longest ``/goal`` condition: the engine's ``/goal`` refuses a longer condition."""
 MAX_DESC_CHARS = 300
-"""The longest hook description; with the id and the closing clause it stays under ``MAX_GOAL_CHARS``."""
+"""The longest hook description; with a catalog id (``todo-xxxx``) and the closing clause it stays under
+``MAX_GOAL_CHARS``. ``TodoHook.goal`` cuts anything longer, closing clause first."""
 
 
 class ResearchLevel(IntEnum):
@@ -65,17 +66,12 @@ _CONDITIONS = {
                         "lists the files changed and what is left"),
 }
 
-PENDING_DESC = "the item this add-todo run adds"
-"""A row-time hook's placeholder description: the row only carries the closing (the ``Hook:`` line); the
-item has no id or title yet, and no row-time hook is ever written as a switch."""
-
 
 class TodoHook(BaseModel):
     """An optional session goal tied to one TODO item: the hook switch the session-bookmark mod fires.
 
-    ``start_time`` is epoch seconds (``datetime.timestamp()``). A written switch always comes from a catalog
-    item (``add_todo.py hook``, ``add_note.py goal --todo``), so its ``todo_id`` is set; ``todo_id`` is unset
-    only on the row-time hook, which carries just the closing to the dispatch row and is never written.
+    ``start_time`` is epoch seconds (``datetime.timestamp()``). A hook always comes from a catalog item
+    (``add_todo.py hook``, ``add_note.py goal --todo``), so ``todo_hook`` always sets its ``todo_id``.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -93,10 +89,11 @@ class TodoHook(BaseModel):
 
 class AddTodoRequest(BaseModel):
     """The skill's own arguments: ``--issue``, the research level and ``--hook`` (default: a local reminder,
-    no research, no hook)."""
+    no research, no hook). ``hook`` is only the closing: the item has no id yet, so the row carries it as the
+    ``Hook:`` line, and the session arms the switch once the item exists."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     issue: bool = False
     research: ResearchLevel = ResearchLevel.NONE
-    hook: Optional[TodoHook] = None
+    hook: Optional[Closing] = None

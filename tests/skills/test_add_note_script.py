@@ -2,8 +2,10 @@
 
 The script keeps the session notes the session-bookmark mod prints in its bookmark. Each test runs it against
 a throwaway project built by ``make_project`` (a git repository on branch ``main``) and reads the notes file
-the mod reads. A note records the branch it was added on, unless it is standing; ``remove`` and ``edit``
-change one note by its listed number.
+the mod reads. A note records the branch it was added on, unless it is standing; ``remove`` takes one or
+more listed numbers and ``edit`` changes one note by its listed number. ``goal`` arms the session-bookmark
+hook switch from free text or a catalog item (``--todo`` with ``--closed-by``); ``goal --clear`` removes
+it.
 """
 from __future__ import annotations
 
@@ -427,12 +429,14 @@ def test_goal_clear_refuses_text_or_a_closing(script, make_project, capsys) -> N
 def test_goal_records_the_arming_session(script, make_project, monkeypatch) -> None:
     project = _todo_project(make_project)
     monkeypatch.setenv(add_todo_api.SESSION_ENV, "sess-1")
-    _run(script, project, "goal", "--", "ship it")
+    assert _run(script, project, "goal", "--", "ship it") == 0
     assert _switch(project)[add_todo_api.SESSION_KEY] == "sess-1"
-    _run(script, project, "goal", "--todo", _first_id(project), "--closed-by", "retired")
-    assert _switch(project)[add_todo_api.SESSION_KEY] == "sess-1"
+    assert _run(script, project, "goal", "--todo", _first_id(project), "--closed-by", "retired") == 0
+    switch = _switch(project)
+    assert switch["hook"]["todo_id"] == _first_id(project)
+    assert switch[add_todo_api.SESSION_KEY] == "sess-1"
     monkeypatch.delenv(add_todo_api.SESSION_ENV)
-    _run(script, project, "goal", "--", "ship it")
+    assert _run(script, project, "goal", "--", "ship it") == 0
     assert _switch(project)[add_todo_api.SESSION_KEY] is None
 
 

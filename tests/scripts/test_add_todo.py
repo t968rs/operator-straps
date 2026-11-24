@@ -2,6 +2,8 @@
 
 The research level picks the agent's model; ``--issue`` and the level reach the agent as header lines. The
 note and the session's context never pass through the driver: the session appends them to the printed row.
+``add_todo.py hook`` arms the session-bookmark hook switch from a catalog item (or clears it), and
+``TodoHook.goal`` with the ``Closing`` conditions builds the ``/goal`` text the switch carries.
 """
 from __future__ import annotations
 
@@ -150,7 +152,6 @@ def test_a_todo_hook_comes_from_a_catalog_item() -> None:
     item = {"id": "todo-af2e", "title": "  catalog\n item  "}
     hook = add_todo_api.todo_hook(Closing.RETIRED, item, now=2.0)
     assert (hook.todo_id, hook.desc, hook.start_time) == ("todo-af2e", "catalog item", 2.0)
-    assert add_todo_api.todo_hook(Closing.RETIRED, now=1.0).todo_id is None
     catalog = {"items": [{"id": "todo-af2e"}, "junk"]}
     assert add_todo_api.catalog_item(catalog, "todo-af2e") == {"id": "todo-af2e"}
     assert add_todo_api.catalog_item(catalog, "todo-zzzz") is None
@@ -195,6 +196,15 @@ def test_hook_clear_removes_the_switch(make_project) -> None:
     _lines(_hook(root, "--todo", _first_item(root)["id"], "--closed-by", "retired"))
     assert _lines(_hook(root, "--clear")) == ["hook: cleared"]
     assert _lines(_hook(root, "--clear")) == ["hook: none"]
+
+
+@pytest.mark.parametrize("extra", [("--todo", "todo-af2e"), ("--closed-by", "committed")])
+def test_hook_clear_refuses_an_item_or_closing(make_project, extra: tuple) -> None:
+    root = make_project(config(), files=todo_files())
+    _lines(_hook(root, "--todo", _first_item(root)["id"], "--closed-by", "retired"))
+    done = _hook(root, "--clear", *extra)
+    assert done.returncode == 1 and "hook --clear takes no --todo or --closed-by" in done.stderr
+    assert (root / ".claude/state/harness" / HOOK_REL).is_file()
 
 
 def test_driver_refuses_a_legacy_catalog_before_the_dispatch(make_project) -> None:

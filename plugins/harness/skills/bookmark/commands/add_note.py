@@ -13,7 +13,8 @@ one listing. A note stays until ``remove`` or ``clear``. The mod reads the file 
 
 ``goal`` arms the mod's hook switch (``<state_dir>/session-bookmark/hook.json``, written through
 ``harness_lib.add_todo_api``): the mod runs ``/goal <goal>`` when the current main-loop turn ends. The switch
-records the arming session (``CLAUDE_CODE_SESSION_ID``), so only that session fires it. The goal is
+records the arming session (``CLAUDE_CODE_SESSION_ID``), so only that session fires it; with the variable
+unset, any session does. The goal is
 free text, or a TODO catalog item with its closing (``--todo``, ``--closed-by``); ``goal --clear`` removes
 the switch. A goal already set ends with ``/goal clear``.
 """
@@ -221,53 +222,29 @@ def _goal_text(words: List[str]) -> str:
     return text
 
 
-def _goal_catalog(cfg: Any) -> Dict[str, Any]:
-    """The TODO catalog, refused like ``add_todo.py hook``: no TODO folder, no catalog, or rank-tied ids."""
-    from harness_lib.todo_sync import ids
-    from harness_lib.todo_sync.errors import TodoSyncError
-    if not cfg.todo.enabled or cfg.todo.catalog is None:
-        raise NoteError("goal --todo needs todo.folder in .claude/harness.json")
-    catalog = cfg.path(cfg.todo.catalog)
-    if not catalog.is_file():
-        raise NoteError(f"no TODO catalog at {cfg.todo.catalog}; create it with todo_sync.py init")
-    try:
-        data = json.loads(catalog.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError):
-        raise NoteError(f"the TODO catalog at {cfg.todo.catalog} cannot be read") from None
-    if not isinstance(data, dict):
-        raise NoteError(f"the TODO catalog at {cfg.todo.catalog} is not a JSON object")
-    try:
-        ids.require_stable(data, "bookmark goal")
-    except TodoSyncError as exc:
-        raise NoteError(str(exc)) from exc
-    return data
-
-
 def _todo_goal(cfg: Any, todo_id: str, closed_by: str) -> Any:
-    """The ``TodoHook`` for a catalog item; ``NoteError`` for a refused catalog or an unknown id."""
-    from harness_lib.add_todo_api import catalog_item, todo_hook
-    item = catalog_item(_goal_catalog(cfg), todo_id)
+    """The ``TodoHook`` for a catalog item; ``NoteError`` for an unknown id.
+
+    The catalog passes the gate ``add_todo.py hook`` shares (``add_todo_api.hook_catalog``), which raises
+    ``CatalogRefused``, a ``ValueError``, for no TODO folder, no catalog, an unreadable one or rank-tied ids.
+    """
+    from harness_lib.add_todo_api import catalog_item, hook_catalog, todo_hook
+    item = catalog_item(hook_catalog(cfg, "goal --todo", "bookmark goal"), todo_id)
     if item is None:
         raise NoteError(f"no catalog item {todo_id}")
     return todo_hook(Closing(closed_by), item)
 
 
-def _clear_goal(path: Path) -> str:
-    if not path.is_file():
-        return "goal: none"
-    path.unlink()
-    return "goal: cleared"
-
-
 def goal(cfg: Any, args: argparse.Namespace) -> str:
     """Arm the hook switch with a free-text goal or a catalog item's goal, or clear it."""
-    from harness_lib.add_todo_api import HOOK_REL, arming_session, write_goal_switch, write_hook_switch
+    from harness_lib.add_todo_api import (HOOK_REL, arming_session, clear_switch, write_goal_switch,
+                                          write_hook_switch)
     path = cfg.path(cfg.state_dir) / HOOK_REL
     session = arming_session(os.environ)
     if args.clear:
         if args.text or args.todo is not None or args.closed_by is not None:
             raise NoteError("goal --clear takes no text, --todo or --closed-by")
-        return _clear_goal(path)
+        return "goal: cleared" if clear_switch(path) else "goal: none"
     if args.todo is None:
         if args.closed_by is not None:
             raise NoteError("--closed-by needs --todo ID")

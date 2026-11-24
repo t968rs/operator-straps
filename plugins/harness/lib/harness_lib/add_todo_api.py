@@ -23,18 +23,19 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from harness_lib.add_todo_models import (
     MAX_DESC_CHARS,
-    PENDING_DESC,
     AddTodoRequest,
     Closing,
     ResearchLevel,
     TodoHook,
 )
 
-__all__ = ["AGENT", "AddTodoRequest", "Closing", "HOOK_REL", "HOOK_VERSION", "ResearchLevel", "SESSION_ENV",
-           "SESSION_KEY", "TodoHook", "arming_session", "catalog_item", "dispatch_row", "hook_switch",
-           "read_hook_switch", "todo_hook", "write_goal_switch", "write_hook_switch"]
+__all__ = ["AGENT", "AddTodoRequest", "CATALOG_INIT", "CatalogRefused", "Closing", "HOOK_REL", "HOOK_VERSION",
+           "ResearchLevel", "SESSION_ENV", "SESSION_KEY", "TodoHook", "arming_session", "catalog_file",
+           "catalog_item", "clear_switch", "dispatch_row", "hook_catalog", "hook_switch", "read_hook_switch",
+           "require_stable_ids", "todo_hook", "write_goal_switch", "write_hook_switch"]
 
 AGENT = "harness:todo-editor"
+CATALOG_INIT = "todo_sync.py init"
 HOOK_REL = "session-bookmark/hook.json"
 HOOK_VERSION = 1
 SESSION_KEY = "session_id"
@@ -47,7 +48,7 @@ def dispatch_row(request: AddTodoRequest, project_root: Path) -> List[str]:
              f"Issue: {'yes' if request.issue else 'no'}", f"Research: {int(request.research)}",
              f"Project root: {Path(project_root).resolve().as_posix()}"]
     if request.hook is not None:
-        lines.append(f"Hook: {request.hook.closed_by.value}")
+        lines.append(f"Hook: {request.hook.value}")
     return lines
 
 
@@ -89,16 +90,9 @@ def write_goal_switch(path: Path, goal: str, start_time: float,
     return _write_switch(path, _switch({"goal": goal, "start_time": start_time, "todo_id": None}, session_id))
 
 
-def todo_hook(closing: Closing, item: Optional[Dict[str, Any]] = None,
-              now: Optional[float] = None) -> TodoHook:
-    """The hook for ``closing``: tied to ``item`` (its id and title) once it exists.
-
-    Without ``item`` it is the row-time hook: ``dispatch_row`` reads only its closing for the ``Hook:`` line,
-    and it is never written as a switch.
-    """
+def todo_hook(closing: Closing, item: Dict[str, Any], now: Optional[float] = None) -> TodoHook:
+    """The hook for ``closing`` tied to the catalog ``item`` (its id and title), started at ``now``."""
     start = time.time() if now is None else now
-    if item is None:
-        return TodoHook(closed_by=closing, desc=PENDING_DESC, start_time=start)
     title = (" ".join(str(item.get("title") or "").split()) or str(item["id"]))[:MAX_DESC_CHARS]
     return TodoHook(closed_by=closing, desc=title, start_time=start, todo_id=str(item["id"]))
 
@@ -109,6 +103,58 @@ def catalog_item(catalog: Dict[str, Any], todo_id: str) -> Optional[Dict[str, An
         if isinstance(item, dict) and item.get("id") == todo_id:
             return item
     return None
+
+
+class CatalogRefused(ValueError):
+    """A TODO catalog a hook goal cannot read its item from; the message names the cause."""
+
+
+def catalog_file(cfg: Any, who: str) -> Path:
+    """The TODO catalog of ``cfg``; refuses a project without ``todo.folder`` or without a catalog yet.
+
+    ``who`` names the command in the ``todo.folder`` refusal.
+    """
+    if not cfg.todo.enabled or cfg.todo.catalog is None:
+        raise CatalogRefused(f"{who} needs todo.folder in .claude/harness.json")
+    catalog = cfg.path(cfg.todo.catalog)
+    if not catalog.is_file():
+        raise CatalogRefused(f"no TODO catalog at {cfg.todo.catalog}; create it with {CATALOG_INIT}")
+    return catalog
+
+
+def require_stable_ids(data: Dict[str, Any], verb: str) -> None:
+    """Refuse a loaded catalog that still holds rank-tied ``TODO-NNN`` ids."""
+    from harness_lib.todo_sync import ids
+    from harness_lib.todo_sync.errors import TodoSyncError
+    try:
+        ids.require_stable(data, verb)
+    except TodoSyncError as exc:
+        raise CatalogRefused(str(exc)) from exc
+
+
+def hook_catalog(cfg: Any, who: str, verb: str) -> Dict[str, Any]:
+    """The catalog a hook goal reads its item from, the one gate both switch writers share.
+
+    Refuses (``CatalogRefused``) no ``todo.folder``, no catalog, a catalog that cannot be read or is not a
+    JSON object, and rank-tied ids; ``who`` and ``verb`` name the caller in the messages.
+    """
+    catalog = catalog_file(cfg, who)
+    try:
+        data = json.loads(catalog.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        raise CatalogRefused(f"the TODO catalog at {cfg.todo.catalog} cannot be read") from None
+    if not isinstance(data, dict):
+        raise CatalogRefused(f"the TODO catalog at {cfg.todo.catalog} is not a JSON object")
+    require_stable_ids(data, verb)
+    return data
+
+
+def clear_switch(path: Path) -> bool:
+    """Remove the switch at ``path``, fired or not; whether one was there."""
+    if not path.is_file():
+        return False
+    path.unlink()
+    return True
 
 
 def read_hook_switch(path: Path) -> Optional[Dict[str, Any]]:

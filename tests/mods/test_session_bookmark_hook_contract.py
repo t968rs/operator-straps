@@ -1,10 +1,11 @@
-"""Pin the hook switch ``add_todo.py hook`` writes to the names the session-bookmark mod reads.
+"""Pin the switch ``add_todo.py hook`` and ``add_note.py goal`` write to the names session-bookmark reads.
 
-The driver (``plugins/harness/scripts/add_todo.py``, through ``harness_lib.add_todo_api``) writes
-``<state_dir>/session-bookmark/hook.json``; the mod (``plugins/session-bookmark/hooks/session_hook.ts``) runs
-``/goal`` from it once and stamps ``fired``. An installed mod cannot import the harness plugin, so
-``session_hook.ts`` copies the path, version, goal limit and the ``fired`` key. This test fails when one side
-changes without the other.
+Both drivers (``plugins/harness/scripts/add_todo.py`` and ``add_note.py``, through
+``harness_lib.add_todo_api``) write ``<state_dir>/session-bookmark/hook.json``; the mod
+(``plugins/session-bookmark/hooks/session_hook.ts``) runs ``/goal`` from it once, in the session that armed
+it, and stamps ``fired``. An installed mod cannot import the harness plugin, so ``session_hook.ts`` copies the
+path, version, goal limit, the ``fired`` key and the ``session_id`` key. This test fails when one side changes
+without the other.
 """
 from __future__ import annotations
 
@@ -55,6 +56,17 @@ def test_a_free_text_goal_switch_has_the_keys_the_mod_reads(hook_ts: str, tmp_pa
     stored = json.loads(path.read_text(encoding="utf-8"))
     assert stored["version"] == add_todo_api.HOOK_VERSION and stored[ts_string(hook_ts, "FIRED_KEY")] is None
     assert stored["hook"] == {"goal": "the tests in test_x.py pass", "start_time": 2.5, "todo_id": None}
+
+
+def test_the_reader_returns_a_written_switch_and_rejects_the_rest(tmp_path: Path) -> None:
+    path = tmp_path / add_todo_api.HOOK_REL
+    assert add_todo_api.read_hook_switch(path) is None
+    written = add_todo_api.write_goal_switch(path, "ship it", 2.5, session_id="sess-1")
+    assert add_todo_api.read_hook_switch(path) == json.loads(path.read_text(encoding="utf-8")) == written
+    path.write_text(json.dumps({"version": add_todo_api.HOOK_VERSION + 1}), encoding="utf-8")
+    assert add_todo_api.read_hook_switch(path) is None
+    path.write_text("not json", encoding="utf-8")
+    assert add_todo_api.read_hook_switch(path) is None
 
 
 def test_the_session_key_matches(hook_ts: str) -> None:

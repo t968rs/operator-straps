@@ -107,8 +107,11 @@ question goes in the reply (see Reply), and the work waits for the answer.
 
 Exit 1 prints `add_note: <reason>`: for a too-long note or goal, shorten it and rerun the same command, with the
 same flags, `--standing` included; for a full file, relay the message and stop. For `no note N`,
-`no catalog item <id>`, `goal --todo needs todo.folder ...` or an unreadable file, relay the message without a
-retry; for an unreadable file, add one line naming `--clear`.
+`no catalog item <id>`, `goal --todo needs todo.folder ...` or an unreadable notes file, relay the message without a
+retry; for an unreadable notes file (a message naming `notes.json` and `run clear`), add one line naming `--clear`.
+A refused TODO catalog (`no TODO catalog at ...`, `the TODO catalog at ... cannot be read`, `... is not a JSON
+object`, or rank-tied `TODO-NNN` ids) is relayed alone, with no retry and no `--clear` line: `--clear` drops the
+notes and leaves the catalog as it is.
 
 ## Writing the goal
 

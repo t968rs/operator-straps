@@ -15,6 +15,9 @@ import {
 } from './session_hook'
 
 const GOAL = 'TODO todo-af2e (x) is retired'
+// session_hook.ts keeps a per-load `tried` set keyed by start_time that outlives each test, so every
+// turn.complete test passes its own start_time (1763600000.5 through 1763600009.5 are taken); a reused one
+// would let the guard, not the behavior under test, decide whether `/goal` runs.
 const hook = { closed_by: 'retired', desc: 'catalog item model', start_time: 1763600000.5, todo_id: 'todo-af2e' }
 const file = (extra: Record<string, unknown> = {}, h: Record<string, unknown> = {}): string =>
   JSON.stringify({ version: HOOK_SCHEMA_VERSION, hook: { ...hook, goal: GOAL, ...h }, fired: null, ...extra })
@@ -74,7 +77,8 @@ type Seen = { goals: string[]; writes: Map<string, string>; toasts: string[]; cl
 
 /**
  * The session folders: `dir` is the cwd and CLAUDE_PROJECT_DIR; `tops` maps a folder to its git top level;
- * `writeFails` refuses every write.
+ * `writeFails` refuses every write; `session` is the id `session.id` answers (default `THIS_SESSION`, blank
+ * for an id that cannot be read).
  */
 type Where = { dir?: string; tops?: Record<string, string>; writeFails?: boolean; session?: string }
 

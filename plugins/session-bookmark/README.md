@@ -89,7 +89,7 @@ A switch for an item:
 - A refused `/goal` (an unknown command, past a Stop, a host limit) leaves the switch armed and shows one toast;
   the switch is tried once per mod load, so the next load retries it. When `/goal` is set but the `fired`
   stamp cannot be written, a different toast says the goal was set and the switch is still armed: the next
-  load would set it again, so `add_note.py goal --clear` removes it. A switch re-armed or cleared while
+  load would set it again, so `/harness:bookmark --goal-clear` removes it. A switch re-armed or cleared while
   `/goal` was queued is left as it is, not stamped.
 - Fallback, should `/goal` be unavailable where the mod runs: a temporary `Stop` hook in
   `.claude/settings.local.json` that the file watcher loads and drops without a restart (issue #282's gate).
