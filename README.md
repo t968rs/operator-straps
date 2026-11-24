@@ -214,9 +214,12 @@ bump can also carry a break, which the release's Breaking changes section names.
 | `/harness:add-bookmark [--] <note text>`     | Store one note on the current branch (a leading `--` is optional)   |
 | `/harness:add-bookmark --standing <text>`    | Store one note with no branch; it applies on every branch           |
 | `/harness:add-bookmark --list`               | Print the stored notes, numbered                                    |
-| `/harness:add-bookmark --remove N`           | Drop note N of the `--list` numbering and print the list            |
-| `/harness:add-bookmark --edit N <text>`      | Replace the text of note N, keeping its branch, and print the list  |
+| `/harness:add-bookmark --remove N [N ...]`   | Drop each note N of the `--list` numbering, in one call, and print the list |
+| `/harness:add-bookmark --edit N <text> [--edit M <text> ...]` | Replace the text of note N (and of M, ...), keeping each branch, and print the list |
 | `/harness:add-bookmark --clear`              | Drop every stored note                                              |
+| `/harness:add-bookmark --goal <condition>`   | Arm a session goal from the text; the mod runs `/goal <condition>` when the turn ends |
+| `/harness:add-bookmark --goal-todo <id> <retired\|committed\|developer>` | Arm the goal of TODO item `<id>`, closed by the given closing clause |
+| `/harness:add-bookmark --goal-clear`         | Remove an armed goal before it fires                                |
 | `/session-bookmark notes`                    | Print the same numbered list through the mod, with no model turn    |
 
 - The session that runs the command writes the stored line, so a note that points at the conversation
@@ -597,7 +600,7 @@ one. `todo_sync.py keywords [--dry-run]` is the one-time keyword fill for an exi
 without a keyword its confident guess, right after the item's `title`, and leaves an item with no confident
 guess without one.
 
-`/harness:add-todo [--issue] [-r|--research 0-3] -- <note>` turns a note typed in the prompt into one catalog
+`/harness:add-todo [--issue] [-r|--research 0-3] [--hook retired|committed|developer] -- <note>` turns a note typed in the prompt into one catalog
 item. The main session runs `add_todo.py row`, which picks the agent's model from the research level, and
 dispatches the `todo-editor` agent with the note verbatim and a `Context:` line of what the conversation already
 established (files, ids, findings), so the note can stay short. The level sets how far the agent reads before it
@@ -614,6 +617,7 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 [todo-editor]   todo_sync.py suggest-keyword  guess the item's keyword
 [todo-editor]   todo_sync.py inbox put        queue as a note (or with --file-issue); refuses an item without a keyword
 [main session]  todo_sync.py add --inbox      insert, score, rank, recount, then render and check
+[main session]  add_todo.py hook --todo <id> --closed-by <C>   arm the goal (only with --hook)
 ```
 
 ### Configuration keys

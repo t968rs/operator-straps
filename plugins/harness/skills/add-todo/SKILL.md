@@ -32,7 +32,8 @@ and `<note>` are the same invocation. With flags and no `--` token, the text aft
 | 2 | Also traces callers and consumers, the tests that cover them, related catalog items and open issues. |
 | 3 | Also reads the files' history and linked reviews, weighs alternatives and cites `path:line` for every claim. |
 
-An empty note, an unknown flag or a level outside 0-3 ends the run: print the `argument-hint` line above.
+An empty note, an unknown flag, a level outside 0-3 or a `--hook` closing other than `retired`, `committed` or
+`developer` ends the run: print the `argument-hint` line above.
 
 ## Step 1: print the row
 
@@ -61,7 +62,8 @@ a fact the conversation has not established is the agent's to find, at the level
 ## Step 3: dispatch
 
 One `Agent` call: `subagent_type="harness:todo-editor"`, the model from the `agent=` line and never another,
-`description="Add a TODO item"`. The prompt is the row's lines after the `agent=` line, then:
+`description="Add a TODO item"`. The prompt is the row's lines after the `agent=` line, less the `Hook:` line
+(the session's own cue for Step 4.5, not agent input), then:
 
 ```
 Note: <the note verbatim, newlines folded to spaces>
@@ -95,19 +97,27 @@ its summary line arrives as context. Otherwise the queued items stay in the inbo
 
 ## Step 4.5: arm the session hook (`--hook` only)
 
-When the row carried `Hook: <C>` and the drain line names an added id, arm the hook switch for that id:
+When the row carried `Hook: <C>`, arm the hook switch for the item this run added: the one the agent's reply
+lists under `Added` (`queued: <title> (#N|note)`). Its id comes from the Step 4 drain line or, when that line
+reads `inbox: empty` or names a lock held by `todo_sync.py add --inbox`, from the todo-watch
+`inbox: added N item(s): <id> ...` summary the Agent result carries as context. A drain that also lists other
+runs' items does not change which id is armed: with `--issue`, take the id whose `(#N)` matches the reply's;
+otherwise, with more than one `(note)` id listed, Grep the catalog (`todo.catalog`) for the reply's title to find
+its id (a read, not a catalog edit).
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" hook --todo <id> --closed-by <C>
 ```
 
-It prints `hook: armed <id> (<C>); goal: <goal>`. The session-bookmark mod runs `/goal <goal>` when the turn
-ends; without that mod the switch does nothing. No id added (empty or rejected drain): skip the step and say
-the hook was not armed. A `problem:` line is relayed once.
+It prints `hook: armed <id> (<C>); goal: <goal>`; the goal names the item's title, which confirms the pick. The
+session-bookmark mod runs `/goal <goal>` when the turn ends; without that mod the switch does nothing. Skip the
+step and say the hook was not armed only when no line shows this run's item as added (the agent queued nothing,
+or its file was rejected). A `problem:` line is relayed once.
 
 ## Step 5: report
 
-Relay the agent's reply as it stands, with the Step 4 line. The edit is saved, not committed; the developer
+Relay the agent's reply as it stands, with the Step 4 line and, under `--hook`, the Step 4.5 line (or the note
+that the hook was not armed). The edit is saved, not committed; the developer
 reviews the diff and commits. With `--issue`, name the issue the reply's `Added` line gives. Name an item marked
 `(needs decision)`.
 

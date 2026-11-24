@@ -71,7 +71,8 @@ stored as text.
 `--remove` and `--edit` need N, a whole number as `--list` prints it. `--remove` takes several numbers, all
 read against the same listing, so their order does not matter and nothing shifts between them; one number the
 list does not hold drops none. An `--edit` group's text runs to the next standalone `--edit` word; an edit
-keeps the numbering, so the groups run one after another as given. A missing or non-numeric N prints the usage
+keeps the numbering, so the groups run one after another as given. When a group exits 1, stop: run no further
+groups, and reply with the receipts already printed followed by the `add_note:` line. A missing or non-numeric N prints the usage
 line and stops; run no command. The same holds for a word after the numbers of `--remove` that is not a
 number, for an `--edit N` group with no text, for `--standing` and `--goal` with no text, and for `--goal-todo`
 without both an id and one of `retired`, `committed`, `developer`.
@@ -104,9 +105,10 @@ current work. When such a note bears on the note being stored or on the work the
 the developer whether it still applies before acting on it or setting it aside; never drop it silently. The
 question goes in the reply (see Reply), and the work waits for the answer.
 
-Exit 1 prints `add_note: <reason>`: for a too-long note, shorten it and rerun the same command, with the same
-flags, `--standing` included; for a full file, relay the message and stop. For `no note N` or an unreadable
-file, relay the message without a retry; for an unreadable file, add one line naming `--clear`.
+Exit 1 prints `add_note: <reason>`: for a too-long note or goal, shorten it and rerun the same command, with the
+same flags, `--standing` included; for a full file, relay the message and stop. For `no note N`,
+`no catalog item <id>`, `goal --todo needs todo.folder ...` or an unreadable file, relay the message without a
+retry; for an unreadable file, add one line naming `--clear`.
 
 ## Writing the goal
 
@@ -143,8 +145,8 @@ detached HEAD, has none.
 When no command ran (an unknown flag, a missing or bad N, no text), the reply is the `unknown flag: <word>`
 line when one applies, then the usage line, and nothing else.
 
-On exit 1 (after the one retry for a too-long note), the `add_note:` line verbatim. For a full file, add one line after it naming the
-skill forms that free a slot: `--remove N` and `--clear`.
+On exit 1 (after the one retry for a too-long note or goal), the `add_note:` line verbatim. For a full file, add one line after it naming the
+skill forms that free a slot: `--remove N [N ...]` and `--clear`.
 
 When a note marked `[<branch>; now on <current>]` bears on the note just stored or on the work asked for next,
 add one line after the script's output that quotes that note and asks the developer whether it still applies on
