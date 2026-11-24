@@ -83,7 +83,7 @@ fold [done] | developer_notes_1 (developer) | 2 folded, 0 dropped | ids: I6, M9
 
 | id | severity  | file                                                      |
 |----|-----------|-----------------------------------------------------------|
-| I6 | important | plugins/harness/skills/add-bookmark/commands/add_note.py  |
+| I6 | important | plugins/harness/skills/bookmark/commands/add_note.py      |
 | M9 | minor     | README.md                                                 |
 ```
 

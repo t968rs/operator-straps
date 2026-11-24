@@ -4,8 +4,9 @@ A compaction bookmark kept in session state instead of a file. It stands in for 
 and `SessionStart` compact|resume hooks that write a bookmark file and read it back after compaction.
 
 Nothing in it is specific to one repository: it reads git state, the conversation and the project's notes
-file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's add-bookmark skill; the rest
-depends on no other plugin.
+file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's bookmark skill, and the
+session hook switch is written only by the harness plugin's bookmark or add-todo skills; the rest depends on
+no other plugin.
 
 ## What it does
 
@@ -17,14 +18,14 @@ depends on no other plugin.
 - The same bookmark is appended to the compacted conversation as its last message, opening with
   `POST-COMPACT BOOKMARK (session-bookmark)`. The model reads it on the next request, so a mid-turn
   auto-compaction is covered too, and a resumed transcript already holds it.
-- Notes added with the `harness:add-bookmark` skill print in a `## Session Notes` section, after the last
+- Notes added with the `harness:bookmark` skill print in a `## Session Notes` section, after the last
   user messages and before the `/compact` instructions. They are read at each compaction from
   `<state_dir>/session-bookmark/notes.json` under the git top level of the session cwd, else of
   `CLAUDE_PROJECT_DIR`; when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds
   a notes file is read. `state_dir` comes from `.claude/harness.json` (default
   `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
   other-version file means no notes section; a note stays until it is removed or cleared with
-  `/harness:add-bookmark`.
+  `/harness:bookmark`.
 - Each note prints as the skill's `--list` does: a standing note as its text alone, a note added on the
   bookmark's branch as `[<branch>] <text>`, and a note added on another branch as
   `[<branch>; now on <current>] <text>`. When any note carries the `now on` marker, one hint line under
@@ -47,12 +48,59 @@ depends on no other plugin.
   slash-command line (`/compact`, `/clear`, `/session-bookmark`) never carries it, and the bookmark stays owed
   until a prompt enters with it: a dropped prompt leaves it for the next one. `/clear` and a resume forget it.
 
+## Session hook (optional goal)
+
+A goal, free text or a TODO item, can be made the session's goal. Three harness-plugin routes write the hook
+switch, `<state_dir>/session-bookmark/hook.json`:
+
+- `harness:bookmark --goal <condition>` (`add_note.py goal`): a free-text goal; the switch's `todo_id` is
+  null and it carries only `goal`, `start_time` and `todo_id`.
+- `harness:bookmark --goal-todo <id> <closing>` (`add_note.py goal --todo <id> --closed-by <closing>`): an
+  item already in the catalog.
+- `harness:add-todo --hook <closing>`: marks the run, and once the inbox drain lands the item,
+  `add_todo.py hook --todo <id> --closed-by <closing>` arms it.
+
+A switch for an item:
+
+```json
+{"version": 1, "hook": {"closed_by": "retired", "desc": "<item title>", "start_time": 1763600000.5,
+ "todo_id": "todo-af2e", "goal": "TODO todo-af2e (<item title>) is retired from the TODO catalog ..."},
+ "session_id": "<arming session id>", "fired": null}
+```
+
+- The writers record the arming session's `CLAUDE_CODE_SESSION_ID` as `session_id`; the mod fires the switch
+  only in the session whose `$.session.id()` matches (the transcript name, the same value). A switch with a
+  null or absent `session_id` (written outside a session) fires in any session. Another
+  session's switch stays armed and untouched, so a session started after `/clear` or one that cannot read its
+  id never fires it; re-arm the goal there.
+
+- At the end of each main-loop turn (`turn.complete`, no `agentId`), `hooks/session_hook.ts` reads the switch
+  under the git top level of the session cwd, else of `CLAUDE_PROJECT_DIR` (the root the harness writers
+  use); when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds a switch is
+  read. While `fired` is null it queues `/goal <goal>` through
+  `$.command.run` (the command runs once the session is idle), then stamps `fired: { at }`, so a switch sets
+  its goal once. `/goal` is the engine's session-scoped Stop hook: its evaluator keeps the session working until
+  the condition holds; `/goal clear` ends it, `add_note.py goal --clear` or `add_todo.py hook --clear` removes
+  the switch.
+- Closings, each one the agent meets by itself, since `/goal` re-checks at every stop and a condition that
+  waits on the developer loops the session: `retired` (the item is retired from the catalog), `committed`
+  (tests passed and the commit message is drafted), `developer` (tests passed and a reply hands the item to the
+  developer with the files changed and what is left).
+- A refused `/goal` (an unknown command, past a Stop, a host limit) leaves the switch armed and shows one toast;
+  the switch is tried once per mod load, so the next load retries it. When `/goal` is set but the `fired`
+  stamp cannot be written, a different toast says the goal was set and the switch is still armed: the next
+  load would set it again, so `/harness:bookmark --goal-clear` removes it. A switch re-armed or cleared while
+  `/goal` was queued is left as it is, not stamped.
+- Fallback, should `/goal` be unavailable where the mod runs: a temporary `Stop` hook in
+  `.claude/settings.local.json` that the file watcher loads and drops without a restart (issue #282's gate).
+  The mod does not write it; a live session confirmed `/goal` runs from `$.command.run`.
+
 ## Command
 
 | Name | Does |
 |------|------|
 | `/session-bookmark` | Prints the bookmark held in this session's state, or says none is held. `$.state` is promised to survive a reload, not a resume, so a resumed session can answer none while its transcript still carries a bookmark message. |
-| `/session-bookmark notes` | Reads the notes file live (no compaction needed) and prints every stored note (no 20-note cut, so a hand-edited file holding more still numbers as the script does) with the same numbering and branch markers as `/harness:add-bookmark --list`, the hint line first when a note is from another branch, or `no notes`. A file the script would refuse (not JSON, no notes list, another version) answers `notes file unreadable; /harness:add-bookmark --clear resets it`; the compaction bookmark still prints no notes section for it. Answers with text and no model turn. Any other argument prints `usage: /session-bookmark [notes]`. |
+| `/session-bookmark notes` | Reads the notes file live (no compaction needed) and prints every stored note (no 20-note cut, so a hand-edited file holding more still numbers as the script does) with the same numbering and branch markers as `/harness:bookmark --list`, the hint line first when a note is from another branch, or `no notes`. A file the script would refuse (not JSON, no notes list, another version) answers `notes file unreadable; /harness:bookmark --clear resets it`; the compaction bookmark still prints no notes section for it. Answers with text and no model turn. Any other argument prints `usage: /session-bookmark [notes]`. |
 
 ## Hooks
 
@@ -63,6 +111,7 @@ depends on no other plugin.
 | `session.append` (door `compaction`, main loop) | Marks the bookmark owed when this mod's `session.compact` hook appended none since the last such row or prompt (the fallback in What it does). |
 | `prompt.submit` | Clears the appended mark; a prompt entered while a bookmark is owed carries it as context (trigger `detected`). A slash-command line never carries it. |
 | `session.end` | After `/clear` or a resume, forgets the appended and owed marks. |
+| `turn.complete` (main loop, no `agentId`) | While the hook switch is armed, not fired and armed by this session (or by none), queues `/goal <goal>` through `$.command.run` and stamps `fired` (Session hook). |
 | `command.run` on `session-bookmark` | Answers `/session-bookmark` and `/session-bookmark notes` (Command). |
 
 ## State
@@ -83,6 +132,8 @@ depends on no other plugin.
   when fewer than three prompts followed it.
 - The notes file is per project folder, not per session: two sessions in one repository share their notes, and
   a note nobody clears reaches the next session's bookmark. A linked worktree reads its own file.
+- The hook switch is one file per checkout: arming a goal in one session replaces any switch another session
+  armed there and has not fired yet.
 - A session without this mod loaded gets no bookmark at all. Where the mod is enabled in project
   settings, a folder whose workspace trust was never accepted, including a `claude -p` run there,
   ignores those settings and compacts with no bookmark.

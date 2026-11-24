@@ -139,21 +139,11 @@ def freeze_set(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
     """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/``.
 
     ``snapshot`` leaves interpreter bytecode under the tests folder out of the ignored set, and the lock gate
-    and ``check``'s drift lines skip the bytecode digests an older entry still holds (``kept_ignored``).
+    and ``check``'s drift lines skip the bytecode digests an older entry still holds
+    (``freeze_ledger.kept_ignored``).
     """
     tests = plan_file.parent / plan.plan_id / "tests"
     return [rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
-
-
-def _bytecode(path: str) -> bool:
-    """True for interpreter bytecode: a file inside a ``__pycache__`` folder or ending in ``.pyc``."""
-    return "__pycache__" in path.split("/") or path.endswith(".pyc")
-
-
-def kept_ignored(ignored: Dict[str, str]) -> Dict[str, str]:
-    """``ignored`` without bytecode paths, so an entry written before ``snapshot`` dropped them compares
-    only the ignored files a current freeze records."""
-    return {path: digest for path, digest in ignored.items() if not _bytecode(path)}
 
 
 def snapshot(repo: Path, paths: Sequence[str]) -> Tuple[str, Dict[str, str], Dict[str, str]]:
@@ -167,7 +157,7 @@ def snapshot(repo: Path, paths: Sequence[str]) -> Tuple[str, Dict[str, str], Dic
         _, ignored = fg.members(repo, paths)
     except fg.FreezeGitError as exc:
         raise pd.PlanError([str(exc)]) from None
-    return tree, files, fg.ignored_digests(repo, [path for path in ignored if not _bytecode(path)])
+    return tree, files, fg.ignored_digests(repo, [path for path in ignored if not fl.is_bytecode(path)])
 
 
 def worktree_blobs(repo: Path, paths: Sequence[str]) -> Dict[str, str]:
@@ -439,7 +429,7 @@ def _file_problems(repo: Path, last: LedgerEntry) -> List[str]:
             problems.append(f"{path}: not committed at HEAD as frozen; commit the freeze first")
         elif work.get(path) != blob:
             problems.append(f"{path}: the working tree differs from the freeze")
-    ignored = kept_ignored(last.ignored)
+    ignored = fl.kept_ignored(last.ignored)
     current = fg.ignored_digests(repo, sorted(ignored))
     problems += [f"{path}: ignored file differs from the freeze" for path, digest in
                  sorted(ignored.items()) if current.get(path) != digest]
@@ -652,13 +642,6 @@ def _base_lines(repo: Path, plan: pm.ActionPlan, stem: str, scenario: bool,
     return lines
 
 
-def _adder(repo: Path, path: str) -> Optional[str]:
-    done = git(repo, "--literal-pathspecs", "log", "--diff-filter=A", "--reverse", "--format=%H", "HEAD",
-               "--", path)
-    found = done.stdout.split() if done.returncode == 0 else []
-    return found[0] if found else None
-
-
 def _entry_lines(repo: Path, plan_file: Path, stem: str, entry: LedgerEntry,
                  held: Optional[Set[str]] = None, folded: Optional[Set[str]] = None) -> List[str]:
     """``untagged:`` for a non-history entry's tree, unless a tree tag holds it or it is in ``held`` (the
@@ -671,7 +654,7 @@ def _entry_lines(repo: Path, plan_file: Path, stem: str, entry: LedgerEntry,
     if entry.tree and _peel(repo, tree_tag(stem, entry.kind.value, entry.seq)) != entry.tree \
             and entry.tree not in (held or ()):
         lines.append(f"untagged: {entry.tree[:7]} ({role} tree)")
-    adder = _adder(repo, rel(repo, folder_of(plan_file, stem) / fl.entry_name(entry)))
+    adder = fg.adder(repo, rel(repo, folder_of(plan_file, stem) / fl.entry_name(entry)))
     tagged = git(repo, "tag", "--list", f"{_entry_stem(stem, entry)}-commit*").stdout.split()
     if adder and not tagged and not commit_folded(_entry_stem(stem, entry), folded or set()):
         lines.append(f"untagged: {adder[:7]} ({role} commit)")
@@ -708,7 +691,7 @@ def _drift_lines(repo: Path, plan_file: Path, stem: str, found: Sequence[LedgerE
     files = {p: b for p, b in held.files.items() if p != own or lock.records == RecordScheme.receipts.value}
     work = worktree_blobs(repo, sorted(files))
     paths = [p for p, blob in sorted(files.items()) if work.get(p) != blob]
-    ignored = kept_ignored(held.ignored)
+    ignored = fl.kept_ignored(held.ignored)
     current = fg.ignored_digests(repo, sorted(ignored))
     paths += [p for p, digest in sorted(ignored.items()) if p in current and current[p] != digest]
     if not paths:

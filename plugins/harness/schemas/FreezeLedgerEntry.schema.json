@@ -9,7 +9,8 @@
         "unlock",
         "arm",
         "reopen",
-        "relink"
+        "relink",
+        "rename"
       ],
       "title": "EntryKind",
       "type": "string"
@@ -25,6 +26,23 @@
     }
   },
   "additionalProperties": false,
+  "else": {
+    "properties": {
+      "from_name": {
+        "type": "null"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "kind": {
+        "const": "rename"
+      }
+    },
+    "required": [
+      "kind"
+    ]
+  },
   "properties": {
     "kind": {
       "$ref": "#/$defs/EntryKind"
@@ -195,6 +213,20 @@
       ],
       "default": null,
       "title": "Match"
+    },
+    "from_name": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "A rename entry's earlier subject name.",
+      "title": "From Name"
     }
   },
   "required": [
@@ -203,6 +235,16 @@
     "seq",
     "at"
   ],
+  "then": {
+    "properties": {
+      "from_name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "from_name"
+    ]
+  },
   "title": "LedgerEntry",
   "type": "object"
 }

@@ -1,4 +1,4 @@
-"""Fixtures and helpers shared by ``test_strap_lock.py`` and ``test_strap_relink_lock.py``.
+"""Helpers shared by ``test_strap_lock.py``, ``test_strap_relink_lock.py`` and ``test_strap_rename.py``.
 
 The ``driver`` fixture loads ``strap.py``, ``strap`` runs it in-process through ``main`` with ``--repo``,
 ``prepared`` builds a new-mode spec whose mechanical B1 is red, implemented and committed, and ``frozen``

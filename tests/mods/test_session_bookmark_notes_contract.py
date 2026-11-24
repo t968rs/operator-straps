@@ -1,6 +1,6 @@
-"""Pin the notes file the harness add-bookmark script writes to the names the session-bookmark mod reads.
+"""Pin the notes file the harness bookmark script writes to the names the session-bookmark mod reads.
 
-The script (``plugins/harness/skills/add-bookmark/commands/add_note.py``) writes
+The script (``plugins/harness/skills/bookmark/commands/add_note.py``) writes
 ``<state_dir>/session-bookmark/notes.json``; the mod (``plugins/session-bookmark/hooks/notes.ts``) reads it at
 every compaction and for ``/session-bookmark notes``. An installed mod cannot import the harness plugin, so
 ``notes.ts`` copies the file's path, version, limits, the branch key and the other-branch mark, the default
@@ -22,7 +22,7 @@ from mods._mods_helpers import ts_number, ts_string
 _NOTES_TS_REL = "plugins/session-bookmark/hooks/notes.ts"
 _BOOKMARK_TS_REL = "plugins/session-bookmark/hooks/bookmark.ts"
 _MOD_README_REL = "plugins/session-bookmark/README.md"
-_SCRIPT_REL = "plugins/harness/skills/add-bookmark/commands/add_note.py"
+_SCRIPT_REL = "plugins/harness/skills/bookmark/commands/add_note.py"
 _DEFAULTS_REL = "plugins/harness/config/defaults.json"
 
 

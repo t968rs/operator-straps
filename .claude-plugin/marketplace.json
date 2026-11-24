@@ -33,7 +33,7 @@
     {
       "name": "session-bookmark",
       "source": "./plugins/session-bookmark",
-      "description": "Compaction bookmark: git state, last prompts, session notes and /compact instructions kept in session state and appended to the compacted conversation",
+      "description": "Compaction bookmark: git state, last prompts, session notes and /compact instructions kept in session state and appended to the compacted conversation, and an optional /goal hook switch",
       "category": "productivity",
       "keywords": ["mod", "compaction", "context"]
     },

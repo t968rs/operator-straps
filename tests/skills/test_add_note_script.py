@@ -1,20 +1,29 @@
-"""Behavioral tests for the harness add-bookmark command ``commands/add_note.py``.
+"""Behavioral tests for the harness bookmark command ``commands/add_note.py``.
 
 The script keeps the session notes the session-bookmark mod prints in its bookmark. Each test runs it against
 a throwaway project built by ``make_project`` (a git repository on branch ``main``) and reads the notes file
-the mod reads. A note records the branch it was added on, unless it is standing; ``remove`` and ``edit``
-change one note by its listed number.
+the mod reads. A note records the branch it was added on, unless it is standing; ``remove`` takes one or
+more listed numbers and ``edit`` changes one note by its listed number. ``goal`` arms the session-bookmark
+hook switch from free text or a catalog item (``--todo`` with ``--closed-by``); ``goal --clear`` removes
+it.
 """
 from __future__ import annotations
 
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Dict, List
 
 import pytest
+
+from harness_lib import add_todo_api
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from _todo_helpers import CATALOG_REL, config, todo_files  # noqa: E402
 
 WALK_ROOTS = ()  # walks only the notes folder of a make_project repo
 _NOTES_REL = ".claude/state/harness/session-bookmark/notes.json"
@@ -22,7 +31,7 @@ _NOTES_REL = ".claude/state/harness/session-bookmark/notes.json"
 
 @pytest.fixture(scope="module")
 def script(plugin_root: Path) -> ModuleType:
-    path = plugin_root / "skills" / "add-bookmark" / "commands" / "add_note.py"
+    path = plugin_root / "skills" / "bookmark" / "commands" / "add_note.py"
     assert path.exists(), f"missing {path}"
     spec = importlib.util.spec_from_file_location("add_note", path)
     assert spec is not None and spec.loader is not None
@@ -330,3 +339,128 @@ def test_remove_and_edit_refuse_a_malformed_file(script, make_project, capsys) -
     assert _run(script, project, "edit", "1", "x") == 1
     assert (project / _NOTES_REL).read_text(encoding="utf-8") == "{not json"
     assert "clear" in capsys.readouterr().err
+
+
+_HOOK_REL = f".claude/state/harness/{add_todo_api.HOOK_REL}"
+
+
+def _switch(project: Path) -> Dict[str, object]:
+    return json.loads((project / _HOOK_REL).read_text(encoding="utf-8"))
+
+
+def _todo_project(make_project) -> Path:
+    return make_project(config(), files=todo_files())
+
+
+def _first_id(project: Path) -> str:
+    return json.loads((project / CATALOG_REL).read_text(encoding="utf-8"))["items"][0]["id"]
+
+
+def test_goal_arms_the_switch_with_the_text(script, make_project, capsys) -> None:
+    project = make_project(config={})
+    assert _run(script, project, "goal", "--", "the", "tests", "in", "test_x.py", "pass") == 0
+    stored = _switch(project)
+    assert stored["version"] == add_todo_api.HOOK_VERSION and stored["fired"] is None
+    assert stored["hook"]["goal"] == "the tests in test_x.py pass"
+    assert stored["hook"]["todo_id"] is None and isinstance(stored["hook"]["start_time"], float)
+    assert capsys.readouterr().out.strip() == "goal armed: the tests in test_x.py pass"
+
+
+def test_goal_refuses_blank_and_too_long_text(script, make_project, capsys) -> None:
+    project = make_project(config={})
+    assert _run(script, project, "goal", "--", "  ") == 1
+    assert "blank" in capsys.readouterr().err
+    assert _run(script, project, "goal", "--", "x" * (script.MAX_GOAL_CHARS + 1)) == 1
+    assert str(script.MAX_GOAL_CHARS) in capsys.readouterr().err
+    assert not (project / _HOOK_REL).exists()
+
+
+def test_goal_for_a_todo_item_names_the_item_and_its_closing(script, make_project, capsys) -> None:
+    project = _todo_project(make_project)
+    todo_id = _first_id(project)
+    assert _run(script, project, "goal", "--todo", todo_id, "--closed-by", "developer") == 0
+    stored = _switch(project)
+    assert stored["hook"]["todo_id"] == todo_id and stored["hook"]["closed_by"] == "developer"
+    assert stored["hook"]["goal"].startswith(f"TODO {todo_id} (")
+    assert capsys.readouterr().out.startswith(f"goal armed for {todo_id} (developer): TODO {todo_id}")
+
+
+def test_goal_for_a_todo_item_needs_a_known_id_and_a_closing(script, make_project, capsys) -> None:
+    project = _todo_project(make_project)
+    assert _run(script, project, "goal", "--todo", "todo-zzzz", "--closed-by", "retired") == 1
+    assert "no catalog item todo-zzzz" in capsys.readouterr().err
+    assert _run(script, project, "goal", "--todo", _first_id(project)) == 1
+    assert "--closed-by" in capsys.readouterr().err
+    assert not (project / _HOOK_REL).exists()
+
+
+def test_goal_for_a_todo_item_needs_a_todo_folder(script, make_project, capsys) -> None:
+    assert _run(script, make_project(config={}), "goal", "--todo", "todo-af2e", "--closed-by", "retired") == 1
+    assert "todo.folder" in capsys.readouterr().err
+
+
+def test_goal_takes_text_or_a_todo_item_not_both(script, make_project, capsys) -> None:
+    project = _todo_project(make_project)
+    args = ("goal", "--todo", _first_id(project), "--closed-by", "retired", "--", "x")
+    assert _run(script, project, *args) == 1
+    assert "not both" in capsys.readouterr().err
+
+
+def test_goal_clear_removes_the_switch(script, make_project, capsys) -> None:
+    project = make_project(config={})
+    _run(script, project, "goal", "--", "ship it")
+    capsys.readouterr()
+    assert _run(script, project, "goal", "--clear") == 0
+    assert _run(script, project, "goal", "--clear") == 0
+    assert capsys.readouterr().out.splitlines() == ["goal: cleared", "goal: none"]
+    assert not (project / _HOOK_REL).exists()
+
+
+def test_goal_clear_refuses_text_or_a_closing(script, make_project, capsys) -> None:
+    project = make_project(config={})
+    _run(script, project, "goal", "--", "ship it")
+    capsys.readouterr()
+    assert _run(script, project, "goal", "--clear", "--", "some", "text") == 1
+    assert _run(script, project, "goal", "--clear", "--closed-by", "retired") == 1
+    assert "--clear" in capsys.readouterr().err
+    assert _switch(project)["hook"]["goal"] == "ship it"
+
+
+def test_goal_records_the_arming_session(script, make_project, monkeypatch) -> None:
+    project = _todo_project(make_project)
+    monkeypatch.setenv(add_todo_api.SESSION_ENV, "sess-1")
+    assert _run(script, project, "goal", "--", "ship it") == 0
+    assert _switch(project)[add_todo_api.SESSION_KEY] == "sess-1"
+    assert _run(script, project, "goal", "--todo", _first_id(project), "--closed-by", "retired") == 0
+    switch = _switch(project)
+    assert switch["hook"]["todo_id"] == _first_id(project)
+    assert switch[add_todo_api.SESSION_KEY] == "sess-1"
+    monkeypatch.delenv(add_todo_api.SESSION_ENV)
+    assert _run(script, project, "goal", "--", "ship it") == 0
+    assert _switch(project)[add_todo_api.SESSION_KEY] is None
+
+
+def test_a_new_goal_replaces_a_fired_switch(script, make_project) -> None:
+    project = make_project(config={})
+    _run(script, project, "goal", "--", "first")
+    fired = {**_switch(project), "fired": {"at": 1}}
+    (project / _HOOK_REL).write_text(json.dumps(fired), encoding="utf-8")
+    _run(script, project, "goal", "--", "second")
+    assert _switch(project)["fired"] is None and _switch(project)["hook"]["goal"] == "second"
+
+
+def test_remove_takes_several_numbers_from_one_listing(script, make_project, capsys) -> None:
+    text = _file(_entry("a"), _entry("b"), _entry("c"), _entry("d"))
+    project = make_project(config={}, files={_NOTES_REL: text})
+    assert _run(script, project, "remove", "3", "1", "3") == 0
+    assert [n["text"] for n in _notes(project)] == ["b", "d"]
+    assert capsys.readouterr().out.splitlines() == [
+        "removed note 1: a", "removed note 3: c", "1. b", "2. d"]
+
+
+def test_remove_of_several_with_one_out_of_range_changes_nothing(script, make_project, capsys) -> None:
+    text = _file(_entry("a"), _entry("b"))
+    project = make_project(config={}, files={_NOTES_REL: text})
+    assert _run(script, project, "remove", "1", "5") == 1
+    assert "no note 5" in capsys.readouterr().err
+    assert (project / _NOTES_REL).read_text(encoding="utf-8") == text

@@ -654,7 +654,7 @@ describe('/session-bookmark notes', () => {
     test(`a notes file holding ${name} is reported unreadable, not empty`, async ($, on) => {
       world(on, { files: { [NOTES_FILE]: text } })
       expect(await runCommand($, 'session-bookmark', NOTES_ARG)).toBe(NOTES_UNREADABLE_TEXT)
-      expect(NOTES_UNREADABLE_TEXT).toBe('notes file unreadable; /harness:add-bookmark --clear resets it')
+      expect(NOTES_UNREADABLE_TEXT).toBe('notes file unreadable; /harness:bookmark --clear resets it')
     })
   }
 

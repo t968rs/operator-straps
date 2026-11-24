@@ -1,4 +1,4 @@
-"""Guard test: the add-bookmark skill and ``add_note.py`` agree.
+"""Guard test: the bookmark skill and ``add_note.py`` agree.
 
 The skill runs in the main session, the only context that holds the facts a note refers to; the script stores
 the line it is given. Both are named in prose, so the test pins the names, the launcher and the limits they
@@ -15,9 +15,9 @@ import pytest
 
 WALK_ROOTS = ("plugins/",)
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2] / "plugins" / "harness"
-_SKILL = _PLUGIN_ROOT / "skills" / "add-bookmark" / "SKILL.md"
+_SKILL = _PLUGIN_ROOT / "skills" / "bookmark" / "SKILL.md"
 _AGENT = _PLUGIN_ROOT / "agents" / "bookmark-noter.md"
-_SCRIPT = _PLUGIN_ROOT / "skills" / "add-bookmark" / "commands" / "add_note.py"
+_SCRIPT = _PLUGIN_ROOT / "skills" / "bookmark" / "commands" / "add_note.py"
 
 
 def _text(path: Path) -> str:
@@ -44,7 +44,7 @@ def script():
 
 def test_skill_runs_in_the_main_session() -> None:
     meta = _frontmatter(_SKILL)
-    assert meta["name"] == "add-bookmark"
+    assert meta["name"] == "bookmark"
     for key in ("context", "agent"):
         assert key not in meta, f"{key} would run the note writer without the session's context"
     assert "model" not in meta, "model would hand note writing to a different model than the session's"
@@ -52,7 +52,7 @@ def test_skill_runs_in_the_main_session() -> None:
 
 def test_skill_body_names_no_agent_to_dispatch() -> None:
     body = _text(_SKILL)
-    assert re.search(r"harness:(?!add-bookmark)[a-z-]+", body) is None, "skill names another agent"
+    assert re.search(r"harness:(?!bookmark(?![a-z-]))[a-z-]+", body) is None, "skill names another agent"
     assert "subagent" not in body.lower(), "skill body mentions a subagent"
 
 
@@ -64,7 +64,9 @@ def test_no_agent_runs_the_note_writer() -> None:
 
 def test_skill_hints_every_form() -> None:
     hint = _frontmatter(_SKILL)["argument-hint"]
-    for form in ("--list", "--clear", "--remove", "--edit", "--standing"):
+    forms = ("--list", "--clear", "--remove", "--edit", "--standing", "--goal <", "--goal-todo",
+             "--goal-clear")
+    for form in forms:
         assert form in hint, f"argument-hint never names {form}"
 
 
@@ -75,8 +77,22 @@ def test_skill_passes_the_arguments_through() -> None:
 def test_skill_runs_the_script_through_the_launcher_with_each_subcommand() -> None:
     body = _text(_SKILL)
     assert 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/add_note.py"' in body
-    for subcommand in ("add", "add --standing", "list", "remove", "edit", "clear"):
+    for subcommand in ("add", "add --standing", "list", "remove", "edit", "clear", "goal -- '", "goal --todo",
+                       "goal --clear"):
         assert f"NOTE {subcommand}" in body, f"skill never runs NOTE {subcommand}"
+
+
+def test_skill_states_the_goal_limit_and_the_meetable_rule(script) -> None:
+    body = _text(_SKILL)
+    assert re.search(rf"at most {script.MAX_GOAL_CHARS} characters", body), "goal length"
+    assert "/goal clear" in body, "no way out of a goal already set"
+    assert "never waits on the developer" in body.lower(), "no rule that the agent can meet the goal itself"
+
+
+def test_skill_stops_on_an_unknown_leading_flag() -> None:
+    body = _text(_SKILL)
+    assert "| any other word that begins with `--` |" in body, "an unknown flag falls through to a stored note"
+    assert "unknown flag: <word>" in body, "no line naming the unknown flag"
 
 
 def test_skill_names_the_turn_free_notes_view() -> None:

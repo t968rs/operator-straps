@@ -69,7 +69,7 @@ These load on their own triggers (or as `/harness:<name>`) and need no configura
 | Banner Line             | Banner-Visible    | `band-line`        | An `oStraps:` band above the prompt with git state, model and context window, plus the working-refs line as a second band line when that mod is installed. | • Depends on `git-status` (its `plugin.json` `dependencies`) and draws nothing without its snapshot.<br>• Clears `git-status`'s own status line while it draws. |
 | Branch Working Refs     | Banner-Visible    | `working-refs`     | The current branch's plans (each a link to its PIP page), TODO ids and issues as one line, then every other branch's override as `[ <branch> <refs> ]`, for the ccstatusline widget (`line.json` under `state_dir`) and band-line. | • A plan shows when its `branch` is the current one or its `base_commit` is the branch's merge base with its `base_branch`, until an `archive/` tag exists.<br>• `/harness:working` overrides the refs per branch; an override's retired TODO id (the checked-out catalog) or closed issue hides; plan refs never hide; reads `git-status`'s snapshot, and every hook fails open. |
 | Enforce Python Test env | Automatic         | `pytest-scope`     | Rewrites bare `pytest` to your chosen interpreter and rejects runs with no explicit test file or node ID.                                                                                            | • Rewrites recognized pytest commands only when `python` is set.<br>• Rejects broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override.                                                                                                                                                                                           |
-| Post-Compaction Context | Automatic         | `session-bookmark` | Git state, recent prompts and your session notes, kept through compaction.                                                                                                                           | • Hooks capture git state, the last three prompts, stored notes and `/compact` instructions.<br>• The bookmark is appended to the compacted transcript and kept in session state.<br>• The session writes each note, resolving a reference such as "the current status" into the facts it stands for; a script stores it (20 notes, 300 characters each). |
+| Post-Compaction Context | Automatic         | `session-bookmark` | Git state, recent prompts and your session notes, kept through compaction, plus an optional `/goal` hook switch.                                                                                                                           | • Hooks capture git state, the last three prompts, stored notes and `/compact` instructions.<br>• The bookmark is appended to the compacted transcript and kept in session state.<br>• The session writes each note, resolving a reference such as "the current status" into the facts it stands for; a script stores it (20 notes, 300 characters each). |
 | Parallel Lane Status    | Banner-Visible    | `parallel2-lanes`  | A `parallel2` lane's `Agent` spawn starts with its brief in the prompt, the plan's model and its worktree as working directory; a band lists each run's lanes with their status and agent phase. | • Reads the run state `parallel2.py` writes; needs no config key.<br>• A call naming another model is rewritten to the plan's, with a toast; anything unreadable passes the spawn through unchanged.                                                                                                                                                                              |
 | Bubble Memo Stamps      | Automatic + Toast | `bubble-stamp`     | Stamps each decision in the review JSON (`RESOLVED`, `CLOSED_NO_ACTION`, `REFUTED`) into the memo's index and entry; a toast names the ids.                                                          | • Active only in projects with `.claude/harness.json`.<br>• Runs on session start, `pr_review.py` and `review_edit.py` calls, review JSON edits and turn end; a rerun changes nothing, and every hook fails open.                                                                                                                                         |
 
@@ -178,7 +178,7 @@ After configuring your project below, open Claude Code in that repository and in
 /harness:d-w HEAD
 /harness:a-w my-branch --committed
 /harness:a-w HEAD
-/harness:add-bookmark keep the public API frozen until PR 60 merges
+/harness:bookmark keep the public API frozen until PR 60 merges
 ```
 
 Replace `123` with your PR number. `pr-review` runs the full review-and-fix workflow; `/harness:pr-review 123 -a`
@@ -195,28 +195,31 @@ A plugin bumps its patch for fixes and docs and its minor for new features or co
 bump can also carry a break, which the release's Breaking changes section names. `claude plugin update
 <name>@operator-straps` picks up a new version.
 
-### add-bookmark
+### bookmark
 
-`/harness:add-bookmark` stores notes that survive compaction. The session-bookmark mod prints them above the
+`/harness:bookmark` stores notes that survive compaction. The session-bookmark mod prints them above the
 `/compact` instructions, so a constraint or reminder stays visible after the summary.
 
 ```text
-/harness:add-bookmark keep the public API frozen until PR 60 merges
-/harness:add-bookmark --standing run the tests through pytest -c pyproject.toml
-/harness:add-bookmark --list
-/harness:add-bookmark --edit 2 keep the public API frozen until PR 61 merges
-/harness:add-bookmark --remove 2
-/harness:add-bookmark --clear
+/harness:bookmark keep the public API frozen until PR 60 merges
+/harness:bookmark --standing run the tests through pytest -c pyproject.toml
+/harness:bookmark --list
+/harness:bookmark --edit 2 keep the public API frozen until PR 61 merges
+/harness:bookmark --remove 2
+/harness:bookmark --clear
 ```
 
 | Form                                         | Effect                                                              |
 |----------------------------------------------|---------------------------------------------------------------------|
-| `/harness:add-bookmark [--] <note text>`     | Store one note on the current branch (a leading `--` is optional)   |
-| `/harness:add-bookmark --standing <text>`    | Store one note with no branch; it applies on every branch           |
-| `/harness:add-bookmark --list`               | Print the stored notes, numbered                                    |
-| `/harness:add-bookmark --remove N`           | Drop note N of the `--list` numbering and print the list            |
-| `/harness:add-bookmark --edit N <text>`      | Replace the text of note N, keeping its branch, and print the list  |
-| `/harness:add-bookmark --clear`              | Drop every stored note                                              |
+| `/harness:bookmark [--] <note text>`         | Store one note on the current branch (a leading `--` is optional)   |
+| `/harness:bookmark --standing <text>`        | Store one note with no branch; it applies on every branch           |
+| `/harness:bookmark --list`                   | Print the stored notes, numbered                                    |
+| `/harness:bookmark --remove N [N ...]`       | Drop each note N of the `--list` numbering, in one call, and print the list |
+| `/harness:bookmark --edit N <text> [--edit M <text> ...]` | Replace the text of note N (and of M, ...), keeping each branch, and print the list |
+| `/harness:bookmark --clear`                  | Drop every stored note                                              |
+| `/harness:bookmark --goal <condition>`       | Arm a session goal from the text; the mod runs `/goal <condition>` when the turn ends |
+| `/harness:bookmark --goal-todo <id> <retired\|committed\|developer>` | Arm the goal of TODO item `<id>`, closed by the given closing clause |
+| `/harness:bookmark --goal-clear`             | Remove an armed goal before it fires                                |
 | `/session-bookmark notes`                    | Print the same numbered list through the mod, with no model turn    |
 
 - The session that runs the command writes the stored line, so a note that points at the conversation
@@ -232,7 +235,11 @@ bump can also carry a break, which the release's Breaking changes section names.
   folder like the other runtime state.
 - The file is versioned (`"version": 1`). A file that is not JSON or has another version is refused, not
   overwritten; `--clear` resets it.
-- What the bookmark prints and how the mod reads the notes: `plugins/session-bookmark/README.md`.
+- `--goal <condition>` (500 characters at most) and `--goal-todo <id> <closing>` arm the session goal through
+  `session-bookmark/hook.json` under `state_dir`; the switch records the arming session, so only that session
+  fires it, and `--goal-clear` removes it.
+- What the bookmark prints and how the mod reads the notes: `plugins/session-bookmark/README.md`, including its
+  Session hook section.
 
 ### working
 
@@ -269,7 +276,7 @@ arguments:
 - Split rule and limits: `plugins/harness/reference/skill_arguments.md`. Text before the token is the skill's own
   arguments, text after it is guidance. Guidance never reaches a command line and never waives a skill rule, a
   harness rule or the project's CLAUDE.md.
-- Skills whose whole argument is free text (`c-msg`, `check-runlogs`, `add-bookmark`) take a leading `--` as
+- Skills whose whole argument is free text (`c-msg`, `check-runlogs`, `bookmark`) take a leading `--` as
   optional. `fold-in-review` looks for the token on the last line only, since pasted output holds `--` lines.
 - `pr-review` forwards guidance to every reviewer and fixer prompt (under `-a`, through the Workflow's
   `args.guidance` to every reviewer and refuter prompt), `pr-team` to each reviewer prompt file,
@@ -597,7 +604,7 @@ one. `todo_sync.py keywords [--dry-run]` is the one-time keyword fill for an exi
 without a keyword its confident guess, right after the item's `title`, and leaves an item with no confident
 guess without one.
 
-`/harness:add-todo [--issue] [-r|--research 0-3] -- <note>` turns a note typed in the prompt into one catalog
+`/harness:add-todo [--issue] [-r|--research 0-3] [--hook retired|committed|developer] -- <note>` turns a note typed in the prompt into one catalog
 item. The main session runs `add_todo.py row`, which picks the agent's model from the research level, and
 dispatches the `todo-editor` agent with the note verbatim and a `Context:` line of what the conversation already
 established (files, ids, findings), so the note can stay short. The level sets how far the agent reads before it
@@ -614,6 +621,7 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 [todo-editor]   todo_sync.py suggest-keyword  guess the item's keyword
 [todo-editor]   todo_sync.py inbox put        queue as a note (or with --file-issue); refuses an item without a keyword
 [main session]  todo_sync.py add --inbox      insert, score, rank, recount, then render and check
+[main session]  add_todo.py hook --todo <id> --closed-by <C>   arm the goal (only with --hook)
 ```
 
 ### Configuration keys
@@ -622,7 +630,7 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 |--------------------------------|-------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `base_branch`                  | `origin/HEAD`, else `main`                                                                      | merge bases, `d-w`, `agent-watcher`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `integration_branches`         | base branch + `main`                                                                            | `d-w` (fetch-and-cut targets)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `state_dir`                    | `.claude/state/harness`                                                                         | Phase 5 sentinels, `pr-team` runtime, `session-bookmark/notes.json`, `parallel2/` runs, `working-refs/` (the `/harness:working` overrides, the working-refs line files `line.txt` and `line.json`, and its gh issue cache `issues.json`), `todo-sync/` (the untracked rows and the open-issue list `open_issues.json`) (gitignore it)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `state_dir`                    | `.claude/state/harness`                                                                         | Phase 5 sentinels, `pr-team` runtime, `session-bookmark/notes.json`, `session-bookmark/hook.json`, `parallel2/` runs, `working-refs/` (the `/harness:working` overrides, the working-refs line files `line.txt` and `line.json`, and its gh issue cache `issues.json`), `todo-sync/` (the untracked rows and the open-issue list `open_issues.json`) (gitignore it)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `scratch_folder`               | `docs/_scratch/`                                                                                | the TODO inbox (`<scratch_folder>/todo-inbox/`) that the `todo-editor` agent's `add`, `sync` and `update` runs write and `todo_sync.py add --inbox` drains; independent of `artifacts.scratch`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `matrix_path`                  | `docs/_harness/pr_review_invocation_test_matrix.jsonl`                                          | `agent-watcher` matrix rows for pr-review / pr-team runs (repo data) |
 | `schemas_dir`                  | `.claude/agent-schemas`                                                                         | pinned project copies of the review schemas; anything missing falls back to the plugin's `schemas/` |

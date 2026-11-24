@@ -51,12 +51,20 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
 ``relink <name> [--to REF]``
     After a rewrite, re-point a ``base`` no longer on HEAD's history at its patch-id match (or REF), write a
     ``relink`` entry and tag the new base.
+``rename <name> <new-name>``
+    After the skill folder moved to ``<new-name>`` (frontmatter included), move a frozen, unlocked spec's
+    folder and ledger folder to the new name, re-point the parts under the old skill folder or at a path
+    made from the old name (contract test, models, api, driver), with their planned test copies and path
+    check targets, replace the old name as a whole word in behavior statements and scenario text (path check
+    targets and recorded replies stay), print one ``swapped:`` line per rewritten field for review, write a
+    ``rename`` entry naming the old one and tag the base under the new stem. The parts' hash changes, so
+    the greens run again before ``freeze --refreeze``. Entries before the rename keep their old-stem tags.
 ``api <name>``
     Run stdin code with the public names of ``harness_lib.strap_api`` and ``name`` bound.
 
 Tags are local: each command that creates one prints ``tag: <name> -> <sha7>`` and a ``push:`` line. Only
-``check`` and the ledger writers (``new --edit``, ``freeze``, ``reopen``, ``lock``, ``relink``) reconcile the
-ledger's commit tags; the other commands leave them to the next of those. Inside a scenario tree
+``check`` and the ledger writers (``new --edit``, ``freeze``, ``reopen``, ``lock``, ``relink``, ``rename``)
+reconcile the ledger's commit tags; the other commands leave them to the next of those. Inside a scenario tree
 (``freeze_git.SCENARIO_MARKER`` at the project root) no tag is created and nothing reconciled.
 
 ``--repo`` (default: the working directory) names a directory inside the project. Usage::
@@ -66,6 +74,7 @@ ledger's commit tags; the other commands leave them to the next of those. Inside
 import argparse
 import datetime as dt
 import importlib.util
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -85,16 +94,17 @@ from harness_lib.branch_capture import CaptureError, git, git_out
 from harness_lib.config import active, activate, load_config
 from harness_lib.freeze_ledger import LedgerError
 from harness_lib.plan_enums import ItemStatus
+from harness_lib.plan_lanes import node_file
 from harness_lib.plan_enums import RedException as PlanRed
 from harness_lib.plan_models import ActionItem, ActionPlan, PlannedTest
 from harness_lib.project import project_root
 from harness_lib.strap_lint import lint_project_skill, lint_python, lint_skill
 from harness_lib.strap_models import (
-    Arm, Behavior, BehaviorKind, BehaviorState, Draw, DrawReason, Frozen, Grader, GradeValue, Part, PartKind,
-    Round, Run, Scenario, SkillSpec, SpecMode,
+    Arm, Behavior, BehaviorKind, BehaviorState, Check, CheckKind, Draw, DrawReason, Frozen, Grader,
+    GradeValue, Part, PartKind, Round, Run, Scenario, SkillSpec, SpecMode,
 )
 from harness_lib.strap_profile import Profile, new_fields, profile_of
-from harness_lib.strap_scaffold import planned_parts, render_parts
+from harness_lib.strap_scaffold import named_paths, planned_parts, render_parts
 
 PROBLEMS = (CaptureError, ValueError, OSError, LedgerError)
 RUNNER_AGENT = "harness:strap-scenario-runner"
@@ -1085,6 +1095,176 @@ def cmd_relink(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- rename -----------------------------------------------------------------------------------------------
+
+def _renamed_path(path: str, named: Dict[str, str], old: str, new: str) -> str:
+    """``path`` at the new name: a name-made path paired, a path under the old skill folder moved under the
+    new one, any other path as it is."""
+    if path in named:
+        return named[path]
+    return new + path[len(old):] if path.startswith(old) else path
+
+
+_PATH_CHECKS = frozenset({CheckKind.FILE_UNCHANGED, CheckKind.FILE_CHANGED, CheckKind.PATH_PRESENT,
+                          CheckKind.PATH_ABSENT})
+
+
+def _renamed_target(check: Check, swap: Callable[[str], str], repoint: Callable[[str], str]) -> str:
+    """A path check's target re-pointed only (a file stem or segment equal to the old name names another
+    file); any other check's target re-pointed, then swapped."""
+    target = repoint(check.target)
+    return target if check.kind in _PATH_CHECKS else swap(target)
+
+
+def _renamed_scenario(scenario: Scenario, swap: Callable[[str], str],
+                      repoint: Callable[[str], str]) -> Scenario:
+    """``scenario`` with ``swap`` applied to its task, ``tempts``, reply check targets and judged subjects;
+    a path check target is only re-pointed by ``repoint``."""
+    return scenario.model_copy(update={
+        "task": swap(scenario.task), "tempts": swap(scenario.tempts),
+        "checks": [check.model_copy(update={"target": _renamed_target(check, swap, repoint)})
+                   for check in scenario.checks],
+        "judged": [item.model_copy(update={"of": swap(item.of)}) for item in scenario.judged]})
+
+
+def _scenario_swaps(old: Scenario, new: Scenario) -> List[str]:
+    """The text fields of ``old`` the swap rewrote, as ``<scenario> <field>`` labels."""
+    pairs = [("task", old.task, new.task), ("tempts", old.tempts, new.tempts)]
+    pairs += [(f"checks[{i}].target", a.target, b.target)
+              for i, (a, b) in enumerate(zip(old.checks, new.checks)) if a.kind not in _PATH_CHECKS]
+    pairs += [(f"judged[{i}].of", a.of, b.of) for i, (a, b) in enumerate(zip(old.judged, new.judged))]
+    return [f"{old.id} {field}" for field, before, after in pairs if before != after]
+
+
+def swapped_lines(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
+    """One ``swapped: <behavior>[/<scenario>] <field>`` line per text field the rename rewrote, for the
+    developer to review before the greens run."""
+    lines: List[str] = []
+    for old, new in zip(spec.behaviors, renamed.behaviors):
+        if old.statement != new.statement:
+            lines.append(f"swapped: {old.id} statement")
+        for a, b in zip(old.scenarios, new.scenarios):
+            lines += [f"swapped: {old.id}/{label}" for label in _scenario_swaps(a, b)]
+    return lines
+
+
+def _renamed_node(node: str, repoint: Callable[[str], str]) -> str:
+    """A planned pytest node with its file part re-pointed by ``repoint`` and its test part kept."""
+    file, sep, rest = node.partition("::")
+    return repoint(file) + sep + rest
+
+
+def _renamed_behaviors(spec: SkillSpec, new_name: str, repoint: Callable[[str], str]) -> List[Behavior]:
+    """Each behavior with the old name, as a whole word, replaced in its statement and scenario text, so a
+    check that pins the invocation expects the new name, and each planned test node and path check target
+    re-pointed by ``repoint``; recorded replies stay as they were."""
+    pattern = re.compile(rf"(?<![a-z0-9-]){re.escape(spec.name)}(?![a-z0-9-])")
+
+    def swap(text: str) -> str:
+        return pattern.sub(new_name, text)
+    return [behavior.model_copy(update={
+        "statement": swap(behavior.statement),
+        "tests": [test.model_copy(update={"node": _renamed_node(test.node, repoint)})
+                  for test in behavior.tests],
+        "scenarios": [_renamed_scenario(scenario, swap, repoint) for scenario in behavior.scenarios]})
+        for behavior in spec.behaviors]
+
+
+def _renamed(spec: SkillSpec, new_name: str) -> SkillSpec:
+    """``spec`` under ``new_name``: each part, planned test node and path check target at a path made from
+    the old name (the contract test, the models, api and driver modules) or under the old skill folder
+    re-pointed at the new name's, and the old name in the behaviors' text replaced."""
+    target = spec.model_copy(update={"name": new_name})
+    named = dict(zip(named_paths(spec), named_paths(target)))
+    old, new = profile_of(spec).skill_folder + "/", profile_of(target).skill_folder + "/"
+
+    def repoint(path: str) -> str:
+        return _renamed_path(path, named, old, new)
+    parts = [part.model_copy(update={"path": repoint(part.path)}) for part in spec.parts]
+    behaviors = _renamed_behaviors(spec, new_name, repoint)
+    return target.model_copy(update={"parts": parts, "behaviors": behaviors})
+
+
+def _rename_problems(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
+    """A frozen spec whose skill folder already moved, every part present, and a free spec folder."""
+    if spec.frozen is None:
+        return [f"{spec.name} is not frozen; rename a frozen spec, then refreeze it"]
+    root = _root()
+    old, new = profile_of(spec), profile_of(renamed)
+    problems = []
+    if (root / old.skill_folder).exists():
+        problems.append(f"{old.skill_folder} still exists; move it to {new.skill_folder} "
+                        "(remove leftover untracked files)")
+    if not (root / new.skill_md).is_file():
+        problems.append(f"{new.skill_md} does not exist; move {old.skill_folder} to {new.skill_folder} first")
+    problems += [f"part {part.path} does not exist" for part in renamed.parts
+                 if part.path != new.skill_md and not (root / part.path).is_file()]
+    if _strap_dir(renamed.name).exists():
+        problems.append(f"{_rel(_strap_dir(renamed.name))} exists; {renamed.name} already has a spec")
+    return problems
+
+
+def _planned_test_moves(spec: SkillSpec, renamed: SkillSpec) -> List[Tuple[Path, Path]]:
+    """Each planned test copy in the moved spec folder at a node file the rename re-pointed, paired with its
+    new path; a copy that is absent, or whose new path is taken, stays."""
+    tests = _strap_dir(renamed.name) / "tests"
+    pairs = {node_file(a.node): node_file(b.node) for old, new in zip(spec.behaviors, renamed.behaviors)
+             for a, b in zip(old.tests, new.tests)}
+    return [(tests / a, tests / b) for a, b in pairs.items()
+            if a != b and (tests / a).is_file() and not (tests / b).exists()]
+
+
+def _move_planned_tests(moves: List[Tuple[Path, Path]], done: List[Tuple[Path, Path]]) -> None:
+    """Move each planned copy to its new path, recording each finished move in ``done`` for ``_move_back``."""
+    for source, target in moves:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        source.rename(target)
+        done.append((source, target))
+
+
+def _move_back(old: str, new: str, spec_file: Tuple[Path, bytes],
+               moved: Sequence[Tuple[Path, Path]] = ()) -> None:
+    """Undo a rename that failed part way: the planned test copies at their old paths, both folders back
+    under ``old``, the spec's bytes restored."""
+    for source, target in reversed(moved):
+        if target.is_file() and not source.exists():
+            target.rename(source)
+    if sl.folder(new).is_dir() and not sl.folder(old).exists():
+        sl.move_ledger(new, old)
+    if _strap_dir(new).is_dir() and not _strap_dir(old).exists():
+        _strap_dir(new).rename(_strap_dir(old))
+    spec_file[0].write_bytes(spec_file[1])
+
+
+def cmd_rename(args: argparse.Namespace) -> int:
+    """Move a frozen spec, its ledger and its parts' paths to a new skill name, with a ``rename`` entry."""
+    spec = load(args.name, unlocked=True)
+    sa.spec_path(args.new_name)
+    renamed = _renamed(spec, args.new_name)
+    problems = _rename_problems(spec, renamed)
+    if problems:
+        raise Refused(problems)
+    root = _root()
+    pending = sl.rename_pending(root, spec, args.new_name)
+    sl.preflight(root, pending)
+    before = spec_bytes(spec.name)
+    _strap_dir(spec.name).rename(_strap_dir(renamed.name))
+    copies: List[Tuple[Path, Path]] = []
+    try:
+        _move_planned_tests(_planned_test_moves(spec, renamed), copies)
+        save(renamed)
+        sl.move_ledger(spec.name, renamed.name)
+        lines = sl.commit(root, pending)
+    except (*PROBLEMS, sl.LockRefused):
+        _move_back(spec.name, renamed.name, before, copies)
+        raise
+    moved = sum(1 for a, b in zip(spec.parts, renamed.parts) if a.path != b.path)
+    print(f"rename [done] | {spec.name} -> {renamed.name} | {moved} part(s) re-pointed | "
+          f"{len(copies)} planned test(s) moved | ledger {sl.stem(spec.name)} -> {sl.stem(renamed.name)}")
+    _print_lines([line for line in [stale_line(renamed)] if line] + swapped_lines(spec, renamed) + lines)
+    return 0
+
+
 # --- api --------------------------------------------------------------------------------------------------
 
 def _skill_api() -> ModuleType:
@@ -1143,6 +1323,8 @@ def _parser() -> argparse.ArgumentParser:
     _named(sub, "lock", "Lock a frozen spec (only on the developer's explicit ask).")
     relink = _named(sub, "relink", "Re-point a base lost to a rewrite.")
     relink.add_argument("--to", help="The commit to re-point at (default: the patch-id match on HEAD).")
+    _named(sub, "rename", "Move a frozen spec and its ledger to the skill's new name.").add_argument(
+        "new_name", help="The skill's new name; its folder must already sit there.")
     run = _named(sub, "run", "Create a scenario run and print the runner row.")
     run.add_argument("behavior", help="Behavior id, such as B1.")
     run.add_argument("--arm", required=True, choices=[arm.value for arm in Arm])
@@ -1157,7 +1339,7 @@ COMMANDS: Dict[str, Callable[[argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "red": cmd_red, "draw": cmd_draw, "run": cmd_run, "init": cmd_init,
     "record-run": cmd_record_run, "judge-row": cmd_judge_row, "scaffold": cmd_scaffold,
     "retest": cmd_retest, "freeze": cmd_freeze, "reopen": cmd_reopen, "lock": cmd_lock,
-    "relink": cmd_relink, "api": cmd_api,
+    "relink": cmd_relink, "rename": cmd_rename, "api": cmd_api,
 }
 
 

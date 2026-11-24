@@ -1,7 +1,7 @@
 ---
 name: add-todo
 description: Use when asked to add a note, reminder, idea or finding to the project's TODO catalog from free text, local-only or backed by a new GitHub issue, researched as deeply as asked. Triggers on "add-todo", "add a todo", "log this as a TODO", "put this in the TODO catalog", "make a TODO item for this". Hands the research and drafting to the harness:todo-editor agent; the main session prints the dispatch row and adds what the conversation already established.
-argument-hint: "[--issue] [-r|--research 0-3] -- <note>"
+argument-hint: "[--issue] [-r|--research 0-3] [--hook retired|committed|developer] -- <note>"
 ---
 
 # add-todo: one TODO item from a note
@@ -23,6 +23,7 @@ and `<note>` are the same invocation. With flags and no `--` token, the text aft
 |---|---|---|
 | `--issue` | A GitHub issue is filed for the item and recorded as its source. | Off: the item stays local, with a dated `note` source. |
 | `-r N`, `--research N` | How far the agent reads before it drafts, 0 to 3; the level also picks the agent's model. | 0 |
+| `--hook C` | Once added, the item becomes the session's goal (`/goal`), closed when it is `retired`, ready to commit (`committed`: tests passed, commit message drafted) or handed to the `developer` (tests passed, files changed and what is left reported) (Step 4.5). An item already in the catalog takes `/harness:bookmark --goal-todo <id> <closing>` instead. | Off: no goal. |
 
 | Level | The agent |
 |---|---|
@@ -31,16 +32,18 @@ and `<note>` are the same invocation. With flags and no `--` token, the text aft
 | 2 | Also traces callers and consumers, the tests that cover them, related catalog items and open issues. |
 | 3 | Also reads the files' history and linked reviews, weighs alternatives and cites `path:line` for every claim. |
 
-An empty note, an unknown flag or a level outside 0-3 ends the run: print the `argument-hint` line above.
+An empty note, an unknown flag, a level outside 0-3 or a `--hook` closing other than `retired`, `committed` or
+`developer` ends the run: print the `argument-hint` line above.
 
 ## Step 1: print the row
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" row [--issue] [-r N]
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" row [--issue] [-r N] [--hook C]
 ```
 
 Run it from the project root with the flags only. stdout is the row: an `agent=harness:todo-editor model=<model>`
-line, then the `SKILL`, `Operation`, `Issue`, `Research` and `Project root` lines. A `problem:` line naming
+line, then the `SKILL`, `Operation`, `Issue`, `Research` and `Project root` lines, and a `Hook: <C>` line with
+`--hook`. A `problem:` line naming
 `todo_sync.py init` means `todo.folder` is set but the catalog does not exist yet: run
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" init`, then the row command
 again. Any other `problem:` line ends the run: relay it.
@@ -59,7 +62,8 @@ a fact the conversation has not established is the agent's to find, at the level
 ## Step 3: dispatch
 
 One `Agent` call: `subagent_type="harness:todo-editor"`, the model from the `agent=` line and never another,
-`description="Add a TODO item"`. The prompt is the row's lines after the `agent=` line, then:
+`description="Add a TODO item"`. The prompt is the row's lines after the `agent=` line, less the `Hook:` line
+(the session's own cue for Step 4.5, not agent input), then:
 
 ```
 Note: <the note verbatim, newlines folded to spaces>
@@ -85,15 +89,35 @@ with `inbox: updated` when only updates landed) and an `overwrote <id> <field>` 
 the same field and both land in the same drain. A refused file stays in the inbox as `<name>.rejected.json`
 beside a `<name>.reason.txt` naming why: report its item as not added. `inbox: empty` means nothing was waiting:
 either the agent queued nothing (its reply says why), or the todo-watch mod already drained the inbox and its
-summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain. When
+summary line arrives as context. A `problem:` line ends the run, except the two cases below, which go on to Step 4.5 under `--hook`: relay it once without rerunning the drain. When
 it reads `problem: inbox: added <ids>; updated <ids>, then: <reason>` (either part alone when only one kind
 landed), those changes landed and only the render, check or file
 cleanup failed: report them as applied. When it names a lock held by `todo_sync.py add --inbox`, the todo-watch mod is draining those items and
 its summary line arrives as context. Otherwise the queued items stay in the inbox.
 
+## Step 4.5: arm the session hook (`--hook` only)
+
+When the row carried `Hook: <C>`, arm the hook switch for the item this run added: the one the agent's reply
+lists under `Added` (`queued: <title> (#N|note)`). Its id comes from the Step 4 drain line or, when that line
+reads `inbox: empty` or names a lock held by `todo_sync.py add --inbox`, from the todo-watch
+`inbox: added N item(s): <id> ...` summary the Agent result carries as context. A drain that also lists other
+runs' items does not change which id is armed: with `--issue`, take the id whose `(#N)` matches the reply's;
+otherwise, with more than one `(note)` id listed, Grep the catalog (`todo.catalog`) for the reply's title to find
+its id (a read, not a catalog edit).
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py" hook --todo <id> --closed-by <C>
+```
+
+It prints `hook: armed <id> (<C>); goal: <goal>`; the goal names the item's title, which confirms the pick. The
+session-bookmark mod runs `/goal <goal>` when the turn ends; without that mod the switch does nothing. Skip the
+step and say the hook was not armed only when no line shows this run's item as added (the agent queued nothing,
+or its file was rejected). A `problem:` line is relayed once.
+
 ## Step 5: report
 
-Relay the agent's reply as it stands, with the Step 4 line. The edit is saved, not committed; the developer
+Relay the agent's reply as it stands, with the Step 4 line and, under `--hook`, the Step 4.5 line (or the note
+that the hook was not armed). The edit is saved, not committed; the developer
 reviews the diff and commits. With `--issue`, name the issue the reply's `Added` line gives. Name an item marked
 `(needs decision)`.
 

@@ -208,12 +208,16 @@ def ensure_tag(repo: PathLike, name: str, target: str, message: str) -> Optional
     return name
 
 
-def _adder(repo: PathLike, rel: str) -> Optional[str]:
-    """The oldest commit on HEAD's history that added ``rel``; None when none did."""
-    log = _out(repo, "--literal-pathspecs", "log", "--diff-filter=A", "--reverse", "--format=%H",
-               "HEAD", "--", rel)
-    lines = log.split()
-    return lines[0] if lines else None
+def adder(repo: PathLike, rel: str) -> Optional[str]:
+    """The oldest commit on HEAD's history that added ``rel``, followed across a move (a renamed strap
+    skill's ledger); None when none did or the log fails (no HEAD yet). ``--reverse`` stays off: it does
+    not mix with ``--follow``. ``-M100%`` follows only exact moves: a looser match pairs a small entry with
+    a similar entry of another skill and dates it to that entry's commit. The one lookup the strap and plan
+    ledgers share."""
+    done = _run(repo, "--literal-pathspecs", "log", "--follow", "-M100%", "--diff-filter=A", "--format=%H",
+                "HEAD", "--", rel)
+    lines = done.stdout.split() if done.returncode == 0 else []
+    return lines[-1] if lines else None
 
 
 def _commit_tags(repo: PathLike, stem_tag: str) -> Dict[int, str]:
@@ -233,14 +237,14 @@ def _on_head(repo: PathLike, commit: Optional[str]) -> bool:
 
 def _reconcile_one(repo: PathLike, stem_tag: str, rel: str) -> Optional[str]:
     """Tag the commit that added ``rel`` when no commit tag of ``stem_tag`` is on HEAD's history."""
-    adder = _adder(repo, rel)
-    if adder is None:
+    added = adder(repo, rel)
+    if added is None:
         return None
     existing = _commit_tags(repo, stem_tag)
     if any(_on_head(repo, _peeled(repo, name)) for name in existing.values()):
         return None
     name = commit_tag(stem_tag, max(existing, default=0) + 1)
-    return ensure_tag(repo, name, adder, f"{stem_tag}: the commit that added {rel}")
+    return ensure_tag(repo, name, added, f"{stem_tag}: the commit that added {rel}")
 
 
 def reconcile(repo: PathLike, entries: Sequence[Tuple[str, str, bool]]) -> Tuple[List[str], List[str]]:
