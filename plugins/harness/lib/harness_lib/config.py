@@ -109,6 +109,13 @@ class DocstringsConfig:
 
 
 @dataclass(frozen=True)
+class CommentsConfig:
+    """Project values of the comment convention."""
+
+    divider_width: int
+
+
+@dataclass(frozen=True)
 class StrapConfig:
     """Project values of strap-skills: which skills it writes (``harness`` or ``project``)."""
 
@@ -225,6 +232,7 @@ class HarnessConfig:
     worktree_baseline: Tuple[Tuple[str, ...], ...]
     runlogs: RunLogsConfig
     docstrings: DocstringsConfig
+    comments: CommentsConfig
     todo: TodoConfig
     strap: StrapConfig
     plugins: Tuple[Tuple[str, str], ...]
@@ -363,6 +371,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         worktree_setup=_argv_list(m["worktree_setup"], "worktree_setup"),
         worktree_baseline=_argv_list(m["worktree_baseline"], "worktree_baseline"),
         runlogs=_runlogs(m["runlogs"]), docstrings=_docstrings(m["docstrings"]),
+        comments=_comments(m["comments"]),
         todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
         strap=_strap(m["strap"]),
         plugins=_plugins(m["plugins"]),
@@ -527,18 +536,30 @@ def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
     return RunLogsConfig(r["dir"], r["name_pattern"])
 
 
+def _positive_int_section(d: Any, section: str, key: str, minimum: int = 1) -> int:
+    """The one integer ``key`` of the ``section`` object, checked as an integer of at least ``minimum``,
+    also on a load without ``jsonschema``."""
+    if not isinstance(d, dict):
+        raise ConfigError(f"{section}: must be an object")
+    unknown = sorted(set(d) - {key})
+    if unknown:
+        raise ConfigError(f"{section}: unknown keys {unknown}")
+    value = d.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ConfigError(f"{section}/{key}: {value!r} is not an integer of at least {minimum}")
+    return value
+
+
 def _docstrings(d: Dict[str, Any]) -> DocstringsConfig:
     """``docstrings`` with ``line_length`` checked as a positive integer, also on a load without
     ``jsonschema``."""
-    if not isinstance(d, dict):
-        raise ConfigError("docstrings: must be an object")
-    unknown = sorted(set(d) - {"line_length"})
-    if unknown:
-        raise ConfigError(f"docstrings: unknown keys {unknown}")
-    length = d.get("line_length")
-    if isinstance(length, bool) or not isinstance(length, int) or length < 1:
-        raise ConfigError(f"docstrings/line_length: {length!r} is not a positive integer")
-    return DocstringsConfig(length)
+    return DocstringsConfig(_positive_int_section(d, "docstrings", "line_length"))
+
+
+def _comments(c: Dict[str, Any]) -> CommentsConfig:
+    """``comments`` with ``divider_width`` checked as an integer of at least 6 (``# `` and four dashes, the
+    shortest rule), also on a load without ``jsonschema``."""
+    return CommentsConfig(_positive_int_section(c, "comments", "divider_width", minimum=6))
 
 
 def _inside_root(rel: str, where: str) -> str:

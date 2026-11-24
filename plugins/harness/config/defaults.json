@@ -71,6 +71,9 @@
   "docstrings": {
     "line_length": 110
   },
+  "comments": {
+    "divider_width": 88
+  },
   "canned_messages": [],
   "todo": {
     "folder": null,

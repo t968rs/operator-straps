@@ -1,0 +1,26 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "affc2d7e58add26c9ed3ad21636906fcbc9a33e8",
+  "files": {
+    "docs/plans/2029_writing_comments_skill_ActionPlan.json": "2b3b341c6cdea54b2e7775cb3e46e6e2fa27fc15"
+  },
+  "ignored": {
+    "docs/plans/2029/tests/tests/contract/test_root_separation.py": "074b68c99ae7d93f54808b539d812bcc9ca721428cd7a2aaf7d2653b2e687c4b",
+    "docs/plans/2029/tests/tests/lib/test_config.py": "c9c4bf078f9f4f82034e3408e0bdc2fdf38bebc326cb68cf5d03adffcef88e0e",
+    "docs/plans/2029/tests/tests/lib/test_writing_comments_api.py": "7d2a677fdfbb6f252c825e6613c70cef4b288b84ef0ef1778b8398376129b43a",
+    "docs/plans/2029/tests/tests/skills/test_comment_sections_command.py": "23ea18935fb22c3e1e1cff463f2f60904c38677749295117b8a6f38d3aa01674"
+  },
+  "at": "2026-11-24T07:38:02+00:00",
+  "base": "e4d9108d85a22c959ca166262223aa12629a5d4f",
+  "history": false,
+  "digest": "9f5b11fc66bd6cd9782b64f2c202c386fbaf42c922047639fc5041f39e1d5270",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}
