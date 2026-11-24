@@ -20,6 +20,7 @@ from typing import Annotated, Dict, Iterable, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from harness_lib.plan_enums import RecordScheme
+from harness_lib.strap_models import NAME_PATTERN
 
 FREEZES_DIR = "freezes"
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -89,7 +90,7 @@ class LedgerEntry(BaseModel):
     old_base: Optional[Sha40] = None
     new_base: Optional[Sha40] = None
     match: Optional[Literal["patch-id", "ref"]] = None
-    from_name: Optional[str] = Field(default=None,
+    from_name: Optional[str] = Field(default=None, pattern=NAME_PATTERN,
                                      description="A rename entry's earlier subject name.")
 
     @field_validator("at")

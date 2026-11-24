@@ -1,9 +1,10 @@
 """Freeze ledger entries, tree tags and the Locked state of a strap ``SkillSpec`` (plan 1015).
 
 Asymmetric: ``SkillSpec.json`` keeps ``frozen``, ``rounds`` and the ``authored`` seal; the ledger under
-``<artifacts.plans>/freezes/skill/<name>/`` records each freeze tree, lock, reopen and relink. Locked is
-read from the ledger alone: the state of the entries of the spec's current round (``len(rounds) + 1``) is
-Locked, a ``lock`` optionally followed by ``relink`` entries.
+``<artifacts.plans>/freezes/skill/<name>/`` records each freeze tree, lock, reopen, relink and rename. A
+rename moves the folder to the new stem; ``owners()`` maps each entry to the name its tags were made under.
+Locked is read from the ledger alone: the state of the entries of the spec's current round
+(``len(rounds) + 1``) is Locked, a ``lock`` optionally followed by ``relink`` entries.
 
 A command works out a ``Pending`` (the entries it will write and the tags it will create) before it writes
 anything, preflights every tag name, and only then saves the spec and calls ``commit``. Inside a scenario
@@ -542,15 +543,6 @@ def _base_lines(root: Path, spec: SkillSpec, scenario: bool) -> List[str]:
     return lines
 
 
-def _adder(root: Path, rel: str) -> Optional[str]:
-    """The oldest commit that added ``rel``, followed across a rename's move; ``--reverse`` stays off with
-    ``--follow``."""
-    done = git(root, "--literal-pathspecs", "log", "--follow", "--diff-filter=A", "--format=%H", "HEAD",
-               "--", rel)
-    found = done.stdout.split() if done.returncode == 0 else []
-    return found[-1] if found else None
-
-
 def _entry_lines(root: Path, name: str, entry: LedgerEntry, owner: str) -> List[str]:
     """``untagged:`` for a non-history entry's tree and, once committed, its commit; ``owner`` is the name
     the entry was written under (its tags' stem)."""
@@ -560,7 +552,7 @@ def _entry_lines(root: Path, name: str, entry: LedgerEntry, owner: str) -> List[
     lines = []
     if entry.tree and _peel(root, _tree_tag(owner, entry)) != entry.tree:
         lines.append(f"untagged: {entry.tree[:7]} ({role} tree)")
-    adder = _adder(root, _entry_rel(root, name, entry))
+    adder = fg.adder(root, _entry_rel(root, name, entry))
     tagged = git(root, "tag", "--list", f"{_entry_stem(owner, entry)}-commit*").stdout.split()
     if adder and not tagged:
         lines.append(f"untagged: {adder[:7]} ({role} commit)")

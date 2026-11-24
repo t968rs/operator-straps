@@ -52,7 +52,7 @@ def test_skill_runs_in_the_main_session() -> None:
 
 def test_skill_body_names_no_agent_to_dispatch() -> None:
     body = _text(_SKILL)
-    assert re.search(r"harness:(?!bookmark)[a-z-]+", body) is None, "skill names another agent"
+    assert re.search(r"harness:(?!bookmark(?![a-z-]))[a-z-]+", body) is None, "skill names another agent"
     assert "subagent" not in body.lower(), "skill body mentions a subagent"
 
 

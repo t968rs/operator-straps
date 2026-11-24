@@ -1103,37 +1103,52 @@ def _renamed_path(path: str, named: Dict[str, str], old: str, new: str) -> str:
     return new + path[len(old):] if path.startswith(old) else path
 
 
-def _renamed_scenario(scenario: Scenario, swap: Callable[[str], str]) -> Scenario:
-    """``scenario`` with ``swap`` applied to its task, ``tempts``, check targets and judged subjects."""
+def _renamed_scenario(scenario: Scenario, swap: Callable[[str], str],
+                      repoint: Callable[[str], str]) -> Scenario:
+    """``scenario`` with ``swap`` applied to its task, ``tempts``, check targets and judged subjects; a check
+    target that is a moved path is first re-pointed by ``repoint``."""
     return scenario.model_copy(update={
         "task": swap(scenario.task), "tempts": swap(scenario.tempts),
-        "checks": [check.model_copy(update={"target": swap(check.target)}) for check in scenario.checks],
+        "checks": [check.model_copy(update={"target": swap(repoint(check.target))})
+                   for check in scenario.checks],
         "judged": [item.model_copy(update={"of": swap(item.of)}) for item in scenario.judged]})
 
 
-def _renamed_behaviors(spec: SkillSpec, new_name: str) -> List[Behavior]:
+def _renamed_node(node: str, repoint: Callable[[str], str]) -> str:
+    """A planned pytest node with its file part re-pointed by ``repoint`` and its test part kept."""
+    file, sep, rest = node.partition("::")
+    return repoint(file) + sep + rest
+
+
+def _renamed_behaviors(spec: SkillSpec, new_name: str, repoint: Callable[[str], str]) -> List[Behavior]:
     """Each behavior with the old name, as a whole word, replaced in its statement and scenario text, so a
-    check that pins the invocation expects the new name; recorded replies stay as they were."""
+    check that pins the invocation expects the new name, and each planned test node and path check target
+    re-pointed by ``repoint``; recorded replies stay as they were."""
     pattern = re.compile(rf"(?<![a-z0-9-]){re.escape(spec.name)}(?![a-z0-9-])")
 
     def swap(text: str) -> str:
         return pattern.sub(new_name, text)
     return [behavior.model_copy(update={
         "statement": swap(behavior.statement),
-        "scenarios": [_renamed_scenario(scenario, swap) for scenario in behavior.scenarios]})
+        "tests": [test.model_copy(update={"node": _renamed_node(test.node, repoint)})
+                  for test in behavior.tests],
+        "scenarios": [_renamed_scenario(scenario, swap, repoint) for scenario in behavior.scenarios]})
         for behavior in spec.behaviors]
 
 
 def _renamed(spec: SkillSpec, new_name: str) -> SkillSpec:
-    """``spec`` under ``new_name``: each part at a path made from the old name (the contract test, the models,
-    api and driver modules) or under the old skill folder re-pointed at the new name's, and the old name in
-    the behaviors' text replaced."""
+    """``spec`` under ``new_name``: each part, planned test node and path check target at a path made from
+    the old name (the contract test, the models, api and driver modules) or under the old skill folder
+    re-pointed at the new name's, and the old name in the behaviors' text replaced."""
     target = spec.model_copy(update={"name": new_name})
     named = dict(zip(named_paths(spec), named_paths(target)))
     old, new = profile_of(spec).skill_folder + "/", profile_of(target).skill_folder + "/"
-    parts = [part.model_copy(update={"path": _renamed_path(part.path, named, old, new)})
-             for part in spec.parts]
-    return target.model_copy(update={"parts": parts, "behaviors": _renamed_behaviors(spec, new_name)})
+
+    def repoint(path: str) -> str:
+        return _renamed_path(path, named, old, new)
+    parts = [part.model_copy(update={"path": repoint(part.path)}) for part in spec.parts]
+    behaviors = _renamed_behaviors(spec, new_name, repoint)
+    return target.model_copy(update={"parts": parts, "behaviors": behaviors})
 
 
 def _rename_problems(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
@@ -1143,7 +1158,10 @@ def _rename_problems(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
     root = _root()
     old, new = profile_of(spec), profile_of(renamed)
     problems = []
-    if (root / old.skill_folder).exists() or not (root / new.skill_md).is_file():
+    if (root / old.skill_folder).exists():
+        problems.append(f"{old.skill_folder} still exists; move it to {new.skill_folder} "
+                        "(remove leftover untracked files)")
+    if not (root / new.skill_md).is_file():
         problems.append(f"{new.skill_md} does not exist; move {old.skill_folder} to {new.skill_folder} first")
     problems += [f"part {part.path} does not exist" for part in renamed.parts
                  if part.path != new.skill_md and not (root / part.path).is_file()]

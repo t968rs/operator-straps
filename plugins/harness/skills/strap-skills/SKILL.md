@@ -230,7 +230,7 @@ writes land where `record-run` looks.
     scenario has passed a green on the current hash), a mechanical behavior whose red was not recorded or whose planned tests fail,
     a listed part whose file is missing (take it off with `remove_part` or restore it). Fix each through the step it names. Clean, it prints `freeze [done] | <name> | <hash12> | grader <grader>`.
 
-    **Refreeze after a part change.** Short of `reopen` (below), a frozen spec refuses every change but
+    **Refreeze after a part change.** Short of `reopen` and `rename` (below), a frozen spec refuses every change but
     three: `add_part` and `remove_part`, a green run (`run --arm green`, its `record-run` and grades), and the
     refreeze itself. A changed or removed part changes the content hash, so each judgment behavior needs a
     passing green on the new hash. `check` and `new` (on resume) print `stale: frozen at <old12>, parts now hash <new12>; ...`
@@ -255,9 +255,9 @@ writes land where `record-run` looks.
     unless the project re-includes them, as this repository does) and enter the entry by sha256 only. The stamp stays in `SkillSpec.json`, the entry repeats
     its `skill_hash`, and `check` prints `ledger:` when the two disagree. A spec frozen before the ledger
     gets history entries for its earlier stamps (no tags) at its first ledger write (`freeze --refreeze`,
-    `reopen` or `relink`); until then `check` prints `legacy: <name> has no ledger; ...` and no tag warnings.
+    `reopen`, `relink` or `rename`); until then `check` prints `legacy: <name> has no ledger; ...` and no tag warnings.
     The drivers create the tags (annotated, local), never the developer, with `<stem>` as `skill/<name>`:
-    - `base/<stem>/r<N>` on the round's base (`new --edit`, `freeze` and `reopen` tag it;
+    - `base/<stem>/r<N>` on the round's base (`new --edit`, `freeze`, `reopen` and `rename` tag it;
       `base/<stem>/r<N>-<m>` is the m-th base of the round, the original being m 1, so the first relink tags `r<N>-2`);
     - `freeze/<stem>/r<N>.<k>-tree` and `lock/<stem>/r<N>.<k>-tree` on the tree of that entry;
     - `freeze/<stem>/r<N>.<k>-commit` and `lock/<stem>/r<N>.<k>-commit` on the commit that added the entry
@@ -332,19 +332,19 @@ writes land where `record-run` looks.
     `base/skill/<name>/r<N>-<m>`; the old tags stay.
 
     **Rename a skill.** A spec is tied to its skill's folder name, so a renamed skill takes its spec along.
-    Move the skill folder first (`git mv`, then set the frontmatter `name`), on a frozen spec that is not
-    Locked, then run
+    Before the run, on a frozen spec that is not Locked, move the skill folder (`git mv`, then set the
+    frontmatter `name`) and every part whose path is made from the name: the contract test
+    (`test_<snake>_skill_contract.py`) and, for a harness skill, its models, API and driver modules. Then run
 
     ```
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" rename <name> <new-name>
     ```
 
-    Move every part whose path is made from the name too: the contract test
-    (`test_<snake>_skill_contract.py`) and, for a harness skill, its models, API and driver modules. It
-    refuses a spec never frozen or Locked, a skill folder not yet moved, a part missing at its new path, and a
-    new name that already has a spec or ledger folder. It moves the spec folder and the ledger folder to the
-    new name (entry files unchanged), re-points each part under the old skill folder or at a path made from
-    the old name, appends a `rename` entry naming the old name and tags the base
+    It refuses a spec that is not frozen (never frozen, or reopened and not yet refrozen) or is Locked, an
+    old skill folder still on disk (remove any leftover untracked files there), a new `SKILL.md` that is
+    missing, a part missing at its new path, and a new name that already has a spec or ledger folder. It moves the spec folder and the ledger folder to the
+    new name (entry files unchanged), re-points each part, planned test node (its file half) and check
+    target under the old skill folder or at a path made from the old name, appends a `rename` entry naming the old name and tags the base
     `base/skill/<new-name>/r<N>`. Entries written before the rename keep their tags under the old stem;
     later ones tag under the new. The moved parts no longer hash to the stamp, so the `stale:` line follows:
     run and grade the greens, then `freeze <new-name> --refreeze`. The old name, as a whole word, becomes the
@@ -417,7 +417,7 @@ The fields no model can decide, and how to decide them:
 ## Related
 
 - `${CLAUDE_PLUGIN_ROOT}/scripts/strap.py`: the driver; `--help` on each subcommand lists its options.
-- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/strap_lock.py` and `freeze_ledger.py`: the ledger, the tags and the lock, reopen and relink steps.
+- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/strap_lock.py` and `freeze_ledger.py`: the ledger, the tags and the lock, reopen, relink and rename steps.
 - `${CLAUDE_PLUGIN_ROOT}/schemas/FreezeLedgerEntry.schema.json`: the shape of a ledger entry file.
 - `${CLAUDE_PLUGIN_ROOT}/agents/strap-scenario-runner.md` and `strap-judge.md`: the runner and the judge.
 - `${CLAUDE_PLUGIN_ROOT}/skills/strap-skills/templates/`: the templates `scaffold` renders.

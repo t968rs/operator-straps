@@ -184,11 +184,14 @@ def test_rename_entry_names_the_old_subject_and_keeps_the_state(tmp_path: Path) 
     """A ``rename`` entry records ``from_name`` and, like ``relink``, leaves the state before it."""
     from harness_lib import freeze_ledger as fl
 
-    rename = fl.LedgerEntry.model_validate({**_fields("rename", seq=2), "from_name": "add-bookmark"})
+    rename = fl.LedgerEntry.model_validate({**_fields("rename", seq=3), "from_name": "add-bookmark"})
     folder = fl.ledger_dir(tmp_path, "skill/bookmark")
     fl.write_entry(folder, _make(fl, "freeze"))
+    fl.write_entry(folder, _make(fl, "arm", seq=2))
+    before = fl.state(fl.load_entries(folder))
+    assert before == fl.LedgerState.armed
     fl.write_entry(folder, rename)
     found = fl.load_entries(folder)
-    assert [e.kind.value for e in found] == ["freeze", "rename"]
+    assert [e.kind.value for e in found] == ["freeze", "arm", "rename"]
     assert found[-1].from_name == "add-bookmark"
-    assert fl.state(found) == fl.LedgerState.frozen
+    assert fl.state(found) == before
