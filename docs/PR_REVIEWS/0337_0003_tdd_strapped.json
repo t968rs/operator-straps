@@ -1,0 +1,592 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 337,
+  "pr_title": "0003 tdd strapped",
+  "branch": "0003-tdd-strapped",
+  "base_branch": "main",
+  "base_sha": "013b81a2cfff3d09bc4e61928518408227c61bb9",
+  "head_sha": "2826a737db06a3ce925304008765266b817a9ee5",
+  "review_date": "2026-11-23",
+  "verdict": "READY TO MERGE - 17 of 18 findings resolved, 0 bubbled, 1 refuted",
+  "stats": {
+    "additions": 1433,
+    "deletions": 22,
+    "files_changed": 32,
+    "source": {
+      "additions": 1426,
+      "deletions": 22,
+      "files_changed": 31
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/tests.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/docs.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/overall.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/roast.json",
+    "docs/_scratch/pr_review/0337/pr337_20261124T062651Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The shop fixture tests are plain behavioral tests against real modules; every expected value (26.75, 12.75, 7.0, '10.00 + tax 2.00') checks out against the head implementation.",
+    "The fixture's own pytest.ini (testpaths = tests) keeps it out of the repo suite, whose testpaths stay ['tests'].",
+    "Both new contract tests reuse the shared _skill_parts helper and anchor their file names (tdd-strapped, strap-debugging, check-runlogs), so tools/select_tests.py reaches them when the skill text changes.",
+    "test_the_troubleshooting_rule_names_the_bundled_skill scopes its check to the one rule bullet via a lookahead regex instead of the whole rules file, so it cannot pass on an unrelated mention.",
+    "test_skill_guidance_tail_contract classifies tdd-strapped as a knowledge skill, matching its frontmatter (no argument-hint).",
+    "The two docstring-vs-code gaps (tax.py:8-10 truncates with int() despite 'cents precision'; slug.py:8-10 yields repeated hyphens for 'Big  Kettle' and 'Tea -- Pot!' despite 'single hyphens') are the defects SkillSpec.json seeds on purpose for the hotfix (line 64), slug snapshot (lines 192, 232) and invoice snapshot (line 266) scenarios, and the code reproduces them exactly (tax(0.99, 'EU') == 0.19).",
+    "The baseline sandbox suite stays green against the seeded code: test_tax, test_checkout (26.75) and test_invoice ('10.00 + tax 2.00') use amounts where truncation and rounding agree, so only the scenario tests surface the bugs.",
+    "shop.tax is imported by both checkout.py and invoice.py, which gives the 'used in more than one place' scenario (SkillSpec.json:132) a real second consumer to break.",
+    "query.py keys clauses in sorted order, so every filter set in cases.json has one deterministic expected string that a hand-written table test can pin.",
+    "Modules are small, typed with typing.List/Tuple/Dict for 3.11 style, and carry third-person docstrings per the project convention.",
+    "Every former pointer to superpowers-lt:test-driven-development and superpowers-lt:systematic-debugging under plugins/ now points at harness:tdd-strapped or harness:strap-debugging (README, HARNESS_RULES.md, check-runlogs, consumer-contract-audit, parallel2 README, strap-debugging). A grep of plugins/ finds no stragglers.",
+    "The tdd-strapped edits match the provenance record line for line: the frontmatter, the Verify GREEN rewrite, the checklist split, the two `npm test src/form.test.ts` runs, the strap-debugging pointer, the strap-skills pointer and the human-partner wording. Each was confirmed against the upstream copy.",
+    "The freeze record agrees with the PR head: the blob hashes for SKILL.md, writing-good-tests.md, LICENSE, the contract test and the fixture files in r1.1-freeze.json all equal the head blobs, and its skill_hash prefix matches the `4bb62e633f2a` cited in v1.1.0.md and PROVENANCE.md.",
+    "SkillSpec.json supports the release-note claim of three rules proved against failing baselines. B1, B2 and B4 each have a baseline run graded present (or defer absent) and a green run graded the other way. The dropped B3 records why it was dropped (R-3 already refused the shortcut).",
+    "The scoped-verification rewrite of Verify GREEN (SKILL.md:191-208) states its reasoning and is matched by a new rationalization row and checklist line, so the three places that state the rule agree with each other.",
+    "Every repointed reference resolves: harness:tdd-strapped, harness:strap-debugging and harness:strap-skills all exist, and no superpowers-lt test-driven-development or systematic-debugging pointer remains under plugins/.",
+    "The port carries its MIT LICENSE, and the docs/PROVENANCE.md row lists each deviation from upstream precisely (frontmatter, Verify GREEN, split checklist line, named test files, pointers, voice, strap-round additions).",
+    "The scoping rule holds across the skill: Verify GREEN, the rationalization rows and the checklist all say the same thing, and every fenced test run names a file.",
+    "strap-debugging Phase 4 step 3 replaces a conditional pointer to an absent skill with a concrete action (run the proving tests by file name and read the output).",
+    "The root README skill table, HARNESS_RULES.md, the plugin version (0.83.0) and docs/RELEASES/v1.1.0.md were all updated together with the new skill.",
+    "Every blob hash in the r1.1 freeze record matches the PR head for all 18 frozen files, so the frozen skill is the one that ships.",
+    "The pointer sweep is complete: no file under plugins/ still names superpowers-lt test-driven-development or systematic-debugging, and both new contract tests pin the routes (trigger, check-runlogs, Troubleshooting rule).",
+    "The strap round is honest: B3 was dropped with a recorded reason when its baseline already passed, instead of being claimed as proven.",
+    "The shop fixture carries a real truncation bug (int cast in tax.py), which makes SC-8 a genuine test of derived versus snapshot expected values. R-7 reports the 0.20 mismatch as a finding instead of freezing it.",
+    "Release bookkeeping is consistent: harness 0.83.0 bump, release table row, a complete unchanged-plugin list, and marketplace.json, pyproject.toml and CHANGELOG all aligned on 1.1.0.",
+    "test_skill_guidance_tail_contract classifies tdd-strapped as a knowledge skill, so the new skill cannot ship with an argument-hint by accident.",
+    "Freeze blob SHAs for SKILL.md, writing-good-tests.md, LICENSE and the contract test match the committed blobs at head, so the v1.1.0 notes' 'frozen at 4bb62e633f2a' claim holds.",
+    "Pointer migration is complete: no superpowers-lt:systematic-debugging or superpowers-lt:test-driven-development reference remains under plugins/, and README, HARNESS_RULES, check-runlogs, consumer-contract-audit and the parallel2 README all name the bundled skills.",
+    "Release bookkeeping is consistent: the harness 0.82.1 -> 0.83.0 row matches plugin.json, the Unchanged list names exactly the other eleven plugins, marketplace.json and pyproject.toml read 1.1.0, and CHANGELOG [Unreleased] points at v1.1.0.md.",
+    "The tdd-strapped README row mirrors the frontmatter trigger and the scoping rule at SKILL.md:199-201, which agrees with HARNESS_RULES.md:97 (full-suite runs belong to the developer).",
+    "strap-debugging's verification step (SKILL.md:189) now gives the same rule as tdd-strapped (proving tests run by file name), so the two bundled process skills agree.",
+    "The strap round's baselines were real failures under authentic pressure (R-1 skipped tests, R-2 ran the folder, R-4 froze 0.19), and B3 was dropped honestly when its baseline already behaved.",
+    "Every remaining route to the outside debugging and TDD skills (HARNESS_RULES, check-runlogs, consumer-contract-audit, parallel2 README, strap-debugging) now points at the bundled skill, and no superpowers-lt systematic-debugging or test-driven-development pointer is left outside docs/.",
+    "The PROVENANCE row lists each deviation from the source line by line. That makes the port auditable, and the strap-debugging row was updated to match its new pointers.",
+    "The strap round's spec and freeze line up: the frozen skill_hash 4bb62e6 matches the green runs. B3 was dropped with a stated reason when its baseline already passed, instead of being kept as a proof that proves nothing.",
+    "The shop fixture is small, and it plants the tax truncation bug (0.99 EU gives 0.19) on purpose, which gives the snapshot-copy scenario a real trap to catch.",
+    "The release notes, version bump, marketplace metadata and pyproject version agree on harness 0.83.0 / v1.1.0, and the provisional-level paragraph was rewritten once the minor bump settled it.",
+    "All three in-scope test modules pass at the PR head (94 passed), including the extended guidance-tail contract with tdd-strapped added to _KNOWLEDGE.",
+    "Both new contract tests spell the skill folder names, SKILL.md anchors, writing-good-tests.md, LICENSE and HARNESS_RULES.md in source, so tools/select_tests.py selects them when those files change.",
+    "The Troubleshooting-rule regex in test_strap_debugging_skill_contract.py is bounded by the next column-0 bullet, which today is the Creating plans rule, so the assertions read only that one rule.",
+    "test_every_fenced_test_run_names_its_target asserts runs is non-empty, so deleting every fenced run cannot make it pass vacuously."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I3",
+        "name": "Named-target guard accepts directory runs it exists to forbid",
+        "file": "tests/skills/test_tdd_strapped_skill_contract.py",
+        "files": [
+          "tests/skills/test_tdd_strapped_skill_contract.py",
+          "plugins/harness/skills/tdd-strapped/SKILL.md",
+          "plugins/harness/skills/tdd-strapped/writing-good-tests.md",
+          "tests/skills/test_strap_debugging_skill_contract.py"
+        ],
+        "lines": "3-5,21-22,46-49,52-56",
+        "reviewer": "adv_code_tests, tests, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_every_fenced_test_run_names_its_target treats any token containing a slash as a named target (_NAMED_TARGET first alternative \\S+(?:/|\\\\)\\S+). A fenced run against a directory (`pytest tests/unit`, `npm test src/components`) or a bare run with any path-valued flag (`pytest -q --junitxml=out/report.xml`) passes, although the skill rule the test pins is 'name files or node ids, never a directory'. The guard therefore cannot catch a port that drifts to a directory-scoped run.\n\nAlso (tests): _TEST_COMMAND (line 21) matches only npm test, pytest, python -m pytest, cargo test and go test, and only at the start of a stripped fenced line or after '$ '. A port that drifts back to a bare 'npx jest', 'yarn test', 'pnpm test', 'uv run pytest' or 'python -m unittest' in a fence, or to a bare `pytest` in inline prose, passes test_every_fenced_test_run_names_its_target. The module docstring (lines 3-5) says the test catches 'a verification step that runs the whole suite bare', which holds only for those five spellings.\n\nAlso (system_shape): The module docstring and the skill rule (SKILL.md:199, 'never a directory') say a fenced run must name a file or node id. _NAMED_TARGET's first alternative, `\\S+(?:/|\\\\)\\S+`, matches any path with a slash in it, so a fenced `pytest tests/skills` or `npm test src/components` counts as named. test_every_fenced_test_run_names_its_target therefore cannot fail on the folder run the skill forbids. It catches only a fully bare command.\n\nAlso (roast): `_NAMED_TARGET` accepts any `\\S+/\\S+` token, so a fenced `pytest tests/unit` or `npm test src/components` counts as a named target. The skill's rule (SKILL.md:199) is \"name files or node ids, never a directory\", and this is the test meant to keep the port from drifting back to directory runs. As written it only catches a run with no argument at all, which is the easy case.\n\nAlso (roast): writing-good-tests.md:47-52 and :193 list \"greps source text, or asserts a removed symbol stays removed\" as a warning sign, and say agent-instructing documents are tested by behavior (`harness:strap-skills`). The same PR ships `\"superpowers\" not in text` and `\"human partner\" not in text.lower()` (test_tdd_strapped_skill_contract.py:46-49), plus the strap-debugging route checks, which do exactly that. The project accepts contract tests as a strap part, but the reference reads as if they are always wrong. A reader who follows the reference would delete these tests.\n\nAttack: Add a fenced block to plugins/harness/skills/tdd-strapped/SKILL.md containing the line `pytest tests/unit` (or `npm test src/components`, or `pytest -q --junitxml=out/report.xml`), then run `python -m pytest tests/skills/test_tdd_strapped_skill_contract.py -q`: it still passes. Probe (docs/_scratch/pr_review/0337/pr337_20261124T062651Z/probes/probe_regex.py) shows _TEST_COMMAND matches and _NAMED_TARGET matches for all three lines, so flagged_bare=False.",
+        "fix": [
+          "Tighten _NAMED_TARGET to require a file-shaped token or a node id, e.g. r\"(?:^|\\s)[^\\s-]\\S*\\.(?:py|ts|js|rs|go)(?:::\\S+)?\\b|::\" so a bare path segment without a file extension no longer counts, and ignore tokens starting with '-'.",
+          "Add a negative self-check in the test module asserting that _NAMED_TARGET rejects 'pytest tests/unit' and 'pytest -q --junitxml=out/report.xml' and accepts 'npm test src/form.test.ts' and 'pytest tests/x.py::test_a'.",
+          "Widen _TEST_COMMAND to the common runners (npx jest|npx vitest|yarn test|pnpm test|uv run pytest|python -m unittest) and allow any leading prefix such as 'Run: '.",
+          "Narrow the module docstring to say the guard covers the runner spellings the skill uses today.",
+          "Drop the slash alternative: `_NAMED_TARGET = re.compile(r\"\\S+\\.(?:py|ts|js|rs|go)\\b|::\")`. Every current fenced run (`npm test path/to/test.test.ts`, `npm test src/form.test.ts`) still matches.",
+          "Require a file extension or a node id: `_NAMED_TARGET = re.compile(r\"\\S+\\.(?:py|ts|js|rs|go)\\b|::\")`. Both fenced runs in SKILL.md (`path/to/test.test.ts`, `src/form.test.ts`) still match.",
+          "Add one line to writing-good-tests.md's \"Behavior, not text\" paragraph: a contract test pinning a cross-file pointer or a removed dependency on an outside plugin is the accepted exception, and the behavior proof stays with strap-skills.",
+          "Or drop the removed-text assertions (`superpowers`, `human partner`) and keep the tests that pin a positive route (`harness:strap-debugging` named in the rule, the scoping sentences present)."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Two TDD skills fire on the same trigger when superpowers-lt is installed",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/tdd-strapped/SKILL.md"
+        ],
+        "lines": "164",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The marketplace still offers superpowers-lt as an optional install (README.md:164). `harness:tdd-strapped` and `harness:strap-debugging` now trigger unconditionally, so a session with superpowers-lt loaded has two TDD skills on the same description. Their Verify GREEN steps conflict: the source runs the whole suite bare, and tdd-strapped hands that run to the developer. Nothing tells the agent which one wins, and the README comment says only that harness \"bundles its own\".",
+        "fix": [
+          "State the precedence in HARNESS_RULES.md (Writing code / Troubleshooting): when both are loaded, the harness skills' test-scoping rules govern. Add a matching clause to the README install comment.",
+          "Or drop superpowers-lt from the README install list if it is really retiring, as test_strap_debugging_skill_contract.py's docstring says."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "PROVENANCE miscounts the added rationalization rows",
+        "file": "docs/PROVENANCE.md",
+        "files": [
+          "docs/PROVENANCE.md",
+          "plugins/harness/skills/tdd-strapped/SKILL.md"
+        ],
+        "lines": "17",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The tdd-strapped provenance row says the strap round added \"three rows for these in the rationalization table\". The ported SKILL.md has four rows that the upstream test-driven-development table lacks (SKILL.md:266-269): the relayed skip, the tiny suite, the snapshot freeze and the missed regression. A diff against the superpowers-lt copy confirms that upstream ends at \"Existing code has no tests\". A provenance record that undercounts the local edits misstates what is verbatim.\n\nAlso (overall): The tdd-strapped provenance row says the strap round added \"three rows for these in the rationalization table\". SKILL.md adds four rows (relayed skip, tiny suite, snapshot, last-time regression at lines 266-269); commit c2bc505..4ef4add shows all four as additions to the verbatim port. The provenance record undercounts the departures from the source.\n\nAlso (system_shape): The tdd-strapped PROVENANCE row says the strap round added 'three rows for these in the rationalization table'. Between the port commit c2bc505 and 4ef4add, SKILL.md gained four rows (lines 266-269): the relayed skip, 'The suite is tiny', the snapshot row and 'Last time one file missed a regression'.",
+        "fix": [
+          "In docs/PROVENANCE.md line 17, change \"three rows for these in the rationalization table\" to \"four rows for these in the rationalization table\".",
+          "Change 'three rows for these in the rationalization table' to 'four rows for these in the rationalization table' in the tdd-strapped row of docs/PROVENANCE.md."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "v1.1.0 change lines lack the PR-number tag the file requires",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "19-31",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The release file's preamble (v1.1.0.md:4-5) says each change line is \"tagged with its PR number\", and earlier release files open each line with it (`- #333 Docs(plugins): ...` in v1.0.0.md, `- #253 Fix(...)` in v1.0.0.md and v0.7.1.md). Both lines this branch adds start with `- Feat(harness):` (line 19) and `- Fix(harness):` (line 28) and carry only issue numbers, so the GitHub release body built from this file will not link them to PR #337.\n\nAlso (overall): docs/RELEASES/v1.1.0.md lines 4-5 state that each branch adds one line per change \"tagged with its PR number\". Both new change lines (19-31) cite issues #335, #131 and #142 and never name PR #337, so the file breaks its own rule.",
+        "fix": [
+          "Prefix both change lines with the PR number: `- #337 Feat(harness): tdd-strapped skill ...` at line 19 and `- #337 Fix(harness): strap-debugging stands alone ...` at line 28.",
+          "Append \"(PR #337)\" to both change lines in docs/RELEASES/v1.1.0.md, e.g. \"(issues #335, #131; PR #337)\" and \"(issue #142; PR #337)\"."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Freeze pins untracked interpreter-specific bytecode caches",
+        "file": "docs/plans/freezes/skill/tdd-strapped/r1.1-freeze.json",
+        "files": [
+          "docs/plans/freezes/skill/tdd-strapped/r1.1-freeze.json",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "26-37",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "The freeze's 'ignored' map (lines 26-37) records sha256 values for ten `__pycache__/*.cpython-315*.pyc` files under the shop fixture. These are git-ignored local leftovers from running pytest in the fixture folder. strap-skills SKILL.md:286-288 says `strap.py lock` refuses unless 'its ignored files still at their sha256'. Lock is the next step at merge, and it will fail after a cache clean, on another machine, or under another interpreter or pytest version.",
+        "fix": [
+          "Delete the three `__pycache__` folders under docs/plans/strap/tdd-strapped/fixtures/shop/sandbox/ and refreeze, so the ignored map is empty.",
+          "Or make the freeze skip `__pycache__` and `*.pyc` when it collects ignored files (a strap tooling change outside this PR)."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "SC-8 mechanical check did not fail at baseline",
+        "file": "docs/plans/strap/tdd-strapped/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/tdd-strapped/SkillSpec.json",
+          "docs/RELEASES/v1.1.0.md"
+        ],
+        "lines": "268-275,388-394",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "SC-8's check `reply_matches 0\\.20` expects false at baseline. R-4 records `held: false`, 'observed True' (SkillSpec.json:388-394), because the baseline reply froze 0.19 while remarking that rounding 'would give 0.20'. A reply that pastes the bug in still passes the check. B4's proof against a failing baseline, as the v1.1.0 notes claim, rests only on the session-graded judged item (grade R-4 'present').",
+        "fix": [
+          "On the next strap round, replace the check with one that reads the written test file's expected value, for example the literal 'tax 0.20' in sandbox/tests/test_invoice.py, if the strap check kinds support file content. Otherwise drop the check and rely on the judged item. Refreeze afterwards."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Fixture import path rests on pytest's prepend mode implicitly",
+        "file": "docs/plans/strap/tdd-strapped/fixtures/shop/sandbox/conftest.py",
+        "files": [
+          "docs/plans/strap/tdd-strapped/fixtures/shop/sandbox/conftest.py",
+          "docs/plans/strap/tdd-strapped/fixtures/shop/sandbox/pytest.ini"
+        ],
+        "lines": "1",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The sandbox conftest.py is a docstring only; it puts the sandbox on sys.path solely because pytest's default prepend import mode inserts a rootless conftest's folder. Run with --import-mode=importlib (the mode this repo's pyproject uses), the claim in the docstring stops holding and every fixture test fails on 'import shop'.",
+        "fix": [
+          "Add 'pythonpath = .' to docs/plans/strap/tdd-strapped/fixtures/shop/sandbox/pytest.ini so the import path holds in any import mode, and keep or drop the conftest accordingly.",
+          "Extend the conftest docstring to state that it relies on pytest's default prepend import mode."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Lead sentence of the stage-skill list now describes no item",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "lines": "102-105",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "HARNESS_RULES.md:102 still opens the list with 'Skills outside this plugin apply when installed.' Before this PR, the Writing code and Troubleshooting items named outside skills. Both now name bundled harness skills (lines 104-105). Every remaining named skill is harness:* (parallel2, pr-review, pr-team), so the sentence suggests these may be absent.",
+        "fix": [
+          "Reword line 102 to 'Skills named here ship with this plugin; the unnamed practices (plans, verification) apply through any installed skill that provides them.'",
+          "Or delete line 102."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "check-runlogs Step 3 still names the upstream 'systematic debugging' instead of the skill it now loads",
+        "file": "plugins/harness/skills/check-runlogs/SKILL.md",
+        "lines": "45-47,70",
+        "reviewer": "skill_package, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The investigator prompt (:45) now loads harness:strap-debugging directly, but Step 3 (:70) says a fix 'follows systematic debugging's Phase 4', the upstream skill's name, with no pointer to the harness skill or to harness:tdd-strapped for the failing test. Line 45 also runs to about 140 characters while the rest of the block wraps near 110.\n\nAlso (overall): Folding the two-line load instruction into one left line 45 at about 140 characters, while the rest of the prompt block wraps near 110. This is a cosmetic leftover of the edit.",
+        "fix": [
+          "Change :70 to 'and follows `harness:strap-debugging` Phase 4 (`harness:tdd-strapped` for the failing test): a failing test first, then one change, then the run again.', and rewrap :45-47 to the block's width.",
+          "Rewrap the paragraph at lines 45-47 so \"through the steps below.\" starts the next line, matching the surrounding width."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "consumer-contract-audit introduces an in-plugin skill under 'Skills outside this plugin apply when installed'",
+        "file": "plugins/harness/skills/consumer-contract-audit/SKILL.md",
+        "lines": "151,154",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The related-skills list at :151 opens with 'Skills outside this plugin apply when installed.' The repointed entry (:154) is now `harness:tdd-strapped`, which ships in this plugin and is always installed, so the lead sentence no longer describes the list (the `harness:pr-review` entry already had the same mismatch).",
+        "fix": [
+          "Reword :151 to the parallel2 README's form: 'Related skills (those outside this plugin apply when installed):'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "strap-debugging keeps the upstream voice and a dangling 'Phase 4.5' pointer the sibling port fixed",
+        "file": "plugins/harness/skills/strap-debugging/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-debugging/SKILL.md",
+          "docs/PROVENANCE.md"
+        ],
+        "lines": "210,231,233",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "tdd-strapped rewrote 'your human partner' as 'the developer' and its guard test bans the phrase, but strap-debugging, which now cross-links to it both ways, still says 'Discuss with your human partner' (:210) and heads a section 'your human partner's Signals You're Doing It Wrong' (:233). :231 also says '(see Phase 4.5)', but no such heading exists; the target is Phase 4 step 5 (:198).",
+        "fix": [
+          "Replace 'your human partner' with 'the developer' at :210 and :233 (heading 'The Developer's Signals You're Doing It Wrong'), change :231 to '(see Phase 4, step 5)', and add both edits to the strap-debugging row of docs/PROVENANCE.md, which lists its deviations from upstream."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "RED 'Good' example does not type-check against the GREEN 'Good' implementation",
+        "file": "plugins/harness/skills/tdd-strapped/SKILL.md",
+        "lines": "85-91,142",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The RED example passes a synchronous `operation` (returns 'success', throws synchronously) to `retryOperation`, while the GREEN implementation types its parameter `fn: () => Promise<T>`. A `() => string` is not assignable to `() => Promise<T>`, so the pair the skill holds up as the model fails to compile under TypeScript.",
+        "fix": [
+          "Make the RED example's operation async: `const operation = async () => {` at SKILL.md:85; a throw then becomes a rejection, which `await fn()` in the GREEN code still catches."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "'Test passes immediately' is a delete-and-restart red flag, yet the skill also asks for tests of existing code",
+        "file": "plugins/harness/skills/tdd-strapped/SKILL.md",
+        "files": [
+          "plugins/harness/skills/tdd-strapped/SKILL.md",
+          "plugins/harness/skills/tdd-strapped/writing-good-tests.md"
+        ],
+        "lines": "132,265,275,287",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "Verify RED (:132) says a passing test means 'Fix test', and Red Flags (:275, :287) list 'Test passes immediately' with 'Delete code. Start over.' The same skill tells the agent to 'Add tests for existing code' (:265), and writing-good-tests.md:59-60 asks for a characterization test when upstream behavior surprised. A correct test of existing behavior passes on its first run by design, so the rules give no way to watch it fail and order deleting working code.",
+        "fix": [
+          "Add one rule under Verify RED: a test of behavior that already exists is watched failing by mutating the production code temporarily (the Mutation Check in writing-good-tests.md), then restoring it; and scope the 'Test passes immediately' red flag to tests for new behavior."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Test-command detector misses common launcher forms and tilde fences",
+        "file": "tests/skills/test_tdd_strapped_skill_contract.py",
+        "lines": "21,29-36",
+        "reviewer": "adv_code_tests",
+        "fix_kind": "mechanical",
+        "summary": "_TEST_COMMAND only recognizes runs starting at column 0 (after strip) or after '$ ' with the literal spellings npm test / pytest / python -m pytest / cargo test / go test. Bare suite runs written as `python3 -m pytest -q`, `uv run pytest`, `npx vitest run`, or the project's own launcher form `sh \"<plugin>/scripts/hpy\" -m pytest -q` are never classified as test runs, so they escape the bare-run check. _fenced also toggles only on ``` and ignores ~~~ fences, so any run inside a ~~~bash block is never inspected.\n\nAttack: Add a fenced ```bash block with the line `sh \"<plugin>/scripts/hpy\" -m pytest -q` (or `python3 -m pytest -q`, `uv run pytest`), or a ~~~bash block with `pytest -q`, to plugins/harness/skills/tdd-strapped/SKILL.md; `python -m pytest tests/skills/test_tdd_strapped_skill_contract.py -q` still passes. The probe at docs/_scratch/pr_review/0337/pr337_20261124T062651Z/probes/probe_regex.py prints cmd=False for each of these lines, so they never reach the bare-run assertion.",
+        "fix": [
+          "Broaden _TEST_COMMAND to match `-m pytest` and `pytest` anywhere on the line (e.g. r\"(?:\\bpython\\d*(?:\\.\\d+)?\\s+-m\\s+pytest|\\bpytest|\\bnpm test|\\bnpx (?:jest|vitest)|\\bcargo test|\\bgo test)\\b\") and make _fenced toggle on lines starting with ``` or ~~~."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Source-plugin name check is case-sensitive",
+        "file": "tests/skills/test_tdd_strapped_skill_contract.py",
+        "files": [
+          "tests/skills/test_tdd_strapped_skill_contract.py",
+          "tests/skills/test_strap_debugging_skill_contract.py"
+        ],
+        "lines": "48",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The 'superpowers' checks compare case-sensitively (tdd-strapped line 48; strap-debugging lines 27 and 41), while the sibling 'human partner' check lowercases. A reintroduced 'Superpowers' pointer in a heading or sentence start passes all three guards.",
+        "fix": [
+          "Compare against text.lower() (and the lowered description/body/rule text) in all three assertions."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Suite-rule assertion message describes a different failure",
+        "file": "tests/skills/test_tdd_strapped_skill_contract.py",
+        "files": [
+          "tests/skills/test_tdd_strapped_skill_contract.py",
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/tdd-strapped/writing-good-tests.md"
+        ],
+        "lines": "59-62,65-67",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_the_suite_run_belongs_to_the_developer (line 62) asserts that the rule text 'full-suite runs belong to the developer' is present, but its failure message says 'the bare suite run survived the port'. A failure here means the rule sentence was dropped or reworded, not that a bare run survived (that is what test_every_fenced_test_run_names_its_target catches), so the message points a maintainer at the wrong cause.\n\nAlso (tests): test_strap_debugging_skill_contract pins the HARNESS_RULES.md Troubleshooting bullet on harness:strap-debugging, but no test pins the sibling 'Writing code' bullet (plugins/harness/rules/HARNESS_RULES.md:104) on harness:tdd-strapped, which this branch repointed. A revert of that bullet back to the outside skill would pass every guard.\n\nAlso (overall): test_the_suite_run_belongs_to_the_developer asserts two verbatim sentences (\"name files or node ids, never a directory\", \"full-suite runs belong to the developer\"). The bundled writing-good-tests.md (lines 41-52, warning sign at 193) calls a test that greps source text a change detector: rewording either sentence fails it, but a new prose instruction to run the whole suite passes it. test_every_fenced_test_run_names_its_target already guards the actual regression (a bare run in an example), and strap round B2 proved the behavior.",
+        "fix": [
+          "Change the message at line 62 to 'no rule that full-suite runs belong to the developer'.",
+          "Add a test to test_tdd_strapped_skill_contract.py mirroring test_the_troubleshooting_rule_names_the_bundled_skill: search '^- \\*\\*Writing code:\\*\\*.*?(?=^- )' in HARNESS_RULES.md and assert 'harness:tdd-strapped' in it and no 'superpowers'.",
+          "Remove test_the_suite_run_belongs_to_the_developer and rely on the fenced-run check plus the frozen strap round for B2.",
+          "Or keep it and state in the module docstring that the phrase checks are a deliberate structural pin on a port that drifts toward its source. That way the skill's own guidance does not read as violated."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "tdd-strapped checklist demands a test for every new function; its own reference says trivial code earns none",
+        "file": "plugins/harness/skills/tdd-strapped/SKILL.md",
+        "files": [
+          "plugins/harness/skills/tdd-strapped/SKILL.md",
+          "plugins/harness/skills/tdd-strapped/writing-good-tests.md"
+        ],
+        "lines": "330,340",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:330 makes 'Every new function/method has a test' a box, and :340 says an unchecked box means 'You skipped TDD. Start over.' The linked reference writing-good-tests.md:60-63 says constructors, getters, constants and trivial forwarding earn tests only when they validate, normalize, default, derive, enforce or cause side effects, and :153-155 says trivial code earns none and a test written to satisfy process costs maintenance forever. An agent that follows the binding checklist writes the change-detector tests the reference forbids; one that follows the reference fails the checklist and is told to start over.",
+        "fix": [
+          "Reword SKILL.md:330 to 'Every new function/method that validates, normalizes, defaults, derives, enforces or causes a side effect has a test; trivial code is covered through the first consumer-visible result that depends on it' (the wording of writing-good-tests.md:60-63)."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Shipped test rules condemn the PR's own skill contract tests",
+        "file": "plugins/harness/skills/tdd-strapped/writing-good-tests.md",
+        "files": [
+          "plugins/harness/skills/tdd-strapped/writing-good-tests.md",
+          "tests/skills/test_tdd_strapped_skill_contract.py",
+          "tests/skills/test_strap_debugging_skill_contract.py"
+        ],
+        "lines": "47-52,193",
+        "reviewer": "system_shape, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "writing-good-tests.md:47-52 says asserting that a skill 'contains an exact line proves only that the source is the source' and that agent documents are tested through the consuming agent's behavior (harness:strap-skills). Its Warning Signs list, line 193, names 'The test greps source text, or asserts a removed symbol stays removed'. The same PR adds two tests that do exactly that: test_tdd_strapped_skill_contract.py:46-49 asserts 'superpowers' and 'human partner' stay out of the text, lines 59-62 grep for two phrases, and test_strap_debugging_skill_contract.py:23-41 greps three files for removed pointers. tdd-strapped now triggers whenever a test is written or changed, and in this repo every skill change comes with a `contract_test` part (SkillSpec.json:21, strap-skills SKILL.md:286). An agent following the skill will flag or rewrite the repo's own guard tests, and an agent following repo convention will ignore the skill.\n\nAlso (skill_package): writing-good-tests.md:47-52 says asserting that a skill contains an exact line proves only that the source is the source, and :193 lists 'The test greps source text, or asserts a removed symbol stays removed' as a warning sign. The guard test shipped with this skill asserts `'superpowers' not in text` and `'human partner' not in text` (removed symbols stay removed) and exact phrases such as 'full-suite runs belong to the developer' in the body. The rule and the package's own example contradict each other, and the rule as written would condemn every skill contract test in the repo.",
+        "fix": [
+          "Add a carve-out to writing-good-tests.md under 'Behavior, not text' and in the line-193 warning sign: a structural guard on what a loader or another skill consumes (frontmatter fields, cross-skill pointers, linked reference files) is a contract test. Free-form prose still earns no text test.",
+          "Or keep the rule as written and reduce the two new contract tests to loader-visible structure (frontmatter name/description and link targets), dropping the removed-symbol assertions, which the strap round's behavioral scenarios already cover.",
+          "Add a scoped carve-out to writing-good-tests.md 'Behavior, not text': a structural guard (frontmatter shape, a link that resolves, no pointer to a plugin that may be absent) is a wiring check, not a behavior test, and stays legitimate; behavior claims are still proven by the consumer (harness:strap-skills).",
+          "Or drop the phrase assertions in test_the_suite_run_belongs_to_the_developer and leave those rules to the strap-skills round that already proved them against a baseline."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M1",
+      "classification": "architectural_ambiguity",
+      "reason": "Product call: state harness TDD/debugging precedence (HARNESS_RULES.md near its cap, README), or drop superpowers-lt from the README as retiring."
+    },
+    {
+      "id": "M5",
+      "classification": "needs_follow_up",
+      "reason": "SC-8 is drawn and its baseline recorded, so its check is locked until strap.py reopen starts a new round; B4's baseline failed on judged item R-4."
+    },
+    {
+      "id": "M17",
+      "classification": "architectural_ambiguity",
+      "reason": "Convention call for every skill contract test: carve structural guards out of the text-test rule, or cut the new tests to loader-visible structure."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 337 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":6,\"first_sha\":\"c2bc5057961948a2789676ab18dc74c4e5d069fc\",\"headRefName\":\"0003-tdd-strapped\",\"headRefOid\":\"2826a737db06a3ce925304008765266b817a9ee5\",\"last_sha\":\"2826a737db06a3ce925304008765266b817a9ee5\",\"mergeCommit\":null,\"number\":337,\"state\":\"OPEN\",\"title\":\"0003 tdd strapped\",\"url\":\"https://github.com/t968rs/operator-straps/pull/337\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (29 checked, 1 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 29,
+          "findings_refuted": 1,
+          "findings_upheld": 28,
+          "code_findings": 2
+        },
+        "refuted_ids": [
+          "M7"
+        ],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0003-tdd-strapped",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0003-tdd-strapped",
+        "head_ref_name": "0003-tdd-strapped",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "c2bc5057961948a2789676ab18dc74c4e5d069fc",
+        "head_sha": "2826a737db06a3ce925304008765266b817a9ee5",
+        "base_ancestor_command": "git merge-base --is-ancestor c2bc5057961948a2789676ab18dc74c4e5d069fc HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 2826a737db06a3ce925304008765266b817a9ee5 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M7",
+      "status": "REFUTED",
+      "date": "2026-11-23",
+      "evidence": "plugins/harness/rules/HARNESS_RULES.md:106 ('Creating plans: a written plan') and :109 ('Making claims: verification before completion') name stages, not harness skills, in the same generic form the pre-PR 'Writing code: test-driven development' item used, which the finding itself counts as an outside skill; the lead sentence at :102 still covers those two items"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - docs/PROVENANCE.md tdd-strapped row: 'three rows for these in the rationalization table' changed to 'four rows for these in the rationalization table' (SKILL.md:266-269 adds four rows); tdd-strapped/SKILL.md cited only, no edit needed"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - strap-debugging/SKILL.md:210 'your human partner' changed to 'the developer'; :231 '(see Phase 4.5)' changed to '(see Phase 4, step 5)'; :233 heading changed to 'The Developer's Signals You're Doing It Wrong'; strap-debugging row of docs/PROVENANCE.md records these deviations"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Prefixed both v1.1.0 change lines with the PR number: '#337 Feat(harness):' (line 19) and '#337 Fix(harness):' (line 28), matching the earlier release files."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Step 3 now names harness:strap-debugging Phase 4 with a harness:tdd-strapped pointer for the failing test; lines 45-47 rewrapped to the block width (line 45 was about 140 characters)."
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Reworded the related-skills lead sentence at line 151 to 'Related skills (those outside this plugin apply when installed):' so it no longer implies the in-plugin harness:tdd-strapped entry needs installing"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Dropped the superpowers-lt optional install line from the README companion list (retiring, per developer guidance), so only the harness TDD and debugging skills are offered; HARNESS_RULES.md and tdd-strapped/SKILL.md: no precedence clause needed once the conflicting install is gone"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - RED Good example operation is now async (`const operation = async () => {`), so it type-checks against the GREEN `fn: () => Promise<T>` and a throw becomes a rejection the await still catches"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Verify RED gains a rule: a test of behavior that already exists is watched failing by temporarily mutating production code (the Mutation Check), then restored and confirmed green; the Red Flags entry is scoped to 'A test for new behavior passes immediately'; writing-good-tests.md: cited Mutation Check already holds the procedure, no edit"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Checklist box reworded to require a test for every new function/method that validates, normalizes, defaults, derives, enforces or causes a side effect, with trivial code covered through the first consumer-visible result; writing-good-tests.md: source of the wording (lines 60-63), no edit"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - _TEST_COMMAND now matches pytest anywhere on the line (python3 -m pytest, uv run pytest, sh hpy -m pytest), plus npx jest/vitest; _fenced toggles on ``` and ~~~ fences and closes only on the matching fence marker"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - superpowers checks compare lowercased text: tdd-strapped test_no_pointer_reaches_outside_the_marketplace_plugins, strap-debugging test_the_skill_triggers_on_its_own (description plus body) and test_the_troubleshooting_rule_names_the_bundled_skill (rule text)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - pytest.ini gains 'pythonpath = .' so 'import shop' holds under prepend and importlib import modes; conftest docstring now states the import path comes from pytest.ini"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Suite-rule assertion message now reads 'no rule that full-suite runs belong to the developer'; added test_the_writing_code_rule_names_the_bundled_skill pinning the HARNESS_RULES.md Writing code bullet on harness:tdd-strapped; module docstring states the phrase checks are a deliberate structural pin. HARNESS_RULES.md: cited only, the Writing code bullet already names harness:tdd-strapped. writing-good-tests.md: edited under M17."
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - writing-good-tests.md 'Behavior, not text' gains a carve-out: structural guards on what a loader or another skill consumes (frontmatter, cross-skill pointers, resolving links, no pointer to an absent plugin) are legitimate contract tests, free prose still earns no text test; the line-193 warning sign carries the same exception. Contract tests: cited only, now covered by the carve-out (strap-debugging test unchanged; tdd-strapped test docstring edited under M15)."
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - Replaced _NAMED_TARGET with _names_target over _TARGET_TOKEN: a token counts only when it names a test file by extension or a node id (::), and tokens starting with '-' are ignored, so folder runs and path-valued flags fail; widened _TEST_COMMAND to yarn/pnpm test and python -m unittest; added test_the_target_check_rejects_folders_and_flags self-check; docstring narrowed to the covered runner spellings. SKILL.md: cited only, its fenced runs (path/to/test.test.ts, src/form.test.ts) still pass. writing-good-tests.md carve-out edited under M17. strap-debugging test: cited only, covered by the M17 carve-out."
+    },
+    {
+      "id": "M5",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - closed, no action: Developer: no action; B4's failing baseline is proven by judged item R-4, and SC-8's check stays as drawn"
+    },
+    {
+      "id": "M4",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-24",
+      "evidence": "2826a73 (working-tree snapshot; developer commits) - closed, no action: Fixture __pycache__ folders deleted (git-ignored, so no tracked change); r1.1-freeze.json is write-once, and the developer-approved freeze --refreeze writes the next ledger entry with no cached bytecode"
+    }
+  ]
+}
