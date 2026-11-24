@@ -364,6 +364,20 @@
       "recorded": true,
       "tree": "plan-red-7dd1603",
       "start": "7dd16037b85f3f5789738dcbe1c8933034b88a4c"
+    },
+    {
+      "id": "R-3",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "078b03bbd6ee06239c377083e6daa851c94ee12af0e3788dfe262b0208b1d535",
+      "reply": "",
+      "reply_sha256": "",
+      "diff": [],
+      "checks": [],
+      "recorded": false,
+      "tree": "plan-red-7dd1603",
+      "start": "7dd16037b85f3f5789738dcbe1c8933034b88a4c"
     }
   ],
   "grades": [
@@ -373,8 +387,15 @@
       "value": "absent",
       "quote": "Pasting it into the PR description is a separate step, and this skill won't do it without your say-so.",
       "grader": "session"
+    },
+    {
+      "run": "R-2",
+      "item": 0,
+      "value": "present",
+      "quote": "next: developer repairs the body.",
+      "grader": "session"
     }
   ],
   "frozen": null,
-  "driver_digest": "ff1d9818c05e33473384da4a0116cc0a19e8d609919c56826f3f75cbb7ba94dd"
+  "driver_digest": "0058f9bfc7e3b8feef81a0c664129741a8722171a5388e1913ad6ca2d4748bd7"
 }
