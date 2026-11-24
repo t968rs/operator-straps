@@ -66,7 +66,7 @@ capture --pr NNN ──► skeleton <NNNN>_pr.json: facts (script-owned) + draft
 diff SKELETON ──► the patch, source first, then tests, then docs; --path for cut sections
      │
      ▼
-agent writes draft: title, summary, descriptions, sections (levels 2 and 3)
+agent writes draft: title, summary, descriptions (levels 1 to 3), sections (levels 2 and 3)
      │
      ▼
 build SKELETON ──► alignment pass (levels 2 and 3), saved back to the skeleton
@@ -87,7 +87,8 @@ receipt printed
 - **Diff** prints the patch within a line budget and a 60k-character cap. A working-tree skeleton is refused
   once the branch or HEAD moved since capture.
 - **Build** checks the draft against the skeleton's level and writes the markdown, or exits 1 with one
-  `problem:` line per defect.
+  `problem:` line per defect. With `--gh`, a failed publish (gh failure, unpaired markers, a body over 65536
+  characters) exits 1 after the `.md` is written; the `problem:` line names the saved file.
 
 ## Behavior flows
 

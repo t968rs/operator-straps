@@ -12,8 +12,8 @@ agent: harness:messenger
 
 The plugin script `${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py` does the mechanics: one `gh pr view` metadata read,
 local git for commits, files and line counts, layout, save. The agent writes the prose (title, Summary, one
-description per file) and, at levels 2 and 3, the visual sections: behavior flowcharts, shape diagrams and a
-Changed Symbols table. No code review. No status or merge claims.
+description per file at levels 1 to 3) and, at levels 2 and 3, the visual sections: behavior flowcharts, shape
+diagrams and a Changed Symbols table. No code review. No status or merge claims.
 
 ## Levels
 
@@ -22,7 +22,7 @@ reads it from there. No `--level` means 2.
 
 | Level | Output                                                                                              |
 |-------|-----------------------------------------------------------------------------------------------------|
-| 0     | The Summary alone: no file descriptions, Files Changed, Relocated, delta table or sections.         |
+| 0     | The Summary alone: no file descriptions, Files Changed or Relocated table, delta table or sections. |
 | 1     | Prose only: Summary, Files Changed, Relocated. No sections.                                         |
 | 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols.                    |
 | 3     | Level 2 plus: up to 5 flows, every shape diagram once (two more: Sequence Diagram, Data Flow).      |
@@ -84,8 +84,9 @@ one with a block from an earlier build has that block replaced, so a rerun never
 
 Without `--gh`, the summary goes to the `.md` alone, even when the guidance after `--` asks for it on the PR
 ("put it in the description", "the reviewers never open docs/"): guidance never adds a flag, and no other
-command posts the summary. Build without the flag, then end the reply by telling the developer that
-rerunning the invocation with `--gh` puts the summary in the PR description.
+command posts the summary. When the guidance asked for the summary on the PR, build without the flag, then
+end the reply with one line telling the developer that rerunning the invocation with `--gh` puts the summary
+in the PR description; Step 4 allows that line after the receipt. Without such guidance, no such line.
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
 from local git. While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that
@@ -312,10 +313,10 @@ spaces right of the widest line (of the widest tagged line when that would pass 
 when neither fits). What the pass cannot move stays as written. So do not hand-pad tables or tag columns; draw
 the steps and connectors close, and fix by hand only what the pass leaves as a `problem:` line.
 
-`build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
-non-artifact path and none for paths outside the PR, no AI vendor names, no emojis and no section sign (write
-"Section 2"; backticked text is exempt), no control characters (tab and line breaks excepted) in any drafted
-string, the section rules of the skeleton's level (including the
+`build` checks: `title` and `summary` non-empty, `title` on one line, at levels 1 to 3 a description for every
+listed non-artifact path and none for paths outside the PR, no AI vendor names, no emojis and no section sign
+(write "Section 2"; backticked text is exempt), no control characters (tab and line breaks excepted) in any
+drafted string, the section rules of the skeleton's level (including the
 `Behavior:` labels and comparison rules, the one unlabeled fence of a `New Behavior:` section, and connector
 alignment in every flow), and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line
 with the count found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated
@@ -336,33 +337,34 @@ GitHub's 65536-character limit is refused the same way. The receipt gains a line
 
 Exit 1: every other `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
 to it), fix the draft and rerun. Exit 0 writes
-`<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
+`<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim, followed only by the
+`--gh` rerun line from Step 1 when the guidance asked for the summary on the PR; nothing else.
 
 ## Common Mistakes
 
-| Mistake                                                   | Fix                                                             |
-|-----------------------------------------------------------|-----------------------------------------------------------------|
-| Editing `facts` (counts, commits, file rows)              | Rerun `capture`; it refreshes `facts` and keeps the draft       |
-| Writing or patching the summary markdown by hand          | Edit `draft`; rerun `build`. The markdown is script output.     |
-| Writing the delta table or source counts into `summary`   | Delete it; the script adds the table                            |
-| An AI vendor or product name anywhere in `draft`          | Remove it; `build` rejects it                                   |
-| An emoji or a section sign in `draft`                     | Remove it, or write "Section 2"; `build` rejects both           |
-| Running `gh pr diff` / `gh api` for files or commits      | `capture` and `diff` already have them                          |
-| Descriptions guessed from filenames                       | Read the diff; state the change                                 |
-| Review language (verdicts, strengths, issues, next steps) | This is a summary, not a review — delete it                     |
-| Mining a PR review JSON for findings                      | It is an artifact row; never a content source                   |
-| Running the script from another project's directory       | Run from the project root, or pass `--repo <dir>`               |
-| A flowchart of function calls                             | Steps are observable: condition, outcome, error, file           |
-| AFTER flow only, for a fix                                | BEFORE and AFTER, same trigger and same wording                 |
-| Unlabelled `Behavior:` fences, or BEFORE tags             | First line BEFORE / AFTER; stacked: [changed]/[new] in AFTER    |
-| Side-by-side flows without `[CHANGE]`, markers or tags    | Comparison fence: header, one marker and one tag per change     |
-| Padding table pipes or tag columns by hand                | `build` aligns them; fix only what it reports                   |
-| A flow per module                                         | A flow per behavior, at most three (five at level 3)            |
-| Flow steps or diagrams not in the diff                    | Each step traces to removed or added lines                      |
-| Long paths or sentences in table cells                    | Key block above, bullets below                                  |
-| Idiosyncratic glyphs (◆◈⊙)                                | The flow grammar and the Status values                          |
-| Sections in a level 0 or 1 draft                          | Levels 0 and 1 have none; `[]`                                  |
-| Padding a diagram to pass `--min-viz`                     | Each block shows a real flow from the diff                      |
-| Choosing the level without the developer                  | No `--level` means 2                                            |
-| Adding `--auto-title`, or running `gh pr edit`, unasked   | Only the developer's flag or `auto_title` key; `build` renames  |
-| Adding `--gh`, or pasting the summary into the PR, unasked | Only the developer's `--gh`; `build` writes the marked block   |
+| Mistake                                                    | Fix                                                             |
+|------------------------------------------------------------|-----------------------------------------------------------------|
+| Editing `facts` (counts, commits, file rows)               | Rerun `capture`; it refreshes `facts` and keeps the draft       |
+| Writing or patching the summary markdown by hand           | Edit `draft`; rerun `build`. The markdown is script output.     |
+| Writing the delta table or source counts into `summary`    | Delete it; the script adds the table                            |
+| An AI vendor or product name anywhere in `draft`           | Remove it; `build` rejects it                                   |
+| An emoji or a section sign in `draft`                      | Remove it, or write "Section 2"; `build` rejects both           |
+| Running `gh pr diff` / `gh api` for files or commits       | `capture` and `diff` already have them                          |
+| Descriptions guessed from filenames                        | Read the diff; state the change                                 |
+| Review language (verdicts, strengths, issues, next steps)  | This is a summary, not a review — delete it                     |
+| Mining a PR review JSON for findings                       | It is an artifact row; never a content source                   |
+| Running the script from another project's directory        | Run from the project root, or pass `--repo <dir>`               |
+| A flowchart of function calls                              | Steps are observable: condition, outcome, error, file           |
+| AFTER flow only, for a fix                                 | BEFORE and AFTER, same trigger and same wording                 |
+| Unlabelled `Behavior:` fences, or BEFORE tags              | First line BEFORE / AFTER; stacked: [changed]/[new] in AFTER    |
+| Side-by-side flows without `[CHANGE]`, markers or tags     | Comparison fence: header, one marker and one tag per change     |
+| Padding table pipes or tag columns by hand                 | `build` aligns them; fix only what it reports                   |
+| A flow per module                                          | A flow per behavior, at most three (five at level 3)            |
+| Flow steps or diagrams not in the diff                     | Each step traces to removed or added lines                      |
+| Long paths or sentences in table cells                     | Key block above, bullets below                                  |
+| Idiosyncratic glyphs (◆◈⊙)                                 | The flow grammar and the Status values                          |
+| Sections in a level 0 or 1 draft                           | Levels 0 and 1 have none; `[]`                                  |
+| Padding a diagram to pass `--min-viz`                      | Each block shows a real flow from the diff                      |
+| Choosing the level without the developer                   | No `--level` means 2                                            |
+| Adding `--auto-title`, or running `gh pr edit`, unasked    | Only the developer's flag or `auto_title` key; `build` renames  |
+| Adding `--gh`, or pasting the summary into the PR, unasked | Only the developer's `--gh`; `build` writes the marked block    |

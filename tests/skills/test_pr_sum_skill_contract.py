@@ -1,7 +1,8 @@
-"""Contract of the pr-sum skill: ``--auto-title`` is the developer's consent, the only route to a rename.
+"""Contract of the pr-sum skill: the developer's consent gates the outward writes and the level hint.
 
-The argument hint names the flag, the capture step states the consent, and Common Mistakes bans adding the
-flag or running ``gh pr edit`` unasked.
+``--auto-title`` is the developer's consent, the only route to a rename; ``--gh`` is the consent to write the
+PR description. The argument hint names each flag and every level, the capture step states the consent, and
+Common Mistakes bans adding a flag or running ``gh pr edit`` unasked.
 """
 from __future__ import annotations
 
@@ -39,5 +40,13 @@ def test_argument_hint_names_the_gh_flag() -> None:
 def test_skill_gates_retitle_on_the_auto_title_flag() -> None:
     text = _text()
     assert "`--auto-title` is the developer's consent to rename the PR" in text
-    assert "Never choose a level, a `--min-viz` count, `--auto-title`" in text
+    assert "Never choose a level, a `--min-viz` count, `--auto-title`, `--gh`" in text
     assert "`gh pr edit`, unasked" in _section(text, "## Common Mistakes")
+
+
+def test_skill_gates_gh_on_the_gh_flag() -> None:
+    text = _text()
+    assert "`--gh` is the developer's consent to write the PR description" in text
+    assert "guidance never adds a flag" in text
+    mistakes = _section(text, "## Common Mistakes")
+    assert "Adding `--gh`, or pasting the summary into the PR, unasked" in mistakes
