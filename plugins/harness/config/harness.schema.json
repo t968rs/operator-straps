@@ -169,6 +169,14 @@
         "line_length": {"type": "integer", "minimum": 1, "description": "Longest docstring line, indentation included; a longer line gets the long-lines flag."}
       }
     },
+    "comments": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The comment convention's project values; read by the writing-comments section command.",
+      "properties": {
+        "divider_width": {"type": "integer", "minimum": 1, "description": "Length of every section divider line, indentation included; a rule or minor divider of another length gets a width flag."}
+      }
+    },
     "todo": {
       "type": "object",
       "additionalProperties": false,

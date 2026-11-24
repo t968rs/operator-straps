@@ -109,6 +109,13 @@ class DocstringsConfig:
 
 
 @dataclass(frozen=True)
+class CommentsConfig:
+    """Project values of the comment convention."""
+
+    divider_width: int
+
+
+@dataclass(frozen=True)
 class StrapConfig:
     """Project values of strap-skills: which skills it writes (``harness`` or ``project``)."""
 
@@ -225,6 +232,7 @@ class HarnessConfig:
     worktree_baseline: Tuple[Tuple[str, ...], ...]
     runlogs: RunLogsConfig
     docstrings: DocstringsConfig
+    comments: CommentsConfig
     todo: TodoConfig
     strap: StrapConfig
     plugins: Tuple[Tuple[str, str], ...]
@@ -363,6 +371,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         worktree_setup=_argv_list(m["worktree_setup"], "worktree_setup"),
         worktree_baseline=_argv_list(m["worktree_baseline"], "worktree_baseline"),
         runlogs=_runlogs(m["runlogs"]), docstrings=_docstrings(m["docstrings"]),
+        comments=_comments(m["comments"]),
         todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
         strap=_strap(m["strap"]),
         plugins=_plugins(m["plugins"]),
@@ -539,6 +548,20 @@ def _docstrings(d: Dict[str, Any]) -> DocstringsConfig:
     if isinstance(length, bool) or not isinstance(length, int) or length < 1:
         raise ConfigError(f"docstrings/line_length: {length!r} is not a positive integer")
     return DocstringsConfig(length)
+
+
+def _comments(c: Dict[str, Any]) -> CommentsConfig:
+    """``comments`` with ``divider_width`` checked as a positive integer, also on a load without
+    ``jsonschema``."""
+    if not isinstance(c, dict):
+        raise ConfigError("comments: must be an object")
+    unknown = sorted(set(c) - {"divider_width"})
+    if unknown:
+        raise ConfigError(f"comments: unknown keys {unknown}")
+    width = c.get("divider_width")
+    if isinstance(width, bool) or not isinstance(width, int) or width < 1:
+        raise ConfigError(f"comments/divider_width: {width!r} is not a positive integer")
+    return CommentsConfig(width)
 
 
 def _inside_root(rel: str, where: str) -> str:

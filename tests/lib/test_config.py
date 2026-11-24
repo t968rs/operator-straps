@@ -225,6 +225,32 @@ def test_invalid_docstrings_raise_without_jsonschema(make_project, monkeypatch: 
         load_config(make_project({"docstrings": bad}))
 
 
+def test_comments_divider_width_default_and_override(make_project) -> None:
+    assert load_config(make_project()).comments.divider_width == 88
+    override = load_config(make_project({"comments": {"divider_width": 100}}, name="p2"))
+    assert override.comments.divider_width == 100
+    for index, bad in enumerate([0, "88", None, 1.5, True]):
+        with pytest.raises(ConfigError):
+            load_config(make_project({"comments": {"divider_width": bad}}, name=f"bad{index}"))
+    with pytest.raises(ConfigError):
+        load_config(make_project({"comments": {"width": 88}}, name="unknown"))
+
+
+@pytest.mark.parametrize("bad", [
+    {"divider_width": 0},
+    {"divider_width": "88"},
+    {"divider_width": None},
+    {"divider_width": 1.5},
+    {"divider_width": True},
+    {"width": 88},
+])
+def test_invalid_comments_raise_without_jsonschema(make_project, monkeypatch: pytest.MonkeyPatch,
+                                                   bad: dict) -> None:
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    with pytest.raises(ConfigError, match=r"^comments"):
+        load_config(make_project({"comments": bad}))
+
+
 TODO_DIR = "docs/RESEARCH/_TODO"
 
 
