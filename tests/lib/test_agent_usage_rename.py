@@ -1,7 +1,8 @@
 """The agent usage log and its schema carry the generic name ``agent_usage`` (issue #192).
 
 The log records every Agent dispatch, not only pr-review ones, so its default path, its schema file, the
-canned review-artifact commit message and the repository's own log all use ``agent_usage``.
+canned review-artifact commit message and the repository's own log all use ``agent_usage``. The
+repository's log is local data, ignored by git, so a fresh checkout has none.
 """
 from __future__ import annotations
 
@@ -31,5 +32,7 @@ def test_canned_message_covers_the_new_log() -> None:
 
 
 def test_the_usage_log_moved() -> None:
-    assert (REPO_ROOT / NEW_LOG).is_file(), f"{NEW_LOG} is missing"
+    """The repository's log is local data: ignored under the new name, absent under the old one."""
+    ignored = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert NEW_LOG in ignored, f"{NEW_LOG} is not ignored"
     assert not (REPO_ROOT / OLD_LOG).exists()
