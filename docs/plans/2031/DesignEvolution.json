@@ -143,6 +143,33 @@
         "free_form": "a colored stamp is told apart from the engine's dim lines at a glance"
       },
       "date": "2026-11-25"
+    },
+    {
+      "id": "EX6",
+      "discovered_by": "developer request after the first live turns",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 action and files",
+        "indicated": "the glue writes rows and holds them for render; nothing reads the laps file back for the developer"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the developer asked to read the recorded timings as a table",
+        "why_free_form": "The rows were only readable as raw JSONL. The developer asked for /lap-times: a markdown table of the laps capped at the current terminal width, with cleaner formatting than the /todo table (whose cells are not padded, so its columns wander as plain text). A skill run through the model cannot learn the terminal width (the Bash tool sees no COLUMNS); a mod command's command.run carries presentation.columns."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "lap.ts registers /lap-times [all] [N] at session.start in an active project and answers command.run without a model turn (isTextDisplayOnly); hooks/table.ts renders the summary line and a padded markdown table that drops columns least useful first to fit presentation.columns (stop time and lap always kept); row.ts adds parseAllRows for the all-sessions view."
+      },
+      "why_new_outcome": {
+        "category": "discoverability",
+        "free_form": "the recorded timings become readable in the terminal on demand"
+      },
+      "date": "2026-11-25"
     }
   ]
 }
