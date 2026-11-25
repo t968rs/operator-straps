@@ -68,8 +68,11 @@ the prompt.
 ## The laps file
 
 One JSONL per checkout at `<state_dir>/lap-stamp/laps.jsonl`; `state_dir` defaults to `.claude/state/harness`,
-so the file is `.claude/state/harness/lap-stamp/laps.jsonl`, git-ignored through `.claude/state/`. Append-only,
-one row (about 300 bytes) per turn, no rotation.
+so the file is `.claude/state/harness/lap-stamp/laps.jsonl`, git-ignored through `.claude/state/`. One row (about
+300 bytes) per turn, no rotation. Rows are only ever added, but the host offers no append call: each stop reads
+the whole file and writes it back with one more line, the existing lines kept verbatim. A file that exists but
+cannot be read is left untouched, and that turn's row stays in memory only, until the session ends. The mod
+assumes one writer per checkout; see Known limitations.
 
 | Field | Meaning |
 |-------|---------|
@@ -77,7 +80,7 @@ one row (about 300 bytes) per turn, no rotation.
 | `session` | Session id. |
 | `turn` | The host's turn id. |
 | `kind` | `prompt` or `wake`. |
-| `wake` | What woke the turn (the origin kind of the newest non-lap submission), else null. |
+| `wake` | What woke the turn (the origin kind of the newest non-lap submission since the previous main-loop stop), else null. |
 | `prompt_at` | The lap press, ISO 8601 with local offset; null on a wake turn. |
 | `start_at`, `stop_at` | The turn's start and stop, ISO 8601 with local offset. |
 | `last_prompt_at` | The newest `prompt_at` of the session, else null. |
@@ -116,14 +119,17 @@ following. The mod adds no key of its own.
 |------|------|
 | `session.start`, `session.attach` | Loads the session's rows from the laps file into memory. |
 | `prompt.submit` | Records a lap press, or the wake reason of a non-lap submission. |
+| `session.append` (door `delivery`, the main loop) | A lap press delivered into the running turn attaches to that turn and restarts its lap (D2); a `queue` row is not a delivery. |
 | `turn.start`, `turn.complete` (the main conversation) | Records the start; at the stop, builds the row, appends it and adds it to memory. |
 | Render of an assistant reply block | Stamps the block whose fingerprint matches a row. |
 | Render of the `TurnDuration` line | Stamps it when exactly one empty-answer row matches its duration. |
 
 ## State
 
-`$.state['lap-stamp']` (contract: `types/index.d.ts`) holds the session's rows and the pending press, so a state
-change redraws the latest reply once its row exists.
+`$.state['lap-stamp']` (contract: `types/index.d.ts`) holds three keys: `rows` (the session's rows), `clock` (the
+lap clock: pending presses, the running turn, the consumed-press marker, the last prompt and the pending wake
+reason) and `session` (the current session id). Render reads only `rows` and `session`, so a state change
+redraws the latest reply once its row exists.
 
 ## Known limitations
 
@@ -140,6 +146,16 @@ These are readings of the host API that only a live session confirms, so each ma
 - Whether a resumed session (`--resume`, `/resume`) keeps its session id decides whether its older rows are found.
 - Identical replies list every candidate instead of picking one.
 - Remote surfaces (mobile, web) are not covered: the stamp is a terminal feature.
+
+These follow from the file write, not from a host reading:
+
+- **Concurrent sessions can lose a row.** The laps file is shared by every session in the checkout, and the
+  mod's serial queue orders writes only inside one session. When two sessions stop close together, both read the
+  same text and the later write drops the other's row; the losing session keeps its row in memory, so its stamp
+  still draws until that session ends, but the file never gets it back.
+- **Each stop costs the whole file.** Nothing prunes the file, so every stop rereads and rewrites all history,
+  in 3 MiB ranged reads once the file passes the host's 4 MiB answer. The write is a single call; if the host
+  caps a write the way it caps a read, every later row stays memory-only, silently (fail open).
 
 ## Checks
 

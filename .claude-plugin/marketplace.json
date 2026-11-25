@@ -96,7 +96,7 @@
     {
       "name": "lap-stamp",
       "source": "./plugins/lap-stamp",
-      "description": "Times each turn from the developer's prompt to the turn's stop and stamps the clock time, lap and time since the last prompt under the reply; laps are kept in a git-ignored JSONL file",
+      "description": "Times each main-conversation turn from the developer's prompt to its stop and stamps the clock time and lap under the reply (a wake-up adds the time since the last prompt); laps are kept in a git-ignored JSONL file",
       "category": "productivity",
       "keywords": ["mod", "timer"]
     },
