@@ -8,7 +8,7 @@
   "base_sha": "f8cf38cf2c2553011421b9b9d1cf0c89cb81b987",
   "head_sha": "303af1d914b3872d3d4a6bd223a1b8ac57d65e33",
   "review_date": "2026-11-24",
-  "verdict": "READY TO MERGE - 7 of 10 findings resolved, 3 bubbled",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
   "stats": {
     "additions": 1959,
     "deletions": 151,
@@ -33,11 +33,7 @@
     "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/overall.json",
     "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/system_shape.json"
   ],
-  "bubbles": [
-    "M3",
-    "M6",
-    "M8"
-  ],
+  "bubbles": [],
   "strengths": [
     "line.test.ts pins each ramp step (0/4 to 4/4 -> 51, 45, 74, 67, 243) through statusText, and a built-line test mixes view progress (2024) with status-only fallback (2023, 2025), which separates the two sources in linkOf.",
     "The no-bleed test in line.test.ts uses a structural regex (every 38;5;N opener followed by a 39 reset before the next escape) and a segment-bearing line, so it guards the whole STATUS pen, not just one sample string.",
@@ -359,6 +355,24 @@
       "status": "RESOLVED",
       "date": "2026-11-24",
       "evidence": "303af1d (working-tree snapshot; developer commits) - Listed type moved from hooks/watch.ts into types/index.d.ts; progress.ts imports it from ../types, watch.ts imports and re-exports it; mod tests 178 pass (outside fixer waves)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2b3ee82 (working-tree snapshot; developer commits) - Developer option B: kept V6 per-item fallback, documented it in the progress.ts header and README 'An item is done' bullet; spec and DesignEvolution.json not edited per developer guidance (main session writes EX3 through evolution_api)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2b3ee82 (working-tree snapshot; developer commits) - Developer option B: no code change; progress.ts header and README 'An item is done' bullet state the per-item fallback and that harness status_view counts a receipts-scheme plan's item with no receipt as PENDING; watch.ts cited only, behavior kept"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "2b3ee82 (working-tree snapshot; developer commits) - Developer option B: no code change; mirror.ts receipt bullet and progress.ts header state that receipts count for any qualifying plan whatever its frozen.records scheme (book_for reads them only for receipts plans) and that a plan id shared by two plan files skips receipts and counts item statuses; watch.ts/plans.ts behavior kept; ActionPlan and DesignEvolution.json left for the main session's EX3 via evolution_api"
     }
   ]
 }
