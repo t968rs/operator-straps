@@ -6,6 +6,7 @@ self-contained and opens from disk. The module holds no ``_STYLE`` or ``_LOADER`
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Dict
 
@@ -54,6 +55,15 @@ def test_the_shared_style_holds_the_theme_and_the_plan_style_the_page_rules() ->
     assert "prefers-color-scheme: dark" in shared and "--fg:" in shared
     assert ".status" in own and ".receipt" in own
     assert ".status" not in shared
+
+
+def test_action_and_rationale_paragraphs_keep_their_line_breaks() -> None:
+    """Issue 345: a blank line in an action or a rationale shows as a paragraph break on the page."""
+    found = re.search(r"(?:^|[}\s])\.action, \.why\s*\{([^}]*)\}", asset("styles", "plan.css"), re.M)
+    assert found and "white-space: pre-line" in found.group(1)
+    raw = plan()
+    raw.items[0].action = "First paragraph.\n\nSecond paragraph."
+    assert '<p class="action">First paragraph.\n\nSecond paragraph.</p>' in prh.render_pip_html(raw, NAME)
 
 
 def test_the_page_inlines_the_loader() -> None:
