@@ -44,6 +44,10 @@ requests fit in 40.
   even when the developer is away and says not to wait: a sheet that needs a guessed goal is not written
   until the answer comes, and the reply ends with the question. Nothing is added to round the sheet out;
   an extra goal worth having is offered as a question.
+- **TODO ids and issues ride as refs, never as guidance.** The sheet cannot hold the TODO ids and issue
+  numbers the request says the work answers ("this is todo-k69m", "fixes #301"), and write-plan records a
+  plan's refs only from `--refs`: guidance text never becomes a ref. Pass each one to `check --refs`, so the
+  `next:` line carries it. An id the developer names as unrelated, or only mentions, stays out.
 
 ## Steps
 
@@ -74,13 +78,14 @@ requests fit in 40.
 4. **Check it.**
 
    ```bash
-   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/spec_it.py" check <sheet path>
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/spec_it.py" check <sheet path> [--refs <todo id or #issue> ...]
    ```
 
    It prints `check [ok]` with the line, goal and avoid counts, a `warn:` line past the 250-line target and a
-   `next:` line naming the write-plan command; `problem:` lines and exit 1 otherwise.
-5. **Hand off.** Show the developer the sheet and the `next:` line, with any implementation notes appended as
-   its `-- <guidance>` tail. The plan starts from the sheet as written.
+   `next:` line naming the write-plan command, each ref a quoted `--refs` token on it; `problem:` lines and
+   exit 1 otherwise, a ref that is neither a TODO id nor an issue number included.
+5. **Hand off.** Show the developer the sheet and the `next:` line as `check` printed it, refs included, with
+   any implementation notes appended as its `-- <guidance>` tail. The plan starts from the sheet as written.
 
 ## Judgment
 
@@ -93,6 +98,8 @@ requests fit in 40.
 | The request leaves a fork open and the developer is offline | Ask the question and write no sheet that guesses it. |
 | "Round it out with whatever else it needs" | Write the asked goals; offer extras as questions, not lines. |
 | A `problem:` line from the API or `check` | Fix what it names (a field, a repeated line, the length, an existing sheet) and rerun; never edit the page by hand. |
+| "This is todo-k69m and fixes #301" | Keep both out of the sheet; `check --refs todo-k69m '#301'`, so `next:` carries them. |
+| "#288 is linked but unrelated, leave it out" | No ref for #288; refs only for what the work answers. |
 | The developer asks to change a sheet written on an earlier day | `load_sheet` it, `model_copy` the changed fields, `write_sheet(..., replace=True)`; never `new_sheet` a second copy. |
 
 ## Related

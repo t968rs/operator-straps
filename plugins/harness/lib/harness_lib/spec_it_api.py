@@ -11,7 +11,7 @@ import re
 import unicodedata
 from datetime import date
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import List, Optional, Sequence
 
 from harness_lib.config import active
 from harness_lib.spec_it_models import (
@@ -23,7 +23,9 @@ from harness_lib.spec_it_models import (
 )
 
 __all__ = ["MAX_LINES", "SheetExists", "SpecSheet", "TARGET_LINES", "load_sheet", "new_sheet", "next_step",
-           "render_sheet", "sheet_path", "write_sheet"]
+           "plan_refs", "render_sheet", "sheet_path", "write_sheet"]
+
+_REF = re.compile(r"todo-[a-z0-9]{4}|#\d+")
 
 
 class SheetExists(ValueError):
@@ -96,8 +98,26 @@ def _rel(path: Path) -> str:
         return Path(path).as_posix()
 
 
-def next_step(sheet: SpecSheet, path: Path) -> str:
+def plan_refs(refs: Sequence[str]) -> List[str]:
+    """The TODO ids and issue numbers in ``refs``, split on commas, blanks skipped, first occurrence kept.
+
+    Raises:
+        ValueError: A ref that is neither a TODO id (``todo-k69m``) nor an issue number (``#301``).
+    """
+    out: List[str] = []
+    for token in (part.strip() for ref in refs for part in ref.split(",")):
+        if token and not _REF.fullmatch(token):
+            raise ValueError(f"--refs {token} is neither a TODO id nor an issue number")
+        if token and token not in out:
+            out.append(token)
+    return out
+
+
+def next_step(sheet: SpecSheet, path: Path, refs: Sequence[str] = ()) -> str:
     """The write-plan invocation that takes ``sheet`` at ``path`` as its spec; the title and the path are both
-    quoted, so a folder name holding a space stays one argument."""
+    quoted, so a folder name holding a space stays one argument. ``refs`` (see ``plan_refs``) follow as
+    single-quoted ``--refs`` tokens, the TODO ids and issues the sheet itself cannot hold."""
     title = sheet.title.replace('"', "'")
-    return f'/harness:write-plan "{title}" --spec "{_rel(path)}"'
+    step = f'/harness:write-plan "{title}" --spec "{_rel(path)}"'
+    tokens = plan_refs(refs)
+    return f"{step} --refs " + " ".join(f"'{token}'" for token in tokens) if tokens else step
