@@ -61,6 +61,61 @@
         "free_form": "D2 anchors a mid-turn press to the running turn only on a reported delivery; the register.ts wiring is an execution blocker for the item's planned tests"
       },
       "date": "2026-11-25"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "local PR review",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 action",
+        "indicated": "every hook awaits next first"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the planned hook order loses the press for the turn it starts",
+        "why_free_form": "The turn a lap press starts begins inside next, so a prompt.submit hook that awaited next first would queue the press after turn.start had already looked for it; that turn would time from the wrong start and the press would wait for the following turn."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "prompt.submit takes the press before next so the turn that starts inside next finds it, and withdraws it when next returns a drop; every other hook awaits next first."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "D1 times a turn from its press; only a press queued before next is visible to the turn that starts inside it, and the withdrawal keeps a dropped prompt from leaving a stale press."
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "EX4",
+      "discovered_by": "local review local-0010-lap-stamp-impl (I4, M18)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1",
+        "TASK-6"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "planned test tests/contract/test_lap_stamp_registration.py",
+        "indicated": "test_the_release_notes_list_the_mod reads the notes file named by the marketplace metadata.version; test_claude_md_names_and_counts_the_mod pins the literal 'ten TypeScript mods'"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the planned test reached its file by a path built at runtime and pinned a count another test owns",
+        "why_free_form": "tools/select_tests.py cannot see a release-notes file named from metadata.version, so a pull request touching the notes skips the check, and the check fails once the next release bumps the version; the mod count is already checked by tests/contract/test_mod_count.py and the literal pin breaks when the next mod lands"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "The committed test declares WALK_ROOTS = ('docs/RELEASES/',), collects the lap-stamp rows across docs/RELEASES/v*.md and requires one ending in the manifest version, following test_arc_straps_registration.py; the CLAUDE.md test keeps the name and mirror-test assertions and drops the count pin. The planned copy under docs/plans/2031/tests stays as frozen."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "CLAUDE.md requires a walking test to declare WALK_ROOTS so PR selection reaches it, and the mod count has one owner"
+      },
+      "date": "2026-11-25"
     }
   ]
 }
