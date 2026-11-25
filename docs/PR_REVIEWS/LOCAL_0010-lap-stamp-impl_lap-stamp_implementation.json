@@ -1,0 +1,632 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": "local-0010-lap-stamp-impl",
+  "pr_title": "lap-stamp implementation",
+  "branch": "0010-timestamps-timestamps",
+  "base_branch": "main",
+  "base_sha": "c85706275a25775dca711bd5e3b7522eeaa23a1a",
+  "head_sha": "7cb143e753bea6164c5e641d9cc37ce1bb150c27",
+  "review_date": "2026-11-25",
+  "verdict": "NOT READY TO MERGE - important: I1",
+  "stats": {
+    "additions": 5343,
+    "deletions": 9,
+    "files_changed": 46,
+    "source": {
+      "additions": 5093,
+      "deletions": 9,
+      "files_changed": 45
+    }
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/local-0010-lap-stamp-impl/local-0010-lap-stamp-impl_20261125T143958Z/findings/cicd.json",
+    "docs/_scratch/pr_review/local-0010-lap-stamp-impl/local-0010-lap-stamp-impl_20261125T143958Z/findings/tests.json",
+    "docs/_scratch/pr_review/local-0010-lap-stamp-impl/local-0010-lap-stamp-impl_20261125T143958Z/findings/runtime.json",
+    "docs/_scratch/pr_review/local-0010-lap-stamp-impl/local-0010-lap-stamp-impl_20261125T143958Z/findings/docs.json",
+    "docs/_scratch/pr_review/local-0010-lap-stamp-impl/local-0010-lap-stamp-impl_20261125T143958Z/findings/overall.json",
+    "docs/_scratch/pr_review/local-0010-lap-stamp-impl/local-0010-lap-stamp-impl_20261125T143958Z/findings/system_shape.json"
+  ],
+  "bubbles": [
+    "I1"
+  ],
+  "strengths": [
+    "ci.yml:128 appends plugins/lap-stamp to the mod tests loop, matching the existing for-loop shape; the plugin has tsconfig, types and .test.ts files, so claude plugin test has tests to run.",
+    "The strict validate step (ci.yml:124) globs plugins/*/, so the new plugin is validated without a further workflow edit.",
+    "clock.test.ts tests the pure reducers directly, including corner cases (same-millisecond delivery, a wall clock going backwards, a lost turn.complete folded in as used, the consumed-press marker), and checks that no reducer mutates its input.",
+    "lap.test.ts and register.test.tsx run the real hooks through the engine harness over in-memory files, env, git and clock. There are no mock-chain wiring tests: every assertion is on the laps file, the atoms or the drawn tree.",
+    "Fail-open coverage (D10) is broad: refused write, unreadable laps file never overwritten, refused session id, refused clock, refused state, harness.json unreadable versus removed mid-session.",
+    "The over-cap ranged-read tests put a two-byte character across the RANGE_BYTES boundary, which proves the byte pieces are joined before decoding.",
+    "fingerprint.test.ts pins FNV-1a 64 against published vectors plus a UTF-8 multi-byte case (0ac21707b7181e01 for U+00E9, independently confirmed).",
+    "register.test.tsx proves the writer and reader meet on the real lap-stamp atoms end to end, including a reply mounted before its row lands that picks up the stamp without an explicit redraw.",
+    "row.test.ts covers lenient parsing thoroughly: every field missing or wrong-typed, version mismatch, BOM, CRLF, truncated tail, and the prompt/wake vs prompt_at invariant.",
+    "test_lap_stamp_config_mirror.py pins the mirrored state_dir to harness defaults.json through the shared ts_string helper, as the CLAUDE.md mirror rule requires.",
+    "clock.ts keeps the lap clock as pure reducers over ClockState (no $, no I/O), so every press/start/delivery/stop ordering is unit-testable in isolation.",
+    "The prompt.submit hook queues the press on the serial chain before calling next, so the turn.start raised inside next always finds it, and a dropped prompt is taken back with withdrawn() restoring the prior wake reason.",
+    "Fail-open is consistent: every host call is caught, serial() never rejects, render hooks register a .catch that falls back to the engine's tree, and nothing is written into replies or prompts.",
+    "row.ts parses the JSONL leniently (BOM, mixed line endings, wrong version or types, kind/prompt_at consistency) and stores only a fingerprint of the answer, never prompt or answer text or paths.",
+    "lapsText distinguishes absent, unreadable and oversized files, reading past the host's 4 MiB cap in byte ranges and decoding once after joining, so multi-byte characters split across ranges survive.",
+    "root.ts mirrors harness_lib.project.project_root's order (git top level, CLAUDE_PROJECT_DIR, cwd), and config.ts resolves state_dir the way cfg.path() does, with its default pinned by tests/mods/test_lap_stamp_config_mirror.py.",
+    "Stamp formats and examples in the mod README (prompt, wake, identical-replies list) match stamp.ts stampText/candidateText/formatDuration exactly.",
+    "Activation prose (git top level, then CLAUDE_PROJECT_DIR, then cwd) matches root.ts and harness_lib.project.project_root.",
+    "Known limitations section lists every host fact TASK-10 is meant to confirm instead of presenting them as settled.",
+    "DesignEvolution EX2 records the queue-door misreading with its reasoning, and lap.ts:341-342 carries the same rule in a comment.",
+    "CLAUDE.md mod count and list, the config-mirror line, the README install line, companion list and release-note table row and intro all move together and agree.",
+    "LapRow field table in the mod README matches types/index.d.ts and the row.ts validator field for field.",
+    "clock.ts is a pure reducer set over ClockState with an explicit consumed-press marker, a lost-turn fold and clamped durations; clock.test.ts covers every D2 rule including same-millisecond delivery and input immutability.",
+    "Fail-open is real, not nominal: lap.ts distinguishes 'file absent' from 'exists but unreadable' (never overwriting the latter), reads files over the host cap in byte ranges with a split multi-byte char test, and keeps the project on a doubtful harness.json probe.",
+    "Tests are behavioral end to end: lap.test.ts and register.test.tsx drive the real registered hooks over an in-memory host, and register.test.tsx proves the writer and render meet on the real state atoms, including a redraw when the row lands.",
+    "Row codec is strict on read (version, types, ISO offset form, kind/prompt_at consistency) and lenient on failure, and rows round-trip with the host zone offset per instant (DST-safe).",
+    "Repo-wide registration is complete and test-pinned: marketplace, CI loop, README table and install line, CLAUDE.md count and mirror rule, release table, icon (EX1) and the state_dir mirror test.",
+    "Plan deviations EX1 (icon contract) and EX2 (queue door is not a delivery; register.ts wiring) are recorded with reasons and cited in receipts.",
+    "Repo-wide registration follows the plan's S1 sweep: marketplace entry, ci.yml mod loop, the README Bundled Mods row, install line, companion and activation lists, the CLAUDE.md mod count and list, the config-mirror line and the release-notes table row and intro all moved together, and a contract test guards each one.",
+    "The plugin README, the spec and the code agree on the core contracts: the D5 row fields and types match LapRow and parseRows' validation, the D6 stamp and duration bands match stamp.ts, the D7 candidate-list format matches blockStamp, and the D8 2000 ms single-empty-row rule matches durationRow.",
+    "Both plan deviations went through DesignEvolution with a reason and a digest in the receipt: EX1 for the icon contract the plan missed, and EX2 for the queue-vs-delivery door misread and the early register.ts wiring. The code comment at lap.ts:341-342 restates the EX2 rule where it applies.",
+    "The state_dir mirror pattern is applied in full: config.ts copies the default, the docstring names the guarding test, and tests/mods/test_lap_stamp_config_mirror.py pins both DEFAULT_STATE_DIR and LAPS_PATH against defaults.json.",
+    "Every TypeScript test exercises real behavior: the clock, row, stamp and fingerprint tests call the pure reducers and codecs directly; the lap, render and register tests run the real hooks over an in-memory host with no stubbed function under test; register.test.tsx proves the writer and reader meet on the real atoms.",
+    "Fail-open is applied with care beyond the spec's D10: a refused harness.json read keeps the last known project, a file that exists but does not read is never overwritten, a laps file over the 4 MiB host cap is read in byte ranges that rejoin split UTF-8 characters, and a dropped prompt is withdrawn from the clock.",
+    "The README Known limitations list matches the open TASK-10 live-session checks one for one, so the facts not yet observed are labeled as readings of the host API, not presented as confirmed behavior."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Plan 2031 TASK-10 live-session confirmation has no receipt",
+        "file": "docs/plans/2031_lap_stamp_turn_timer_ActionPlan.json",
+        "files": [
+          "docs/plans/2031_lap_stamp_turn_timer_ActionPlan.json",
+          "plugins/lap-stamp/README.md",
+          "docs/plans/2031/receipts/TASK-9.json"
+        ],
+        "lines": "355-377",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The branch records receipts for TASK-1 to TASK-9 only; TASK-10 (ActionPlan lines 355-377) is still PENDING. It is the item that confirms the host facts the whole design rests on, chief among them (a) that the drawn AssistantMessage text of a reply's last block fingerprints equal to turn.complete's answer, which the spec (Left to the builder) calls 'the one place approach A can fail silently'. If that fact is false, no reply ever gains a stamp and nothing reports it. The plugin README lists the facts as known limitations (plugins/lap-stamp/README.md:130-142), but the plan the PR implements is not complete and its PIP shows TASK-10 open.\n\nAlso (overall): Receipts exist for TASK-1 to TASK-9 only. TASK-10 (the developer's `claude --plugin-dir plugins/lap-stamp` session) is the step that confirms the AssistantMessage text normalizes to turn.complete's answer, the delivery door, the bridge/slash-command origin kinds, the TurnDuration props and resume session ids. The README lists them as Known limitations, so this is disclosed, but the spec calls the text match 'the one place approach A can fail silently'.",
+        "fix": [
+          "Run the TASK-10 session (`claude --plugin-dir plugins/lap-stamp`), record any differing fact in DesignEvolution through evolution_api with its fix cited, and record the TASK-10 receipt before merging.",
+          "If the developer decides to merge first, close TASK-10 through the plan driver as deferred (an evolution entry naming the deferral) so the plan does not read as complete-but-pending.",
+          "Run TASK-10 before merging and record its receipt (and any differing fact as a DesignEvolution entry), or state in the PR description that the merge precedes the live check."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Laps file append is a whole-file read-modify-write that loses rows from concurrent sessions",
+        "file": "plugins/lap-stamp/hooks/lap.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/lap.ts",
+          "plugins/lap-stamp/README.md",
+          "docs/superpowers/specs/2026-11-25-lap-stamp-design.md"
+        ],
+        "lines": "196-220,274-293",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "completed() reads the entire laps file at the start of the stop (lapsText, line 284), awaits several host calls (read of sessionAtom and clockAtom, update, keepRow), then writes back `withLine(text, rowLine(row))` with $.fs.write (line 292), replacing the file. The laps file is one per checkout (config.ts LAPS_PATH, plan V4), so two Claude Code sessions open in the same checkout share it; the `serial` queue (line 47-52, 'no two writes interleave') only orders work inside one mod instance. When session B appends between session A's read and A's write, A's write drops B's row, and on the ranged path (readRanges, a file that grew after the stat) the bytes past the stat size are truncated the same way. The lost row is never restored: B holds it only in memory until B's process exits, after which its reply loses its stamp on every redraw. The docstring at line 275 calls this an append, which the code does not do.\n\nAlso (overall): completed() reads the whole laps file (lapsText, ranged reads above 4 MiB) and writes back text + the new line with $.fs.write (lap.ts:284,292). Spec D5 and the mod README (README.md:71, 'Append-only') promise an append-only file, one per checkout, but two sessions in the same checkout that stop close together each read the same text and the second write drops the first session's row. The serial queue (ctx.tail) only orders hooks inside one process. The cost also grows with the file: every stop rereads the whole file, in 3 MiB ranges once it is over the host's read cap. Nothing in the README's Known limitations states either effect.\n\nAlso (runtime): The laps file collects one row per turn of every session in the checkout and nothing prunes it. completed() reads the full file (ranged reads in 3 MiB pieces past 4 MiB, lines 196-220) and rewrites it in full on every main-loop stop, so the cost of each stop grows with all history. The ranged read handles a file past the host's 4 MiB answer cap, but the write of that same text goes through a single $.fs.write; if writes share the cap, every later row stays memory-only (fail-open, but silent).",
+        "fix": [
+          "Re-read the laps file immediately before the write and append the row to that fresh text (and only write when the fresh read succeeded), so the window shrinks to the single read-write pair; state the remaining race in the README Limits.",
+          "After the write, re-read and confirm the file still contains the row's line; on a miss, merge and rewrite once more (bounded retry).",
+          "Use a host append primitive if the engine offers one ($.fs.append or a write option) instead of rewriting the file.",
+          "Before the write, reread the file and only write when its text still equals the text read at the start; on a mismatch rebuild withLine from the new text and retry once (narrows the window; the serial queue already prevents in-process interleaving).",
+          "If the host offers no append primitive, state the cross-session race and the per-stop full-file rewrite in plugins/lap-stamp/README.md Known limitations and change 'Append-only' (README.md:71) to say rows are only ever added but the file is rewritten on each stop.",
+          "Bound the file: when the text exceeds a threshold, keep only the newest N rows (or the rows of the newest sessions) in the rewrite, and document the bound in the README.",
+          "Document the unbounded growth and the write-size limit in the README Limits section if pruning is out of scope for this PR."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "load() does not apply the session-switch rule clockFor() applies: a new session keeps the old session's last prompt",
+        "file": "plugins/lap-stamp/hooks/lap.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/lap.ts",
+          "plugins/lap-stamp/hooks/lap.test.ts"
+        ],
+        "lines": "296-308",
+        "reviewer": "overall, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "clockFor (lap.ts:95-105) rebuilds lastPromptAt and consumedAt from the new session's own rows when the session id changes, and the test 'a switched session rebuilds the clock from its own rows: no stale since prompt' (lap.test.ts:576) pins that intent. load() (lap.ts:296-308), run on session.start and session.attach, sets sessionAtom to the new id and then calls seedLastPrompt, which takes the max of the clock's existing lastPromptAt and the new session's newest prompt. When session.start or session.attach fires in-process with a different session id, the previous session's lastPromptAt survives; because sessionAtom now equals the new id, completed() takes clockFor's same-session branch and the next wake row records last_prompt_at and since_prompt_ms from another session's prompt, against D4 ('the newest prompt_at of the session'). The comment at lap.ts:91 says /clear and resume raise no session.start, but that is one of the host readings TASK-10 has not yet confirmed; the two paths that handle the same event should not disagree.\n\nAlso (runtime): clockFor (lines 89-105) treats a session id change as a switch: lastPromptAt and consumedAt are replaced by the new session's newest press (null when none) and the wake reason clears. load() (lines 296-308), run on session.attach, sets sessionAtom to the current id and then applies seedLastPrompt, which keeps the newer of the old session's lastPromptAt and the new session's. After a /clear (no session.start, per the clockFor docstring) followed by a session.attach before the next stop, sessionAtom already equals the new id, so clockFor takes the same-session branch and the next wake row's since_prompt_ms is measured from the previous session's last prompt.",
+        "fix": [
+          "In load(), read the known session before overwriting sessionAtom and, when it is non-null and differs from the new session, update the clock with clockFor(c, session, known, text) (or the same rebuild: lastPromptAt and consumedAt from newestPromptAt(rows), pendingWake null) instead of seedLastPrompt; keep seedLastPrompt for the same-session and first-session cases. Add a lap.test.ts case: turn in S1, session.start with S2, wake turn: since_prompt is null.",
+          "In load(), read sessionAtom first and, when it is non-null and differs from the current session, apply the clockFor switch rule (`clockFor(clock, session, known, text)`) instead of seedLastPrompt."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Release-notes check is invisible to PR test selection",
+        "file": "tests/contract/test_lap_stamp_registration.py",
+        "files": [
+          "tests/contract/test_lap_stamp_registration.py",
+          "tools/select_tests.py",
+          "tests/contract/test_arc_straps_registration.py",
+          "docs/RELEASES/v1.1.0.md",
+          "CLAUDE.md"
+        ],
+        "lines": "70-73",
+        "reviewer": "tests, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_the_release_notes_list_the_mod opens docs/RELEASES/v{version}.md through a path built at runtime from marketplace.json. tools/select_tests.py picks a test only when its source names a changed file's basename or when it walks a declared WALK_ROOTS folder. This test does neither, so a pull request that edits or drops the lap-stamp row in docs/RELEASES/v1.1.0.md skips it, and the break only shows up in the full run on main. CLAUDE.md (Tests) requires a test that reaches a file by a runtime route to spell that file out. test_arc_straps_registration.py already solves the same problem with a glob over docs/RELEASES plus WALK_ROOTS = (\"docs/RELEASES/\",).\n\nAlso (system_shape): test_the_release_notes_list_the_mod reads `metadata.version` from marketplace.json and requires a `| lap-stamp |` row in `docs/RELEASES/v<that version>.md`. That holds only while 1.1.0 is the proposed release. CLAUDE.md (Releases) has the next branch that bumps any plugin create `v<X.Y.Z>.md` and move `metadata.version`. That file gets a row only for plugins that changed, so an unchanged lap-stamp fails this test on a branch that never touched it. The path is also built at runtime (`v{version}.md`) and never written out, so `tools/select_tests.py` does not pick the test when a release-notes file changes. The row check also ignores the version, so a release row that disagrees with plugin.json still passes. The repo already has a working pattern for this: `tests/contract/test_arc_straps_registration.py:13,63-74` walks every `docs/RELEASES/v*.md` under `WALK_ROOTS = (\"docs/RELEASES/\",)` and requires some row to carry the manifest version.",
+        "fix": [
+          "Follow tests/contract/test_arc_straps_registration.py: add a module-level WALK_ROOTS = (\"docs/RELEASES/\",) and collect the lap-stamp rows by globbing (repo_root / \"docs\" / \"RELEASES\").glob(\"v*.md\"), then assert that one row carries the manifest's version (| lap-stamp | ... | 0.1.0 |).",
+          "Rewrite the check the way test_arc_straps_registration.py does it. Declare `WALK_ROOTS = (\"docs/RELEASES/\",)`, collect every `| lap-stamp |` row across `docs/RELEASES/v*.md`, and assert that one ends in the version from `plugins/lap-stamp/.claude-plugin/plugin.json`. The test is a planned (frozen) test, so record the change as a DesignEvolution entry and cite it at record time.",
+          "Keep the current-release lookup but assert only the manifest-version row, and spell out the release file name in the source so selection can see it. This still fails once the version rolls, so the first option is preferred."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Root README state_dir key row does not list lap-stamp/laps.jsonl",
+        "file": "README.md",
+        "lines": "635",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The README key table's `state_dir` row (README.md:635) enumerates what lives under the folder (session-bookmark, parallel2, working-refs, todo-sync, ...). lap-stamp now writes `<state_dir>/lap-stamp/laps.jsonl` there, but the row does not name it, so a reader auditing state_dir contents or its gitignore misses the new file.",
+        "fix": [
+          "Append to the `state_dir` row's consumer list: `lap-stamp/laps.jsonl` (the lap-stamp mod's per-turn rows)."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Release-note lap-stamp line carries no PR number",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "127",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:4-5 requires each change line be tagged with its PR number, and every other line is (`#337`, `#348`, ...). The new `Feat(lap-stamp)` line at 127 has no tag; the PR is not opened yet on this local review.\n\nAlso (overall): docs/RELEASES/v1.1.0.md:3-4 says each change line is 'tagged with its PR number' and every other entry starts with '#NNN'; the new Feat(lap-stamp) line (v1.1.0.md:127) has none.\n\nAlso (system_shape): The intro of docs/RELEASES/v1.1.0.md (lines 3-5) says each change line is 'tagged with its PR number', and every other line in the Changes list starts with `#NNN`. The new `- Feat(lap-stamp): new mod. ...` line (line 127) has no tag, because the PR is not open yet.",
+        "fix": [
+          "Prefix the line with `#<N> ` once the PR is opened.",
+          "Prefix the line with the PR number once the PR is opened: '- #<N> Feat(lap-stamp): ...'.",
+          "Once the PR is opened, change line 127 to start with `- #<N> Feat(lap-stamp): new mod.`"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "prompt.submit hook works before next, against TASK-7's 'every hook awaits next first'; no DesignEvolution entry",
+        "file": "docs/plans/2031/DesignEvolution.json",
+        "files": [
+          "docs/plans/2031/DesignEvolution.json",
+          "plugins/lap-stamp/hooks/lap.ts"
+        ],
+        "lines": "9-65",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The plan's TASK-7 action says every hook awaits next first. The prompt.submit hook (lap.ts:329-339) queues the press before next and takes it back on a drop, for a stated reason (the turn starts inside next). The design is sound and tested (lap.test.ts:495-524), but DesignEvolution.json records only EX1 and EX2, so the plan and the code disagree with no record.",
+        "fix": [
+          "Record an EX3 in docs/plans/2031/DesignEvolution.json through evolution_api: prompt.submit takes the press before next so the turn that starts inside next finds it, and withdraws it when next returns a drop."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Manifest and marketplace descriptions differ, and both promise 'time since the last prompt' on every stamp",
+        "file": "plugins/lap-stamp/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/lap-stamp/.claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json"
+        ],
+        "lines": "4",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugin.json:4 ends 'laps are kept in a JSONL file' and marketplace.json:99 ends 'laps are kept in a git-ignored JSONL file'. Elsewhere in the marketplace the two copies match word for word (for example bubble-stamp), and test_arc_straps_registration.py:77-80 enforces that for arc-straps. Both texts also say the mod stamps 'the clock time, lap and time since the last prompt', but stamp.ts:39-43 adds `since prompt` only on a wake turn with a prompt behind it (spec D6, README lines 15-21).",
+        "fix": [
+          "Use one string in both files, for example: \"Times each main-conversation turn from the developer's prompt to its stop and stamps the clock time and lap under the reply (a wake-up adds the time since the last prompt); laps are kept in a git-ignored JSONL file\"."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "README calls the laps file append-only; the glue rewrites the whole file",
+        "file": "plugins/lap-stamp/README.md",
+        "files": [
+          "plugins/lap-stamp/README.md",
+          "plugins/lap-stamp/hooks/lap.ts",
+          "docs/RELEASES/v1.1.0.md"
+        ],
+        "lines": "71-72",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "plugins/lap-stamp/README.md:71-72 says 'Append-only, one row ... per turn'. completed() reads the whole file (lapsText, ranged above 4 MiB) and writes back `withLine(text, rowLine(row))` (plugins/lap-stamp/hooks/lap.ts:284,292), and skips the write entirely when the file exists but does not read. The serial queue protects one session, but two sessions in the same checkout each read-then-write, so the later write drops the other's row, and every turn costs a full read and rewrite of a file that is never rotated. The README states neither the single-writer assumption nor the skip.",
+        "fix": [
+          "Reword the laps-file paragraph: each turn reads the file and writes it back with one more line (existing lines kept verbatim), a file that exists but cannot be read is left untouched and the row stays in memory only, and concurrent sessions in one checkout can lose a row.",
+          "Switch the write to a host append primitive, if the host API offers one, and keep the README's append-only wording."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Mod README hooks table omits the session.append delivery hook",
+        "file": "plugins/lap-stamp/README.md",
+        "files": [
+          "plugins/lap-stamp/README.md",
+          "plugins/lap-stamp/hooks/lap.ts",
+          "plugins/lap-stamp/types/index.d.ts"
+        ],
+        "lines": "113-126",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "'Hooks it registers' lists session.start/attach, prompt.submit, turn.start/turn.complete and the two renders, but registerPresses also registers `session.append` filtered to door `delivery` (plugins/lap-stamp/hooks/lap.ts:343-348), the signal that attaches a mid-turn lap press to the running turn (D2, EX2). The table is the README's contract for what register.ts wires, and it misses one hook.\n\nAlso (overall): The 'Hooks it registers' table (README.md:115-121) omits the session.append hook on door 'delivery' (lap.ts:343-348), the only path that attaches a mid-turn press to the running turn (D2). The State section (README.md:125-126) says $.state['lap-stamp'] holds 'the session's rows and the pending press'; it holds rows, the whole clock (pending presses, running turn, consumed-press marker, last prompt, pending wake reason) and the session id (types/index.d.ts:74-83).\n\nAlso (system_shape): The README says `register.ts` 'wires' the hooks in its table (lines 113-121). The table lists session.start/attach, prompt.submit, turn.start/complete and the two render sites. It leaves out `on('session.append', { door: 'delivery' }, ...)` (plugins/lap-stamp/hooks/lap.ts:343-348). That hook carries D2's mid-turn delivery rule, which the README's own Lap rules section (lines 35-38) relies on. The State section (lines 123-126) says `$.state['lap-stamp']` 'holds the session's rows and the pending press'. types/index.d.ts:74-83 declares three keys: `rows`, `clock` (pending presses, the running turn, the consumed-press marker, the last prompt and the wake reason) and `session` (the current session id, which render filters on).",
+        "fix": [
+          "Add a row: `session.append` (door `delivery`, the main loop) | A lap-press delivery into the running turn attaches that press to it and restarts its lap; a `queue` row is not a delivery.",
+          "Add a row '`session.append` (door `delivery`, main loop) | Attaches a lap press delivered into the running turn to that turn (D2).' to the hooks table, and rewrite the State sentence to list rows, clock and session id.",
+          "Add a row to the hook table: `session.append` (door `delivery`, main loop) | 'Attaches a lap press delivered into the running turn to that turn (D2); a `queue` row is ignored.' Change the State sentence to name the three keys: `rows` (the session's rows), `clock` (pending presses, the running turn and the prompt markers) and `session` (the current session id)."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Mod README State section understates the state contract",
+        "file": "plugins/lap-stamp/README.md",
+        "files": [
+          "plugins/lap-stamp/README.md",
+          "plugins/lap-stamp/types/index.d.ts"
+        ],
+        "lines": "125-126",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/lap-stamp/README.md:125-126 says `$.state['lap-stamp']` holds 'the session's rows and the pending press'. The contract in plugins/lap-stamp/types/index.d.ts:74-84 holds `rows`, the whole `clock` (pending presses, running turn, consumed-press marker, last prompt, pending wake reason) and the current `session` id, which render uses to filter rows (render.tsx:36-37).",
+        "fix": [
+          "Reword: holds the session's rows, the lap clock (pending presses, the running turn, the consumed-press marker, the last prompt and the pending wake reason) and the current session id; render reads only rows and session."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Wake reason window is 'since the last turn start', not the spec's 'since the previous main-loop stop'",
+        "file": "plugins/lap-stamp/hooks/clock.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/clock.ts",
+          "docs/superpowers/specs/2026-11-25-lap-stamp-design.md",
+          "plugins/lap-stamp/README.md"
+        ],
+        "lines": "52-59,92-108",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "The spec's Builder's calls (docs/superpowers/specs/2026-11-25-lap-stamp-design.md:140-142) define `wake` as the origin kind of the newest non-lap `prompt.submit` since the previous main-loop stop, else null for 'a post-compaction resume or a continuation with no submission'. In the code, `submitted` (clock.ts:56-59) sets `pendingWake` on every non-lap submission and only `started` (clock.ts:97-108) clears it. So a non-lap submission made while turn N runs (for example a task notification delivered into N) survives N's stop. A following turn N+1 that starts with no submission then records that origin as its `wake` instead of null. The README (line 80) says only 'the newest non-lap submission', so neither document states the window the code uses.",
+        "fix": [
+          "Match the spec: clear `pendingWake` in `stopped` (clock.ts:134-147) so only submissions after the stop count. Add a clock.test.ts case in which a mid-turn task-notification followed by a start with no submission gives `wake: null`.",
+          "Keep the start-to-start window as a deliberate choice: record it in DesignEvolution and state the window in the README `wake` field row (line 80)."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Subagent delivery rows are not covered",
+        "file": "plugins/lap-stamp/hooks/lap.test.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/lap.test.ts",
+          "plugins/lap-stamp/hooks/lap.ts"
+        ],
+        "lines": "282-336",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "afterDelivery returns early for a session.append delivery that carries an agentId (lap.ts:321), but no lap.test case appends a delivery row with an agentId during a running main-loop turn. If that guard regressed, a subagent's delivery would restart the main turn's lap without any test catching it.",
+        "fix": [
+          "Add a case to 'delivery into a running turn (D2)': begin t1, press with turnId t1, append a delivery row with agentId 'agent-1', stop t1, and assert the row is kind wake with lap_ms measured from t1's start."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Refused-state test: name says 'during a press' and one assertion cannot fail",
+        "file": "plugins/lap-stamp/hooks/lap.test.ts",
+        "lines": "441-446",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "world(on, '{}', { state: true }) refuses every lap-stamp state.set for the whole test, not only during a press. The mock returns the deny before it records into seen.state, so expect(seen.state.size).toBe(0) holds whatever the glue does and can never fail. Only expectUntouched carries the behavior under test.",
+        "fix": [
+          "Rename the test to 'a refused state store changes nothing the host returned and throws nothing' and replace the size assertion with one that can fail, e.g. that the turn's row still reaches the laps file (fileRows(seen) has length 1) or that seen.writes is what the glue should produce when the atom is refused.",
+          "Or refuse state only around the press (a flag the test flips) and assert that the following turn still records."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Raw BOM bytes embedded in a template literal",
+        "file": "plugins/lap-stamp/hooks/lap.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/lap.ts",
+          "plugins/lap-stamp/hooks/row.test.ts"
+        ],
+        "lines": "125",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "textOf returns `\\uFEFF${body}` by embedding the literal U+FEFF bytes (EF BB BF) inside the template string at lap.ts:125; the character is invisible in editors and diffs, so the line reads as `${body}` and an editor that strips BOMs or normalizes the file silently changes behavior (the BOM round trip that lap.test.ts:703 checks). row.test.ts:151 has the same invisible literal.",
+        "fix": [
+          "Replace the invisible character with an escape: return hasBom ? `\\uFEFF${body}` : body (and '\\uFEFF' + ... in row.test.ts:151)."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "resolveWatch counts a failed git probe as a sure answer, contradicting its docstring",
+        "file": "plugins/lap-stamp/hooks/lap.ts",
+        "lines": "149-181",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "resolveWatch's docstring (lines 161-164) says absence is sure 'only when every host call answered'. toplevelOf (lines 150-159) swallows a rejected or timed-out $.process.run into '' (and caches that failure for the process lifetime), so resolveWatch cannot tell a failed git call from a real 'not a repository' answer and never clears isSure for it. A git timeout then lets a sure absence deactivate the glue, or lets a linked-worktree session fall through to CLAUDE_PROJECT_DIR and write its laps under the main checkout.",
+        "fix": [
+          "Have toplevelOf report a failed run (rejection or timeout, as opposed to a non-zero exit) to resolveWatch, which calls doubt() for it, and do not cache that failure in ctx.toplevels.",
+          "Alternatively narrow the docstring to say a failed git probe counts as an answer and is remembered."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "'Either season' host-offset test cannot fail on a UTC runner",
+        "file": "plugins/lap-stamp/hooks/row.test.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/row.test.ts",
+          "plugins/lap-stamp/hooks/row.ts"
+        ],
+        "lines": "112-120",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test builds its expected value with the same formula row.ts uses (isoLocal(ms, eastOffsetMin(new Date(ms).getTimezoneOffset()))). On the Ubuntu CI job, where the mod tests run, the zone is UTC, so winter and summer offsets are both +00:00. A regression that applied a single fixed offset (for example the offset of 'now') to every instant would still pass, so the per-instant claim in the name is never exercised there.",
+        "fix": [
+          "Let the host-offset lookup be injected (for example buildRow taking an optional offsetAt(ms) function) and test with a fake that returns different offsets for the two instants.",
+          "Or rename the test so it only claims the host offset is applied, and drop the 'either season' wording."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "rowLine 'keys in column order' checks only the first four keys",
+        "file": "plugins/lap-stamp/hooks/row.test.ts",
+        "lines": "124-129",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test name promises column order, but the assertion only checks a prefix covering v, session, turn and kind. If the other ten fields were reordered (prompt_at through answer_len), the test would still pass, and the JSON.parse equality ignores key order.",
+        "fix": [
+          "Assert Object.keys(JSON.parse(line)) equals the full ordered list ['v','session','turn','kind','wake','prompt_at','start_at','stop_at','last_prompt_at','lap_ms','since_prompt_ms','reason','answer_hash','answer_len']."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "newestPromptAt 'prompt_at wins' test never tests prompt_at on its own",
+        "file": "plugins/lap-stamp/hooks/row.test.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/row.test.ts",
+          "plugins/lap-stamp/hooks/row.ts"
+        ],
+        "lines": "211-216",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "In 'the newest prompt_at wins as epoch ms', the late row has both prompt_at and last_prompt_at set to T0 + 5000. newestPromptAt reads both fields, so the test still passes if the prompt_at branch is removed. No other test in the file gives prompt_at a value newer than last_prompt_at, so the claim in the test name has no assertion behind it.",
+        "fix": [
+          "Build the late row with timing { ...promptTiming, promptAt: T0 + 5000, lastPromptAt: T0 }, so only prompt_at carries T0 + 5000, and keep both order assertions."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Stamp clock re-derives HH:MM:SS in the render host's zone instead of showing the stored value",
+        "file": "plugins/lap-stamp/hooks/stamp.ts",
+        "lines": "4-8,31-36",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "stamp.ts's module docstring (lines 4-8) says 'A stamp shows the row's own stored values, never recomputed ones.' clockOf (lines 31-36) parses stop_at into a Date and formats getHours/getMinutes/getSeconds in the zone of the process drawing the stamp, ignoring the offset buildRow stored in the row. A row written under one zone (or a forced offsetMin) and drawn under another shows a different clock than the file holds.",
+        "fix": [
+          "Take HH:MM:SS straight from the stored ISO text (characters 11-19, after the ISO_LOCAL shape check) and keep the placeholder for a string that does not match.",
+          "Alternatively reword the docstring and clockOf's doc to say the clock time is converted to the drawing host's zone."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "ClockState and PluginState field docs disagree with the reducers and glue",
+        "file": "plugins/lap-stamp/types/index.d.ts",
+        "files": [
+          "plugins/lap-stamp/types/index.d.ts",
+          "plugins/lap-stamp/hooks/clock.ts"
+        ],
+        "lines": "66-69,80",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "types/index.d.ts:68 documents lastPromptAt as the 'Newest press of the session', but clock.ts only raises it for used presses (stopped, foldLostRun, seedLastPrompt; clock.ts:111 says 'newest used press'); a pending press never moves it. types/index.d.ts:66 says consumedAt is the press 'a stopped turn used', but foldLostRun (a lost turn) and seedLastPrompt (the file) also raise it. types/index.d.ts:80 says session is 'null before session.start', but keepRow sets it on the first stop when no session.start ran (the case lap.test.ts covers as 'the turn works without a session.start').",
+        "fix": [
+          "Reword the three field docs: lastPromptAt 'newest press a turn used (or the file recorded); null when none', consumedAt 'newest press used by a stopped or lost turn or read from the file', session 'null until session.start, session.attach or the first recorded stop'."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "'ten TypeScript mods' pin duplicates test_mod_count and breaks on the next mod",
+        "file": "tests/contract/test_lap_stamp_registration.py",
+        "files": [
+          "tests/contract/test_lap_stamp_registration.py",
+          "tests/contract/test_mod_count.py"
+        ],
+        "lines": "57-61",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_claude_md_names_and_counts_the_mod asserts the literal phrase \"ten TypeScript mods\". tests/contract/test_mod_count.py already checks that CLAUDE.md's count word matches the number of mods in the marketplace. The literal copy adds no coverage, and when an eleventh mod lands, the lap-stamp test also fails, so that PR has to edit an unrelated mod's test.",
+        "fix": [
+          "Drop the line asserting \"ten TypeScript mods\" (line 60) and leave the count to tests/contract/test_mod_count.py; keep the name and mirror-test assertions."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "architectural_ambiguity",
+      "reason": "TASK-10 is the developer's live check; no fixer can run it. Developer picks: run it before merge and record, or merge first and close TASK-10 as deferred."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "git rev-parse --verify --quiet HEAD^{commit}; git rev-parse --verify --quiet main^{commit}; git merge-base <base sha> <head sha>; git branch --show-current; git show-ref --verify --quiet refs/heads/HEAD; git rev-list --count <merge base>..<head sha>",
+        "stdout": "7cb143e753bea6164c5e641d9cc37ce1bb150c27\nc85706275a25775dca711bd5e3b7522eeaa23a1a\n0010-timestamps-timestamps\n9\n",
+        "result": "OK (state=LOCAL; no PR)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0010-timestamps-timestamps",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0010-timestamps-timestamps",
+        "head_ref_name": "0010-timestamps-timestamps",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "c85706275a25775dca711bd5e3b7522eeaa23a1a",
+        "head_sha": "7cb143e753bea6164c5e641d9cc37ce1bb150c27",
+        "base_ancestor_command": "git merge-base --is-ancestor c85706275a25775dca711bd5e3b7522eeaa23a1a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 7cb143e753bea6164c5e641d9cc37ce1bb150c27 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "plan.json meta.base_branch",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - Recorded EX3 through evolution_api.add: prompt.submit takes the press before next so the turn starting inside next finds it, and withdraws it when next returns a drop; lap.ts: its comment at registerPresses already states the order, no edit needed"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - lap.ts: cited source of the session.append door delivery hook (registerPresses); the README table and State sentence belong to the other part; README hooks table gains the session.append row (door delivery, main loop): a delivered lap press attaches to the running turn and restarts its lap (D2); a queue row is not a delivery. State sentence now names rows, clock and session.; hooks table row for session.append (door delivery) and the State sentence live in README.md and hooks/lap.ts, the other part's files; no types/index.d.ts change needed for this part"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - lap.ts: cited agentId guard in afterDelivery is the code under test; the new case belongs to lap.test.ts in the other part; lap.test.ts: appended helper takes an optional agentId; new D2 case appends a composer delivery row with agentId agent-1 during t1 and asserts t1 records as wake with lap_ms 14000 from its start."
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - textOf now returns `\\uFEFF${body}` as an escape instead of raw EF BB BF bytes inside the template literal; row.test.ts BOM round-trip test now writes the BOM as the escape '\\uFEFF' instead of raw EF BB BF bytes"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - toplevelOf returns undefined only for a rejected git run and no longer caches it ('' for a real no-toplevel answer, cached); resolveWatch calls doubt() for the failed run; docstrings updated"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - test_mod_count.py: already checks CLAUDE.md's count word against the marketplace mods (test_claude_md_counts_the_marketplace_mods), so it needs no edit; the literal pin removal belongs to test_lap_stamp_registration.py in the other part; Dropped the 'ten TypeScript mods' assertion from test_claude_md_names_and_counts_the_mod; the count stays with test_mod_count.py, name and mirror-test assertions kept"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - buildRow takes an optional offsetAt(ms) lookup (default host zone, overridden by offsetMin); test injects a fake giving +01:00 in winter and +02:00 in summer, host-zone test renamed without the season claim, plus a test that offsetMin overrides offsetAt"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - rowLine test asserts Object.keys of the parsed line equal the full 14-key column order instead of a four-key prefix"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - late row in the newest prompt_at test keeps lastPromptAt at T0 so only prompt_at carries T0 + 5000; row.ts: newestPromptAt already reads prompt_at, no edit needed"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - Tagged the lap-stamp change line with the open PR number (#349, gh pr list for branch 0010-timestamps-timestamps): '- #349 Feat(lap-stamp): new mod. ...'"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - plugin.json description set to the shared string: main-conversation turn, clock time and lap, a wake-up adds the time since the last prompt, git-ignored JSONL file; marketplace.json is the other fixer's part; marketplace.json lap-stamp description (line 99) now uses the brief's single string, matching the wording for plugins/lap-stamp/.claude-plugin/plugin.json (other part, edited by the other fixer)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - test_the_release_notes_list_the_mod follows test_arc_straps_registration.py: module-level WALK_ROOTS = (\"docs/RELEASES/\",), _release_rows globs docs/RELEASES/v*.md for lap-stamp rows, and one row must end in the lap-stamp plugin.json version; cited files need no edit: select_tests.py already honors WALK_ROOTS, test_arc_straps_registration.py is the pattern, v1.1.0.md already has the '| lap-stamp | - | 0.1.0 |' row, CLAUDE.md already states the rule"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - README State section names the three keys: rows, clock (pending presses, running turn, consumed-press marker, last prompt, pending wake reason) and session id; render reads only rows and session.; the State contract in types/index.d.ts (rows, clock, session) is already accurate; the README State sentence reword belongs to the other part"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - lap.test.ts: refused-state test renamed to 'a refused state store changes nothing the host returned and throws nothing'; the always-true seen.state.size assertion replaced by seen.writes toEqual [] (the clock lives in state, so no turn runs and no row reaches the file)."
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - clock.ts needs no edit: its reducer docs already describe lastPromptAt as the newest used press (timingOf, foldLostRun, seedLastPrompt) and consumedAt as raised by stopped, foldLostRun and seedLastPrompt; the field-doc rewording sits in types/index.d.ts (other part).; types/index.d.ts field docs reworded: consumedAt (stopped or lost turn, or file), lastPromptAt (press a turn used or the file recorded), session (null until session.start, session.attach or the first recorded stop)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - README.md state_dir row (line 635): appended lap-stamp/laps.jsonl (the lap-stamp mod's per-turn rows) to the consumer list"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - stamp.ts clockOf now reads HH:MM:SS from the stored ISO text (capture group of a local STORED_CLOCK shape check) and returns the placeholder for text that does not match; unused pad2 helper removed"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - README laps-file paragraph no longer says append-only: each stop reads the file and writes it back with one more line (existing lines verbatim), an existing unreadable file is left untouched and the row stays memory-only, one writer per checkout assumed; lap.ts: write path unchanged, the README now describes it; docs/RELEASES/v1.1.0.md: 'Every turn appends one row' stays accurate (a row is added per turn), no append-only claim"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - Host has no append primitive: README Known limitations now states the cross-session lost-row race, the unbounded per-stop full-file read and rewrite, and the single-write size risk (rows silently memory-only); README laps paragraph drops 'Append-only'; completed() docstring in lap.ts no longer calls the rewrite an append and points at the limitation; spec: frozen design record, the README carries the limits"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - load() reads the known session before overwriting sessionAtom and, on a switch from another known session, rebuilds the clock with clockFor (newest and consumed press from the new session's rows, wake reason cleared) instead of seedLastPrompt; lap.test.ts adds session.start with a new id (wake row has null since_prompt) and session.attach with a new id (clock rebuilt from that session's rows)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "7cb143e (working-tree snapshot; developer commits) - clock.ts stopped clears pendingWake so only a non-lap submission after the previous main-loop stop wakes the next turn (spec window); clock.test.ts adds a mid-turn task-notification then a no-submission start giving wake null; README wake row states the window; 176 mod tests pass (outside fixer waves)"
+    }
+  ]
+}

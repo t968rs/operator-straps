@@ -1,0 +1,26 @@
+{
+  "plan_id": "2031",
+  "item": "TASK-7",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "6af2dff593986640283ebc351253c819aacf0921"
+    }
+  },
+  "evidence": "staged tree 6af2dff",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/lap-stamp/hooks/register.ts",
+        "change": "EX2"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX2": "7ff03b0360d741cea784d048f328749430c9e4d13a259291a19186b2c4a0dd59"
+    }
+  },
+  "date": "2026-11-25",
+  "seal": "5c8e8ff5e14432945b391d0c7a589a2cf920c1c137b3731795b2c1b563e34526"
+}

@@ -1,0 +1,148 @@
+{
+  "plan_id": "2031",
+  "feature": "lap stamp turn timer",
+  "branch_lineage": "main-->0010-timestamps-timestamps",
+  "primary_documents": {
+    "plan": "docs/plans/2031_lap_stamp_turn_timer_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-25-lap-stamp-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "task-6 spec review",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-6"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-6 files",
+        "indicated": "the marketplace entry, ci.yml, README.md, CLAUDE.md, the release notes and the mod README change; no icon file"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "a repo contract the plan's file set did not cover",
+        "why_free_form": "tests/contract/test_plugin_icons.py requires .claude-plugin/icon.png (square PNG, 512-2048 px) for every local marketplace plugin; adding the lap-stamp marketplace entry without one fails it"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-6 also adds plugins/lap-stamp/.claude-plugin/icon.png, a 512x512 stopwatch drawn with the standard library"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the icon the marketplace entry breaks an existing contract test"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "task-7 lane",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7",
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 action and files",
+        "indicated": "session.append with door delivery or queue during a main turn calls delivered; register.ts is wired only in TASK-9"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "the plan misread the host door set, and a host load rule the plan did not know blocks the item's own tests",
+        "why_free_form": "The host typings (SessionAppendDoor) define door queue as the message-queue record raised when a prompt is queued at Enter, not a delivery into the running turn; treating it as one restarts the running turn's lap on every mid-turn press, against D2. Separately, the host refuses every $ call a hook makes unless the plugin's scanned hooks module (register.ts) calls it, so lap.test.ts cannot pass while register.ts is the TASK-1 stub."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Only door delivery (main loop, lap-press origin) calls delivered; a queue row leaves the press pending for the next turn. TASK-7 also wires register.ts to registerLap; TASK-9 adds registerRender to it."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "D2 anchors a mid-turn press to the running turn only on a reported delivery; the register.ts wiring is an execution blocker for the item's planned tests"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "local PR review",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 action",
+        "indicated": "every hook awaits next first"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the planned hook order loses the press for the turn it starts",
+        "why_free_form": "The turn a lap press starts begins inside next, so a prompt.submit hook that awaited next first would queue the press after turn.start had already looked for it; that turn would time from the wrong start and the press would wait for the following turn."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "prompt.submit takes the press before next so the turn that starts inside next finds it, and withdraws it when next returns a drop; every other hook awaits next first."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "D1 times a turn from its press; only a press queued before next is visible to the turn that starts inside it, and the withdrawal keeps a dropped prompt from leaving a stale press."
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "EX4",
+      "discovered_by": "local review local-0010-lap-stamp-impl (I4, M18)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1",
+        "TASK-6"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "planned test tests/contract/test_lap_stamp_registration.py",
+        "indicated": "test_the_release_notes_list_the_mod reads the notes file named by the marketplace metadata.version; test_claude_md_names_and_counts_the_mod pins the literal 'ten TypeScript mods'"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the planned test reached its file by a path built at runtime and pinned a count another test owns",
+        "why_free_form": "tools/select_tests.py cannot see a release-notes file named from metadata.version, so a pull request touching the notes skips the check, and the check fails once the next release bumps the version; the mod count is already checked by tests/contract/test_mod_count.py and the literal pin breaks when the next mod lands"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "The committed test declares WALK_ROOTS = ('docs/RELEASES/',), collects the lap-stamp rows across docs/RELEASES/v*.md and requires one ending in the manifest version, following test_arc_straps_registration.py; the CLAUDE.md test keeps the name and mirror-test assertions and drops the count pin. The planned copy under docs/plans/2031/tests stays as frozen."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "CLAUDE.md requires a walking test to declare WALK_ROOTS so PR selection reaches it, and the mod count has one owner"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "EX5",
+      "discovered_by": "developer request after the first live turn (TASK-10)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-8"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-8 action",
+        "indicated": "render returns the original tree with dim, right-aligned Text rows under it; the TurnDuration stamp is dim Text on the same row"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the developer asked for a colored stamp after seeing it live",
+        "why_free_form": "The developer asked for the lap timer in oxblood, maroon, dark orange or similar. Dim text reads as part of the engine's own chrome; a color sets the stamp apart. Pure maroon (#800000) nearly vanishes on a dark terminal background, so the color sits between oxblood and dark orange."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Both stamp sites draw Text with color STAMP_COLOR = '#B7410E' (rust), exported from hooks/render.tsx, instead of dimColor; the render and register tests select stamp rows by that color; the mod README names it."
+      },
+      "why_new_outcome": {
+        "category": "discoverability",
+        "free_form": "a colored stamp is told apart from the engine's dim lines at a glance"
+      },
+      "date": "2026-11-25"
+    }
+  ]
+}

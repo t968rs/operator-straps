@@ -1,8 +1,8 @@
 # operator-straps
 
 Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts), the `arc-straps`
-plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin (`/setup-statusline`), plus nine TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
-`pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`, `working-refs`). Layout and install:
+plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin (`/setup-statusline`), plus ten TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
+`pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`, `working-refs`, `lap-stamp`). Layout and install:
 `README.md`.
 
 ## Rules for changes
@@ -25,11 +25,12 @@ plugin (ArcGIS Pro toolbox skills) and the skill-only `banner-status` plugin (`/
 - **A new config key** touches four places together: `plugins/harness/config/defaults.json`,
   `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key
   table. When a mod reads the key, also mirror its default in that mod's `hooks/config.ts`
-  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `agent-watcher`, `todo-watch` and `bubble-stamp` have one).
+  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `agent-watcher`, `todo-watch`, `bubble-stamp` and `lap-stamp` have one).
   `agent-watcher` splits it: core keys in `hooks/core/config.ts`, pr-review keys in
   `hooks/layers/pr-review/config.ts`.
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
+  `lap-stamp` mirrors `state_dir` in `hooks/config.ts`, checked by `tests/mods/test_lap_stamp_config_mirror.py`.
   `working-refs` mirrors `state_dir`, `artifacts.plans`, `todo.folder`, `todo.catalog`, `todo.gh.repo`,
   `todo.gh.max_age_hours` and `working_refs.max_chars` in `hooks/mirror.ts`, checked by
   `tests/mods/test_working_refs_contract.py`.

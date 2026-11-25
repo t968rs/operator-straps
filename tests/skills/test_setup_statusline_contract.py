@@ -10,6 +10,7 @@ run it under node against a temporary checkout.
 """
 from __future__ import annotations
 
+import functools
 import json
 import re
 import shutil
@@ -141,10 +142,17 @@ _TEXT = "todo-k69m (301)"
 _PROJECT_CONFIG = _REPO / ".claude" / "ccstatusline.json"
 
 
+@functools.cache
+def _warm_node() -> None:
+    """Pay node's first launch on a cold Windows runner (4 to 35 s seen) outside the widget's 30 s timeout."""
+    subprocess.run("node -e 0", shell=True, capture_output=True, timeout=180)
+
+
 def _run_widget(project: Path) -> str:
     """Run the defaults' widget command as ccstatusline does: a shell command, the status JSON on stdin."""
     if shutil.which("node") is None:
         pytest.skip("node is not on PATH")
+    _warm_node()
     command = _custom_commands()[0]["commandPath"]
     payload = json.dumps({"workspace": {"project_dir": str(project)}, "cwd": str(project)})
     done = subprocess.run(command, shell=True, input=payload, capture_output=True, text=True,

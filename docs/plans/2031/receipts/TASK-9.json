@@ -1,0 +1,19 @@
+{
+  "plan_id": "2031",
+  "item": "TASK-9",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "160676875d809f5c933b4d890725a329ae49d30d"
+    }
+  },
+  "evidence": "staged tree 1606768",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-25",
+  "seal": "c061db555ab9d421732ca65bc4f83f220b302066b50bb572311950d808e85a91"
+}

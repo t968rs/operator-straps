@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2031: lap stamp turn timer</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.action, .why { white-space: pre-line; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2031: lap stamp turn timer</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2031_lap_stamp_turn_timer_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2031</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2031</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-25</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-25-lap-stamp-design.md</code></dd><dt>Branch</dt><dd>0010-timestamps-timestamps -&gt; main</dd><dt>Base commit</dt><dd><code>c857062</code></dd><dt>Frozen</dt><dd>2026-11-25 at <code>938b49e</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: Scaffold and shared contract: manifest, types, fingerprint</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Config and project root: the mirrored state_dir and the laps path</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Clock: lap presses, turn kind and the values a row records</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: Row codec: build, serialize and read back the JSONL</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: Stamp text and matching: format, candidate list, TurnDuration match</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-6">TASK-6: Registration and docs: marketplace, CI, READMEs, CLAUDE.md, release notes</a> <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-7">TASK-7: Lap glue: the turn events, the laps file and the session&#x27;s rows</a> <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-8">TASK-8: Render: right-aligned stamps under matched replies and TurnDuration lines</a> <span class="status" data-status-for="TASK-8" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-9">TASK-9: Wire the mod and prove a turn end to end</a> <span class="status" data-status-for="TASK-9" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-10">TASK-10: Live-session confirmation of the host facts the design reads</a> <span class="status" data-status-for="TASK-10" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 How does a redrawn reply find its JSONL row?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>text-fingerprint</code> hash of the normalized answer, matched at render</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>stamp-in-reply</code> write the stamp into the reply text</li><li><code>ordinal</code> nth drawn reply maps to nth row</li></ul><p class="why">developer answer &#x27;a&#x27; (spec Approaches)</p></section>
+<section class="decision" id="decision-D2"><h3>D2 What do identical replies draw?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>candidate-list</code> every copy lists all candidate rows</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>no-stamp</code> no stamp on any copy</li><li><code>latest-marked</code> latest row with a marker</li></ul><p class="why">developer answer (spec D7)</p></section>
+<section class="decision" id="decision-D3"><h3>D3 What does a turn with no lap press show?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>all-three</code> clock time, lap from wake-up, since last prompt</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>clock-only</code> clock time only</li></ul><p class="why">developer answer (spec Goals, D4)</p></section>
+<section class="decision" id="decision-D4"><h3>D4 Where does the lap start for a prompted turn?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>prompt-submit</code> the developer&#x27;s prompt.submit (lap button)</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>turn-start</code> the turn&#x27;s turn.start</li></ul><p class="why">developer answer: the prompt hits the lap button (spec D1, D4)</p></section>
+<section class="decision" id="decision-D5"><h3>D5 Do older replies keep their stamps when redrawn?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>keep</code> every redrawn reply is matched to its row</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>latest-only</code> only the latest reply</li></ul><p class="why">developer answer (spec Goals)</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>V1 lap-press origins</td><td>prompt.submit origin.kind &#x27;composer&#x27; or &#x27;bridge&#x27;</td><td>spec D1</td><td>-</td></tr>
+<tr><td>V2 TurnDuration tolerance</td><td>2000 ms between the line&#x27;s durationMs and stop_at - start_at</td><td>spec D8</td><td>text-fingerprint</td></tr>
+<tr><td>V3 duration format</td><td>&#x27;Ns&#x27; under 60 s, &#x27;Mm Ss&#x27; under 3600 s, &#x27;Hh Mm&#x27; above</td><td>spec D6</td><td>-</td></tr>
+<tr><td>V4 laps file</td><td>&lt;state_dir&gt;/lap-stamp/laps.jsonl, state_dir default .claude/state/harness</td><td>spec D5; plugins/harness/config/defaults.json:12</td><td>-</td></tr>
+<tr><td>V5 row version</td><td>v = 1</td><td>spec D5</td><td>-</td></tr>
+<tr><td>V6 fingerprint</td><td>FNV-1a 64 of the normalized text as 16 lower-case hex chars, plus the normalized length; null hash and length 0 for empty text</td><td>spec D7, D8</td><td>text-fingerprint</td></tr>
+<tr><td>V7 plugin version</td><td>lap-stamp 0.1.0</td><td>new plugin</td><td>-</td></tr>
+</table>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>parallel2-lanes</code>: <code>.claude-plugin/marketplace.json</code> (TASK-6: gains a lap-stamp entry), <code>.claude/settings.json</code> (unchanged: enabling the mod in this repository is the developer&#x27;s call), <code>.github/workflows/ci.yml</code> (TASK-6: the mod test loop gains plugins/lap-stamp), <code>CLAUDE.md</code> (TASK-6: mod count nine -&gt; ten and the list gains lap-stamp), <code>README.md</code> (TASK-6: install line and Bundled Mods table row), <code>docs/RELEASES/v0.7.0.md</code> (unchanged: a past release&#x27;s notes), <code>docs/RELEASES/v0.7.1.md</code> (unchanged: a past release&#x27;s notes), <code>docs/RELEASES/v1.0.0.md</code> (unchanged: a past release&#x27;s notes), <code>docs/RELEASES/v1.1.0.md</code> (TASK-6: names parallel2-lanes in its Unchanged line; gains a lap-stamp row), <code>docs/TODO/RepoToDo.json</code> (unchanged: TODO items that name the parallel2-lanes mod), <code>plugins/harness/skills/parallel2/README.md</code> (unchanged: names its own mod), <code>plugins/harness/skills/parallel2/SKILL.md</code> (unchanged: names its own mod), <code>plugins/parallel2-lanes/.claude-plugin/plugin.json</code> (unchanged: another mod), <code>plugins/parallel2-lanes/README.md</code> (unchanged: another mod), <code>plugins/parallel2-lanes/hooks/band.test.tsx</code> (unchanged: another mod), <code>plugins/parallel2-lanes/hooks/band.tsx</code> (unchanged: another mod), <code>plugins/parallel2-lanes/hooks/lanes.ts</code> (unchanged: another mod), <code>plugins/parallel2-lanes/hooks/spawn.test.ts</code> (unchanged: another mod), <code>plugins/parallel2-lanes/hooks/spawn.ts</code> (unchanged: another mod), <code>plugins/parallel2-lanes/types/index.d.ts</code> (unchanged: another mod), <code>tests/contract/test_parallel2_lanes_registration.py</code> (unchanged: another mod&#x27;s registration test)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: Scaffold and shared contract: manifest, types, fingerprint <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/.claude-plugin/plugin.json</code>, <code>plugins/lap-stamp/hooks/hooks.json</code>, <code>plugins/lap-stamp/tsconfig.json</code>, <code>plugins/lap-stamp/.gitignore</code>, <code>plugins/lap-stamp/types/index.d.ts</code>, <code>plugins/lap-stamp/hooks/fingerprint.ts</code>, <code>plugins/lap-stamp/hooks/fingerprint.test.ts</code>, <code>plugins/lap-stamp/hooks/register.ts</code>, <code>tests/contract/test_lap_stamp_registration.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/bubble-stamp/hooks/hooks.json:1</code> holds <code>{ &quot;modules&quot;: [&quot;./register.ts&quot;] }</code></li>
+<li><code>plugins/bubble-stamp/tsconfig.json:2</code> holds <code>&quot;extends&quot;: &quot;./.claude-plugin/types/tsconfig.json&quot;</code></li>
+<li><code>plugins/bubble-stamp/.gitignore:2</code> holds <code>.claude-plugin/types/</code></li>
+<li><code>plugins/bubble-stamp/types/index.d.ts:12-14</code> holds <code>declare module &#x27;claude-code&#x27; {</code></li>
+</ul>
+<p class="action">Copy each planned test file this item names from docs/plans/2031/tests/&lt;repo path&gt; to its repo path first. (the registration test).
+1. plugins/lap-stamp/.claude-plugin/plugin.json (name lap-stamp, version 0.1.0 (V7), description, author, homepage, repository, license MIT, types ./types/index.d.ts, as bubble-stamp&#x27;s), hooks/hooks.json {&quot;modules&quot;: [&quot;./register.ts&quot;]}, tsconfig.json and .gitignore copied from bubble-stamp.
+2. types/index.d.ts, the invariant every later lane builds on: LapRow (spec D5, snake_case JSON keys: v 1, session, turn, kind &#x27;prompt&#x27;|&#x27;wake&#x27;, wake string|null, prompt_at, start_at, stop_at, last_prompt_at (ISO 8601 with local offset, string|null where D4 allows), lap_ms, since_prompt_ms number|null, reason &#x27;answer&#x27;|&#x27;aborted&#x27;|&#x27;refusal&#x27;|&#x27;error&#x27;, answer_hash string|null, answer_len); Timing (kind, wake, promptAt, startAt, stopAt, lastPromptAt, lapMs, sincePromptMs, epoch ms); ClockState (pending presses {at, origin}, running turn {turnId, startAt, attachedAt number|null, wake string|null} | null, consumedAt number|null, lastPromptAt number|null, pendingWake string|null); and the PluginState augmentation &#x27;lap-stamp&#x27;: { rows: LapRow[]; clock: ClockState; session: string | null }.
+3. hooks/fingerprint.ts, pure: normalizeAnswer (drop &lt;context&gt;...&lt;/context&gt; spans, CRLF to LF, trim), fnv1a64Hex, fingerprintOf(text) -&gt; {hash, len} | null for empty normalized text (V6). hooks/fingerprint.test.ts: context spans dropped, line endings unified, known FNV-1a 64 vectors (&#x27;&#x27; -&gt; cbf29ce484222325, &#x27;a&#x27; -&gt; af63dc4c8601ec8c), empty text -&gt; null.
+4. hooks/register.ts exports `register: Register = () =&gt; undefined` until TASK-9 wires it.</p>
+<ul>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_the_mod_manifest_and_hooks</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_engine_scaffolding</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Config and project root: the mirrored state_dir and the laps path <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/config.ts</code>, <code>plugins/lap-stamp/hooks/root.ts</code>, <code>plugins/lap-stamp/hooks/config.test.ts</code>, <code>tests/mods/test_lap_stamp_config_mirror.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/config/defaults.json:12</code> holds <code>&quot;state_dir&quot;: &quot;.claude/state/harness&quot;,</code></li>
+<li><code>plugins/bubble-stamp/hooks/root.ts:8</code> holds <code>export const HARNESS_CONFIG_REL = &#x27;.claude/harness.json&#x27;</code></li>
+<li><code>plugins/session-bookmark/hooks/notes.ts:12</code> holds <code>export const DEFAULT_STATE_DIR = &#x27;.claude/state/harness&#x27;</code></li>
+</ul>
+<p class="action">Copy each planned test file this item names from docs/plans/2031/tests/&lt;repo path&gt; to its repo path first. (the mirror test).
+1. hooks/config.ts, pure: DEFAULT_STATE_DIR = &#x27;.claude/state/harness&#x27; and LAPS_PATH = &#x27;lap-stamp/laps.jsonl&#x27; (V4), readConfig(text) -&gt; {stateDir} merging harness.json&#x27;s state_dir over the default (malformed JSON or a wrong type keeps it), lapsPathOf(root, cfg).
+2. hooks/root.ts, a copy of bubble-stamp&#x27;s root rule (HARNESS_CONFIG_REL, rootCandidates).
+3. hooks/config.test.ts: default, override, malformed text, a non-string state_dir, path join.</p>
+<ul>
+<li>Test <code>tests/mods/test_lap_stamp_config_mirror.py::test_the_mirrored_state_dir_equals_defaults_json</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_lap_stamp_config_mirror.py::test_the_laps_file_sits_in_the_mod_folder_under_state_dir</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Clock: lap presses, turn kind and the values a row records <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/clock.ts</code>, <code>plugins/lap-stamp/hooks/clock.test.ts</code></p>
+<p class="action">1. hooks/clock.ts, pure reducers over ClockState (types/index.d.ts): LAP_PRESS_ORIGINS = [&#x27;composer&#x27;, &#x27;bridge&#x27;] (V1); submitted(state, {originKind, at}) queues a lap press or, for any other origin, sets pendingWake; delivered(state, at) attaches a press to the running turn (spec D2: it restarts that turn&#x27;s lap); started(state, turnId, at) attaches the newest pending press newer than consumedAt, else marks the turn a wake with pendingWake; stopped(state, turnId, at) -&gt; {state, timing: Timing} per D4 (prompt: lap from the attached press; wake: lap from start, since_prompt from lastPromptAt, null when none) and sets consumedAt and lastPromptAt. A stop for a turn that never started (no running turn or another id) returns timing null. seedLastPrompt(state, at) takes the newest prompt_at read back from the JSONL (D4).
+2. hooks/clock.test.ts: idle press then turn (prompt kind, lap = stop - press); press during a run with delivery (restarts that turn&#x27;s lap) and without (anchors the next turn); several presses keep the last; a task-notification start is a wake with wake &#x27;task-notification&#x27; and since_prompt; no prompt ever gives since_prompt null; a pending press never anchors two turns; a stray stop.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: Row codec: build, serialize and read back the JSONL <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/row.ts</code>, <code>plugins/lap-stamp/hooks/row.test.ts</code></p>
+<p class="action">1. hooks/row.ts, pure: buildRow({session, turn, timing, reason, answer}) -&gt; LapRow, the answer fingerprinted with fingerprintOf (null hash and length 0 for empty, D8); isoLocal(ms, offsetMin) formats ISO 8601 with the local offset; rowLine(row) one JSON line; parseRows(text, session) reads a JSONL text leniently (blank, malformed, wrong-version and wrong-typed lines skipped, D10) and keeps the session&#x27;s rows in file order; newestPromptAt(rows) for clock.seedLastPrompt. No paths and no prompt or answer text in a row.
+2. hooks/row.test.ts: round trip, every skip case, empty answer, the offset form, session filter.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: Stamp text and matching: format, candidate list, TurnDuration match <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/stamp.ts</code>, <code>plugins/lap-stamp/hooks/stamp.test.ts</code></p>
+<p class="action">1. hooks/stamp.ts, pure: formatDuration(ms) per V3; clockOf(iso) the local HH:MM:SS of a row&#x27;s stop_at; stampText(row) &#x27;HH:MM:SS · lap &lt;dur&gt;&#x27; plus &#x27; · since prompt &lt;dur&gt;&#x27; on a wake row with one (D6); rowsForBlock(rows, text) -&gt; the rows whose answer_hash and answer_len equal the block&#x27;s fingerprint (empty-answer rows never match, D7); blockStamp(rows) -&gt; one stamp for one row, &#x27;identical replies: &#x27; + each candidate&#x27;s &#x27;&lt;HH:MM:SS&gt; lap &lt;dur&gt;[ · since prompt &lt;dur&gt;]&#x27; joined by &#x27; | &#x27; in file order for several, null for none; durationRow(rows, durationMs) -&gt; the one row whose stop_at - start_at is within V2 of durationMs when exactly one row of the session is and it has an empty answer, else null (D8); wrapRight(text, width) splits a too-wide stamp on &#x27; | &#x27; into right-aligned lines, never dropping a candidate.
+2. hooks/stamp.test.ts: every format band and boundary (59 s, 60 s, 3599 s, 3600 s), prompt and wake stamps, a miss, one match, three identical replies, an empty-answer row never matched by text, the TurnDuration cases (none, one empty, one answered, two in tolerance), wrapping.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: Registration and docs: marketplace, CI, READMEs, CLAUDE.md, release notes <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1, TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/README.md</code>, <code>.claude-plugin/marketplace.json</code>, <code>.github/workflows/ci.yml</code>, <code>README.md</code>, <code>CLAUDE.md</code>, <code>docs/RELEASES/v1.1.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>CLAUDE.md:4</code> holds <code>plus nine TypeScript mods</code></li>
+<li><code>CLAUDE.md:31</code> holds <code>`session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead</code></li>
+<li><code>.github/workflows/ci.yml:128</code> holds <code>plugins/parallel2-lanes plugins/working-refs; do</code></li>
+<li><code>.claude-plugin/marketplace.json:9</code> holds <code>&quot;version&quot;: &quot;1.1.0&quot;</code></li>
+<li><code>README.md:163</code> holds <code>claude plugin install bubble-stamp@operator-straps</code></li>
+<li><code>docs/RELEASES/v1.1.0.md:20</code> holds <code>| working-refs | 0.3.1 | 0.4.0 |</code></li>
+</ul>
+<p class="action">1. plugins/lap-stamp/README.md: what the stamp shows (D6, D7 candidate list, D8), the lap rules (D1, D2, D4), the laps.jsonl row fields (D5) and its git-ignored home under state_dir, activation (.claude/harness.json), the hooks it registers, fail-open behavior (D10), known limitations (the live-session checks of TASK-10).
+2. .claude-plugin/marketplace.json: a lap-stamp entry after parallel2-lanes (category productivity, keywords mod, timer).
+3. .github/workflows/ci.yml: plugins/lap-stamp joins the mod test loop.
+4. README.md: install line and a Bundled Mods table row (Automatic, `lap-stamp`); the companion list says it is active only with .claude/harness.json.
+5. CLAUDE.md: nine -&gt; ten TypeScript mods with lap-stamp in the list; a config-key mirror line: `lap-stamp` mirrors `state_dir` in `hooks/config.ts`, checked by `tests/mods/test_lap_stamp_config_mirror.py`.
+6. docs/RELEASES/v1.1.0.md (the proposed release, marketplace metadata.version): a lap-stamp row &#x27;| lap-stamp | - | 0.1.0 |&#x27;, the intro naming a plugin added, one Feat(lap-stamp) line. The CHANGELOG [Unreleased] entry already points at that file and does not change.</p>
+<ul>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_the_marketplace_lists_the_mod</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_ci_runs_the_mod_tests</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_the_readme_documents_and_installs_the_mod</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_claude_md_names_and_counts_the_mod</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_the_mod_has_a_readme</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_lap_stamp_registration.py::test_the_release_notes_list_the_mod</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin validate --strict plugins/lap-stamp</code>: passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-7" data-item="TASK-7">
+<h3>TASK-7: Lap glue: the turn events, the laps file and the session&#x27;s rows <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1, TASK-2, TASK-3, TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/lap.ts</code>, <code>plugins/lap-stamp/hooks/lap.test.ts</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/bubble-stamp/hooks/stamp.ts:26</code> holds <code>const memosAtom = atom({ plugin: &#x27;bubble-stamp&#x27;, key: &#x27;memos&#x27; } as const, {})</code></li>
+<li><code>plugins/bubble-stamp/hooks/stamp.ts:236-239</code> holds <code>if (e.agentId === undefined) await serial(() =&gt; checkAll($)).catch(noop)</code></li>
+<li><code>plugins/bubble-stamp/hooks/stamp.test.ts:1</code> holds <code>import type { Engine } from &#x27;claude-code/testing&#x27;</code></li>
+</ul>
+<p class="action">1. hooks/lap.ts, `registerLap(on)` (function declarations for every `$` function, as bubble-stamp): active only with .claude/harness.json (root.ts candidates, config.ts readConfig). Main loop only (agentId absent). prompt.submit -&gt; clock.submitted with e.origin.kind and the wall clock; session.append with door &#x27;delivery&#x27; or &#x27;queue&#x27; and a lap-press origin while a main turn runs -&gt; clock.delivered (the delivery signal TASK-10 confirms); turn.start -&gt; clock.started; turn.complete -&gt; clock.stopped, buildRow with e.answer and e.reason, append rowLine to &lt;state_dir&gt;/lap-stamp/laps.jsonl (creating the folder), push the row onto the &#x27;lap-stamp&#x27; rows atom. session.start and session.attach read the file once, parseRows for the session id, seed the atom and clock.seedLastPrompt (D9). Every hook awaits next first and swallows its own failures (D10); nothing is written into any reply, prompt or transcript row.
+2. hooks/lap.test.ts (engine-level, claude-code/testing as bubble-stamp&#x27;s stamp.test.ts): a prompted turn appends one row with kind prompt; a task-notification turn appends a wake row with since_prompt; a subagent turn appends nothing; a refused write keeps the atom row and throws nothing; a restart reads the rows back; no harness.json, no file.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-7 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-8" data-item="TASK-8">
+<h3>TASK-8: Render: right-aligned stamps under matched replies and TurnDuration lines <span class="status" data-status-for="TASK-8" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1, TASK-4, TASK-5</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/render.tsx</code>, <code>plugins/lap-stamp/hooks/render.test.tsx</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/parallel2-lanes/hooks/band.tsx:16</code> holds <code>const runsAtom = atom({ plugin: &#x27;parallel2-lanes&#x27;, key: &#x27;runs&#x27; } as const, [])</code></li>
+<li><code>plugins/parallel2-lanes/hooks/band.tsx:45</code> holds <code>on(&#x27;ui.render&#x27;, { component: &#x27;AbovePrompt&#x27; }, async ($, e, next) =&gt; {</code></li>
+</ul>
+<p class="action">1. hooks/render.tsx, `registerRender(on)`: ui.render on {component: &#x27;AssistantMessage&#x27;} reads the &#x27;lap-stamp&#x27; rows atom only (no file I/O, D9), and when blockStamp(rowsForBlock(rows, e.text)) is not null returns the original tree with right-aligned Text rows under it, drawn in STAMP_COLOR (&#x27;#B7410E&#x27;, rust; EX5) (wrapRight); isSummary and onScreen pass through unchanged. ui.render on {component: &#x27;TurnDuration&#x27;} draws durationRow&#x27;s stamp right-aligned on the same row. Any miss or error renders next(e) untouched. The atom read makes a new row redraw the latest reply.
+2. hooks/render.test.tsx (as parallel2-lanes band.test.tsx): a matched block gains the stamp row; a miss and a summary row are untouched; identical replies draw the candidate list; a TurnDuration line with one empty-answer row in tolerance gains a stamp, an answered one does not.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-8 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-9" data-item="TASK-9">
+<h3>TASK-9: Wire the mod and prove a turn end to end <span class="status" data-status-for="TASK-9" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-7, TASK-8</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/hooks/register.ts</code>, <code>plugins/lap-stamp/hooks/register.test.tsx</code></p>
+<p class="action">1. hooks/register.ts: `register: Register = on =&gt; { registerLap(on); registerRender(on) }`.
+2. hooks/register.test.tsx: one engine drives prompt.submit, turn.start, turn.complete with an answer, then renders an AssistantMessage with that text: the laps file holds one row and the block draws &#x27;HH:MM:SS · lap &lt;dur&gt;&#x27; right-aligned; a second identical reply draws the candidate list; a wake turn draws since prompt.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/lap-stamp</code>: every test passes</li>
+<li>Run <code>claude plugin validate --strict plugins/lap-stamp</code>: passes</li>
+<li>Record it: <code>plan.py record 2031 TASK-9 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-10" data-item="TASK-10">
+<h3>TASK-10: Live-session confirmation of the host facts the design reads <span class="status" data-status-for="TASK-10" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-9</p>
+<p><strong>Files:</strong> <code>plugins/lap-stamp/README.md</code></p>
+<p class="action">The developer runs a session with `claude --plugin-dir plugins/lap-stamp` (CLAUDE.md: local plugin edits are exercised this way before merge) and confirms, with the session&#x27;s help: (a) the drawn AssistantMessage text of a reply&#x27;s last block fingerprints equal to turn.complete&#x27;s answer (spec Left to the builder); (b) prompt.submit fires at Enter for a queued composer prompt, and the session.append door that marks its delivery into a running turn; (c) the bridge and slash-command origin kinds (D1); (d) the TurnDuration props (D8); (e) whether --resume keeps the session id. A fact that differs goes to DesignEvolution through evolution_api and its fix is recorded with --cite, never by editing the plan.</p>
+<ul>
+<li>Run <code>claude --plugin-dir plugins/lap-stamp</code>: a prompted turn, a queued prompt, a background-agent wake, an aborted turn and two identical replies each stamp as the spec says; laps.jsonl holds one row per main turn</li>
+<li>Record it: <code>plan.py record 2031 TASK-10 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2031/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

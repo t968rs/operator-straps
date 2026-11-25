@@ -1,0 +1,12 @@
+{
+  "name": "lap-stamp",
+  "version": "0.1.0",
+  "description": "Times each main-conversation turn from the developer's prompt to its stop and stamps the clock time and lap under the reply (a wake-up adds the time since the last prompt); laps are kept in a git-ignored JSONL file",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/lap-stamp#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
