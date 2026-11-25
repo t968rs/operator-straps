@@ -27,8 +27,8 @@ shows up without a render. A plan frozen before receipts keeps its markdown PIP.
 run with the Bash tool from the project checkout. Every refusal is a `problem:` line and exit 1.
 
 A plan is **Frozen** from `freeze` on and **Locked** after `lock`. Frozen is the state the steps below
-describe: the drivers still write their sanctioned records. Locked is final: the plan JSON and its planned
-tests are write-protected, and only the execution record (receipts, `live.js`, the DesignEvolution catalog)
+describe: the drivers still write their sanctioned records. Locked is final: the plan JSON, its planned
+tests and its `registry_entries.json` are write-protected, and only the execution record (receipts, `live.js`, the DesignEvolution catalog)
 is still written. `record`, `verify`, `lanes` and `check` treat the two states alike. The freeze stamp lives
 in a ledger of write-once entry files, and the drivers tag what each entry names (step 8).
 
@@ -178,8 +178,8 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    working tree, and every gitignored file still has its recorded sha256. It appends a `lock` entry and tags
    its tree. A PreToolUse hook denies Write, Edit and the Bash and PowerShell write shapes (redirects, `tee`,
    `sed -i`, `Set-Content`, `Copy-Item` and the like, matched on a best-effort basis) onto every file under
-   `freezes/` at all times, and from the lock on also onto the files the lock recorded: the plan JSON and the
-   planned test files present at lock (a test file added later is neither denied nor reported as drift);
+   `freezes/` at all times, and from the lock on also onto the files the lock recorded: the plan JSON, the
+   planned test files and `registry_entries.json` present at lock (a test file added later is neither denied nor reported as drift);
    `plan_api.write` and `freeze` refuse the plan. Receipts, `live.js` and the DesignEvolution catalog stay writable, so `record`, `verify`, `lanes`
    and `render` run as before. A plan frozen with the sealed scheme or none keeps its plan JSON open to the
    hook, since `record` still writes it there. `check` prints `drift: <path> differs from <tag>` for a Locked
@@ -192,7 +192,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    time or when asked) and appends an `arm` entry; the plan stays Locked. `PLAN unlock <id>` runs when the
    design change is needed: it refuses without a live arm and, with one, appends an `unlock` entry that uses
    the arm up. The plan is then editable again: `write`, `freeze --refreeze`, and `lock` once the developer has
-   committed the refreeze. Ledger files under `freezes/` stay denied throughout; after `unlock` the guard releases the plan JSON and its planned tests, and the plan JSON still changes only through `plan_api.write`.
+   committed the refreeze. Ledger files under `freezes/` stay denied throughout; after `unlock` the guard releases the plan JSON, its planned tests and its `registry_entries.json`, and the plan JSON still changes only through `plan_api.write`.
 
    **Relink.** After the developer rebases or squashes, a plan base that left HEAD's history shows as
    `off-history:` in `check`. When a counterpart exists, that is the cue to offer a relink, which runs on the
@@ -305,8 +305,12 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
     case with dots as hyphens (`TASK-3.2` is `task-3-2`), and its task is the item title alone: append the
     item's action, anchors, tests and commands to each lane prompt, with the instruction to copy each planned
     test file from `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first, then, when the
-    plan has `registry_entries.json`, to run `PLAN register <id> <ITEM>` and each `guard:` file it prints
-    (a `pending entry:` line from `record` names an entry still to register). On a receipts
+    plan has `registry_entries.json`, to run `PLAN register <id> <ITEM>` and each `guard:` file it prints in
+    its own worktree for its test runs and to leave `tests.registry` out of its commit (the registry is not
+    one of the lane's files, and two lanes of one wave would collide on it). After `P2 stage <lane>`, the
+    main session runs `PLAN register <id> <ITEM>` and each `guard:` file in the target and stages the
+    registry before `record --staged`, so the entry joins the item's commit (a `pending entry:` line from
+    `record` names an entry still to register). On a receipts
     plan take that text from `plan_api.load(<id>).items` (the page is HTML, drawn for a browser, not for a
     prompt); on a plan frozen before receipts the markdown PIP carries the same fields under the item's
     heading. Each prompt also says that a lane that needs a deviation (a file outside its `files`, a test
@@ -358,7 +362,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
   `record` owns the execution fields, and `write` refuses the change once the plan is frozen.
 - Running `PLAN lock`, `PLAN archive` or `PLAN unlock --arm` on the session's own judgment: the first two wait
   for the developer's explicit ask, the third for the developer's explicit OK.
-- Writing to a Locked plan, its planned tests or a file under `freezes/` by any route (the hooks deny the
+- Writing to a Locked plan, its planned tests or entries file, or a file under `freezes/` by any route (the hooks deny the
   file tools and the shell write shapes; `check` reports the drift of any other writer): the way in is
   `unlock`, and ledger files are written by the drivers alone.
 - Guessing a `red` exception instead of running `PLAN red`; the planned exception is what the run must show.
