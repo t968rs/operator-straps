@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2032: strap py rename does the moves and the name swap</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.action, .why { white-space: pre-line; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2032: strap py rename does the moves and the name swap</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2032_strap_py_rename_does_the_moves_and_the_name_swap_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2032</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2032</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-25</dd><dt>Spec</dt><dd><code>docs/SPECS/2026-11-25-strap-py-rename-does-the-moves-and-the-name-swap.md</code></dd><dt>Branch</dt><dd>0011-specsheet-lite -&gt; main</dd><dt>Base commit</dt><dd><code>2d7b5b9</code></dd><dt>Frozen</dt><dd>2026-11-25 at <code>4199ed0</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: rename moves the skill folder and the name-made parts itself</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: rename swaps the old name&#x27;s forms inside the moved parts</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: cited test files follow the rename; other old-name hits are reported</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: rename --from finishes an earlier rename</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: strap-skills documents the new rename and refreezes</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-6">TASK-6: spec-it finishes its rename from specsheet-lite</a> <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 Who performs the moves a rename needs?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>python-moves</code> rename runs git mv itself, cross-OS, with --dry-run printing the list</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>print-only</code> rename prints a move list for the developer to run</li></ul><p class="why">Developer chose the catalog recommendation (todo-57az).</p></section>
+<section class="decision" id="decision-D2"><h3>D2 What happens to the old name inside files?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>swap-parts-report-rest</code> swap kebab, snake and title forms in the moved parts and cited test files; only report other tracked files</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>report-only</code> report every hit, swap nothing</li></ul><p class="why">Developer chose the catalog recommendation (todo-57az).</p></section>
+<section class="decision" id="decision-D3"><h3>D3 How does a spec renamed before this change finish its rename?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>from-flag</code> rename &lt;name&gt; --from &lt;old-name&gt; runs the moves, swaps and node re-points without moving the spec or ledger</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>hand</code> the developer moves the files and edits the nodes by hand</li></ul><p class="why">The spec&#x27;s goal for spec-it&#x27;s leftovers; node ids are locked to the api, so only the driver can move them.</p></section>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: rename moves the skill folder and the name-made parts itself <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/strap.py</code>, <code>plugins/harness/lib/harness_lib/strap_rename.py</code>, <code>tests/scripts/test_strap_rename.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/strap.py:1326-1327</code> holds <code>_named(sub, &quot;rename&quot;</code></li>
+<li><code>plugins/harness/scripts/strap.py:1239-1244</code> holds <code>def cmd_rename</code></li>
+<li><code>plugins/harness/scripts/strap.py:1188-1201</code> holds <code>def _rename_problems</code></li>
+<li><code>plugins/harness/scripts/strap.py:1225-1236</code> holds <code>def _move_back</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_scaffold.py:126-130</code> holds <code>def named_paths</code></li>
+</ul>
+<p class="action">New module harness_lib/strap_rename.py plans the moves from named_paths and the profile&#x27;s skill folder: each old path that exists moves to its new path (git mv when tracked, Path.rename otherwise); an old path already moved by hand is accepted; a target that already exists refuses before any move, and an old folder holding only untracked leftovers keeps its &#x27;still exists&#x27; refusal. strap.py cmd_rename runs the moves before the spec and ledger moves, prints one &#x27;move: &lt;old&gt; -&gt; &lt;new&gt;&#x27; line each, and _move_back undoes them in reverse on a failure. --dry-run prints the move lines and changes nothing.</p>
+<ul>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_moves_a_skill_folder_not_yet_moved</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_moves_a_part_not_yet_moved</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_dry_run_prints_each_move_and_changes_nothing</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_refuses_before_any_move_when_a_target_exists</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_moves_everything_back_when_the_commit_fails</code> fails with AssertionError, then passes</li>
+<li>Record it: <code>plan.py record 2032 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: rename swaps the old name&#x27;s forms inside the moved parts <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/strap.py</code>, <code>plugins/harness/lib/harness_lib/strap_rename.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/strap.py:1157-1170</code> holds <code>pattern = re.compile(rf&quot;(?&lt;![a-z0-9-]){re.escape(spec.name)}(?![a-z0-9-])&quot;)</code></li>
+</ul>
+<p class="action">After the moves, each part file (and each moved test file) has the old name&#x27;s kebab, snake and title forms replaced by the new name&#x27;s as whole words (the kebab form bounded by non-name characters, the snake form allowed inside identifiers such as demo_skill_api, the title form &#x27;Demo Skill&#x27;), the frontmatter name included; one &#x27;swapped-file: &lt;path&gt;:&lt;line&gt;&#x27; line per changed line. The original bytes are kept so _move_back restores them.</p>
+<ul>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_swaps_the_old_name_forms_inside_the_moved_parts</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_a_renamed_skill_checks_with_no_name_problem</code> fails with AssertionError, then passes</li>
+<li>Record it: <code>plan.py record 2032 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: cited test files follow the rename; other old-name hits are reported <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/strap.py</code>, <code>plugins/harness/lib/harness_lib/strap_rename.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/strap.py:1207-1214</code> holds <code>def _planned_test_moves</code></li>
+</ul>
+<p class="action">A planned test node whose file name carries the old snake form moves with the rename (the file moved and swapped like a part, the node re-pointed, the planned copy moved by _planned_test_moves). git grep over tracked files, outside the parts, the moved files, the spec folder, the ledgers and the artifacts history folders, prints one &#x27;stale-name: &lt;path&gt;:&lt;line&gt;&#x27; line per hit of an old form and changes nothing.</p>
+<ul>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_moves_a_test_file_a_planned_node_cites</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_reports_an_old_name_outside_the_parts</code> fails with AssertionError, then passes</li>
+<li>Record it: <code>plan.py record 2032 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: rename --from finishes an earlier rename <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/strap.py</code>, <code>plugins/harness/lib/harness_lib/strap_rename.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/strap.py:1326-1327</code> holds <code>_named(sub, &quot;rename&quot;</code></li>
+</ul>
+<p class="action">&#x27;strap.py rename &lt;name&gt; --from &lt;old-name&gt;&#x27; (new_name omitted) runs the moves, swaps, node re-points and report from &lt;old-name&gt; to the spec&#x27;s current name, on a frozen spec, without moving the spec or the ledger and without a ledger entry; exactly one of new_name and --from.</p>
+<ul>
+<li>Test <code>tests/scripts/test_strap_rename.py::test_rename_from_finishes_an_earlier_rename</code> fails with AssertionError, then passes</li>
+<li>Record it: <code>plan.py record 2032 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: strap-skills documents the new rename and refreezes <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/strap-skills/SKILL.md</code>, <code>plugins/harness/skills/strap-skills/README.md</code>, <code>docs/RELEASES/v1.1.0.md</code>, <code>docs/plans/strap/strap-skills/SkillSpec.json</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/strap-skills/SKILL.md:334-337</code> holds <code>**Rename a skill.**</code></li>
+<li><code>plugins/harness/skills/strap-skills/README.md:37</code> holds <code>&quot;rename add-bookmark to bookmark&quot;</code></li>
+</ul>
+<p class="action">strap-skills SKILL.md &#x27;Rename a skill&#x27; and its README row describe the moves, --dry-run, the swapped-file and stale-name lines and --from; docs/RELEASES/v1.1.0.md gains a line. SKILL.md is a strap-skills part, so run the greens of its judgment behaviors on the new hash and refreeze with the developer&#x27;s OK.</p>
+<ul>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze strap-skills --refreeze</code>: freeze [done] | strap-skills</li>
+<li>Record it: <code>plan.py record 2032 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: spec-it finishes its rename from specsheet-lite <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>docs/plans/strap/spec-it/SkillSpec.json</code>, <code>tests/lib/test_specsheet_lite_models.py</code>, <code>tests/lib/test_specsheet_lite_api.py</code>, <code>tests/scripts/test_specsheet_lite.py</code>, <code>tests/contract/test_specsheet_lite_wiring.py</code></p>
+<p class="action">Run rename spec-it --from specsheet-lite: the four tests/*/test_specsheet_lite*.py files move to their spec_it names and B1-B5&#x27;s planned nodes follow; then refreeze spec-it with the developer&#x27;s OK.</p>
+<ul>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py rename spec-it --from specsheet-lite</code>: rename [done] | spec-it</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check spec-it</code>: check [ok] | spec-it</li>
+<li>Record it: <code>plan.py record 2032 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2032/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

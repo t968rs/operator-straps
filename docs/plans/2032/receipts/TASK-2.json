@@ -1,0 +1,26 @@
+{
+  "plan_id": "2032",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "1bc3734d6782d86a77799e01fe964362a80404a0"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_strap_rename.py::test_rename_swaps_the_old_name_forms_inside_the_moved_parts",
+        "tests/scripts/test_strap_rename.py::test_a_renamed_skill_checks_with_no_name_problem"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_strap_rename.py::test_rename_swaps_the_old_name_forms_inside_the_moved_parts tests/scripts/test_strap_rename.py::test_a_renamed_skill_checks_with_no_name_problem"
+    }
+  },
+  "evidence": "staged tree 1bc3734: 2 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-25",
+  "seal": "28b16691bd1b39152b42a3e427c92d1542e3f0c99d6760718d5a646d82d4226e"
+}
