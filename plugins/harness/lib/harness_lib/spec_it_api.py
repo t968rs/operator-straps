@@ -1,4 +1,4 @@
-"""Specsheet Lite: where a spec sheet lands, and writing it, reading it back and naming the next step.
+"""spec-it: where a spec sheet lands, and writing it, reading it back and naming the next step.
 
 A sheet is written to ``<artifacts.specs>/<YYYY-MM-DD>-<slug>.md``, the slug drawn from its title. The page
 ``render_sheet`` produces is the whole stored form; ``load_sheet`` parses it and refuses a page out of shape.
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from harness_lib.config import active
-from harness_lib.specsheet_lite_models import (
+from harness_lib.spec_it_models import (
     MAX_LINES,
     TARGET_LINES,
     SpecSheet,

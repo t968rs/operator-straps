@@ -11,7 +11,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from harness_lib.specsheet_lite_models import (
+from harness_lib.spec_it_models import (
     MAX_LINES,
     MAX_STATEMENT_CHARS,
     TARGET_LINES,

@@ -1,4 +1,4 @@
-"""The spec sheet driver: ``specsheet_lite.py check <path>`` validates a sheet and names the next step."""
+"""The spec sheet driver: ``spec_it.py check <path>`` validates a sheet and names the next step."""
 from __future__ import annotations
 
 import os
@@ -8,9 +8,9 @@ from datetime import date
 from pathlib import Path
 
 from conftest import GIT_ENV, PLUGIN_ROOT
-from harness_lib.specsheet_lite_models import TARGET_LINES, SpecSheet, render_sheet
+from harness_lib.spec_it_models import TARGET_LINES, SpecSheet, render_sheet
 
-SCRIPT = PLUGIN_ROOT / "scripts" / "specsheet_lite.py"
+SCRIPT = PLUGIN_ROOT / "scripts" / "spec_it.py"
 REL = "docs/SPECS/2026-11-25-brief.md"
 
 

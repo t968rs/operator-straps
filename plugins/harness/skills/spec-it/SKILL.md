@@ -1,10 +1,10 @@
 ---
-name: specsheet-lite
-description: Use when a developer asks to build, add, design, spec or brainstorm new work (a feature, a skill, a flag, a behavior change) before any plan exists, or asks for a spec, a brief or a design for write-plan to start from. Triggers on "let's build", "spec this", "spec sheet", "brief for the plan", "design this", "brainstorm", "specsheet-lite".
+name: spec-it
+description: Use when a developer asks to build, add, design, spec or brainstorm new work (a feature, a skill, a flag, a behavior change) before any plan exists, or asks for a spec, a brief or a design for write-plan to start from. Triggers on "let's build", "spec this", "spec sheet", "brief for the plan", "design this", "brainstorm", "spec-it".
 argument-hint: "<title> [-- <guidance>]"
 ---
 
-# specsheet-lite: a short spec sheet, then the plan
+# spec-it: a short spec sheet, then the plan
 
 Arguments: `$ARGUMENTS`
 
@@ -53,7 +53,7 @@ lines; aim for 250 or fewer, and most requests fit in 40.
    written from the same title and date.
 
    ```bash
-   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/skill_api.py" specsheet_lite_api <<'PY'
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/skill_api.py" spec_it_api <<'PY'
    sheet = new_sheet(
        title="<title>",
        request="<the request, restated in a few sentences>",
@@ -68,7 +68,7 @@ lines; aim for 250 or fewer, and most requests fit in 40.
 4. **Check it.**
 
    ```bash
-   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/specsheet_lite.py" check <sheet path>
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/spec_it.py" check <sheet path>
    ```
 
    It prints `check [ok]` with the line, goal and avoid counts, a `warn:` line past the 250-line target and a
@@ -90,7 +90,7 @@ lines; aim for 250 or fewer, and most requests fit in 40.
 
 ## Related
 
-- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/specsheet_lite_models.py`: the sheet's fields, banned patterns and
+- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/spec_it_models.py`: the sheet's fields, banned patterns and
   page layout.
 - `${CLAUDE_PLUGIN_ROOT}/skills/write-plan/SKILL.md`: the plan that takes the sheet as `--spec`.
 - `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the `--` guidance split.

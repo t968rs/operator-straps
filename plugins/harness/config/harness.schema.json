@@ -49,7 +49,7 @@
         "commit_messages": {"$ref": "#/$defs/relPath"},
         "scratch": {"$ref": "#/$defs/relPath"},
         "research": {"$ref": "#/$defs/relPath"},
-        "specs": {"$ref": "#/$defs/relPath", "description": "Spec sheets the specsheet-lite skill writes, one <date>-<slug>.md per request; write-plan takes one as --spec."},
+        "specs": {"$ref": "#/$defs/relPath", "description": "Spec sheets the spec-it skill writes, one <date>-<slug>.md per request; write-plan takes one as --spec."},
         "planning_prefixes": {"$ref": "#/$defs/relPaths"}
       }
     },

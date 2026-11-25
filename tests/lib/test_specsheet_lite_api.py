@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from harness_lib.config import activate, load_config
-from harness_lib.specsheet_lite_api import (
+from harness_lib.spec_it_api import (
     SheetExists,
     load_sheet,
     new_sheet,

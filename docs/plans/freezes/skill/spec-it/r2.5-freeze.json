@@ -1,0 +1,26 @@
+{
+  "kind": "freeze",
+  "round": 2,
+  "seq": 5,
+  "tree": "cc2576907c85cc35e53534b798b794a94356eea3",
+  "files": {
+    "plugins/harness/lib/harness_lib/spec_it_api.py": "ae1cb115f0c8b42c668fb9f7b3e768bcfc259e78",
+    "plugins/harness/lib/harness_lib/spec_it_models.py": "00a14d405ce7393c0200233d0b82746582bbf820",
+    "plugins/harness/scripts/spec_it.py": "9e93ad4a5cacbe08528a12f83fd42505761ae71a",
+    "plugins/harness/skills/spec-it/SKILL.md": "8302d7ca4c379984c9c7192581d419cfd77fcd04",
+    "tests/skills/test_spec_it_skill_contract.py": "d461424b4981b7634861072ef91065caaa6def07"
+  },
+  "ignored": {},
+  "at": "2026-11-25T19:51:13+00:00",
+  "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+  "grader": "session",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

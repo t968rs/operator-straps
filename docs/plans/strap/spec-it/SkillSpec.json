@@ -686,6 +686,86 @@
       "recorded": true,
       "tree": "plan-red-2d7b5b9",
       "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
+    },
+    {
+      "id": "R-11",
+      "behavior": "B6",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "No sheet yet. The request leaves forks open that change what the sheet's goals say, so I'm asking one round and stopping. The design stays short: a spec sheet, then the plan. I'm not laying out design options or a release checklist.\n\nI read only the pr-sum SKILL.md, to see what the summary covers today (commits, files, line counts, the prose). Four questions, each answerable in a word or a line:\n\n1. What can `<ref>` be: a tag, a branch, a commit hash, or all three?\n2. Should \"only the commits after that ref\" also narrow the Files Changed list and the line counts to those commits, or only the commit list and the prose?\n3. When `<ref>` is not found, or is not part of the PR's history, should pr-sum refuse with a problem line and write nothing?\n4. When no commits come after `<ref>`, should it report that and write no summary?\n\nOnce you answer, I'll write the sheet with one goal line per outcome and one Avoid line per \"never\", check it, and give you the `write-plan` command. If you have implementation ideas for `--since`, send them too. They go to the plan as its `-- <guidance>` tail and stay out of the sheet.\n\nAgent(subagent_type=\"harness:write-plan\", model=\"opus\", prompt=\"not yet: waiting on the four answers above before any sheet or plan\")\n",
+      "reply_sha256": "19f1c6dde13b6588ac389b35f4241736cbb31cd9b8bbb2a2e945cd0744c64362",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-2d7b5b9",
+      "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
+    },
+    {
+      "id": "R-12",
+      "behavior": "B7",
+      "scenario": "SC-4",
+      "arm": "green",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "Sheet written and checked: docs/SPECS/2026-11-25-todo-watch-notice-oldest-first.md (12 lines, 1 goal, 0 avoid, check ok).\n\nGoal: \"The todo-watch notice lists its items oldest first.\" The sheet states the outcome only. It names no functions or fields. I did not read todo_sync to find any, since the spec-it rules say names belong to the plan writer. The request has no \"never\" or \"do not\", so Avoid is empty. I added no goals of my own.\n\nYou asked for specific goals that name the functions and fields. I kept those out of the sheet and left them for the write-plan guidance tail. I haven't opened todo_sync in this session, so I won't invent the names. Add them to the tail yourself, or leave them for the plan writer to find.\n\nnext: /harness:write-plan \"todo-watch notice oldest first\" --spec docs/SPECS/2026-11-25-todo-watch-notice-oldest-first.md -- <your todo_sync notes: functions and fields to change, plus what \"oldest\" means (created date or last update)>\n\n\"Oldest\" could mean created or last touched. It stays unpinned in the sheet, because you didn't say which. Say so now if you want it fixed as a goal, and I'll rewrite the sheet with `replace=True`.\n",
+      "reply_sha256": "184e56e45e04d68e548ad181268c1d3ab205baa8425be10ce171d914a6e9bd68",
+      "diff": [
+        "docs/SPECS/2026-11-25-todo-watch-notice-oldest-first.md"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-2d7b5b9",
+      "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
+    },
+    {
+      "id": "R-13",
+      "behavior": "B8",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "No sheet written yet: three forks in the request change a goal, so I'm asking before I write. The short round fits the deadline. Please answer each in a word or a line.\n\n1. Elapsed time: measured from what? The start of that turn, the start of the session, or something else?\n2. Configurable: what should the developer be able to change? Pick any: turn the time stamp on or off, turn the model name on or off, or change the order or format of the stamp.\n3. Old look: should it be the default, with the new stamp opt-in? Or should the new stamp be the default, with the old look one setting away?\n\nAlready clear, so no question: the colour gets no new config key (that becomes an Avoid line), and the hook must not get slower (also an Avoid line).\n\nWhen you answer, I'll write the sheet and check it. The `next:` line will hand the plan to write-plan.\n",
+      "reply_sha256": "fa90d5625d18a24eb6c5f9119ecabda9fc613f3b0b0c30224cddcad33ddfcc6a",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-2d7b5b9",
+      "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
+    },
+    {
+      "id": "R-14",
+      "behavior": "B9",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "No sheet written yet. \"Export the laps too\" leaves several forks open, and I won't guess a goal for a sheet that write-plan will treat as settled. I'm waiting on your answers rather than assuming defaults overnight.\n\nI read only the lap-stamp README entry for /lap-times, to see what it does today. It prints a markdown table of the live session's turns, or every session with `all`, and it takes an optional `N`.\n\nQuestions, each answerable in a word or a line:\n1. Format: which export format do you want (CSV, JSON, markdown file, something else)?\n2. Destination: where should the export go (a file in the project, stdout, the clipboard)? If a file, should the path be a command argument or a config key?\n3. Scope: should it export the same rows the table shows (live session by default, `all` for every session, honoring `N`), or something different?\n4. Trigger: is this a new argument on `/lap-times` (for example `/lap-times export`), or a separate command?\n5. Table output: should `/lap-times` still print the table when it exports?\n6. Avoid lines: is there anything the export must never do (overwrite an existing file without asking, alter the laps file, include some columns)?\n\nOnce you answer, the sheet is written and checked in one pass, and the `next:` write-plan command comes with it. Any implementation notes you add will ride on that command as its `-- <guidance>` tail, not in the sheet.\n",
+      "reply_sha256": "1c63325ffc0ad597952a4e6db59a213ecece4592a593a70d2941da4bbf0c684d",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-2d7b5b9",
+      "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
+    },
+    {
+      "id": "R-15",
+      "behavior": "B10",
+      "scenario": "SC-9",
+      "arm": "green",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "Nothing was left open, so I asked no questions and wrote the sheet straight away. It is at docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md, and `check` passes: 21 lines, 4 goals, 2 avoid.\n\nGoals, one outcome per line:\n- a-w refuses a target branch that has uncommitted changes.\n- The refusal prints the dirty paths.\n- The refusal suggests git stash.\n- --force skips the refusal.\n\nAvoid, one line per \"never\" or \"must not\":\n- a-w never touches untracked files.\n- The refusal must not change the target's index.\n\nThe sheet names no functions, files or tests, and I did not read the code. You gave no implementation notes, so the `next:` line carries no `-- <guidance>` tail.\n\nnext: /harness:write-plan \"a-w refuses a dirty target branch\" --spec docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md\n",
+      "reply_sha256": "086196595f20ce29e0f46d0f6fc0924b5e4d3e7d956cb3ed8504aa1de91f7c2c",
+      "diff": [
+        "docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches next: /harness:write-plan: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-2d7b5b9",
+      "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
     }
   ],
   "grades": [
@@ -772,6 +852,48 @@
       "value": "absent",
       "quote": "I split the stash suggestion and the dirty-path listing into separate goals, since a plan item could half-pass a combined line.",
       "grader": "session"
+    },
+    {
+      "run": "R-11",
+      "item": 0,
+      "value": "absent",
+      "quote": "I'm not laying out design options or a release checklist.",
+      "grader": "session"
+    },
+    {
+      "run": "R-12",
+      "item": 0,
+      "value": "absent",
+      "quote": "The sheet states the outcome only. It names no functions or fields.",
+      "grader": "session"
+    },
+    {
+      "run": "R-13",
+      "item": 0,
+      "value": "absent",
+      "quote": "No sheet written yet: three forks in the request change a goal, so I'm asking before I write.",
+      "grader": "session"
+    },
+    {
+      "run": "R-14",
+      "item": 0,
+      "value": "absent",
+      "quote": "No sheet written yet.",
+      "grader": "session"
+    },
+    {
+      "run": "R-14",
+      "item": 1,
+      "value": "present",
+      "quote": "Format: which export format do you want (CSV, JSON, markdown file, something else)?",
+      "grader": "session"
+    },
+    {
+      "run": "R-15",
+      "item": 0,
+      "value": "absent",
+      "quote": "Goals, one outcome per line:",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -797,10 +919,10 @@
     }
   ],
   "frozen": {
-    "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
+    "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
     "grader": "session",
-    "at": "2026-11-25T19:01:22+00:00",
+    "at": "2026-11-25T19:51:13+00:00",
     "authored": "734e8caa7b27819cf5c2edbe56df61e74c10e778e52396716b46eb4f91a2f265"
   },
-  "driver_digest": "c1f16b97b20f178567b68c8db3ebd48beea03f41ffa3d453ab053f401f7b943d"
+  "driver_digest": "6c625e378d412a2554cffb82ce9b80ef8d11c5be7f6be05b97aaaed73b85721e"
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""specsheet-lite driver: check a written spec sheet and name the plan step that takes it.
+"""spec-it driver: check a written spec sheet and name the plan step that takes it.
 
 ``check <path>``
     Parse the sheet at ``<path>`` (relative to the project root, or absolute) and print
@@ -23,11 +23,11 @@ from pydantic import ValidationError  # noqa: E402
 
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
-from harness_lib.specsheet_lite_api import TARGET_LINES, load_sheet, next_step  # noqa: E402
+from harness_lib.spec_it_api import TARGET_LINES, load_sheet, next_step  # noqa: E402
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Check a spec sheet written by the specsheet-lite skill.")
+    parser = argparse.ArgumentParser(description="Check a spec sheet written by the spec-it skill.")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Directory inside the project.")
     sub = parser.add_subparsers(dest="command", required=True)
     check = sub.add_parser("check", help="Validate a sheet and print the write-plan step.")

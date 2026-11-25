@@ -1,4 +1,4 @@
-"""Specsheet Lite: the spec sheet the ``specsheet-lite`` skill writes, its rules and its markdown page.
+"""spec-it: the spec sheet the ``spec-it`` skill writes, its rules and its markdown page.
 
 A sheet is a title, a date, the developer's request and the goal and avoid lines a plan must meet. It names
 no plan, skill-spec or TODO id, no issue number, no URL and no code, so it stands on its own in a scenario
