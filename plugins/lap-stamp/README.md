@@ -123,6 +123,29 @@ following. The mod adds no key of its own.
 | `turn.start`, `turn.complete` (the main conversation) | Records the start; at the stop, builds the row, appends it and adds it to memory. |
 | Render of an assistant reply block | Stamps the block whose fingerprint matches a row. |
 | Render of the `TurnDuration` line | Stamps it when exactly one empty-answer row matches its duration. |
+| `command.run` (`/lap-times`) | Prints the lap times table (below); `/lap-times` is registered at `session.start` in an active project. |
+
+## /lap-times
+
+`/lap-times [all] [N]` prints the laps as a markdown table under one summary line (turn count, total lap,
+longest lap). With no argument it shows this session's turns from memory; `all` reads every session from the
+laps file and adds a date and a short session id. `N` keeps the newest N rows (default 50); the `#` column
+still numbers each row's place in the whole list. Anything else prints the usage line.
+
+```
+lap-stamp · this session · 2 turns · lap total 1m 20s · longest 1m 15s
+
+| # | Stop     | Kind   |    Lap | Since prompt | Wake              | Stop reason |
+|--:|----------|--------|-------:|-------------:|-------------------|-------------|
+| 1 | 14:00:05 | prompt |     5s |              |                   | answer      |
+| 2 | 14:01:15 | wake   | 1m 15s |       1m 15s | task-notification | answer      |
+```
+
+Every cell is padded to its column's width and durations are right-aligned, so the table lines up as plain text
+and still renders as markdown. No line is wider than the terminal at the moment the command runs: columns go
+least useful first (stop reason, wake, session, `#`, date, kind, since prompt) until the table fits, and the stop
+time and the lap always stay. The summary line is cut with an ellipsis. The command answers without a model turn,
+and its output stays out of the model's requests.
 
 ## State
 
