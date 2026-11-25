@@ -28,6 +28,14 @@ Run = Callable[..., Result]
 PLANS = "docs/PLANS"
 SUB_TEST = "from src.calc import sub\n\n\ndef test_sub():\n    assert sub(3, 1) == 2\n"
 MUL_TEST = "from src.calc import mul\n\n\ndef test_mul():\n    assert mul(2, 3) == 6\n"
+UPSERT = (
+    "import json, sys\n"
+    "registry, entries = sys.argv[1], sys.argv[2]\n"
+    "data = json.load(open(registry, encoding='utf-8'))\n"
+    "for entry in json.load(open(entries, encoding='utf-8')):\n"
+    "    data['tests'] = [e for e in data['tests'] if e['file'] != entry['file']] + [entry]\n"
+    "json.dump(data, open(registry, 'w', encoding='utf-8'), indent=2)\n"
+)
 BASE_FILES = {
     "src/__init__.py": "",
     "src/calc.py": "def add(a, b):\n    return a + b\n",

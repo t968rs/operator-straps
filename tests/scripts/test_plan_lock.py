@@ -144,6 +144,20 @@ def test_lock_requires_committed_freeze(run: Run, project: Path) -> None:
     assert fl.state(entries(fl, project)) == fl.LedgerState.locked
 
 
+def test_lock_refuses_an_entries_file_added_after_the_freeze(run: Run, project: Path) -> None:
+    from harness_lib import freeze_ledger as fl
+    fill(run, project)
+    commit_all(project, "freeze plan 0001")
+    added = project / PLANS / "0001" / "registry_entries.json"
+    added.write_text(json.dumps({"plan": "0001", "entries": [{"file": "tests/test_calc_sub.py"}]}),
+                     encoding="utf-8")
+    commit_all(project, "planned entries after the freeze")
+    code, _, err = run("lock", "1")
+    expected = f"problem: {PLANS}/0001/registry_entries.json: not in the last freeze; run plan.py freeze 0001"
+    assert code == 1 and expected in err, err
+    assert [kind_of(e) for e in entries(fl, project)] == ["freeze"]
+
+
 def test_unlock_needs_arm_then_allows_refreeze(run: Run, project: Path) -> None:
     from harness_lib import freeze_ledger as fl
     lock_committed(run, project)

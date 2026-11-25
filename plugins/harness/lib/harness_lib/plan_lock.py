@@ -440,8 +440,20 @@ def _file_problems(repo: Path, last: LedgerEntry) -> List[str]:
     return problems
 
 
+def _unfrozen_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, held: LedgerEntry) -> List[str]:
+    """Each not-ignored file of the freeze set (a planned test, the entries file) that the held freeze
+    does not record, so a file added after the freeze cannot escape the lock."""
+    try:
+        present, _ = fg.members(repo, freeze_set(repo, plan_file, plan))
+    except fg.FreezeGitError as exc:
+        return [str(exc)]
+    return [f"{path}: not in the last freeze; run plan.py freeze {plan.plan_id} --refreeze first"
+            for path in present if path not in held.files]
+
+
 def lock_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
-    """The ledger part of the lock gate: Frozen with a ledger, the last freeze committed and clean."""
+    """The ledger part of the lock gate: Frozen with a ledger, the last freeze committed and clean, and
+    no file of the freeze set left out of it."""
     _require_ledger(plan, "lock")
     found = entries_of(plan_file, plan)
     if fl.state(found) in _LOCKED:
@@ -450,7 +462,8 @@ def lock_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]
     if last is None or last.history or last.tree is None:
         return [f"plan {plan.plan_id} has no ledger freeze with a tree; run plan.py freeze "
                 f"{plan.plan_id} --refreeze first"]
-    return _file_problems(repo, fl.held(found, EntryKind.freeze) or last)
+    held = fl.held(found, EntryKind.freeze) or last
+    return _file_problems(repo, held) + _unfrozen_problems(repo, plan_file, plan, held)
 
 
 def _held_tree(repo: Path, last: LedgerEntry, src: LedgerEntry) -> str:

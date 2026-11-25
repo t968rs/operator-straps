@@ -59,6 +59,13 @@ def entries_path(plans_dir: Path, plan_id: str) -> Path:
     return plans_dir / plan_id / ENTRIES_NAME
 
 
+def _detail(exc: Exception) -> str:
+    """Each validation error as ``<field location>: <message>``; any other error as its text."""
+    if not isinstance(exc, ValidationError):
+        return str(exc)
+    return "; ".join(f"{'.'.join(map(str, e['loc'])) or '<root>'}: {e['msg']}" for e in exc.errors())
+
+
 def load_entries(plans_dir: Path, plan_id: str) -> Optional[PlannedEntries]:
     """The plan's planned entries, or None without a file; PlanError for a file that does not hold them."""
     path, where = entries_path(plans_dir, plan_id), f"{plan_id}/{ENTRIES_NAME}"
@@ -67,7 +74,7 @@ def load_entries(plans_dir: Path, plan_id: str) -> Optional[PlannedEntries]:
     try:
         loaded = PlannedEntries.model_validate(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, ValueError) as exc:
-        detail = "; ".join(e["msg"] for e in exc.errors()) if isinstance(exc, ValidationError) else str(exc)
+        detail = _detail(exc)
         raise PlanError([f"registry: {where}: {detail}"]) from None
     if loaded.plan != plan_id:
         raise PlanError([f"registry: {where} names plan {loaded.plan}"])
@@ -114,6 +121,7 @@ def _program(program: str, cwd: Path) -> str:
 
 
 def _run(argv: List[str], cwd: Path) -> "subprocess.CompletedProcess[str]":
+    """Run ``argv`` in ``cwd``; the timeout kills only the launched process, not its process tree."""
     return subprocess.run([_program(argv[0], cwd), *argv[1:]], cwd=cwd, stdin=subprocess.DEVNULL,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                           errors="replace", timeout=TIMEOUT_SECONDS)
@@ -133,6 +141,16 @@ def upsert(command: Sequence[str], registry: Path, entries: Sequence[Dict[str, A
         tail = done.stdout.strip().splitlines()[-TAIL_LINES:]
         raise PlanError([f"tests.planned_registry: {' '.join(command)} (exit {done.returncode})",
                          *(f"  {line}" for line in tail)])
+    _confirm(registry, entries)
+
+
+def _confirm(registry: Path, entries: Sequence[Dict[str, Any]]) -> None:
+    """PlanError naming each entry's file that ``registry`` still does not list after the upsert."""
+    known = registered(registry)
+    missing = [str(e["file"]) for e in entries if str(e["file"]) not in known]
+    if missing:
+        raise PlanError([f"{f}: tests.planned_registry exited 0 but the registry does not list it"
+                         for f in missing])
 
 
 # --- lint -------------------------------------------------------------------------------------------------

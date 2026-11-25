@@ -436,12 +436,13 @@ def test_planned_registry_loads_as_an_argv_tuple(make_project) -> None:
     assert cfg.tests.planned_registry == tuple(command)
 
 
+ARGV_SHAPE = "non-empty list of non-empty strings"
 BAD_PLANNED_REGISTRY = [
-    ({"registry": "tests/registry.json", "planned_registry": "python reg.py {entries}"}, "planned_registry"),
-    ({"registry": "tests/registry.json", "planned_registry": []}, "planned_registry"),
-    ({"registry": "tests/registry.json", "planned_registry": ["python", ""]}, "planned_registry"),
+    ({"registry": "tests/registry.json", "planned_registry": "python reg.py {entries}"}, ARGV_SHAPE),
+    ({"registry": "tests/registry.json", "planned_registry": []}, ARGV_SHAPE),
+    ({"registry": "tests/registry.json", "planned_registry": ["python", ""]}, ARGV_SHAPE),
     ({"registry": "tests/registry.json", "planned_registry": ["python", "reg.py"]}, r"\{entries\}"),
-    ({"planned_registry": ["python", "reg.py", "{entries}"]}, "tests.registry"),
+    ({"planned_registry": ["python", "reg.py", "{entries}"]}, r"needs tests\.registry"),
 ]
 
 

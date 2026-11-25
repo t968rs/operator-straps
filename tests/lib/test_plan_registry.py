@@ -17,15 +17,11 @@ from harness_lib import plan_registry as preg
 from harness_lib.plan_doc import PlanError
 from harness_lib.plan_models import ActionPlan
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from _plan_driver_helpers import UPSERT  # noqa: E402
+
 WALK_ROOTS = ()
-UPSERT = (
-    "import json, sys\n"
-    "registry, entries = sys.argv[1], sys.argv[2]\n"
-    "data = json.load(open(registry, encoding='utf-8'))\n"
-    "for entry in json.load(open(entries, encoding='utf-8')):\n"
-    "    data['tests'] = [e for e in data['tests'] if e['file'] != entry['file']] + [entry]\n"
-    "json.dump(data, open(registry, 'w', encoding='utf-8'), indent=2)\n"
-)
 
 
 def plan(*nodes: str) -> ActionPlan:
@@ -139,6 +135,37 @@ def test_a_failed_upsert_is_a_problem_with_the_output_tail(tmp_path: Path) -> No
     assert "planned_registry" in text and "exit 3" in text and "no such registry" in text
 
 
+def test_an_upsert_that_exits_0_without_writing_is_a_problem(tmp_path: Path) -> None:
+    (tmp_path / "reg.py").write_text("print('wrote somewhere else')\n", encoding="utf-8")
+    registry = write_registry(tmp_path / "tests" / "registry.json", ["tests/test_a.py"])
+    command = (sys.executable, "reg.py", "{registry}", "{entries}")
+    with pytest.raises(PlanError) as raised:
+        preg.upsert(command, registry, [{"file": "tests/test_a.py"}, {"file": "tests/test_b.py"}], tmp_path)
+    assert raised.value.problems == [
+        "tests/test_b.py: tests.planned_registry exited 0 but the registry does not list it"]
+
+
+def test_a_relative_program_joins_the_working_folder(tmp_path: Path) -> None:
+    assert preg._program("bin/tool", tmp_path) == str(tmp_path / "bin/tool")
+
+
+def test_a_bare_program_name_runs_from_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "reg.py").write_text(UPSERT, encoding="utf-8")
+    registry = write_registry(tmp_path / "tests" / "registry.json", [])
+    monkeypatch.setenv("PATH", str(Path(sys.executable).parent))
+    command = (Path(sys.executable).name, "reg.py", "{registry}", "{entries}")
+    preg.upsert(command, registry, [{"file": "tests/test_b.py"}], tmp_path)
+    assert preg.registered(registry) == {"tests/test_b.py"}
+
+
+@pytest.mark.parametrize("program", ["no-such-upsert-tool", "bin/no-such-upsert-tool"])
+def test_a_program_that_does_not_exist_is_a_problem(tmp_path: Path, program: str) -> None:
+    command = (program, "{registry}", "{entries}")
+    with pytest.raises(PlanError) as raised:
+        preg.upsert(command, tmp_path / "registry.json", [{"file": "tests/test_b.py"}], tmp_path)
+    assert raised.value.problems[0].startswith(f"tests.planned_registry: {program} ")
+
+
 # --- lint -------------------------------------------------------------------------------------------------
 
 def test_lint_names_a_planned_test_with_no_entry(tmp_path: Path) -> None:
@@ -159,7 +186,9 @@ def test_lint_accepts_a_planned_test_already_registered(tmp_path: Path) -> None:
 def test_lint_skips_the_missing_entry_rule_without_the_key(tmp_path: Path) -> None:
     plans, repo = tmp_path / "plans", tmp_path / "repo"
     plant(plans, "tests/test_a.py")
-    assert preg.lint_problems(plan("tests/test_a.py::test_x"), plans, repo, None, False) == []
+    write_registry(repo / "tests" / "registry.json", [])
+    problems = preg.lint_problems(plan("tests/test_a.py::test_x"), plans, repo, "tests/registry.json", False)
+    assert problems == []
 
 
 def test_lint_names_an_entry_for_a_file_neither_planned_nor_present(tmp_path: Path) -> None:

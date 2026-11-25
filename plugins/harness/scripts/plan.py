@@ -69,8 +69,9 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     open item has neither a test nor a command, an item is not PENDING on a first freeze, or ``red`` has a
     problem; otherwise set ``ledger`` (before the digest, which covers it), save the plan JSON, build the
     tree of the plan JSON, everything under ``<plan folder>/<id>/tests/`` and ``<id>/registry_entries.json``
-    (gitignored files go to the entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree, its files, the date, the base
-    commit, the record scheme and the digest; then tag the tree ``freeze/<stem>/r1.<k>-tree`` and the base.
+    (gitignored files go to the entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree,
+    its files, the date, the base commit, the record scheme and the digest; then tag the tree
+    ``freeze/<stem>/r1.<k>-tree`` and the base.
     A plan with an in-file stamp and no ledger migrates on ``--refreeze``: a history ``freeze`` entry (no
     tree, dated from the stamp) comes first and ``frozen`` leaves the JSON. The status line names the entry
     and its tree. A first freeze (every item PENDING without a record), the path every new plan takes,
@@ -113,7 +114,8 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     the tree alone: its commands are not run. The other flags record IN_PROGRESS, BLOCKED or
     CLOSED_NO_ACTION, sealed the same way. The PIP is rendered again. With ``tests.planned_registry``
     set, a ``pending entry: <file> (plan.py register <id> <ITEM>)`` line follows for each planned entry of
-    the item's test files that the live registry lacks; it never fails the record.
+    the item's test files that the live registry lacks, ending ``after copying it from <path>`` while the
+    file is not in the tree yet (``register`` refuses it until then); it never fails the record.
 
     On a receipts plan the dependency gate reads the receipts, and the outcome goes to a sealed receipt
     (``<plans>/<id>/receipts/<ITEM>.json``) and ``live.js``; the plan JSON and its PIP are never written. A
@@ -134,7 +136,9 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     Write the item's planned registry entries into the live ``tests.registry`` through
     ``tests.planned_registry`` (refused when it is unset), once the item copied its planned tests to their
     repo paths: a file not registered and not yet in the checkout is refused, since its entry would name a
-    missing file. A file the registry already lists is skipped. Prints ``register [done] | <ITEM> | <n>
+    missing file. A test file of the item with no planned entry that the registry does not list is refused
+    too, and so is an entry still missing from the registry after the command exits 0. A file the registry
+    already lists is skipped. Prints ``register [done] | <ITEM> | <n>
     entries written``, a ``registered:`` or ``skipped:`` line per file, and, when it wrote one, a
     ``guard: <path>`` line per ``review.registry_guards`` file to run. Writes no plan file.
 
@@ -467,8 +471,10 @@ def apply_planned_entries(plan: pm.ActionPlan, files: Sequence[str], tree: Path)
     """Upsert the planned entries of the overlaid ``files`` into the tree's registry, through
     ``tests.planned_registry``; a file the tree's registry already lists keeps its row."""
     tests = active().tests
+    if tests.planned_registry is None or tests.registry is None:
+        return
     planned = preg.load_entries(plans_dir(), plan.plan_id)
-    if tests.planned_registry is None or tests.registry is None or planned is None:
+    if planned is None:
         return
     registry = tree / tests.registry
     entries = preg.pending(planned, files, registry)
@@ -991,7 +997,15 @@ def pending_entry_lines(repo: Path, plan: pm.ActionPlan, item_id: str) -> List[s
         return []
     files = [plx.node_file(t.node) for t in pd.item_by_id(plan, item_id).tests]
     found = preg.pending(planned, files, repo / tests.registry) if planned else []
-    return [f"pending entry: {e['file']} (plan.py register {plan.plan_id} {item_id})" for e in found]
+    return [pending_entry_line(repo, plan, item_id, str(e["file"])) for e in found]
+
+
+def pending_entry_line(repo: Path, plan: pm.ActionPlan, item_id: str, file: str) -> str:
+    """The ``pending entry:`` line of ``file``; one not in the tree yet names the copy ``register`` needs."""
+    line = f"pending entry: {file} (plan.py register {plan.plan_id} {item_id})"
+    if (repo / file).is_file():
+        return line
+    return f"{line} after copying it from {rel(repo, plans_dir() / plan.plan_id / 'tests' / file)}"
 
 
 def cmd_record(repo: Path, args: argparse.Namespace) -> int:
@@ -1049,6 +1063,16 @@ def uncopied(repo: Path, plan: pm.ActionPlan, files: Sequence[str], known: Seque
             for f in files if f not in known and not (repo / f).is_file()]
 
 
+def unentered(plan: pm.ActionPlan, item: pm.ActionItem, planned: Optional[preg.PlannedEntries],
+              known: Sequence[str]) -> List[str]:
+    """A refusal line per item test file with no planned entry that the live registry does not list."""
+    entered = set(planned.files()) if planned else set()
+    files = dict.fromkeys(plx.node_file(t.node) for t in item.tests)
+    where = f"{plan.plan_id}/{preg.ENTRIES_NAME}"
+    return [f"{f} has no planned entry in {where} and the registry does not list it"
+            for f in files if f not in entered and f not in known]
+
+
 def register_lines(item_id: str, written: Sequence[str], skipped: Sequence[str]) -> List[str]:
     count = f"{len(written)} entr{'y' if len(written) == 1 else 'ies'} written"
     guards = [f"guard: {g}" for g in active().review.registry_guards] if written else []
@@ -1066,11 +1090,11 @@ def cmd_register(repo: Path, args: argparse.Namespace) -> int:
     planned, files = register_files(plan, item)
     registry = repo / tests.registry
     known = sorted(preg.registered(registry))
-    problems = uncopied(repo, plan, files, known)
+    problems = unentered(plan, item, planned, known) + uncopied(repo, plan, files, known)
     if problems:
         raise pd.PlanError(problems)
     entries = preg.pending(planned, files, registry) if planned else []
-    if entries:
+    if planned and entries:
         preg.upsert(tests.planned_registry, registry, entries, repo)
     written = [str(e["file"]) for e in entries]
     print("\n".join(register_lines(item.id, written, [f for f in files if f not in written])))

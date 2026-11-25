@@ -19,20 +19,14 @@ from conftest import git
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _plan_driver_helpers as helpers  # noqa: E402
-from _plan_driver_helpers import BASE_FILES, PLANS, SUB_TEST, Run, read_plan, trees, write_op, write_plan  # noqa: E402
+from _plan_driver_helpers import (  # noqa: E402
+    BASE_FILES, PLANS, SUB_TEST, UPSERT, Run, read_plan, trees, write_op, write_plan,
+)
 
 driver, run = helpers.driver, helpers.run
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
 SUB = "tests/test_calc_sub.py"
 ENTRY = {"file": SUB, "kind": "unit"}
-UPSERT = (
-    "import json, sys\n"
-    "registry, entries = sys.argv[1], sys.argv[2]\n"
-    "data = json.load(open(registry, encoding='utf-8'))\n"
-    "for entry in json.load(open(entries, encoding='utf-8')):\n"
-    "    data['tests'] = [e for e in data['tests'] if e['file'] != entry['file']] + [entry]\n"
-    "json.dump(data, open(registry, 'w', encoding='utf-8'), indent=2)\n"
-)
 GATE = (
     "import json\n"
     "from pathlib import Path\n\n"
@@ -166,6 +160,15 @@ def test_register_writes_the_entry_and_names_the_guards(run: Run, filled: Fill, 
     assert f"skipped: {SUB} (already registered)" in out
 
 
+def test_register_refuses_a_test_with_no_entry(run: Run, filled: Fill, project: Path) -> None:
+    filled(entries=False)
+    write_op(project, "sub")
+    code, _, err = run("register", "1", "TASK-1")
+    expected = f"problem: {SUB} has no planned entry in 0001/registry_entries.json and the registry does not"
+    assert code == 1 and f"{expected} list it" in err
+    assert live_files(project) == ["tests/test_calc.py"]
+
+
 def test_register_needs_the_key(run: Run, make_project, tmp_path: Path) -> None:
     root = build(make_project, tmp_path, keyed=False)
     code, _, _ = run("new", "Add subtraction", "--spec", "docs/spec.md", repo=root)
@@ -183,9 +186,11 @@ def test_record_names_an_entry_still_pending(run: Run, filled: Fill, project: Pa
     assert code == 0, err
     code, out, err = run("record", "1", "TASK-1", "--start")
     assert code == 0, err
-    assert f"pending entry: {SUB} (plan.py register 0001 TASK-1)" in out
+    hint = f"pending entry: {SUB} (plan.py register 0001 TASK-1)"
+    assert f"{hint} after copying it from {PLANS}/0001/tests/{SUB}" in out
     write_op(project, "sub")
-    run("register", "1", "TASK-1")
+    code, _, err = run("register", "1", "TASK-1")
+    assert code == 0, err
     code, out, err = run("record", "1", "TASK-1", "--start")
     assert code == 0, err
     assert "pending entry:" not in out
