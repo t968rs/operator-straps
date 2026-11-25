@@ -105,7 +105,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <h1>Plan 2030: working refs line colors</h1>
 <p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2030_working_refs_line_colors_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
 <p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2030</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2030</code>.</span></p>
-<dl class="head"><dt>Plan created</dt><dd>2026-11-24</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md</code></dd><dt>Branch</dt><dd>0009-banner-formatting -&gt; main</dd><dt>Base commit</dt><dd><code>f8cf38c</code></dd><dt>Frozen</dt><dd>2026-11-25 at <code>28ceb7c</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-24</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md</code></dd><dt>Branch</dt><dd>0009-banner-formatting -&gt; main</dd><dt>Base commit</dt><dd><code>f8cf38c</code></dd><dt>Frozen</dt><dd>2026-11-25 at <code>19dc80b</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
 <h2 id="status">Status</h2>
 <ul class="summary">
 <li><a href="#item-TASK-1">TASK-1: Progress model: mirror names, plan items and the done share</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
@@ -151,7 +151,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 </ul>
 <p class="action">1. Copy docs/plans/2030/tests/tests/mods/test_working_refs_contract.py to tests/mods/.
 2. mirror.ts: export RECEIPTS_DIR = &#x27;receipts&#x27;, DONE_OUTCOMES = [&#x27;complete&#x27;, &#x27;closed&#x27;] as const and DONE_STATUSES = [&#x27;COMPLETE&#x27;, &#x27;CLOSED_NO_ACTION&#x27;] as const (the `as const` form ts_string_array reads), with a header bullet naming harness_lib.plan_receipts and plan_enums.DONE.
-3. plans.ts: PlanInfo gains items: PlanItem[] ({ id: string; status: string | null }), read leniently from data.items (non-objects and entries without a string id dropped; a non-string status is null).
+3. plans.ts: PlanInfo gains items: PlanItem[] ({ id: string; status: string | null }), read leniently from data.items (non-objects and entries without a string id dropped; a non-string status is null), each raw item read inline as item.&lt;field&gt; (the contract test pins those names against ActionItem, plan change EX2).
 4. New progress.ts, pure (no $): Progress = { done, total }; outcomeKindOf(text) parses a receipt and returns receipt.outcome then outcome.kind as a string, else null (absent or malformed text); progressOf(items, kinds) counts an item done when its kind is in DONE_OUTCOMES, or, with no kind, when item.status is in DONE_STATUSES (V6), total the item count; PLAN_RAMP = [51, 45, 74, 67, 243] (V1); planStep(p) per V2; planColor(p) = PLAN_RAMP[planStep(p)]; receiptsDirOf(plansDir, id); receiptsSignatureOf(byPlan) over each plan id and the name, size and mtime of each .json entry, sorted. Read item, receipt and outcome fields inline as item.&lt;field&gt;, receipt.&lt;field&gt;, outcome.&lt;field&gt; (the contract test pins those names).
 5. progress.test.ts: every step boundary (0/4 step 0, 1/4 step 1, 2/4 step 2, 3/4 step 3, 4/4 step 4, no items step 0); complete and closed count, started and blocked do not; no receipt falls back to the status; a malformed receipt counts as none; no ramp color is in TODO_PALETTE or 240; the signature moves with a receipt&#x27;s mtime. plans.test.ts: items parsed, malformed entries dropped.</p>
 <ul>
@@ -159,6 +159,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li>Test <code>tests/mods/test_working_refs_contract.py::test_done_outcome_kinds_match_the_outcome_models</code> fails with AssertionError, then passes</li>
 <li>Test <code>tests/mods/test_working_refs_contract.py::test_done_statuses_match_plan_enums_done</code> fails with AssertionError, then passes</li>
 <li>Test <code>tests/mods/test_working_refs_contract.py::test_fields_read_by_progress_ts_match_the_models</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_item_fields_read_by_plans_ts_match_action_item</code> fails with AssertionError, then passes</li>
 <li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
 <li>Run <code>python -m pytest tests/mods/test_working_refs_contract.py -q</code>: passed, no failures</li>
 <li>Record it: <code>plan.py record 2030 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>

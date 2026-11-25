@@ -1,0 +1,24 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 2,
+  "tree": "19dc80bde47712bc516a75c0c2d85450c85e01d8",
+  "files": {
+    "docs/plans/2030_working_refs_line_colors_ActionPlan.json": "8d092c48a054bce5cf1cc52dd75ebe07cbb3b435"
+  },
+  "ignored": {
+    "docs/plans/2030/tests/tests/mods/test_working_refs_contract.py": "559bb8d7eaba08327fc0b5525554c8cd79002fe9158bd24bfe42cc18b2964e35"
+  },
+  "at": "2026-11-25T06:30:04+00:00",
+  "base": "f8cf38cf2c2553011421b9b9d1cf0c89cb81b987",
+  "history": false,
+  "digest": "5f16e333fd3d49e4bdaf7f578013d74d96522c09b37614c1865485eb60407500",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

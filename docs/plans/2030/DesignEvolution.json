@@ -33,6 +33,33 @@
         "free_form": "without the caller change TASK-2's command (claude plugin test plugins/working-refs, every test passes) fails with 26 watch.test.ts failures"
       },
       "date": "2026-11-24"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "TASK-1 quality review (M1), refreeze approved by the developer",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 action 3 and tests",
+        "indicated": "plans.ts reads plan items leniently from data.items; the contract test pins only the data.<field> reads of plans.ts and the item/receipt/outcome reads of progress.ts"
+      },
+      "issue": {
+        "category": "dyad-drift",
+        "why_categorical": "a field read the contract test does not pin",
+        "why_free_form": "itemsOf reads each raw ActionItem as e.id and e.status; no contract test scans those names, so a renamed ActionItem.status reads every status as null and the suite still passes"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "itemsOf reads each raw item inline as item.<field>, and the contract test test_item_fields_read_by_plans_ts_match_action_item pins those names against ActionItem.model_fields"
+      },
+      "why_new_outcome": {
+        "category": "review-pin-update",
+        "free_form": "the item fields the mod reads from a plan file get the same contract pin as the ActionPlan fields"
+      },
+      "date": "2026-11-24"
     }
   ]
 }
