@@ -15,8 +15,10 @@ the session's own clarification and writing. It never reaches a command.
 A spec sheet is the design step: the developer's request in a short paragraph, then the outcomes the plan must
 reach (Goals) and must not cause (Avoid), one line each. `harness:write-plan` takes it as `--spec` and owns
 everything after: files, items, tests, structure. The sheet holds no ids, issue numbers, URLs or code, so it
-never needs syncing with the plan and stands on its own in a scenario fixture. The model caps a page at 500
-lines; aim for 250 or fewer, and most requests fit in 40.
+never needs syncing with the plan and stands on its own in a scenario fixture. The model refuses the ids,
+issue numbers, URLs and code fences; function, field and module names in prose pass it, and keeping them out
+is this skill's Outcomes rule below. The model caps a page at 500 lines; aim for 250 or fewer, and most
+requests fit in 40.
 
 ## Rules
 
@@ -50,7 +52,10 @@ lines; aim for 250 or fewer, and most requests fit in 40.
    answered. When none is open, write the sheet now, without a question round.
 3. **Write the sheet through the API.** Never Edit or Write the page by hand: `write_sheet` validates the
    whole sheet and renders the only layout `check` accepts. Pass `replace=True` to rewrite a sheet already
-   written from the same title and date.
+   written from the same title and date. To revise an existing sheet, whatever its date, load it and rewrite
+   it in place, so its title, date and path stay:
+   `write_sheet(load_sheet("<sheet path>").model_copy(update={"goals": [...]}), replace=True)`.
+   `new_sheet` dates a sheet today, so building the revision through it writes a second page beside the old.
 
    ```bash
    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/skill_api.py" spec_it_api <<'PY'
@@ -64,7 +69,8 @@ lines; aim for 250 or fewer, and most requests fit in 40.
    PY
    ```
 
-   A refusal is one `problem:` line naming the field: fix that field and run the heredoc again.
+   A refusal is one `problem:` line naming what to fix: a field, a line that appears twice, the page length,
+   or an existing sheet (which `replace=True` rewrites). Fix it and run the heredoc again.
 4. **Check it.**
 
    ```bash
@@ -86,7 +92,8 @@ lines; aim for 250 or fewer, and most requests fit in 40.
 | A request joins several asks with "and" | One goal line per ask; each "do not" an Avoid line. |
 | The request leaves a fork open and the developer is offline | Ask the question and write no sheet that guesses it. |
 | "Round it out with whatever else it needs" | Write the asked goals; offer extras as questions, not lines. |
-| A `problem:` line from the API or `check` | Fix the field it names and rerun; never edit the page by hand. |
+| A `problem:` line from the API or `check` | Fix what it names (a field, a repeated line, the length, an existing sheet) and rerun; never edit the page by hand. |
+| The developer asks to change a sheet written on an earlier day | `load_sheet` it, `model_copy` the changed fields, `write_sheet(..., replace=True)`; never `new_sheet` a second copy. |
 
 ## Related
 
