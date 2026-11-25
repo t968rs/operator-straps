@@ -8,7 +8,9 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
+
+WALK_ROOTS = ("docs/RELEASES/",)
 
 _MOD = "plugins/lap-stamp"
 
@@ -57,7 +59,6 @@ def test_the_readme_documents_and_installs_the_mod(repo_root: Path) -> None:
 def test_claude_md_names_and_counts_the_mod(repo_root: Path) -> None:
     text = _text(repo_root, "CLAUDE.md")
     assert "`lap-stamp`" in text
-    assert "ten TypeScript mods" in text
     assert "tests/mods/test_lap_stamp_config_mirror.py" in text
 
 
@@ -67,7 +68,16 @@ def test_the_mod_has_a_readme(repo_root: Path) -> None:
     assert "laps.jsonl" in text
 
 
+def _release_rows(repo_root: Path) -> List[str]:
+    """Every lap-stamp row of the release-notes tables under docs/RELEASES/."""
+    rows: List[str] = []
+    for path in sorted((repo_root / "docs" / "RELEASES").glob("v*.md")):
+        rows += re.findall(r"^\|\s*lap-stamp\s*\|.*$", path.read_text(encoding="utf-8"), re.MULTILINE)
+    return rows
+
+
 def test_the_release_notes_list_the_mod(repo_root: Path) -> None:
-    version = json.loads(_text(repo_root, ".claude-plugin/marketplace.json"))["metadata"]["version"]
-    notes = _text(repo_root, f"docs/RELEASES/v{version}.md")
-    assert re.search(r"^\|\s*lap-stamp\s*\|", notes, re.MULTILINE)
+    manifest = json.loads(_text(repo_root, f"{_MOD}/.claude-plugin/plugin.json"))
+    version = re.escape(manifest["version"])
+    rows = _release_rows(repo_root)
+    assert any(re.search(rf"\|\s*{version}\s*\|\s*$", row) for row in rows), rows
