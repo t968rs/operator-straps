@@ -1,0 +1,38 @@
+{
+  "plan_id": "2030",
+  "feature": "working refs line colors",
+  "branch_lineage": "main-->0009-banner-formatting",
+  "primary_documents": {
+    "plan": "docs/plans/2030_working_refs_line_colors_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "task-2 lane",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 files",
+        "indicated": "only types/index.d.ts, hooks/line.ts and hooks/line.test.ts change; watch.ts and watch.test.ts belong to TASK-3"
+      },
+      "issue": {
+        "category": "signature-mismatch",
+        "why_categorical": "a caller and two expectations outside the item's files",
+        "why_free_form": "watch.ts viewOf builds a LineView without the now-required progress field, so buildLine throws on view.progress.get and 24 watch tests see no line; watch.test.ts expects PlanLink as {id, page}, which now also carries done and total, and pins the OSC 8 link text, which now holds the plan color"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 also passes progress: new Map() from viewOf in hooks/watch.ts, adds done: 0, total: 0 to the two PlanLink expectations in hooks/watch.test.ts and expects the plan number in color 51 (step 0) inside the OSC 8 link text of the qualifying-plan test; TASK-3 then fills progress from the receipts"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the caller change TASK-2's command (claude plugin test plugins/working-refs, every test passes) fails with 26 watch.test.ts failures"
+      },
+      "date": "2026-11-24"
+    }
+  ]
+}
