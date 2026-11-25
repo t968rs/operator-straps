@@ -42,6 +42,8 @@ type Seen = {
   /** How many times git ran. */
   gitRuns: number
   clock: MockClock
+  /** The slash commands registered, in order. */
+  commands: string[]
 }
 
 const ran = (stdout: string, exitCode = 0): ProcessRunResult => ({
@@ -117,7 +119,12 @@ const world = (on: On, config: string | null = '{}', refused: Refused = {}): See
   const seen: Seen = {
     files: new Map(), unreadable: new Set(), capped: new Set(), unwritable: new Set(), writes: [], reads: [],
     ranges: [], state: new Map(), session: SESSION, isDropping: false, gitRuns: 0, clock: clockOf(on, refused.clock === true),
+    commands: [],
   }
+  on('command.register', (_$, e) => {
+    seen.commands.push(e.name)
+    return { value: { command: e.name } }
+  })
   answerCore(on, seen)
   answerReads(on, seen)
   if (config !== null) seen.files.set(HARNESS, config)
@@ -759,5 +766,65 @@ describe('isDropped', () => {
     expect(isDropped({ drop: 'held' })).toBe(true)
     expect(isDropped({ text: 'go' })).toBe(false)
     expect(isDropped(undefined)).toBe(false)
+  })
+})
+
+/** `/lap-times` typed at a terminal `columns` wide; the command's whole answer. */
+const lapTimes = async ($: Engine, args = '', columns = 100) =>
+  $.command.run({
+    command: 'lap-times', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns },
+  })
+
+describe('/lap-times', () => {
+  test('registered once per load, at session start in a project with harness.json', async ($, on) => {
+    const seen = world(on)
+    await start($)
+    await start($)
+    expect(seen.commands).toEqual(['lap-times'])
+  })
+
+  test("this session's turns as a padded table, kept out of the model's requests", async ($, on) => {
+    const seen = world(on)
+    await start($)
+    await promptedTurn($, seen, 't1', 5)
+    const r = await lapTimes($)
+    expect(r.isTextDisplayOnly).toBe(true)
+    const lines = (r.text ?? '').split('\n')
+    expect(lines[0]).toBe('lap-stamp · this session · 1 turn · lap total 5s · longest 5s')
+    expect(lines[2]).toMatch(/^\| # \| Stop +\| Kind +\| +Lap \|/)
+    expect(lines[4]).toMatch(/^\| 1 \| \d\d:\d\d:\d\d \| prompt \| +5s \|/)
+  })
+
+  test('every line fits the terminal width the command ran at', async ($, on) => {
+    const seen = world(on)
+    await start($)
+    await promptedTurn($, seen, 't1', 5)
+    const text = (await lapTimes($, '', 32)).text ?? ''
+    expect(Math.max(...text.split('\n').map(l => l.length))).toBeLessThanOrEqual(32)
+  })
+
+  test('all reads every session from the laps file', async ($, on) => {
+    const seen = world(on)
+    seen.files.set(LAPS, `${rowLine(storedRow({ session: 'other-session' }))}\n`)
+    await start($)
+    await promptedTurn($, seen, 't1', 5)
+    expect((await lapTimes($)).text?.split('\n')[0]).toContain('1 turn')
+    const all = (await lapTimes($, 'all')).text ?? ''
+    expect(all.split('\n')[0]).toContain('all sessions (2) · 2 turns')
+    expect(all).toContain('| other-se |')
+  })
+
+  test('arguments it does not know print the usage line', async ($, on) => {
+    world(on)
+    await start($)
+    expect((await lapTimes($, 'yesterday')).text).toMatch(/^usage: \/lap-times/)
+  })
+
+  test('outside a project with harness.json the command is not registered and passes through', async ($, on) => {
+    const seen = world(on, null)
+    on('command.run', () => ({ text: 'beneath' }))
+    await start($)
+    expect(seen.commands).toEqual([])
+    expect((await lapTimes($)).text).toBe('beneath')
   })
 })
