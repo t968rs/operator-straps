@@ -51,6 +51,7 @@ These load on their own triggers (or as `/harness:<name>`) and need no configura
 | `parallel2` | Two or more subagents are about to run in parallel: disjoint worktree lanes and a tool probe first. |
 | `post-forcepush` | A PR branch was rebased or force-pushed and its review JSON holds stale commit SHAs. |
 | `agent-permissions` | A permission prompt was pasted and the Bash or PowerShell command should be allowlisted. |
+| `baseless` | A claim that work is complete, fixed, saved or passing is about to be made: name the command that proves it, run it by file, read its output, then claim. |
 | `consumer-contract-audit` | A shared container two or more public APIs read changes when entries enter or leave it. |
 | `decompose-module` | A large Python module is being catalogued for a split, or its unused functions are wanted. |
 | `efficient-file-reading` | A long file, or one already read, is about to be read again: search first. |
