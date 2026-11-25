@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 78,
-    "needs_decision": 46,
+    "items": 79,
+    "needs_decision": 47,
     "trackers": 0,
     "close_candidates": 40,
     "by_status": {
-      "NEEDS_DECISION": 46,
+      "NEEDS_DECISION": 47,
       "OPEN": 32
     },
     "by_impact": {
-      "dev_velocity": 43,
+      "dev_velocity": 44,
       "docs_tooling": 25,
       "maintainability": 2,
       "runtime_failure": 6,
@@ -75,12 +75,12 @@
     "by_loe": {
       "XS": 4,
       "S": 25,
-      "M": 34,
+      "M": 35,
       "L": 13,
       "XL": 2
     },
     "sources_absorbed": {
-      "gh_issue": 69,
+      "gh_issue": 70,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 9
@@ -1244,8 +1244,78 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
-      "id": "todo-57az",
+      "id": "todo-g99y",
       "rank": 20,
+      "title": "working-refs: merged or deleted branches keep their override segment, and a closed issue the open list dropped waits out the 24h recheck",
+      "keyword": "working-refs",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "For branches that are gone or merged: hide their segments in the mod when the local branch no longer exists (B1), also hide branches whose PR merged via a cached gh lookup (B2), or leave hiding alone and add a harness `/harness:working --prune` that rewrites overrides.json (B3)? Part A (early recheck when a newer complete open list omits the issue) needs no decision.",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#358",
+          "url": "https://github.com/t968rs/operator-straps/issues/358"
+        }
+      ],
+      "gh_issues": [
+        358
+      ],
+      "related_gh_issues": [
+        268,
+        345,
+        346
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The banner still draws `[ 0008-write-plan-updates #345, #346 ] [ 0006-pr-sum-updates #268 ]` although #345 and #346 are closed (2026-11-25T05:13:40Z, checked with gh) and both branches landed: PR #347 (head 0008-write-plan-updates, closingIssuesReferences [345, 346]) merged 2026-11-25T05:13:38Z, PR #339 (head 0006-pr-sum-updates) merged 2026-11-24T15:14:55Z. Neither branch exists any more as a local branch or an origin/ remote-tracking ref (`git branch --list`, `git branch -r --list`); 1168-todo-banner and 1175-stop-hooks do. Is it by design? Partly: plugins/working-refs/README.md:148-149 documents that a closed issue keeps showing for up to `todo.gh.max_age_hours` (24, plugins/harness/config/defaults.json:96; .claude/harness.json does not set it), and plugins/working-refs/README.md:150-151 documents that nothing prunes a deleted branch's override and `/harness:working --clear` drops only the current branch's (plugins/harness/skills/working/commands/working.py:54-58, clear_override at plugins/harness/lib/harness_lib/working_refs.py:158-165); the design spec lists it as a non-goal (docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md:55-57) and keeps overrides.json unrewritten by the hide rules (:49-50, plan 2027 D3). Two gaps follow. (1) Recheck lag on #345/#346: <state_dir>/working-refs/issues.json holds both as OPEN checked 2026-11-25T00:07:30Z, before the close; <state_dir>/todo-sync/open_issues.json was fetched 2026-11-25T05:15:59Z, after it, holds 63 numbers including 268 and omits 345 and 346. Only a cached gh CLOSED hides an issue (plugins/working-refs/hooks/hide.ts:128-131), and the recheck clock advances from the list only for numbers the list holds (answeredAt, plugins/working-refs/hooks/watch.ts:128-129; dueIssues :132-134), so a complete listing that drops a number after its last gh answer schedules nothing: the issues stay drawn until the 24h recheck at ~2026-11-26T00:07:30Z. The listing is complete by construction (plugins/harness/lib/harness_lib/todo_sync/issues.py:125-135 refuses a listing at LIST_LIMIT), so the absence means closed, transferred, deleted or a PR number. The spec says an issue missing from the list `is due for a gh check` (design spec :37-38) and plan 2027's test note says `shown, due for gh`; hide.test.ts:155-158 pins only the shown half and no watch.test.ts case covers an early recheck, so whether the spec meant an earlier recheck is unverified. (2) Merged or deleted branches: otherSegments (plugins/working-refs/hooks/line.ts:142-151) filters only the current branch and segments whose refs all hide; it never asks whether the branch still exists or landed. 0006's todo-n48z is in the catalog's retired_ids, so only #268 is left, and #268 is still OPEN (gh) because PR #339 carries no closing reference to it (closingIssuesReferences empty, body never names 268): that segment stays on every line indefinitely, and a squash merge leaves `git branch --merged main` blind to it. The 1168-todo-banner and 1175-stop-hooks overrides are not drawn because all their refs hide (todo-k69m and todo-jrz2 in retired_ids; #301 and #191 CLOSED in the cache at 2026-11-25T22:34:00Z), not because of the working_refs.max_chars cap. Related catalog item todo-yu6v (`/harness:working --clear --branch NAME`, manual clearing of another branch's override) covers the manual path; this item is the automatic one. No open GitHub issue found for working-refs overrides or stale banner branches (gh issue list --search).",
+      "proposed_change": "Two independent parts in the working-refs mod, plus a README update. (A) Early recheck on list absence: in answeredAt or dueIssues (plugins/working-refs/hooks/watch.ts:128-134), make an override issue due when an open list fetched after its last gh attempt (list.fetchedAt > triedAt) does not hold it, so the next recheck pass runs `gh issue view` for it at once; hiding still needs a gh CLOSED (hide.ts rule unchanged), and a PR number or transferred issue costs one extra gh call per new list, after which triedAt passes fetchedAt and the normal age applies. The alternative, letting list absence hide directly, is rejected: it breaks the spec's `only gh answers CLOSED` rule and would hide PR numbers. Add a watch.test.ts case (cache OPEN at T0, list at T0+1h without the number: one gh call; with the number: none). (B) Branches that are gone or merged, three options for the developer: (B1) hide in the mod: the scan already runs git, so read the local branch names once per scan (`git for-each-ref --format=%(refname:short) refs/heads`) and drop segments whose branch is not among them, `(detached)` excepted; consistent with D3 (overrides.json untouched, `/harness:working --list` still shows them) and with no gh cost; it covers both segments here, since both branches are deleted, but not a merged branch whose local ref is kept. (B2) also hide branches whose PR merged, by a cached `gh pr list --head <branch> --state merged` per override branch under the same max_age pacing as the issue cache, which handles squash merges `git branch --merged` cannot see; costs one gh call per branch per age. (B3) prune in the harness instead: `/harness:working --prune` drops entries whose branch no longer exists locally, building on todo-yu6v's `--branch` clear; this rewrites the file, so it is a command the developer runs, not a hide rule. Recommendation: A plus B1, with B3 folded into todo-yu6v if wanted; B2 only if kept-but-merged branches turn out to matter. Update the README Known limitations (plugins/working-refs/README.md:148-151) and the What hides section to match, and the design spec's non-goal stays as recorded history. Separately, #268 already sits in the catalog's close_candidates (`Close #268 once PR #339 merges to main`); PR #339 has merged, so closing #268 is issue hygiene outside this item, and once closed the 0006 segment hides under today's rules.",
+      "code_snippet": "plugins/working-refs/hooks/watch.ts:128\nexport const answeredAt = (n: number, list: OpenList | null, cache: ReadonlyMap<number, CachedIssue>): number =>\n  Math.max(cache.get(n)?.triedAt ?? -Infinity, list !== null && list.open.has(n) ? list.fetchedAt : -Infinity)",
+      "files": [
+        "plugins/working-refs/hooks/watch.ts",
+        "plugins/working-refs/hooks/watch.test.ts",
+        "plugins/working-refs/hooks/line.ts",
+        "plugins/working-refs/hooks/line.test.ts",
+        "plugins/working-refs/hooks/hide.ts",
+        "plugins/working-refs/README.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Confined to the working-refs mod's recheck scheduling and segment filter; the override file, the harness `working` command and the catalog are untouched under options A and B1, and band-line only reads the resulting line atom.",
+        "consumers": [
+          "plugins/working-refs/hooks/watch.ts (answeredAt, dueIssues, dueAtOf, runRecheck, the scan's LineView)",
+          "plugins/working-refs/hooks/line.ts (otherSegments, buildLine)",
+          "plugins/working-refs/hooks/hide.ts (isClosed, unchanged rule)",
+          "band-line (reads the working-refs line atom)",
+          "the ccstatusline widget (reads <state_dir>/working-refs/line.json)"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Two independent changes in one mod: a due-time rule with a watch test, and a per-scan git branch listing threaded into the line view with line and watch tests, plus README updates; B2 would add a second gh cache."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.0,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.0,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (documented limitations whose concrete cost is a banner that shows landed branches and closed issues as in-flight work, indefinitely when an issue stays open), dev_velocity impact, M size."
+    },
+    {
+      "id": "todo-57az",
+      "rank": 21,
       "title": "strap.py rename: do the name-made moves and the in-file name swap instead of leaving them to the developer (#352)",
       "keyword": "strap",
       "kind": "feature",
@@ -1311,7 +1381,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 21,
+      "rank": 22,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "keyword": "branch-commit-msg",
       "kind": "feature",
@@ -1369,7 +1439,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 22,
+      "rank": 23,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "keyword": "write-plan",
       "kind": "skill",
@@ -1430,7 +1500,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 23,
+      "rank": 24,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "keyword": "roast-my-code",
       "kind": "skill",
@@ -1490,7 +1560,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 24,
+      "rank": 25,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "keyword": "strap",
       "kind": "feature",
@@ -1550,7 +1620,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 25,
+      "rank": 26,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "keyword": "branch-commit-msg",
       "kind": "bug",
@@ -1613,7 +1683,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 26,
+      "rank": 27,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "keyword": "pr-review",
       "kind": "skill",
@@ -1673,7 +1743,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 27,
+      "rank": 28,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "keyword": "pr-reviewer",
       "kind": "feature",
@@ -1738,7 +1808,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 28,
+      "rank": 29,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1798,7 +1868,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 29,
+      "rank": 30,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "keyword": "todo_sync",
       "kind": "feature",
@@ -1860,7 +1930,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 30,
+      "rank": 31,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1923,7 +1993,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 31,
+      "rank": 32,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "keyword": "add_todo",
       "kind": "feature",
@@ -1983,7 +2053,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 32,
+      "rank": 33,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2041,7 +2111,7 @@
     },
     {
       "id": "todo-e2jv",
-      "rank": 33,
+      "rank": 34,
       "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
       "kind": "feature",
       "status": "OPEN",
@@ -2108,7 +2178,7 @@
     },
     {
       "id": "todo-af2e",
-      "rank": 34,
+      "rank": 35,
       "title": "Pydantic model for the TODO catalog item, with agent-facing read/write helpers",
       "keyword": "TodoCatalog",
       "kind": "feature",
@@ -2177,7 +2247,7 @@
     },
     {
       "id": "todo-7xjk",
-      "rank": 35,
+      "rank": 36,
       "title": "writing-docstrings -p relays every writer reply in full; the session reply is long and unreadable",
       "keyword": "writing-docstrings",
       "kind": "skill",
@@ -2236,7 +2306,7 @@
     },
     {
       "id": "todo-zes6",
-      "rank": 36,
+      "rank": 37,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "keyword": "pr-team",
       "kind": "feature",
@@ -2296,7 +2366,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 37,
+      "rank": 38,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2351,7 +2421,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 38,
+      "rank": 39,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "keyword": "parallel2",
       "kind": "skill",
@@ -2413,7 +2483,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 39,
+      "rank": 40,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "keyword": "strap_scaffold",
       "kind": "bug",
@@ -2464,7 +2534,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 40,
+      "rank": 41,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2512,7 +2582,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 41,
+      "rank": 42,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2587,7 +2657,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 42,
+      "rank": 43,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "keyword": "end-of-branch",
       "kind": "skill",
@@ -2646,7 +2716,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 43,
+      "rank": 44,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "keyword": "HARNESS_RULES",
       "kind": "skill",
@@ -2703,7 +2773,7 @@
     },
     {
       "id": "todo-d7ba",
-      "rank": 44,
+      "rank": 45,
       "title": "Repoint the executing-plans, subagent-driven-development and finishing-a-development-branch references to harness skills; fold the finishing facts in with a PROVENANCE row",
       "keyword": "superpowers-refs",
       "kind": "skill",
@@ -2771,7 +2841,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 45,
+      "rank": 46,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "keyword": "parallel2",
       "kind": "feature",
@@ -2835,7 +2905,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 46,
+      "rank": 47,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "keyword": "pr-team-orchestrator",
       "kind": "feature",
@@ -2896,7 +2966,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 47,
+      "rank": 48,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "keyword": "write-plan",
       "kind": "feature",
@@ -2958,7 +3028,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 48,
+      "rank": 49,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "keyword": "fold-in-review",
       "kind": "feature",
@@ -3026,7 +3096,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 49,
+      "rank": 50,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "keyword": "strap",
       "kind": "feature",
@@ -3103,7 +3173,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 50,
+      "rank": 51,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3163,7 +3233,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 51,
+      "rank": 52,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3240,7 +3310,7 @@
     },
     {
       "id": "todo-ea49",
-      "rank": 52,
+      "rank": 53,
       "title": "harness: rebase-plan skill: plan and check restructures of existing branch commits, sharing branch-commit-msg piping",
       "keyword": "rebase-plan",
       "kind": "skill",
@@ -3302,7 +3372,7 @@
     },
     {
       "id": "todo-t7sw",
-      "rank": 53,
+      "rank": 54,
       "title": "Banner working-refs line: colors for the branch, TODO and plan link text",
       "keyword": "working-refs",
       "kind": "feature",
@@ -3362,7 +3432,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 54,
+      "rank": 55,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "keyword": "test-driven-development",
       "kind": "skill",
@@ -3425,7 +3495,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 55,
+      "rank": 56,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "keyword": "Spec-Sheet-Lite",
       "kind": "skill",
@@ -3485,7 +3555,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 56,
+      "rank": 57,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3546,7 +3616,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 57,
+      "rank": 58,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "keyword": "strap",
       "kind": "test",
@@ -3605,7 +3675,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 58,
+      "rank": 59,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "keyword": "bubble-memo",
       "kind": "feature",
@@ -3664,7 +3734,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 59,
+      "rank": 60,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "keyword": "SkillSpec",
       "kind": "bug",
@@ -3718,7 +3788,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 60,
+      "rank": 61,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "keyword": "write-plan",
       "kind": "skill",
@@ -3773,7 +3843,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 61,
+      "rank": 62,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "keyword": "pr-sum",
       "kind": "skill",
@@ -3830,7 +3900,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 62,
+      "rank": 63,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3884,7 +3954,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 63,
+      "rank": 64,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "keyword": "strap-debugging",
       "kind": "skill",
@@ -3945,7 +4015,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 64,
+      "rank": 65,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "keyword": "skill-tests",
       "kind": "test",
@@ -4001,7 +4071,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 65,
+      "rank": 66,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4056,7 +4126,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 66,
+      "rank": 67,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -4107,7 +4177,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 67,
+      "rank": 68,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4164,7 +4234,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 68,
+      "rank": 69,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "keyword": "diagnosing-superpowers",
       "kind": "skill",
@@ -4218,7 +4288,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 69,
+      "rank": 70,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "keyword": "writing-skills",
       "kind": "skill",
@@ -4274,7 +4344,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 70,
+      "rank": 71,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "keyword": "plan_render_html",
       "kind": "feature",
@@ -4336,7 +4406,7 @@
     },
     {
       "id": "todo-9ne6",
-      "rank": 71,
+      "rank": 72,
       "title": "`write-plan`: declared data shapes, and an opt-in repo guard against untyped structures",
       "keyword": "write-plan",
       "kind": "feature",
@@ -4401,7 +4471,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 72,
+      "rank": 73,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "keyword": "parallel_lanes",
       "kind": "skill",
@@ -4460,7 +4530,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 73,
+      "rank": 74,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4515,7 +4585,7 @@
     },
     {
       "id": "todo-jt35",
-      "rank": 74,
+      "rank": 75,
       "title": "Config key for a per-project browser icon on the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4575,7 +4645,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 75,
+      "rank": 76,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4638,7 +4708,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 76,
+      "rank": 77,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "keyword": "local-llm",
       "kind": "docs",
@@ -4694,7 +4764,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 77,
+      "rank": 78,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4745,7 +4815,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 78,
+      "rank": 79,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "keyword": "local-llm",
       "kind": "feature",
