@@ -109,14 +109,29 @@ describe('host zone sign', () => {
     expect(Object.is(eastOffsetMin(0), 0)).toBe(true)
   })
 
-  test('buildRow without an offset applies the host zone offset of each instant, in either season', async () => {
+  test('buildRow without an offset applies the host zone offset', async () => {
+    const ms = Date.UTC(2026, 0, 15, 12, 0, 0, 0)
+    const timing = { ...promptTiming, startAt: ms }
+    const row = buildRow({ session: 's1', turn: 't1', timing, reason: 'answer', answer: 'a' })
+    expect(row.start_at).toBe(isoLocal(ms, eastOffsetMin(new Date(ms).getTimezoneOffset())))
+  })
+
+  test('buildRow without a fixed offset looks up the offset of each instant, in either season', async () => {
     const winter = Date.UTC(2026, 0, 15, 12, 0, 0, 0)
     const summer = Date.UTC(2026, 6, 15, 12, 0, 0, 0)
-    for (const ms of [winter, summer]) {
-      const timing = { ...promptTiming, startAt: ms }
-      const row = buildRow({ session: 's1', turn: 't1', timing, reason: 'answer', answer: 'a' })
-      expect(row.start_at).toBe(isoLocal(ms, eastOffsetMin(new Date(ms).getTimezoneOffset())))
-    }
+    const offsetAt = (ms: number): number => (ms === summer ? 120 : 60)
+    const timing = { ...promptTiming, startAt: winter, stopAt: summer }
+    const row = buildRow({ session: 's1', turn: 't1', timing, reason: 'answer', answer: 'a', offsetAt })
+    expect(row.start_at).toBe('2026-01-15T13:00:00.000+01:00')
+    expect(row.stop_at).toBe('2026-07-15T14:00:00.000+02:00')
+  })
+
+  test('a fixed offset overrides the per-instant lookup', async () => {
+    const timing = { ...promptTiming, startAt: T0, stopAt: T0 }
+    const row = buildRow({
+      session: 's1', turn: 't1', timing, reason: 'answer', answer: 'a', offsetMin: 0, offsetAt: () => 60,
+    })
+    expect(row.start_at).toBe(isoLocal(T0, 0))
   })
 })
 
@@ -124,7 +139,10 @@ describe('rowLine', () => {
   test('one JSON line with no newline, keys in column order', async () => {
     const line = rowLine(make())
     expect(line.includes('\n')).toBe(false)
-    expect(line.startsWith('{"v":1,"session":"s1","turn":"t1","kind":"prompt"')).toBe(true)
+    expect(Object.keys(JSON.parse(line))).toEqual([
+      'v', 'session', 'turn', 'kind', 'wake', 'prompt_at', 'start_at', 'stop_at', 'last_prompt_at',
+      'lap_ms', 'since_prompt_ms', 'reason', 'answer_hash', 'answer_len',
+    ])
     expect(JSON.parse(line)).toEqual(make())
   })
 })
@@ -148,7 +166,7 @@ describe('parseRows', () => {
 
   test('a leading UTF-8 BOM does not cost the first row', async () => {
     const rows = [make({ turn: 'a' }), make({ turn: 'b' })]
-    expect(parseRows('﻿' + rows.map(rowLine).join('\n') + '\n', 's1')).toEqual(rows)
+    expect(parseRows('\uFEFF' + rows.map(rowLine).join('\n') + '\n', 's1')).toEqual(rows)
   })
 
   test('empty text yields no rows', async () => {
@@ -210,7 +228,7 @@ describe('newestPromptAt', () => {
 
   test('the newest prompt_at wins as epoch ms, whatever the file order', async () => {
     const early = make({ turn: 'a', timing: { ...promptTiming, promptAt: T0 } })
-    const late = make({ turn: 'b', timing: { ...promptTiming, promptAt: T0 + 5000, lastPromptAt: T0 + 5000 } })
+    const late = make({ turn: 'b', timing: { ...promptTiming, promptAt: T0 + 5000, lastPromptAt: T0 } })
     expect(newestPromptAt([late, early])).toBe(T0 + 5000)
     expect(newestPromptAt([early, late])).toBe(T0 + 5000)
   })

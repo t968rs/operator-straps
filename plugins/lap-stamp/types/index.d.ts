@@ -63,9 +63,9 @@ export type RunningTurn = {
 export type ClockState = {
   pending: PendingPress[]
   running: RunningTurn | null
-  /** `prompt_at` of the last press a stopped turn used; a press at or before it never anchors another turn. */
+  /** Newest press a stopped or lost turn used, or the file recorded; a press at or before it never anchors another turn. Null when none. */
   consumedAt: number | null
-  /** Newest press of the session; null when none is known. */
+  /** Newest press a turn used (or the file recorded); null when none. */
   lastPromptAt: number | null
   /** Origin kind of the latest non-press submission, kept as the wake reason of the next turn. */
   pendingWake: string | null
@@ -77,7 +77,7 @@ declare module 'claude-code' {
       /** The session's rows, in file order. */
       rows: LapRow[]
       clock: ClockState
-      /** Current session id; null before `session.start`. */
+      /** Current session id; null until `session.start`, `session.attach` or the first recorded stop. */
       session: string | null
     }
   }

@@ -122,7 +122,7 @@ export function textOf(parts: readonly Uint8Array[]): string {
   }
   const hasBom = BOM.every((b, i) => all[i] === b)
   const body = new TextDecoder('utf-8').decode(hasBom ? all.subarray(3) : all)
-  return hasBom ? `﻿${body}` : body
+  return hasBom ? `\uFEFF${body}` : body
 }
 
 // ---------------------------------------------------------------------------
@@ -146,21 +146,26 @@ async function sessionIdOf($: Dollar): Promise<string | undefined> {
   }
 }
 
-/** `git rev-parse --show-toplevel` from `start`; undefined on any failure, which is remembered too. */
+/**
+ * `git rev-parse --show-toplevel` from `start`: the top, '' when git answers with none (no start, a non-zero
+ * exit), undefined when the run itself fails (the host rejects it). Only an answer is remembered, so a failed
+ * run is tried again on the next resolution.
+ */
 async function toplevelOf($: Dollar, ctx: Ctx, start: string | undefined): Promise<string | undefined> {
-  if (start === undefined || start.trim() === '') return undefined
+  if (start === undefined || start.trim() === '') return ''
   const known = ctx.toplevels.get(start)
-  if (known !== undefined) return known === '' ? undefined : known
+  if (known !== undefined) return known
   const argv = ['git', '-C', start, 'rev-parse', '--show-toplevel']
   const ran = await $.process.run(argv, { timeoutMs: GIT_TIMEOUT_MS }).catch(noop)
-  const top = ran === undefined || ran.exitCode !== 0 ? '' : ran.stdout.trim()
+  if (ran === undefined) return undefined
+  const top = ran.exitCode !== 0 ? '' : ran.stdout.trim()
   ctx.toplevels.set(start, top)
-  return top === '' ? undefined : top
+  return top
 }
 
 /**
  * The first candidate root (./root) whose `.claude/harness.json` reads, with its configuration. Sure of an
- * absence only when every host call answered and no candidate's file exists.
+ * absence only when every host call answered (the git probe included) and no candidate's file exists.
  */
 async function resolveWatch($: Dollar, ctx: Ctx): Promise<Probe> {
   let isSure = true
@@ -170,7 +175,8 @@ async function resolveWatch($: Dollar, ctx: Ctx): Promise<Probe> {
   }
   const env = await $.env.get('CLAUDE_PROJECT_DIR').catch(doubt)
   const cwd = await $.session.cwd().catch(doubt)
-  const top = await toplevelOf($, ctx, cwd).catch(noop)
+  const found = await toplevelOf($, ctx, cwd).catch(noop)
+  const top = found === undefined ? doubt() : found === '' ? undefined : found
   for (const root of rootCandidates(env, cwd, top)) {
     const path = `${root}/${HARNESS_CONFIG_REL}`
     const text = await $.fs.read(path).catch(noop)
@@ -272,8 +278,10 @@ async function keepRow($: Dollar, row: LapRow, text: string | undefined, known: 
 }
 
 /**
- * A main-loop stop: the running turn's timing becomes one row, kept in memory and then appended to the file
- * (never written when the file exists but does not read). A stray stop records nothing.
+ * A main-loop stop: the running turn's timing becomes one row, kept in memory, and the file text read at the
+ * start is written back with the row's line added (never written when the file exists but does not read). The
+ * host has no append call, so a row another session wrote in between is lost (README Known limitations). A
+ * stray stop records nothing.
  */
 async function completed($: Dollar, ctx: Ctx, e: Stop, at: Promise<number | undefined>): Promise<void> {
   const w = await watchOf($, ctx, true)
@@ -292,19 +300,25 @@ async function completed($: Dollar, ctx: Ctx, e: Stop, at: Promise<number | unde
   if (text !== undefined) await $.fs.write(path, withLine(text, rowLine(row)))
 }
 
-/** Reads the session's rows into the atom, keeping held rows the file lacks, and seeds the clock (D9). */
+/**
+ * Reads the session's rows into the atom, keeping held rows the file lacks, and seeds the clock (D9). A switch
+ * from another known session rebuilds the clock by the same rule a stop applies (clockFor), so the previous
+ * session's last prompt never carries over.
+ */
 async function load($: Dollar, ctx: Ctx, isFresh: boolean): Promise<void> {
   const w = await watchOf($, ctx, isFresh)
   const session = w === undefined ? undefined : await sessionIdOf($)
   if (w === undefined || session === undefined) return
   const text = await lapsText($, lapsPathOf(w.root, w.cfg))
   const fromFile = text === undefined ? [] : parseRows(text, session)
-  const held = (await read($, sessionAtom)) === session ? await read($, rowsAtom) : []
+  const known = await read($, sessionAtom)
+  const held = known === session ? await read($, rowsAtom) : []
   const rows = mergeRows(fromFile, held)
   await update($, rowsAtom, () => rows)
   await update($, sessionAtom, () => session)
   const newestAt = newestPromptAt(rows)
-  await update($, clockAtom, c => seedLastPrompt(c, newestAt))
+  const isSwitch = known !== null && known !== session
+  await update($, clockAtom, c => (isSwitch ? clockFor(c, session, known, text) : seedLastPrompt(c, newestAt)))
 }
 
 // ---------------------------------------------------------------------------

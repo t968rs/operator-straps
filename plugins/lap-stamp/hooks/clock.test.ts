@@ -235,6 +235,15 @@ describe('wake turns (D4)', () => {
     expect(s.running?.wake).toBeNull()
     expect(s.pendingWake).toBeNull()
   })
+
+  test('a submission made during a turn does not outlive its stop: the next start has a null wake', async () => {
+    let s = press(started(EMPTY_CLOCK, 't1', 100), 200, 'task-notification')
+    s = stopped(s, 't1', 300).state
+    expect(s.pendingWake).toBeNull()
+    const { timing } = stopped(started(s, 't2', 400), 't2', 500)
+    expect(timing?.kind).toBe('wake')
+    expect(timing?.wake).toBeNull()
+  })
 })
 
 describe('stray stops', () => {

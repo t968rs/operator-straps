@@ -156,13 +156,14 @@ const end = ($: Engine, turnId: string, answer = 'the reply', agentId?: string) 
     answer, durationMs: 1, isAborted: false, turnId, reason: 'answer',
     ...(agentId === undefined ? {} : { agentId }),
   } as never)
-/** A main-loop row of the press's text through `door`, from a lap-press origin unless `kind`. */
-const appended = ($: Engine, door: 'delivery' | 'queue' | 'prompt', kind = 'composer') =>
+/** A row of the press's text through `door`, from a lap-press origin unless `kind`; main loop unless `agentId`. */
+const appended = ($: Engine, door: 'delivery' | 'queue' | 'prompt', kind = 'composer', agentId?: string) =>
   $.session.append({
     message: { type: 'user', role: 'user', content: [{ type: 'text', text: 'go' }] },
     door,
     origin: { kind },
-    uuid: `u-${door}-${kind}`,
+    uuid: `u-${door}-${kind}${agentId === undefined ? '' : `-${agentId}`}`,
+    ...(agentId === undefined ? {} : { agentId }),
   } as Parameters<Engine['session']['append']>[0])
 
 const fileRows = (seen: Seen): LapRow[] => parseRows(seen.files.get(LAPS) ?? '', SESSION)
@@ -333,6 +334,19 @@ describe('delivery into a running turn (D2)', () => {
       ['t2', 'prompt', 5000],
     ])
   })
+
+  test('a subagent delivery row leaves the running main turn alone', async ($, on) => {
+    const seen = world(on)
+    await start($)
+    await begin($, 't1')
+    await seen.clock.advance(10_000)
+    await press($, 'composer', 't1')
+    await appended($, 'delivery', 'composer', 'agent-1')
+    await seen.clock.advance(4000)
+    await end($, 't1')
+    await seen.clock.settle()
+    expect(fileRows(seen).map(r => [r.turn, r.kind, r.lap_ms])).toEqual([['t1', 'wake', 14_000]])
+  })
 })
 
 describe('wake turns (D4)', () => {
@@ -438,11 +452,12 @@ describe('fail open (D10)', () => {
     expect(seen.writes).toEqual([])
   })
 
-  test('a refused state write during a press changes nothing the host returned and throws nothing', async ($, on) => {
+  test('a refused state store changes nothing the host returned and throws nothing', async ($, on) => {
     const seen = world(on, '{}', { state: true })
     await start($)
     expectUntouched(await promptedTurn($, seen))
-    expect(seen.state.size).toBe(0)
+    // The clock lives in state: with every set refused no turn ever runs, so no row reaches the file.
+    expect(seen.writes).toEqual([])
   })
 
   test('a harness.json read refused mid-session keeps the project: no turn is lost', async ($, on) => {
@@ -607,6 +622,38 @@ describe('restart (D9)', () => {
     expect(wake?.last_prompt_at).toBeNull()
     expect(wake?.since_prompt_ms).toBeNull()
     expect(clockIn(seen)?.lastPromptAt).toBeNull()
+  })
+
+  test('a session.start with a new session id drops the old session\'s prompt: no since prompt', async ($, on) => {
+    const seen = world(on)
+    await start($)
+    await promptedTurn($, seen, 't1')
+    seen.session = 'S3'
+    await start($)
+    await seen.clock.settle()
+    await begin($, 't2')
+    await seen.clock.advance(2000)
+    await end($, 't2')
+    await seen.clock.settle()
+    const [wake] = parseRows(seen.files.get(LAPS) ?? '', 'S3')
+    expect(wake?.kind).toBe('wake')
+    expect(wake?.last_prompt_at).toBeNull()
+    expect(wake?.since_prompt_ms).toBeNull()
+    expect(clockIn(seen)?.lastPromptAt).toBeNull()
+  })
+
+  test('a session.attach with a new session id rebuilds the clock from that session\'s rows', async ($, on) => {
+    const seen = world(on)
+    seen.files.set(LAPS, `${rowLine(storedRow({ session: 'S2', turn: 's2-old' }))}\n`)
+    await start($)
+    await promptedTurn($, seen, 't1')
+    seen.session = 'S2'
+    await attach($)
+    await seen.clock.settle()
+    const clock = clockIn(seen)
+    expect(clock?.lastPromptAt).toBe(T0 - 60_000)
+    expect(clock?.consumedAt).toBe(T0 - 60_000)
+    expect(clock?.pendingWake).toBeNull()
   })
 })
 

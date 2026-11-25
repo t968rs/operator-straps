@@ -3,7 +3,7 @@ import type { On, ProcessRunResult } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { LapRow } from '../types'
-import { parseRows } from './row'
+import { eastOffsetMin, isoLocal, parseRows } from './row'
 import { clockOf } from './stamp'
 
 /**
@@ -110,7 +110,10 @@ const timesOf = (row: LapRow | undefined) => ({
 const HASH = /^[0-9a-f]{16}$/
 
 /** The local `HH:MM:SS` of `ms` after T0, as a stamp shows it. */
-const clockAt = (ms: number): string => clockOf(new Date(T0 + ms).toISOString())
+const clockAt = (ms: number): string => {
+  const at = T0 + ms
+  return clockOf(isoLocal(at, eastOffsetMin(new Date(at).getTimezoneOffset())))
+}
 
 // ---------------------------------------------------------------------------
 // The transcript

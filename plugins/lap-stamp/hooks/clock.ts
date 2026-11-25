@@ -51,7 +51,7 @@ function keepAfter(pending: readonly PendingPress[], after: number | null): Pend
 
 /**
  * A `prompt.submit`: a lap press joins the pending queue; any other origin becomes the wake reason of the
- * next turn that starts without a press.
+ * next turn that starts without a press, unless a main-loop stop comes first (`stopped` clears it).
  */
 export function submitted(state: ClockState, e: { originKind: string; at: number }): ClockState {
   if (!isLapPress(e.originKind)) return { ...state, pendingWake: e.originKind }
@@ -128,8 +128,9 @@ function timingOf(run: RunningTurn, stopAt: number, lastPromptAt: number | null)
 
 /**
  * A main-loop `turn.complete`: the running turn's timing, its press marked consumed and recorded as the
- * session's newest prompt. A stop for no running turn, or for another turn id, returns the state unchanged
- * and a null timing.
+ * session's newest prompt. The wake reason clears, so only a non-lap submission made after this stop wakes
+ * the next turn (a submission delivered into the stopped turn does not). A stop for no running turn, or for
+ * another turn id, returns the state unchanged and a null timing.
  */
 export function stopped(
   state: ClockState,
@@ -141,7 +142,14 @@ export function stopped(
   const consumedAt = newest(state.consumedAt, run.attachedAt)
   const lastPromptAt = newest(state.lastPromptAt, run.attachedAt)
   return {
-    state: { ...state, running: null, consumedAt, lastPromptAt, pending: keepAfter(state.pending, consumedAt) },
+    state: {
+      ...state,
+      running: null,
+      consumedAt,
+      lastPromptAt,
+      pending: keepAfter(state.pending, consumedAt),
+      pendingWake: null,
+    },
     timing: timingOf(run, at, lastPromptAt),
   }
 }

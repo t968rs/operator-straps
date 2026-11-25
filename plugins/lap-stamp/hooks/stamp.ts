@@ -17,8 +17,6 @@ const TRAIL = ' |'
 const NO_CLOCK = '--:--:--'
 const LIST_PREFIX = 'identical replies: '
 
-const pad2 = (n: number): string => String(n).padStart(2, '0')
-
 /** `Ns` under a minute, `Mm Ss` under an hour, `Hh Mm` above; whole seconds floored, a bad value reads as zero. */
 export function formatDuration(ms: number): string {
   const total = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0
@@ -28,11 +26,13 @@ export function formatDuration(ms: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-/** The local `HH:MM:SS` of an ISO 8601 instant; a placeholder when it does not parse. */
+/** Shape of a stored ISO 8601 instant with its local offset; the clock sits in capture group 1. */
+const STORED_CLOCK = /^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2}:\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+
+/** The `HH:MM:SS` stored in an ISO 8601 instant, read as written; a placeholder when the text does not match. */
 export function clockOf(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return NO_CLOCK
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+  const m = STORED_CLOCK.exec(iso)
+  return m?.[1] ?? NO_CLOCK
 }
 
 /** The lap part of a stamp: `<dur>` after `lap`, plus `since prompt <dur>` on a wake row that has one. */

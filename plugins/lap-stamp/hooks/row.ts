@@ -13,7 +13,10 @@ const REASONS: readonly string[] = ['answer', 'aborted', 'refusal', 'error']
 const KINDS: readonly string[] = ['prompt', 'wake']
 const ISO_LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
 
-/** What `buildRow` takes. `offsetMin` (minutes east of UTC) forces one offset on every stamp; absent, each instant uses the host zone's own offset. */
+/**
+ * What `buildRow` takes. `offsetMin` (minutes east of UTC) forces one offset on every stamp; absent, each instant
+ * asks `offsetAt` for its own offset, which defaults to the host zone's lookup.
+ */
 export type RowInput = {
   session: string
   turn: string
@@ -21,6 +24,7 @@ export type RowInput = {
   reason: StopReason
   answer: string
   offsetMin?: number
+  offsetAt?: (ms: number) => number
 }
 
 const pad = (n: number, width = 2): string => String(n).padStart(width, '0')
@@ -45,17 +49,26 @@ function hostOffsetMin(ms: number): number {
   return eastOffsetMin(new Date(ms).getTimezoneOffset())
 }
 
-function stampOf(ms: number, forced: number | undefined): string {
-  return isoLocal(ms, forced ?? hostOffsetMin(ms))
+type OffsetAt = (ms: number) => number
+
+/** The offset lookup for one row: a forced offset for every instant, else the per-instant lookup. */
+function offsetLookup(forced: number | undefined, offsetAt: OffsetAt | undefined): OffsetAt {
+  if (forced !== undefined) return () => forced
+  return offsetAt ?? hostOffsetMin
 }
 
-function stampOrNull(ms: number | null, forced: number | undefined): string | null {
-  return ms === null ? null : stampOf(ms, forced)
+function stampOf(ms: number, offsetAt: OffsetAt): string {
+  return isoLocal(ms, offsetAt(ms))
+}
+
+function stampOrNull(ms: number | null, offsetAt: OffsetAt): string | null {
+  return ms === null ? null : stampOf(ms, offsetAt)
 }
 
 /** One turn's row. The answer is fingerprinted and dropped; an empty normalized answer stores a null hash and length 0. */
 export function buildRow(input: RowInput): LapRow {
-  const { session, turn, timing, reason, answer, offsetMin } = input
+  const { session, turn, timing, reason, answer } = input
+  const at = offsetLookup(input.offsetMin, input.offsetAt)
   const fp = fingerprintOf(answer)
   return {
     v: ROW_VERSION,
@@ -63,10 +76,10 @@ export function buildRow(input: RowInput): LapRow {
     turn,
     kind: timing.kind,
     wake: timing.wake,
-    prompt_at: stampOrNull(timing.promptAt, offsetMin),
-    start_at: stampOf(timing.startAt, offsetMin),
-    stop_at: stampOf(timing.stopAt, offsetMin),
-    last_prompt_at: stampOrNull(timing.lastPromptAt, offsetMin),
+    prompt_at: stampOrNull(timing.promptAt, at),
+    start_at: stampOf(timing.startAt, at),
+    stop_at: stampOf(timing.stopAt, at),
+    last_prompt_at: stampOrNull(timing.lastPromptAt, at),
     lap_ms: timing.lapMs,
     since_prompt_ms: timing.sincePromptMs,
     reason,

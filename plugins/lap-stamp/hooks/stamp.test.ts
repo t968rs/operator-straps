@@ -2,6 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { LapRow } from '../types'
 import { fingerprintOf } from './fingerprint'
+import { eastOffsetMin, isoLocal } from './row'
 import {
   blockStamp,
   clockOf,
@@ -12,8 +13,11 @@ import {
   wrapRight,
 } from './stamp'
 
-/** Local wall clock as an ISO string, so the expected HH:MM:SS holds in any time zone. */
-const localIso = (h: number, m: number, s: number): string => new Date(2026, 10, 25, h, m, s).toISOString()
+/** A local wall clock in the stored row shape (local offset, as buildRow writes it), in any time zone. */
+const localIso = (h: number, m: number, s: number): string => {
+  const d = new Date(2026, 10, 25, h, m, s)
+  return isoLocal(d.getTime(), eastOffsetMin(d.getTimezoneOffset()))
+}
 
 const fp = (text: string) => {
   const f = fingerprintOf(text)
