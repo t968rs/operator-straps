@@ -1,0 +1,364 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 348,
+  "pr_title": "Feature(working-refs): per-kind line colors",
+  "branch": "0009-banner-formatting",
+  "base_branch": "main",
+  "base_sha": "f8cf38cf2c2553011421b9b9d1cf0c89cb81b987",
+  "head_sha": "303af1d914b3872d3d4a6bd223a1b8ac57d65e33",
+  "review_date": "2026-11-24",
+  "verdict": "READY TO MERGE - 7 of 10 findings resolved, 3 bubbled",
+  "stats": {
+    "additions": 1959,
+    "deletions": 151,
+    "files_changed": 25,
+    "source": {
+      "additions": 1959,
+      "deletions": 151,
+      "files_changed": 25
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/tests.json",
+    "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/docs.json",
+    "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/overall.json",
+    "docs/_scratch/pr_review/0348/pr348_20261125T065030Z/findings/system_shape.json"
+  ],
+  "bubbles": [
+    "M3",
+    "M6",
+    "M8"
+  ],
+  "strengths": [
+    "line.test.ts pins each ramp step (0/4 to 4/4 -> 51, 45, 74, 67, 243) through statusText, and a built-line test mixes view progress (2024) with status-only fallback (2023, 2025), which separates the two sources in linkOf.",
+    "The no-bleed test in line.test.ts uses a structural regex (every 38;5;N opener followed by a 39 reset before the next escape) and a segment-bearing line, so it guards the whole STATUS pen, not just one sample string.",
+    "watch.test.ts receipt scenarios are behavioral over a fake fs world: a new receipt, a deleted receipt, a missing receipts folder at start, a malformed or mis-named receipt, an off-line plan's receipts never listed (via the new `lists` log), and two plan files sharing an id; each assertion would fail under the plausible wrong implementation.",
+    "The malformed/mis-named receipt test is discriminating on both halves: TASK-1's broken receipt must fall back to COMPLETE and TASK-2's receipt naming TASK-9 must not count, so ignoring either rule changes the [1, 2] result.",
+    "progress.test.ts covers planStep boundaries (exact thirds, 1/100, 99/100, 0/0) and the receipt-outranks-status rule, matching the V2 formula in progress.ts.",
+    "The contract test pins DONE_STATUSES to plan_enums.DONE, RECEIPTS_DIR to plan_receipts, and the inline item/receipt/outcome field reads in progress.ts and plans.ts against their pydantic models, with duplicate checks on the mirrored arrays.",
+    "plans.test.ts itemsOf cases cover non-objects, arrays, missing/empty/non-string ids, non-string status and first-wins duplicates, matching the lenient parser line for line.",
+    "The Pen abstraction draws the plain and ccstatusline forms through one drawRefs/plansPart/compose path, so statusText stripped of escapes is the plain line by construction (verified piece by piece against buildLine and segmentText).",
+    "Receipt reads are bounded: planProgress reads only `<ITEM>.json` names the listing actually holds, so an item id with path characters can never steer a read outside the receipts folder.",
+    "outcomeKindOf rejects a receipt whose `item` is not its file stem, matching plan_receipts._read_receipt, and an unreadable receipt falls back to the item status exactly as status_view leaves a receipts plan PENDING.",
+    "Shared plan ids are handled deliberately: soleIds keeps an ambiguous receipts folder out of both the progress map and the probe signature, and linkOf falls back to item statuses.",
+    "filesMoved now short-circuits on the first moved signature, and the receipts probe lists only the line's plans, keeping per-tool-call cost proportional to what is shown.",
+    "DONE_OUTCOMES, DONE_STATUSES and RECEIPTS_DIR match plan_enums.OutcomeKind/DONE and plan_receipts.RECEIPTS_DIR, and the contract test pins each against the harness values.",
+    "PLAN_RAMP avoids every TODO_PALETTE color and the DARK/BRANCH_FG/ISSUE_FG codes, and planStep's thresholds match its docstring (0 none, 1-3 by thirds, 4 all).",
+    "plugins/working-refs/README.md matches the code at head line for line: ramp 51/45/74/67/243 and the 1 + floor(3 * done / total) step agree with progress.ts PLAN_RAMP and planStep, 180/246/240 agree with line.ts ISSUE_FG, BRANCH_FG and DARK, and the receipt fallback rules (absent, unreadable, naming another item, no kind; started/blocked never done) agree with outcomeKindOf and isDone.",
+    "The README documents the shared-plan-id fallback and the receipts-only-for-plans-on-the-line watch rule, both of which watch.ts readReceipts/filesMoved implement, plus a new Files row naming plan.py record as the receipts' writer.",
+    "DesignEvolution EX1 and EX2 record each post-freeze deviation with its cause and new outcome, TASK-2's receipt cites EX1 for its two extra files with a change digest, and the r1.2 freeze matches the PIP page's 'Frozen at 19dc80b'.",
+    "v1.1.0.md updates all three places consistently: the summary sentence names working-refs among the minor bumps, the table row 0.3.1 -> 0.4.0 matches plugin.json, and working-refs leaves the Unchanged list.",
+    "RepoToDo.json counts stay consistent with the two added items: items 75 = NEEDS_DECISION 45 + OPEN 30, S +1 and M +1 match the items' sizes, dev_velocity and gh_issue each +2, and ranks renumber without gaps.",
+    "The Pen abstraction (PLAIN and STATUS) draws both forms from one drawRefs/plansPart/compose path, so the plain and colored forms cannot drift apart. Tests check that the escape-stripped ccstatusline form equals the plain text across many line shapes.",
+    "The contract test pins every mirrored value against harness_lib: RECEIPTS_DIR, DONE_OUTCOMES (derived from the outcome models' status in DONE), DONE_STATUSES, and the inline item/receipt/outcome field reads in progress.ts and plans.ts (EX2). Renaming a model field fails the suite.",
+    "The probe stays cheap and scoped: filesMoved lists only the receipts folders of the plans on the last scan's line and short-circuits on the first move. A watch test asserts that the receipts folder of a plan not on the line is never listed.",
+    "Duplicate plan ids are handled on purpose: soleIds keeps a shared id's receipts out of both files' counts, and a watch test covers it.",
+    "The tests are behavioral throughout. watch.test.ts drives the real scan through a fake filesystem (new receipt, deleted receipt, malformed receipt, receipt naming another item, folder created after start), and the line tests check exact escape sequences, including a regex that every color is reset.",
+    "Plan, DesignEvolution (EX1 and EX2), receipts, refreeze, README, version bump and release row are all consistent with the code at head.",
+    "Every doc that describes the line now agrees on the colors and ramp: README, release notes, plan V1-V6, line.ts constants and progress.ts PLAN_RAMP/planStep all state 51/45/74/67/243, 180, 246 and 240 the same way.",
+    "The new mirror values (RECEIPTS_DIR, DONE_OUTCOMES, DONE_STATUSES) are pinned against harness_lib by contract tests that derive the done kinds from the outcome models' implied status, not from a second hand-copied list.",
+    "EX2 closes a real contract gap: the raw ActionItem fields plans.ts reads are pinned against ActionItem.model_fields, matching the existing data.<field> pin.",
+    "One Pen abstraction draws both forms, and the tests assert that the ccstatusline form with escapes stripped equals the plain text. This structurally enforces the README's claim that band-line's plain text and the cap are unchanged.",
+    "The receipts watch is scoped to the plans on the line, as the spec, README hook table and watch.ts docstrings all state, and a test checks it by asserting the off-line plan's receipts folder is never listed.",
+    "Module docstrings (line.ts, watch.ts, mirror.ts, progress.ts) were updated alongside the code and match the implementation."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Outcome-model pins hardcode four models, so a new done outcome leaves DONE_OUTCOMES stale and green",
+        "file": "tests/mods/test_working_refs_contract.py",
+        "files": [
+          "tests/mods/test_working_refs_contract.py",
+          "plugins/working-refs/hooks/mirror.ts"
+        ],
+        "lines": "159-167,182-187",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_done_outcome_kinds_match_the_outcome_models builds the expected done kinds from the literal tuple (Completed, Started, Blocked, Closed), not from the discriminated union plan_models.Outcome (plan_models.py:307) that defines the full set. If a fifth outcome model with a status in plan_enums.DONE is added to the union, the expected set stays {'complete', 'closed'}, the mirror's DONE_OUTCOMES is never updated, progress.ts stops counting that receipt as done, and the pin still passes. No other test asserts that the tuple covers every OutcomeKind. test_fields_read_by_progress_ts_match_the_models (line 182, 187) reuses the same hardcoded tuple for the outcome field set, so it has the same blind spot.",
+        "fix": [
+          "Derive the models from the union: `from harness_lib.plan_models import Outcome`; `models = get_args(get_args(Outcome)[0])`, then use `models` in both tests in place of the literal tuple.",
+          "Keep the tuple but add `assert {get_args(m.model_fields['kind'].annotation)[0] for m in models} == set(OutcomeKind)` so a new OutcomeKind without a matching entry fails the pin."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release-notes line for working-refs lacks its PR number tag",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "docs/plans/2030_working_refs_line_colors_ActionPlan.json"
+        ],
+        "lines": "118",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:5 says each change line is 'tagged with its PR number', and every other line under Changes starts with '#<PR>' (#337 ... #347). The new working-refs line at :118 starts bare 'Feat(working-refs): ...'. Plan 2030 TASK-4 action 3 asks to tag it with the PR number once the PR exists; PR #348 now exists, so the tag is due before merge.\n\nAlso (overall): docs/RELEASES/v1.1.0.md says each branch adds one line per change 'tagged with its PR number', and every other entry starts with '#NNN'. The new working-refs entry at line 118 starts with a bare 'Feat(working-refs)'. Plan 2030 TASK-4 step 3 deferred the tag until the PR existed, and PR #348 now exists.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:3-5 states that each change line is tagged with its PR number, and every other line in Changes starts `- #<PR> ...` (lines 28-116). The new working-refs line at :118 starts `- Feat(working-refs)` with no `#348`. Plan 2030 TASK-4 action 3 also says to tag it once the PR exists, and PR #348 exists now.",
+        "fix": [
+          "Change docs/RELEASES/v1.1.0.md:118 from '- Feat(working-refs): per-kind colors ...' to '- #348 Feat(working-refs): per-kind colors ...' and rewrap the paragraph to 110 columns.",
+          "Change line 118 to start with '- #348 Feat(working-refs): per-kind colors on the ccstatusline form of the line (issue #343). ...'",
+          "Change docs/RELEASES/v1.1.0.md:118 from `- Feat(working-refs): ...` to `- #348 Feat(working-refs): ...`."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "todo-t7sw still reads NEEDS_DECISION with an answered question and stale line refs",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "docs/plans/2030_working_refs_line_colors_ActionPlan.json"
+        ],
+        "lines": "3106-3168",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The new catalog entry todo-t7sw (docs/TODO/RepoToDo.json, the item at rank 50) records status NEEDS_DECISION, needs_decision true and the question 'Which pieces get which color ... and should band-line match', yet this PR's plan 2030 (refs.todo_ids todo-t7sw) settles exactly that in D1-D4 and V1-V6 and ships it. Its summary and code_snippet also cite pre-change line.ts lines (:190-195, :193, :17 'dark 240' for branch names) that no longer hold at head (statusText now sits near :250 and branch names are 246). Until todo-sync drops the item on the issue's close, the catalog (and the label the working-refs line itself draws for it) shows a resolved item as awaiting a decision.\n\nAlso (system_shape): This PR adds catalog item todo-t7sw (RepoToDo.json:3106-3166) with status NEEDS_DECISION. Its decision_question (:3113) asks which pieces get which color and whether band-line should match. Plan 2030, which carries `todo-t7sw` in its refs, settles both: D3 ccstatusline-only, and V1-V5 the color map. The PR implements that answer. The item's proposed_change still suggests carrying color hints into band-line, which D3 rejected, and its summary describes line.ts as it stood before the PR. A reader of the catalog after the merge sees an open decision that is already closed.",
+        "fix": [
+          "Set todo-t7sw to status OPEN with needs_decision false, replace decision_question with a pointer to plan 2030 (D1-D4), and adjust counts.needs_decision / by_status (NEEDS_DECISION 44, OPEN 31) to match.",
+          "Leave the entry as is if the todo-sync run after the merge closes #343 and removes the item; note that in the PR description so the stale state is intentional.",
+          "Update todo-t7sw: record the decision (plan 2030 D3 and V1-V5), move its status out of NEEDS_DECISION per the catalog workflow, and drop the band-line half of proposed_change.",
+          "Or retire the id after the merge, if the catalog workflow closes implemented items that way."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Spec done rule is per plan, but the code falls back per item; no design-change entry records this",
+        "file": "docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md",
+        "files": [
+          "docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md",
+          "plugins/working-refs/hooks/progress.ts",
+          "docs/plans/2030/DesignEvolution.json",
+          "plugins/working-refs/README.md"
+        ],
+        "lines": "44-47",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "The spec at docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md:44-47 says a plan WITH a `receipts/` folder counts items done by receipt outcome kind, and a plan WITHOUT the folder counts item statuses. The code applies the fallback per item instead: progress.ts:47-51 `isDone` reads the item's status whenever that item has no readable receipt, even when the folder exists. The plan (V6), the README (:28-33) and the release notes (:118-123) follow the per-item rule. So in a plan with some receipts, an item whose status is COMPLETE but which has no receipt counts as done under the code and as not done under the spec. The spec is frozen and the plan is the source of truth, but docs/plans/2030/DesignEvolution.json records only EX1 and EX2, so nothing tells a reader the spec's rule was refined.",
+        "fix": [
+          "Add a DesignEvolution entry to docs/plans/2030/DesignEvolution.json: original = the spec's Decided 'Done counting' per-plan folder rule; new_outcome = V6's per-item fallback (an item with no valid receipt counts by its own status).",
+          "Or, if the spec may still be edited, change spec line 44-47 to state the per-item fallback."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Known-limitations note on mirrored values omits the new done-rule mirror",
+        "file": "plugins/working-refs/README.md",
+        "files": [
+          "plugins/working-refs/README.md",
+          "plugins/working-refs/hooks/mirror.ts"
+        ],
+        "lines": "152-153",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "README.md:152-153 says only the harness key defaults are copied into hooks/mirror.ts, and that installed versions can disagree. This PR also mirrors RECEIPTS_DIR, DONE_OUTCOMES and DONE_STATUSES there (mirror.ts:251-256). An installed working-refs running beside a different harness version can therefore also disagree on the receipts layout or on which outcome kinds and statuses count as done. The limitation as written understates that skew.",
+        "fix": [
+          "Extend README.md:152-153 to say: 'The harness key defaults, the receipts folder name and the done outcome kinds and statuses are copied into `hooks/mirror.ts`; ...'"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Pure progress.ts takes its Listed type from the engine glue that imports it",
+        "file": "plugins/working-refs/hooks/progress.ts",
+        "files": [
+          "plugins/working-refs/hooks/progress.ts",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "4",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "progress.ts declares itself pure (no `$`) yet imports `type { Listed } from './watch'`, while watch.ts imports progress.ts: a type-only import cycle between the pure layer and the host glue. It erases at compile time, so nothing breaks today, but any later value import along that edge would load watch.ts (atoms, hooks) into the pure module and its unit tests.",
+        "fix": [
+          "Move `export type Listed` from watch.ts:91-92 into types/index.d.ts (or a small pure module) and import it from there in both watch.ts and progress.ts."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Done rule on a receipts plan differs from harness status_view",
+        "file": "plugins/working-refs/hooks/progress.ts",
+        "files": [
+          "plugins/working-refs/hooks/progress.ts",
+          "plugins/working-refs/hooks/watch.ts",
+          "plugins/working-refs/README.md"
+        ],
+        "lines": "47-51",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "progress.ts isDone uses an item's own status whenever the item has no usable receipt. For a plan on the receipts scheme, harness_lib.plan_receipts.status_view (lines 95-108) treats an item with no receipt as PENDING, and load_receipts also drops a receipt that fails Receipt.model_validate. The mod only checks `item` and `outcome.kind`. So on a receipts plan whose file still has a COMPLETE status, or that holds a schema-invalid receipt with kind 'complete', the plan color can show more progress than the plan page. The spec's Decided rule is per plan ('A plan with a receipts/ folder counts ... receipts; a plan without the folder counts its items' status'), while plan V6 and the code apply it per item. In practice this rarely triggers, because receipts plans leave item statuses PENDING, but it is the one rule the mod mirrors from the harness and it is not quite the harness rule.",
+        "fix": [
+          "In planProgress (watch.ts), when the plan's receipts listing holds any .json file, pass a kinds map that gives every item without a usable receipt a non-done kind, so the status fallback applies only to plans with no receipts folder. This matches status_view and the spec's plan-level rule. Add a progress or watch test where a receipts-folder plan has a COMPLETE item with no receipt.",
+          "Keep the per-item fallback but document the divergence from status_view in the progress.ts header and in the README 'An item is done' bullet"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "watch.test.ts drawn helper says inside its link but checks only the colored number",
+        "file": "plugins/working-refs/hooks/watch.test.ts",
+        "lines": "768-769",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring of `drawn` in the plan-progress block reads 'The plan number as line.txt draws it: inside its link, in ramp color `color`', but the helper returns only `\\x1b[38;5;<color>m2025\\x1b[39m`; the `toContain(drawn(n))` checks (lines 778, 790, 791, 812-828, 837, 841) never verify the OSC 8 wrapper around it. The link adjacency is pinned only once, for step 0, at line 327.",
+        "fix": [
+          "Prefix the OSC 8 open for the plan's page so the helper matches its docstring: `` `\\x1b]8;;file:///repo/docs/PLANS/2025_banner_refs_PIP.html\\x1b\\\\\\x1b[38;5;${color}m2025\\x1b[39m` ``.",
+          "Or drop 'inside its link' from the docstring."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Receipts counted for plans the harness reads from their own records",
+        "file": "plugins/working-refs/hooks/watch.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.ts",
+          "plugins/working-refs/hooks/plans.ts",
+          "plugins/working-refs/hooks/mirror.ts",
+          "plugins/working-refs/hooks/progress.ts",
+          "docs/plans/2030_working_refs_line_colors_ActionPlan.json",
+          "docs/plans/2030/DesignEvolution.json"
+        ],
+        "lines": "386-409",
+        "reviewer": "runtime, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "planProgress/readReceipts apply `<plans>/<id>/receipts/<ITEM>.json` to every qualifying plan, but harness_lib.plan_receipts.book_for (plan_receipts.py:246-251) reads receipts only when `uses_receipts(plan)` (frozen.records == \"receipts\"); a sealed or unfrozen plan's status comes from its own items. A plan with a leftover receipts folder (a scheme change, an unfrozen refreeze round, a stray copy) therefore gets a done share and ramp color on the line that `plan.py` status does not report. The mirror.ts contract (lines 18-20) and progress.ts header state the rule without the scheme condition, so the deviation is undocumented as well. The mod also accepts any receipt whose `item` and `outcome.kind` read, where `_read_receipt` (plan_receipts.py:59-73) drops one that fails the full Receipt model; that gap is smaller and only matters for hand-edited files.\n\nAlso (system_shape): TASK-3 action 1 (ActionPlan:133) says to list each qualifying plan's receipts folder and read receipts for every qualifying plan. watch.ts:386-407 (`soleIds` / `readReceipts`) leaves out any plan id that two plan files share: such a plan's folder is never listed or probed, and the plan falls back to its item statuses. The README (:31-33), the release notes and watch.test.ts document and test this behavior, and it is reasonable. But the TASK-3 receipt (docs/plans/2030/receipts/TASK-3.json) records no deviation, and DesignEvolution.json has no entry for it. The frozen plan and the code therefore disagree on which plans get receipts progress.",
+        "fix": [
+          "Read `frozen.records` in parsePlan (a `records: string | null` field on PlanInfo) and have readReceipts skip listing and reading receipts for a plan whose scheme is not `receipts`, so linkOf falls back to the item statuses as book_for does; mirror the `receipts` scheme value in mirror.ts and pin it in tests/mods/test_working_refs_contract.py.",
+          "Or keep the behavior and state the deviation in the mirror.ts receipt bullet and the progress.ts header: receipts count for any plan, regardless of `frozen.records`.",
+          "Add an EX3 entry to docs/plans/2030/DesignEvolution.json for TASK-3: original = every qualifying plan's receipts folder is listed; new_outcome = a plan id shared by two plan files is neither listed nor in the progress map and counts its item statuses; why = a receipt's owner file is unknown."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Contract module docstring says progress.ts reads the receipt files; watch.ts does",
+        "file": "tests/mods/test_working_refs_contract.py",
+        "lines": "17-19",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 17-18) says ``progress.ts`` reads each item's ``<plans>/<id>/receipts/<ITEM>.json``. progress.ts is pure by its own docstring (progress.ts:10, 'no `$`; the caller lists the receipts folders, reads the receipts and passes the answers in'); the listing and reading happen in watch.ts listReceipts and planProgress (watch.ts:363-386). progress.ts only joins the folder path (receiptsDirOf) and parses the text it is handed.",
+        "fix": [
+          "Reword lines 17-19: 'the scan (``watch.ts``) reads each item's ``<plans>/<id>/receipts/<ITEM>.json`` (``RECEIPTS_DIR``) and ``progress.ts`` counts an outcome kind ...'."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M3",
+      "classification": "architectural_ambiguity",
+      "reason": "Depends on the M6/M8 answer: matching the harness per-plan rule makes the code agree with the spec (no EX entry); keeping V6's per-item fallback needs a DesignEvolution entry recording the refinement."
+    },
+    {
+      "id": "M6",
+      "classification": "architectural_ambiguity",
+      "reason": "Plan V6 falls back to item status per item; harness status_view treats a missing receipt as PENDING. Match the harness (plan change, refreeze) or document the gap."
+    },
+    {
+      "id": "M8",
+      "classification": "architectural_ambiguity",
+      "reason": "Mod reads receipts for any plan; harness book_for only when frozen.records is receipts. Mirror the scheme (new field, pin, refreeze) or document. Pairs with M6."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 348 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":12,\"first_sha\":\"906e465c880004c7d39bd858e55da233a8e86523\",\"headRefName\":\"0009-banner-formatting\",\"headRefOid\":\"303af1d914b3872d3d4a6bd223a1b8ac57d65e33\",\"last_sha\":\"303af1d914b3872d3d4a6bd223a1b8ac57d65e33\",\"mergeCommit\":null,\"number\":348,\"state\":\"OPEN\",\"title\":\"Feature(working-refs): per-kind line colors\",\"url\":\"https://github.com/t968rs/operator-straps/pull/348\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0009-banner-formatting",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0009-banner-formatting",
+        "head_ref_name": "0009-banner-formatting",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "906e465c880004c7d39bd858e55da233a8e86523",
+        "head_sha": "303af1d914b3872d3d4a6bd223a1b8ac57d65e33",
+        "base_ancestor_command": "git merge-base --is-ancestor 906e465c880004c7d39bd858e55da233a8e86523 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 303af1d914b3872d3d4a6bd223a1b8ac57d65e33 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - README Known-limitations note now names the receipts folder name (RECEIPTS_DIR) and the done outcome kinds and statuses (DONE_OUTCOMES, DONE_STATUSES) as copied into hooks/mirror.ts, and the skew they can cause"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - contract module docstring reworded: the scan (watch.ts) lists and reads the receipt files, progress.ts stays pure and counts outcomes"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - added _outcome_models() deriving the models from plan_models.Outcome; test_done_outcome_kinds_match_the_outcome_models and test_fields_read_by_progress_ts_match_the_models use it in place of the literal tuple"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - docs/RELEASES/v1.1.0.md:118 now starts '- #348 Feat(working-refs)' and the paragraph is rewrapped to 110 columns; plan 2030 cited only for TASK-4 action 3, which needs no edit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - todo-t7sw closed its decision per the todo-editor workflow (status OPEN, needs_decision false, decision_question null), summary records plan 2030 D1-D4 and the color map, proposed_change drops the band-line half, code_snippet and line refs point at line.ts:247, band-line files left the files list, counts set to needs_decision 44 / NEEDS_DECISION 44 / OPEN 31 (schema-valid); plan 2030 cited only as the decision source, no edit"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - watch.test.ts drawn docstring (line 768) no longer says 'inside its link'; it now states the helper returns the number without its link wrapper, matching the helper output"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "303af1d (working-tree snapshot; developer commits) - Listed type moved from hooks/watch.ts into types/index.d.ts; progress.ts imports it from ../types, watch.ts imports and re-exports it; mod tests 178 pass (outside fixer waves)"
+    }
+  ]
+}
