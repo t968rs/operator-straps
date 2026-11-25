@@ -1,0 +1,738 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 353,
+  "pr_title": "Docs(strap): add the spec-it skill as the design step before write-plan",
+  "branch": "0011-specsheet-lite",
+  "base_branch": "main",
+  "base_sha": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "head_sha": "f10e7bce0e979cc77d8c70bd4a217678edf229d4",
+  "review_date": "2026-11-25",
+  "verdict": "NOT READY TO MERGE - important: I2, I5",
+  "stats": {
+    "additions": 2411,
+    "deletions": 72,
+    "files_changed": 31,
+    "source": {
+      "additions": 2411,
+      "deletions": 72,
+      "files_changed": 31
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)",
+    "failing_tests_1 (tests)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/config.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/tests.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/docs.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/overall.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/roast.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/failing_tests_1.json"
+  ],
+  "bubbles": [
+    "I2",
+    "I5",
+    "M4",
+    "M5",
+    "M14"
+  ],
+  "strengths": [
+    "artifacts.specs in harness.schema.json uses the relPath def like its siblings, and its description matches spec_it_api.sheet_path (<date>-<slug>.md) and next_step (write-plan --spec).",
+    "The new key lands in all four places the project rule lists: defaults.json (docs/SPECS), the schema, the Artifacts dataclass and _artifacts builder in config.py, and the README key table.",
+    "Every test in scope is behavioral: real pydantic models, a real config built with make_project, and the driver run as a subprocess; no mock-chain wiring.",
+    "The banned-pattern test parametrizes one example per BANNED label and checks both goals and request, covering each regex.",
+    "The char-cap test checks both sides of the boundary (MAX_STATEMENT_CHARS passes, +1 fails).",
+    "The write/replace test pins SheetExists, the replace path identity and the rewritten content in one flow.",
+    "The new strap-runner assertion isolates the single rule bullet and normalizes whitespace, so a reflow of the agent prose does not break it.",
+    "The artifacts.specs key lands in all config places this bucket can see together: defaults.json, harness.schema.json, the Artifacts dataclass and the _artifacts builder.",
+    "parse_sheet closes with a render_sheet(sheet) == text comparison, so any hand-edited or drifted page is refused rather than partially parsed.",
+    "spec_it_models.py keeps its promise of importing no other harness_lib module, and spec_it_api.py reads active() only inside functions, per the drivers-activate rule.",
+    "write_sheet revalidates through model_validate(model_dump()) and refuses to overwrite without replace=True, so a mutated or stale sheet object cannot slip an unchecked page to disk.",
+    "spec_it.py catches pydantic ValidationError through its ValueError base and splits it into one problem: line per error with the 'Value error, ' prefix stripped, matching the documented stderr contract.",
+    "The blob hashes in the r3.2-freeze ledger entry match the head blobs of all seven frozen parts and fixtures, so the freeze tree is consistent with the committed files.",
+    "The new `artifacts.specs` key touches all four places (defaults.json, harness.schema.json, the Artifacts dataclass and builder, and the README row), and it joins the default planning_prefixes.",
+    "SKILL.md's commands and claims match the code: the `skill_api.py spec_it_api` heredoc binds `new_sheet` and `write_sheet` from `__all__`; `check` prints `check [ok]`, the counts, a 250-line `warn:` and the `next:` line; the 500-line cap and banned patterns match spec_it_models.py.",
+    "write-plan's Start step explains why the ids go in `--refs` (a sheet bans them), which keeps the two skills' contracts aligned.",
+    "The harness row in the release table (0.82.1 -> 0.89.0) matches the plugin.json bump.",
+    "spec-it SKILL.md steps match the code: the heredoc binds spec_it_api's __all__ via skill_api.py, `replace=True` matches write_sheet's signature, and the check output described in step 4 matches spec_it.py line for line.",
+    "Every Related link in spec-it SKILL.md resolves (spec_it_models.py, write-plan SKILL.md, reference/skill_arguments.md), and the write-plan edit links back to spec-it through the `next:` line.",
+    "The contract test pins MAX_LINES and TARGET_LINES from the model into the SKILL.md body, so the stated 500/250 caps cannot drift from the enforced ones.",
+    "Rules, Steps and the Judgment table are internally consistent: open forks stop the run with a question, implementation notes ride as the `-- <guidance>` tail write-plan's argument-hint accepts.",
+    "Every hash in the final freeze record (r3.2) matches the blob at the PR head for all seven frozen parts and fixtures, so the frozen spec describes the code that ships.",
+    "parse_sheet ends with `render_sheet(sheet) != text`, so only the API's layout is accepted and a hand-edited page cannot drift from the model.",
+    "write_sheet revalidates through `model_validate(model_dump())`, so a sheet built with `model_copy(update=...)` (which skips validation) is still checked before it is written.",
+    "The new `artifacts.specs` key touches all four required places (defaults.json, harness.schema.json, the Artifacts dataclass and builder, the README key table) and joins the default planning_prefixes.",
+    "The strap-scenario-runner fix (`--repo \"<TREE>\"` for skill_api.py and any other `--repo` driver) closes a real escape of scenario writes into the developer checkout and is pinned by a contract test.",
+    "The driver tests run spec_it.py as a subprocess against make_project trees and check stdout, stderr and exit codes; no mocks stand in for the code under test.",
+    "SkillSpec records a failing baseline before each green and drops B11-B13 with the reason when their baselines did not fail, instead of keeping behaviors that prove nothing.",
+    "The new `artifacts.specs` key lands in all four places together (defaults.json, harness.schema.json, the Artifacts dataclass and builder, the README key table). It is also added as a default planning prefix, and tests cover the default, an override and refusal of an absolute path.",
+    "HARNESS_RULES, write-plan's Start step and the spec-it SKILL agree on the hand-off: the sheet carries no ids, so TODO ids and issues travel in `--refs`. test_specsheet_lite_wiring pins the order and the cross-reference.",
+    "next_step emits a project-relative POSIX path, which matches plan.py's 'Repo-relative path of the spec' contract for `--spec`.",
+    "The contract test imports MAX_LINES and TARGET_LINES from the model instead of pinning literals, so the SKILL's stated caps cannot drift from what the model enforces.",
+    "The strap-scenario-runner fix widens `--repo \"<TREE>\"` to skill_api.py and to any driver that takes `--repo` (placed before the module or subcommand), which matches skill_api.py's and spec_it.py's argparse layout. A contract test pins it.",
+    "The page is the single stored form: write_sheet revalidates through model_dump, so a model_copy that skipped validation cannot reach disk.",
+    "The artifacts.specs key touches all four places (defaults, schema, dataclass and builder, README row).",
+    "The strap-scenario-runner fix closes a real leak of scenario API writes into the developer checkout and pins it with a contract test.",
+    "Dropped behaviors B11-B13 carry dropped_reasons that cite the baseline run and quote what it did.",
+    "Driver tests run spec_it.py as a subprocess against make_project trees, checking exit codes and stderr rather than mocks.",
+    "parse_sheet ends with an exact render_sheet(sheet) == text comparison, so hand-edited drift is refused rather than silently normalized.",
+    "write_sheet revalidates through model_validate(model_dump()) and refuses to overwrite unless replace=True.",
+    "The artifacts.specs key is wired through defaults.json, the schema (relPath) and the Artifacts dataclass together, with a test that refuses an absolute path.",
+    "spec_it.py catches ConfigError/OSError/ValueError (pydantic ValidationError included) and prints one problem line per validation error with exit 1.",
+    "Driver tests run spec_it.py as a subprocess against make_project repos with CLAUDE_PROJECT_DIR dropped, so they exercise the real --repo resolution and the exit and stderr contract.",
+    "Ban-pattern tests are parametrized across every BANNED label and check both the goal and request fields.",
+    "The skill contract test imports MAX_LINES, TARGET_LINES and __all__ from the modules rather than pinning copies, and checks that every exported name exists.",
+    "The round-trip test uses a 20-sentence request, so it exercises the 110-column wrap and rejoin path, not only one-line fields.",
+    "All 61 in-scope tests pass at the PR head."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I2",
+        "name": "B10 is green on a baseline that never ran the skill",
+        "file": "docs/plans/strap/spec-it/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/spec-it/SkillSpec.json",
+          "docs/RELEASES/v1.1.0.md"
+        ],
+        "lines": "426-489,865-886,1116-1120",
+        "reviewer": "roast, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "B10's only baseline, R-9, is a session that never loaded the round-1 spec-it skill: it 'went straight to the plan with no design sheet' and wrote ActionPlan 2032 into the tree. Its judged item (a goal line holding two outcomes) was graded absent against an expected present, so the behavior itself never went red; the only red signal is the SC-9 reply_matches 'next: /harness:write-plan' check, which any session without the skill fails by construction. That proves the skill exists, not that it splits compound asks. B11, B12 and B13 were dropped in round 3 for exactly this outcome (baseline did not fail), so the spec now applies two standards to the same evidence. The release note even admits the B10 baseline 'waits on a baseline run from a session that loads this plugin version'.\n\nAlso (docs): B10 ('one goal line per outcome' when no fork is open) passed its baseline gate only through the SC-9 `reply_matches next: /harness:write-plan` check (SkillSpec.json:442-448, R-9 detail 'observed False'). Without the skill no session prints that line, so this check fails for every baseline whatever the reply does. The judged item, the compound goal line the rule targets, graded 'absent' in baseline R-9 (lines 1116-1120: 'I went straight to the plan with no design sheet first'). So the baseline never showed the line-splitting failure B10 claims to fix, and the release note credits the round with proving that behavior.",
+        "fix": [
+          "Reopen, rerun the B10 baseline from a session that loads the round-1 skill (claude --plugin-dir plugins/harness at the round-1 tree), regrade, and keep B10 only if the judged item goes red; otherwise drop it with a dropped_reason like B11-B13.",
+          "If the strap gate is meant to accept a check-only red, state that in B10's rationale and in docs/RELEASES/v1.1.0.md so the evidence is not read as a behavioral baseline.",
+          "In a later round, give B10 a scenario whose baseline writes goal lines (for example one where the task itself asks for a written goals list), so the judged compound-line item can be 'present' at baseline.",
+          "Or state in the release entry that B10's red came from the hand-off check alone."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "A request holding 'Date: ' or '## ' at a wrapped line start renders a page parse_sheet refuses",
+        "file": "plugins/harness/lib/harness_lib/spec_it_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/spec_it_models.py",
+          "plugins/harness/lib/harness_lib/spec_it_api.py",
+          "tests/lib/test_specsheet_lite_models.py",
+          "plugins/harness/scripts/spec_it.py",
+          "plugins/harness/skills/spec-it/SKILL.md"
+        ],
+        "lines": "54-63,77-82,84-87,108-115,118-130,141-159",
+        "reviewer": "system_shape, roast, adv_code_runtime, runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The spec_it_api module docstring (spec_it_api.py:3-4) and SkillSpec B2 claim that parse_sheet reverses render_sheet. render_sheet (spec_it_models.py:110-111) wraps the request as plain lines under '## Request'. parse_sheet (spec_it_models.py:148-151) then scans every line for DATE_PREFIX and every line for '## ' headings. Example: the request 'Date: shown in the banner.' passes every SpecSheet validator, and write_sheet writes it. load_sheet and 'spec_it.py check' then refuse the page: two 'Date: ' lines give 'the page needs one Date: YYYY-MM-DD line'. A request word that wraps to the start of a line as '## Goals' fails the same way. The SKILL's loop is 'fix the field it names and rerun; never edit the page by hand' (SKILL.md:67,89), but this problem line names no field, so the loop dead-ends on a sheet the API itself wrote.\n\nAlso (roast): render_sheet wraps the request at 110 columns, and parse_sheet treats any line starting with 'Date: ' as the date line and any line starting with '## ' as a heading. A request whose wrap lands 'Date: ...' or '## Goals' at a line start passes SpecSheet validation and write_sheet writes it, then load_sheet and `spec_it.py check` refuse the page ('the page needs one Date: YYYY-MM-DD line'). Reproduced: request = 'word ' * 22 + 'Date: tomorrow is fine.' round-trips to a ValueError. The module docstring promises render_sheet writes and parse_sheet reads back the only stored form; here the API writes a sheet the skill then forbids editing by hand. Rare, but the kind of rare that ruins a Friday.\n\nAlso (adv_code_runtime): render_sheet wraps the request with textwrap at 110 columns and writes the lines bare; parse_sheet treats any line starting with '## ' as a section heading and any line starting with 'Date: ' as the date line. The request validator only bans ids/URLs/fences, so a request that begins with (or wraps onto a line beginning with) '## <word>' or 'Date: ' validates, writes, and then fails to parse: an unknown or duplicate section, or two Date lines.\n\nAlso (runtime): render_sheet wraps the request with textwrap at 110 columns, so any word of the request can start a page line. parse_sheet then takes every line starting with 'Date: ' as a date line (spec_it_models.py:148-150) and every line starting with '## ' as a section heading (_sections, 123-127). A request such as '<~105 chars> Date: field shown on the form' renders a second 'Date: ' line, and one holding '## Goals' renders a stray heading: write_sheet accepts and writes the page, then spec_it.py check (and load_sheet) refuses it. That breaks the contract the SKILL.md step 3 states (write_sheet 'renders the only layout check accepts') and the agent is told never to edit the page by hand, leaving no way forward but rewording the request blindly. The same split happens for a title, goal or avoid line holding '\\r' in the title or any str.splitlines separator other than '\\n'/'\\r' ('\\x0c', '\\x1c', '\\u2028', ...): _title checks only '\\n' (79-82) and _statement only '\\n'/'\\r' (56-57), while parse_sheet splits on all of them (143).\n\nAlso (overall): The model accepts sheets whose rendered page fails its own parser, so the skill's write step succeeds and its check step then refuses a page the developer was told never to hand-edit. Two routes: (1) `_title` (lines 77-82) rejects only '\\n' and `_statement` (lines 56-57) only '\\n'/'\\r', but `parse_sheet` splits with `str.splitlines()`, which also breaks on '\\r' (title), '\\v', '\\f', '\\x1c'-'\\x1e', '\\x85', '\\u2028' and '\\u2029'; such a title or goal renders across two lines and the round-trip check at line 157 fails. (2) `render_sheet` wraps the request at 110 columns (line 111), so a request that mentions 'Date: ...' or '## Goals' can land that text at the start of a wrapped line; `parse_sheet` then counts two 'Date: ' lines (lines 148-150) or raises 'unexpected section' from `_sections` (line 125). The refusal names the page layout, not the field, so the SKILL.md loop 'fix the field it names and rerun' has nothing to act on.\n\nAttack: Probe (run at PR head): SpecSheet(title='T', request='## Goals first then more', goals=['g'], day=date(2026,11,25)) constructs; parse_sheet(render_sheet(s)) raises \"unexpected section '## Goals first then more'\". request='Date: 2026-01-01 is the cutoff' raises \"the page needs one 'Date: YYYY-MM-DD' line\". Mid-text also breaks: request=('x ' * 54) + 'Date: 2026-01-01 later' wraps so a line starts with 'Date: ' and parse fails the same way. write_sheet accepts all three, then `spec_it.py check` on the written file exits 1.",
+        "fix": [
+          "In parse_sheet, read the date only from lines[2], refuse when lines[2] does not start with DATE_PREFIX, and treat a '## ' line as a heading only when it matches the exact '## Request'/'## Goals'/'## Avoid' sequence render_sheet emits. Add a test that round-trips the request 'Date: shown in the banner.'.",
+          "In SpecSheet._whole, refuse a sheet whose wrapped request lines start with DATE_PREFIX or '## ', naming the request in the message, so write_sheet refuses what check would refuse.",
+          "In parse_sheet, read the date only from lines[2] and accept '## ' headings only at the positions render_sheet emits (or split the body on the exact '\\n\\n## Goals\\n\\n' / '\\n\\n## Avoid\\n\\n' separators), so request text cannot impersonate structure; add a test with a request that wraps 'Date: ' and '## Avoid' to a line start.",
+          "Refuse 'Date: ' and '## ' inside the request in SpecSheet._request, with a problem message naming the field, and add the same test.",
+          "Refuse such a request in SpecSheet (e.g. in _whole, check that no rendered request line starts with '## ' or DATE_PREFIX, or that '## '/'Date: ' tokens do not appear in the request).",
+          "Make parse_sheet positional: take the date only from line 3 and recognize headings only at the known positions, so request text can never be read as structure.",
+          "Read the date only from its fixed slot (lines[2]) in parse_sheet, and have _sections stop treating '## ' lines as headings inside the Request body (or refuse, in the _request validator, a request whose wrapped lines start with '## ' or DATE_PREFIX); refuse in _title and _statement any text where len(text.splitlines()) > 1.",
+          "In SpecSheet._whole, after rendering, check that the rendered page has exactly one DATE_PREFIX line and exactly the expected '## ' headings, and that the title and each item occupy one line, raising ValueError otherwise so write_sheet refuses what check would refuse.",
+          "Make the one-line checks match the parser: in `_statement` and `_title` refuse when `len(text.splitlines()) != 1` instead of testing only '\\n'/'\\r'; and in `_whole`, after rendering, refuse (naming the request) when any wrapped request line starts with '## ' or with `DATE_PREFIX`.",
+          "In `_whole`, run the structural half of `parse_sheet` (the `DATE_PREFIX` count and `_sections`) on the rendered page without constructing a new SpecSheet, so any page the model accepts is one the parser accepts; add a model test for each route."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "spec-it hand-off drops the TODO ids and issues that write-plan now expects in --refs",
+        "file": "plugins/harness/skills/spec-it/SKILL.md",
+        "files": [
+          "plugins/harness/skills/spec-it/SKILL.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/spec_it_api.py"
+        ],
+        "lines": "15-18,76-77",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "write-plan step 1 (plugins/harness/skills/write-plan/SKILL.md:37-39) now says a sheet carries no ids, so the TODO ids and issues the work answers go in `--refs`. spec-it never tells the session to keep them: the model refuses any TODO id or issue number in the request (spec_it_models.BANNED), so a request such as 'build todo-k69m, fixes #301' is restated without them, and step 5 (Hand off) hands over only the `next:` line, which `spec_it_api.next_step` builds as `/harness:write-plan \"<title>\" --spec <path>` with no refs. The two skills therefore agree that ids leave the sheet but neither carries them to the plan; the write-plan session starts from a sheet that, by design, cannot tell it which TODO ids or issues to pass, and the plan's `refs` (and the issue links derived from them) are silently lost.",
+        "fix": [
+          "In spec-it step 5 (and the Rules bullet on implementation notes), state that TODO ids and issue numbers named in the request are kept out of the sheet and appended to the `next:` command as `--refs '<id>' '#<n>'` (quoted, per write-plan step 1), alongside any `-- <guidance>` tail; add a Judgment row for 'the request names a TODO id or issue'.",
+          "Have `spec_it.py check` accept an optional `--refs` and print it on the `next:` line, so the driver carries the ids instead of the prose."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Over-MAX_LINES parse test passes without the line cap",
+        "file": "tests/lib/test_specsheet_lite_models.py",
+        "files": [
+          "tests/lib/test_specsheet_lite_models.py",
+          "plugins/harness/lib/harness_lib/spec_it_models.py",
+          "tests/scripts/test_specsheet_lite.py"
+        ],
+        "lines": "104-108,111-114",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_parse_refuses_a_page_over_max_lines appends MAX_LINES blank lines to a rendered page and expects ValueError. parse_sheet (plugins/harness/lib/harness_lib/spec_it_models.py:157-158) also raises ValueError when render_sheet(sheet) != text, and trailing blank lines always fail that round-trip check. Deleting the MAX_LINES guard at spec_it_models.py:144-145 leaves this test green, so the behavior it names (and the SkillSpec node bound to it) has no real guard.\n\nAlso (tests): test_the_rendered_page_holds_at_most_max_lines expects a bare ValidationError for 500 goals; it would still pass if a different validator (char cap, duplicate check) fired first after a future change. Likewise test_check_refuses_a_sheet_with_an_id only checks that stderr starts with `problem: `, not that it names the id (\"a plan item id\").\n\nAlso (adv_code_tests): test_parse_refuses_a_page_over_max_lines appends 500 blank lines to a rendered page. That page already fails the render round-trip check at plugins/harness/lib/harness_lib/spec_it_models.py:157-158, so the test raises ValueError whether or not the MAX_LINES guard at spec_it_models.py:144-145 exists. No driver test in tests/scripts/test_specsheet_lite.py covers an over-cap page either, so nothing in the suite pins that guard.\n\nAlso (adv_code_tests): The MAX_LINES fixture (500 goals) renders 514 lines and the TARGET_LINES driver fixture (250 goals) renders 264 lines. No test renders a page at exactly the cap or target, or one line past it. An off-by-one (> changed to >=) or a cap shifted by up to 13 lines in the model validator at spec_it_models.py:103 or the driver warning at scripts/spec_it.py:54 survives.\n\nAttack: Monkeypatch spec_it_models.MAX_LINES to 10**6, which disables the guard at spec_it_models.py:144-145, then run the test body: parse_sheet(render_sheet(_sheet()) + \"\\n\" * 500) still raises ValueError with 'the page is not in the layout render_sheet writes; rewrite it through the API'. The probe at the run directory's probes/test_probe_tests.py::test_parse_cap_test_passes_with_cap_disabled passed. Deleting lines 144-145 leaves the whole PR suite green.\n\nAttack: Change `if count > MAX_LINES:` at plugins/harness/lib/harness_lib/spec_it_models.py:103 to `if count > MAX_LINES + 13:` (or `count > TARGET_LINES + 13` at plugins/harness/scripts/spec_it.py:54): test_the_rendered_page_holds_at_most_max_lines and test_check_warns_past_the_target_length still pass, because their fixtures render 514 and 264 lines (measured by probes/test_probe_tests.py::test_line_counts_of_cap_fixtures).",
+        "fix": [
+          "Pin the refusal reason: `with pytest.raises(ValueError, match=\"line cap\"):`.",
+          "Or build a page whose only defect is its length (for example a rendered sheet with over MAX_LINES goal lines written as text, bypassing the model) and assert the cap message.",
+          "Add `match=\"line cap\"` to the raises at line 107 and assert `\"a plan item id\" in done.stderr` in tests/scripts/test_specsheet_lite.py:51.",
+          "Build a page that is in render_sheet layout and runs past MAX_LINES (render a sheet via model_construct with enough goals), then assert pytest.raises(ValueError, match=\"line cap\") so only the cap message satisfies it.",
+          "Or drop the parse-level guard as redundant with the model validator and rename the test to pin the round-trip refusal it actually exercises.",
+          "Size the fixtures from the rendered overhead: compute the base line count of a one-goal sheet, add goals until render_sheet gives exactly MAX_LINES (accepted) and MAX_LINES + 1 (refused). Do the same with TARGET_LINES for the driver warn (no warn at TARGET_LINES, warn at TARGET_LINES + 1)."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "spec-it is not classified in the skill guidance-tail contract, so CI fails",
+        "file": "tests/skills/test_skill_guidance_tail_contract.py",
+        "lines": "24-29",
+        "reviewer": "failing_tests_1",
+        "fix_kind": "mechanical",
+        "summary": "Pasted CI output: tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified fails with 'a new skill must join _INVOCABLE or _KNOWLEDGE'; 'spec-it' is on disk but in neither list. Reproduced locally (1 failed). spec-it takes arguments ('<title> [-- <guidance>]' hint, cites skill_arguments.md, no $ARGUMENTS in fences), so it belongs in _INVOCABLE.",
+        "fix": [
+          "Add \"spec-it\" to _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py (alphabetical, after \"roast-my-code\") and run the file's tests."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README skill table has no spec-it row",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "16-37,41-60",
+        "reviewer": "skill_package, overall, system_shape, roast, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "README.md lists the harness skills in its task table (write-plan at line 26, strap-skills at 27, and so on), and HARNESS_RULES.md:106 now routes all design work through `harness:spec-it`, yet the table has no row for the new skill; the README mentions it only in the `artifacts.specs` key row (line 642).\n\nAlso (overall): The PR adds `artifacts.specs` to the README key table but no skill row: neither 'What you can do' (which lists write-plan at line 26) nor 'Other harness skills' (lines 43-60, which lists tdd-strapped and strap-debugging, the other HARNESS_RULES stage skills) names spec-it, though HARNESS_RULES.md now routes every design through it ahead of write-plan.\n\nAlso (system_shape): README.md gains an `artifacts.specs` config row that names `spec-it` (line 642). The skill appears in neither the 'Your goal' table (lines 16-37, where `write-plan` and `strap-skills` sit) nor the 'Other harness skills' table (lines 39-60). HARNESS_RULES now routes all design through it, but the README index never lists it.\n\nAlso (roast): The README gains an artifacts.specs key row naming spec-it, but the skill table (the write-plan and strap-skills rows near line 26) lists no spec-it row, so the new design step is discoverable only through the key table or HARNESS_RULES.\n\nAlso (docs): README.md gains the `artifacts.specs` key row (line 642), but neither skill table names `spec-it`: not the goal table (lines 17-39, where `write-plan` has the 'Plan multi-step work' row) and not 'Other harness skills' (lines 41-60). HARNESS_RULES.md now routes every design through `harness:spec-it`, yet a README reader has no entry point to find the skill or its trigger.",
+        "fix": [
+          "Add a row before write-plan, e.g. '| Design new work | `spec-it` | A short spec sheet (request, Goals, Avoid) under `artifacts.specs` that write-plan takes as `--spec`. | Model refuses ids, issue numbers, URLs and code fences; page capped at 500 lines.<br>`check` validates the page and prints the write-plan command. |'.",
+          "Add a row next to write-plan in 'What you can do', for example: | Design new work | `spec-it` | A short spec sheet (request, Goals, Avoid) under `artifacts.specs`, checked by `spec_it.py check`, with the write-plan command to run next |.",
+          "Add a goal-table row above `write-plan`: '| Design new work | `spec-it` | A short spec sheet (request, Goals, Avoid) under `artifacts.specs`, checked by `spec_it.py check`, with the `write-plan --spec` command to run next |'.",
+          "Or add a row to 'Other harness skills': '| `spec-it` | New work needs a design before `write-plan`: one clarification round, then a spec sheet. |'",
+          "Add a 'Design new work' row for `spec-it` before the write-plan row: a spec sheet under artifacts.specs; guarantees: the model refuses ids, issue numbers, URLs and fences and caps the page at 500 lines, `check` prints the write-plan --spec command.",
+          "Add a row to the 'Other harness skills' table, for example: '| `spec-it` | New work needs a design before write-plan: one short clarification round, then a spec sheet under `artifacts.specs` whose `next:` line hands it to `write-plan --spec`. |'",
+          "Or add a 'Design new work' row to the goal table just above 'Plan multi-step work', naming `spec-it`, the sheet it writes and the `spec_it.py check` guarantee."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Catalog items this PR answers stay NEEDS_DECISION",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "3295-3302,3355-3361",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "This PR implements issue #171 as `spec-it`. Its catalog item todo-33h5 (RepoToDo.json:3295-3302) still asks whether Spec-Sheet-Lite is the output of a spec-me skill or a standalone template. todo-8wd7 (lines 3355-3361) still asks what spec-me does and whether it is built through strap-skills. The PR settles both questions (a strap-proven skill writing the sheet and handing it to write-plan `--spec`), yet the catalog change adds only todo-57az, so both items rank as open decisions.\n\nAlso (overall): todo-33h5 ('Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan', source #171) stays NEEDS_DECISION with a decision question the PR answers: the format is spec-it's own sheet, and HARNESS_RULES now says 'no design doc'. The PR edits RepoToDo.json (adding todo-57az) but leaves this item, so the TODO notice and working-refs banner keep showing delivered work; the related todo-8wd7 (spec-me) and todo-5xr3 (port or drop brainstorming) are also settled or overtaken by this change.\n\nAlso (system_shape): HARNESS_RULES.md:106 now reads 'Designing: `harness:spec-it`, then `harness:write-plan`; no design doc.' This settles todo-33h5's decision question (RepoToDo.json:3302: whether Spec-Sheet-Lite settles the port-or-drop brainstorming decision as drop). Yet todo-33h5 (#171, the issue this PR delivers) stays NEEDS_DECISION. The overlapping todo-8wd7 (spec-me skill), todo-7sfy and todo-5xr3 (port or drop brainstorming) also still read as open designs for the same step.\n\nAlso (roast): todo-33h5 (Spec-Sheet-Lite, #171) stays NEEDS_DECISION with the question 'standalone template or a skill's output format', while this PR ships the skill and the release note credits issue 171. The TODO notice keeps offering a decided item.",
+        "fix": [
+          "After the merge, retire todo-33h5 (and todo-8wd7 and todo-7sfy, if spec-it supersedes spec-me and its red/green), or update their decision text, through the todo-edit flow.",
+          "Or name the settled items in the spec-it release entry so the retirement is tracked.",
+          "Retire todo-33h5 with `todo-edit` once the PR merges (or in this branch), and update or retire todo-8wd7 and todo-5xr3 to point at spec-it.",
+          "Put 'Closes #171' in the PR body so the catalog sync retires todo-33h5 on merge, and record the brainstorming decision on todo-5xr3 / todo-8wd7 (retire or re-scope them) through todo-edit.",
+          "Clear needs_decision on todo-33h5 and record the answer (a harness skill, spec-it) through the TODO tooling, or retire it once issue 171 closes."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "SkillSpec keeps the pre-rename snake name in B4 and in the B1-B5 test nodes",
+        "file": "docs/plans/strap/spec-it/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/spec-it/SkillSpec.json",
+          "tests/lib/test_specsheet_lite_models.py",
+          "tests/lib/test_specsheet_lite_api.py",
+          "tests/scripts/test_specsheet_lite.py",
+          "tests/contract/test_specsheet_lite_wiring.py"
+        ],
+        "lines": "38-195",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "After the specsheet-lite -> spec-it rename, the statement of SkillSpec.json B4 (line 148) still reads 'specsheet_lite.py check <path> ...', but the driver is plugins/harness/scripts/spec_it.py. The B1-B5 test nodes (lines 38-195) cite tests/lib/test_specsheet_lite_models.py, tests/lib/test_specsheet_lite_api.py, tests/scripts/test_specsheet_lite.py and tests/contract/test_specsheet_lite_wiring.py. Those files still carry the old name at the head, although their contents were updated. `strap.py rename` swaps only the kebab form (todo-57az records this). The frozen spec therefore names a driver that does not exist, and the test file names no longer match the skill.\n\nAlso (overall): The rename to spec-it left the old name in the four test modules this skill's spec cites (tests/contract/test_specsheet_lite_wiring.py, tests/lib/test_specsheet_lite_api.py, tests/lib/test_specsheet_lite_models.py, tests/scripts/test_specsheet_lite.py) and in B4's statement, which still names the driver as 'specsheet_lite.py check <path>' though the driver is plugins/harness/scripts/spec_it.py. The test-file names no longer match the module, skill or driver they cover (the contract test was renamed to test_spec_it_skill_contract.py), so a search for spec_it tests misses most of them. The new catalog item todo-57az records the gap but this branch can close it for its own skill.\n\nAlso (system_shape): SkillSpec.json:148 (B4) still reads 'specsheet_lite.py check <path>', but the driver is plugins/harness/scripts/spec_it.py. The behavior's tests live in tests/lib/test_specsheet_lite_models.py, tests/lib/test_specsheet_lite_api.py, tests/scripts/test_specsheet_lite.py and tests/contract/test_specsheet_lite_wiring.py, and the spec pins them by node id (SkillSpec.json:38-196). Only the contract test moved to test_spec_it_skill_contract.py. The new catalog item todo-57az records that rename swaps only the kebab form, so it explains the leftovers but does not fix them.\n\nAlso (roast): The modules, driver and skill folder are spec_it / spec-it, but tests/contract/test_specsheet_lite_wiring.py, tests/lib/test_specsheet_lite_api.py, tests/lib/test_specsheet_lite_models.py and tests/scripts/test_specsheet_lite.py keep the old name, and B4's statement still reads 'specsheet_lite.py check <path>' for a driver that is now spec_it.py. A grep for spec_it misses half the skill's tests. The catalog item todo-57az already records that strap.py rename does not touch these.",
+        "fix": [
+          "In the follow-up for todo-57az, rename the four test files with git mv to test_spec_it_models.py, test_spec_it_api.py, tests/scripts/test_spec_it.py and tests/contract/test_spec_it_wiring.py. Then reopen the spec and update B4's statement to 'spec_it.py check ...' and the B1-B5 nodes, and refreeze.",
+          "Or, if the frozen spec should not reopen in this PR, add a line to the spec-it release entry saying the four test files keep the old name until todo-57az lands.",
+          "git mv the four files to test_spec_it_wiring.py, test_spec_it_api.py, test_spec_it_models.py and test_spec_it.py, and update the B1-B5 test node ids and B4's statement in SkillSpec.json through a strap reopen and refreeze.",
+          "If the frozen spec should stay as is for this PR, note the leftover names in the release entry and leave the rename to todo-57az.",
+          "git mv the four test files to test_spec_it_models.py, test_spec_it_api.py, test_spec_it.py and test_spec_it_wiring.py, change B4's statement to 'spec_it.py check <path>', update the node ids through the strap edit path, and refreeze.",
+          "Or keep the names for this PR and add the B4 statement and test files to todo-57az's list, so the rename follow-up covers them.",
+          "git mv the four test files to *_spec_it* names, update the SkillSpec test node ids and B4's statement through a reopen and refreeze.",
+          "Leave them and note the leftover names in todo-57az's scope so the rename fix picks them up."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Edited runner rule line runs past the file's wrap width",
+        "file": "plugins/harness/agents/strap-scenario-runner.md",
+        "lines": "46",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/agents/strap-scenario-runner.md:46 runs to about 150 characters ('takes `--repo` (placed before the module name or subcommand), `repo=\"<TREE>\"` on an API call. Only the `init` and `record-run` commands keep'). The surrounding prose wraps at about 110, so the edited bullet renders as one oversized line in a plain-text read.",
+        "fix": [
+          "Rewrap lines 45-48 at the file's width: move 'Only the `init` and `record-run` commands keep' onto line 47."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "A project override of artifacts.specs or planning_prefixes drops specs from the planning prefixes",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/config/defaults.json",
+          "README.md"
+        ],
+        "lines": "625-627",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "docs/SPECS/ joins planning_prefixes only as a literal default. A project that sets artifacts.specs to another folder, or sets its own planning_prefixes list, gets sheets that branch-commit-msg no longer treats as planning documents, with no warning.",
+        "fix": [
+          "In _artifacts, append the specs folder (with a trailing slash) to planning_prefixes when it is missing, and drop the literal from defaults.json; add a config test for an overridden specs value.",
+          "Document in the README artifacts.specs row and the schema description that an override must also be added to artifacts.planning_prefixes."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Slug collapses non-ASCII titles to 'sheet', so distinct same-day sheets collide",
+        "file": "plugins/harness/lib/harness_lib/spec_it_api.py",
+        "lines": "38-46,49-54",
+        "reviewer": "adv_code_runtime",
+        "fix_kind": "judgment",
+        "summary": "slug keeps only [a-z0-9]; any title written entirely in non-Latin script maps to 'sheet', and titles differing only in punctuation or accents (e.g. 'C++ API' vs 'C# API') map to the same slug. The second write on the same day raises SheetExists for an unrelated sheet, and with replace=True overwrites it.\n\nAttack: Probe (run at PR head): slug('\\u8a2d\\u8a08') == slug('\\u0645\\u0631\\u062d\\u0628\\u0627') == 'sheet' and slug('C++ API') == slug('C# API') == 'c-api'. Activate a project, write_sheet(new_sheet('C++ API','R.',['G holds.'], day=D)), then write_sheet(new_sheet('C# API','Other.',['H holds.'], day=D)) raises SheetExists naming the first sheet's file.",
+        "fix": [
+          "Append a short disambiguator when the target exists for a different title (e.g. -2, or a hash of the title), or slug with unicodedata normalization plus a fallback hash for empty results."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "next_step leaves the --spec path unquoted",
+        "file": "plugins/harness/lib/harness_lib/spec_it_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/spec_it_api.py",
+          "plugins/harness/scripts/spec_it.py"
+        ],
+        "lines": "77-80",
+        "reviewer": "runtime, adv_code_runtime",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "next_step quotes the title but emits '--spec {_rel(path)}' bare (spec_it_api.py:80). artifacts.specs is a free relPath key, and _rel falls back to the absolute path for a sheet outside the project; a folder holding a space (e.g. 'docs/My Specs' or a Windows user folder) yields a next: line whose --spec value splits into two arguments when the developer pastes it.\n\nAlso (adv_code_runtime): next_step quotes the title but emits `--spec {_rel(path)}` bare. `spec_it.py check` accepts any path, and artifacts.specs is any relative path, so a sheet under a folder with a space produces a write-plan invocation whose --spec argument is cut at the space.\n\nAttack: With artifacts.specs set to 'docs/my specs', write_sheet(new_sheet('T','R.',['G holds.'], day=date(2026,11,25))) then next_step(sheet, path) returns '/harness:write-plan \"T\" --spec docs/my specs/2026-11-25-t.md'; write-plan's `--spec PATH` (plugins/harness/skills/write-plan/SKILL.md:4) receives 'docs/my' and a stray positional 'specs/2026-11-25-t.md'.",
+        "fix": [
+          "Quote the path the same way as the title: f'/harness:write-plan \"{title}\" --spec \"{_rel(path)}\"', or quote it only when it contains whitespace.",
+          "Quote the path in next_step (e.g. `--spec \"{_rel(path)}\"`) and update the expected string in tests/lib/test_specsheet_lite_api.py:80-81.",
+          "Or refuse a path with whitespace in sheet_path/check."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Model docstring claims 'no code' but only code fences are refused",
+        "file": "plugins/harness/lib/harness_lib/spec_it_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/spec_it_models.py",
+          "tests/lib/test_specsheet_lite_models.py",
+          "docs/RELEASES/v1.1.0.md",
+          "plugins/harness/skills/spec-it/SKILL.md"
+        ],
+        "lines": "3-5,27-37",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says a sheet 'names no plan, skill-spec or TODO id, no issue number, no URL and no code', and the API test docstring repeats it. `BANNED` (lines 27-37) enforces code only as a ``` or ~~~ fence; inline code, function names and file paths pass the model (B7's rationale says so: 'the model bans only fences'). A reader of the docstring would expect the model to reject inline code.\n\nAlso (system_shape): The spec_it_models docstring (lines 3-4) says a sheet names 'no code'. SKILL.md:17-18 says the same, and the release note (v1.1.0.md:137) attributes the rule to the model: 'with no ids, issue numbers, URLs or code (`harness_lib.spec_it_models`)'. BANNED (spec_it_models.py:27-37) refuses only ``` and ~~~ fences. Inline code and identifiers in prose pass, and SkillSpec B7 notes that 'the model bans only fences'. Code in prose is the skill's judgment rule (B7), not something the model enforces.",
+        "fix": [
+          "Reword the docstring to 'no code fence' and state that keeping function, field and module names out is the skill's rule, not the model's.",
+          "Say 'no code fences' where the model is credited (models docstring, release note), and leave the 'no function or field names' rule to SKILL.md's Outcomes rule, as B7 frames it."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "A string passed as goals or avoid becomes one goal per character",
+        "file": "plugins/harness/lib/harness_lib/spec_it_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/spec_it_models.py",
+          "plugins/harness/lib/harness_lib/spec_it_api.py"
+        ],
+        "lines": "89-92",
+        "reviewer": "runtime, adv_code_runtime",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The goals/avoid before-validator iterates its value (spec_it_models.py:89-92), and new_sheet calls list(goals) (spec_it_api.py:34). new_sheet(title=..., request=..., goals=\"Fast\") therefore validates into four one-letter goals ['F','a','s','t'] and write_sheet writes them, instead of refusing the wrong type. An agent filling the SKILL.md heredoc with a single string gets a silently malformed sheet that passes check.\n\nAlso (adv_code_runtime): SpecSheet._statements (mode='before') iterates `value` directly and new_sheet passes list(goals), so a str argument becomes a list of its characters instead of being refused as a non-list. Depending on the letters, the result is either a silently wrong sheet or a confusing 'appears twice' error.\n\nAttack: Probe (run at PR head): SpecSheet(title='T', request='r', goals='Fast', day=date(2026,11,25)).goals == ['F', 'a', 's', 't']; new_sheet('T', 'R.', 'Fast') writes a sheet with four one-letter goals. new_sheet('T', 'R.', 'Reads the brief') instead raises \"the line 'e' appears twice\".",
+        "fix": [
+          "In SpecSheet._statements, raise ValueError when value is a str (\"goals and avoid are lists of lines\") before iterating; optionally make new_sheet pass goals/avoid through unchanged so the model validator sees the original type.",
+          "In _statements, raise ValueError when isinstance(value, str) ('goals is a list of lines'); in new_sheet, do the same before list(goals)."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "SKILL.md gives no route to revise an older sheet",
+        "file": "plugins/harness/skills/spec-it/SKILL.md",
+        "files": [
+          "plugins/harness/skills/spec-it/SKILL.md",
+          "plugins/harness/lib/harness_lib/spec_it_api.py",
+          "plugins/harness/lib/harness_lib/spec_it_models.py"
+        ],
+        "lines": "51-65,67,89",
+        "reviewer": "roast, docs, skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 3 says 'Pass replace=True to rewrite a sheet already written from the same title and date', but new_sheet defaults day to today, so revising last week's sheet through the documented heredoc writes a second dated file beside it, and the skill forbids editing the page by hand. load_sheet is exported yet no step uses it.\n\nAlso (docs, skill_package, system_shape): SKILL.md step 3 (lines 51-53) says to pass `replace=True` 'to rewrite a sheet already written from the same title and date'. The heredoc it shows never passes `day`, and `new_sheet` dates a sheet today when `day` is None (spec_it_api.py:31-35). Following the step to revise a sheet dated on an earlier day therefore writes a second file under today's date beside the old one, the duplicate the dropped B11 targeted. The skill also never names `load_sheet` or the `day=` argument. Baseline R-16 avoided the duplicate on its own, but the written procedure does not cover the case.\n\nAlso (skill_package): spec-it SKILL.md:67 and the Judgment row at line 89 say every refusal names a field to fix. Two refusals do not: `write_sheet` raises `SheetExists` ('<path> exists; pass replace=True to rewrite it') when a sheet with the same title and date exists, and the model-level validator `_whole` refuses a duplicated goal/avoid line or a page over 500 lines without a field. Following the prose literally ('fix that field') gives no action for these.\n\nAlso (system_shape): SKILL.md:51-53 says 'Pass replace=True to rewrite a sheet already written from the same title and date'. The heredoc template (lines 56-64) calls new_sheet without `day`, and new_sheet (spec_it_api.py:31-35) defaults to today. An agent that follows the template to revise last week's sheet therefore writes a second file dated today. That is the exact failure B11 targeted, and B11 was dropped only because the baseline happened to pass. load_sheet is already bound in the heredoc namespace, but the skill never shows the revise path.",
+        "fix": [
+          "Add a revise line to Step 3: sheet = load_sheet('<path>'); write_sheet(sheet.model_copy(update={'goals': [...]}), replace=True), which keeps the path and date.",
+          "Add a sentence after line 53: 'To revise a sheet, read it with `load_sheet(<path>)` and pass its `day` to `new_sheet` (`day=old.day`) with `replace=True`, so the page keeps its path and date.' Add the matching row to the Judgment table.",
+          "Reword line 67 to: 'A refusal is one `problem:` line naming what to fix (a field, a repeated line, the page length, or an existing sheet, which `replace=True` rewrites): fix it and run the heredoc again.' and align the Judgment row at line 89.",
+          "Add a revise line under step 3, for example: 'To revise a sheet, load it and rewrite it in place: `sheet = load_sheet(\"<path>\").model_copy(update={\"goals\": [...]})` then `write_sheet(sheet, replace=True)`; the title and date stay, so the path does not change.' SKILL.md is a frozen part, so this goes through reopen and refreeze."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Test files and a frozen spec statement still carry the old specsheet-lite name",
+        "file": "tests/contract/test_specsheet_lite_wiring.py",
+        "files": [
+          "tests/contract/test_specsheet_lite_wiring.py",
+          "tests/lib/test_specsheet_lite_api.py",
+          "tests/lib/test_specsheet_lite_models.py",
+          "tests/scripts/test_specsheet_lite.py",
+          "docs/plans/strap/spec-it/SkillSpec.json"
+        ],
+        "lines": "1",
+        "reviewer": "skill_package, tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The rename to spec-it left four test modules under the old name (tests/contract/test_specsheet_lite_wiring.py, tests/lib/test_specsheet_lite_api.py, tests/lib/test_specsheet_lite_models.py, tests/scripts/test_specsheet_lite.py), while the fifth is already tests/skills/test_spec_it_skill_contract.py. The skill spec's behavior statement at docs/plans/strap/spec-it/SkillSpec.json:148 still reads `specsheet_lite.py check <path> ...`, naming a script that no longer exists (the driver is plugins/harness/scripts/spec_it.py). The TODO entry for issue #352 records the same leftovers, so this is known, but the PR ships them.\n\nAlso (tests): The skill was renamed to spec-it (modules spec_it_models, spec_it_api, scripts/spec_it.py, tests/skills/test_spec_it_skill_contract.py), but four new test files still carry test_specsheet_lite*: a leftover of the old name that makes `-k spec_it` or a glob on the skill name miss them. The frozen SkillSpec nodes (docs/plans/strap/spec-it/SkillSpec.json:38-194) reference these paths, so a rename needs a refreeze.",
+        "fix": [
+          "Rename the four test files to the spec_it form, update the node ids in SkillSpec.json to match, change the statement at line 148 to `spec_it.py check <path>`, and refreeze the skill spec (reopen first if the round requires it).",
+          "Leave the files as they are for this PR and track the rename under issue #352, noting the deferral in the PR description.",
+          "Rename to tests/lib/test_spec_it_models.py, tests/lib/test_spec_it_api.py, tests/scripts/test_spec_it.py and tests/contract/test_spec_it_wiring.py, and update the SkillSpec nodes through a reopen and refreeze.",
+          "Or keep the names and record the decision in the spec's rename freeze note."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Absolute-path refusal test accepts any exception",
+        "file": "tests/lib/test_specsheet_lite_api.py",
+        "lines": "42-44",
+        "reviewer": "tests, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_specs_refuses_an_absolute_path uses `pytest.raises(Exception)`, so a KeyError, a TypeError or a make_project failure would all pass it. The refusal comes from schema validation as ConfigError (plugins/harness/lib/harness_lib/config.py:344-347, relPath at harness.schema.json:52).\n\nAlso (overall): `test_specs_refuses_an_absolute_path` uses `pytest.raises(Exception)`, so it also passes when load_config breaks for an unrelated reason (a KeyError from a missing default, a TypeError in `_artifacts`). load_config reports schema violations as `ConfigError` (config.py:25, 347).\n\nAlso (roast): test_specs_refuses_an_absolute_path wraps load_config in pytest.raises(Exception), so a KeyError from a missing specs key in the builder or a fixture failure would also pass it.",
+        "fix": [
+          "Import ConfigError and assert `with pytest.raises(ConfigError, match=\"specs\"):`, building the project outside the raises block.",
+          "Import `ConfigError` from harness_lib.config and use `pytest.raises(ConfigError, match='specs')`.",
+          "Import ConfigError from harness_lib.config and use pytest.raises(ConfigError, match='specs')."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Default-date test races midnight",
+        "file": "tests/lib/test_specsheet_lite_api.py",
+        "lines": "53-55",
+        "reviewer": "adv_code_tests",
+        "fix_kind": "mechanical",
+        "summary": "test_new_sheet_dates_today_by_default calls date.today() inside new_sheet and again in the assertion. A run that crosses midnight between the two calls fails even though the code is correct.\n\nAttack: Patch harness_lib.spec_it_api.date with a stub whose today() returns 2026-11-25 on the first call and 2026-11-26 on the second (which is what a run straddling midnight sees): the assertion sheet.day == date.today() fails.",
+        "fix": [
+          "Bracket the call: before = date.today(); sheet = new_sheet(...); assert before <= sheet.day <= date.today()."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Driver contract paths left untested",
+        "file": "tests/scripts/test_specsheet_lite.py",
+        "files": [
+          "tests/scripts/test_specsheet_lite.py",
+          "tests/lib/test_specsheet_lite_api.py"
+        ],
+        "lines": "30-64",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The spec_it.py docstring (plugins/harness/scripts/spec_it.py:4-11) promises an absolute <path>, the `<n> lines` count and refusal of a page over 500 lines; the driver tests cover none of them (the clean-run test checks goals and avoid counts only). Also next_step's quote substitution (spec_it_api.py:79) has no test.",
+        "fix": [
+          "Add a driver test passing the absolute sheet path, assert the `| <n> lines |` field in the clean-run line, and add an api test for a title holding a double quote."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Skill contract duplicates the model round-trip and pins caps loosely",
+        "file": "tests/skills/test_spec_it_skill_contract.py",
+        "files": [
+          "tests/skills/test_spec_it_skill_contract.py",
+          "plugins/harness/skills/spec-it/SKILL.md"
+        ],
+        "lines": "46-54",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_sheet_round_trips_through_its_page repeats test_parse_reverses_render (tests/lib/test_specsheet_lite_models.py:93-95) with a smaller sheet. test_the_skill_states_the_line_caps_the_model_enforces checks only that the substrings \"500\" and \"250\" appear anywhere in SKILL.md, which any unrelated number satisfies.\n\nAlso (adv_code_tests): test_the_skill_states_the_line_caps_the_model_enforces checks str(MAX_LINES) in body and str(TARGET_LINES) in body as plain substring tests. A smaller cap whose digits occur inside '500' or '250' passes while SKILL.md still states the old numbers, so the guard misses the drift it was written to catch.\n\nAttack: Set MAX_LINES = 50 and TARGET_LINES = 25 in plugins/harness/lib/harness_lib/spec_it_models.py and leave SKILL.md saying 'caps a page at 500 lines; aim for 250': '50' in body and '25' in body both hold, so the test passes. The probe probes/test_probe_tests.py::test_skill_line_cap_guard_passes_on_drift ran this with monkeypatch and passed.",
+        "fix": [
+          "Delete the duplicate round-trip test and tighten the cap check to the phrases SKILL.md uses (for example `f\"{MAX_LINES} lines\"` and `f\"{TARGET_LINES}-line\"`).",
+          "Assert on the exact phrases with word boundaries, e.g. re.search(rf\"\\bat {spec_it_models.MAX_LINES}\\s+lines\", body) and re.search(rf\"\\b{spec_it_models.TARGET_LINES}-line target\\b\", body), or at least wrap each number in \\b...\\b."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Goal, avoid and title lines with Unicode line breaks validate and write but never load back",
+        "file": "plugins/harness/lib/harness_lib/spec_it_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/spec_it_models.py",
+          "plugins/harness/lib/harness_lib/spec_it_api.py"
+        ],
+        "lines": "54-63,77-82",
+        "reviewer": "adv_code_runtime",
+        "fix_kind": "mechanical",
+        "summary": "_statement refuses only '\\n' and '\\r', and the title validator only '\\n', while render_sheet/parse_sheet split the page with str.splitlines(), which also breaks on \\x0b, \\x0c, \\x1c-\\x1e, \\x85, \\u2028 and \\u2029. A SpecSheet holding one of these constructs, write_sheet writes it, and load_sheet / `spec_it.py check` then refuse the page the API itself wrote, breaking the stated contract that render_sheet's page is the whole stored form parse_sheet reads back.\n\nAttack: Probe (run at PR head): SpecSheet(title='T', request='r', goals=['one\\u2028two'], day=date(2026,11,25)) constructs fine; parse_sheet(render_sheet(sheet)) raises \"Goals holds a line that is not a '- ' item: 'two'\". Same for goals=['one\\x0ctwo'] and ['one\\x85two'], and title='T\\rX' fails with 'the page is not in the layout render_sheet writes'. Through the API: activate a project, write_sheet(new_sheet('T','r',['one\\u2028two'])) returns a path, then load_sheet(path) raises ValueError and `spec_it.py check <that path>` exits 1.",
+        "fix": [
+          "In _statement and SpecSheet._title, refuse any text where text.splitlines() != [text] (covers every separator splitlines honors, including '\\r' for the title).",
+          "Alternatively normalize those characters to a space in _clean before validation."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Release note says round 2 is still open when the ledger shows rounds 2 and 3 frozen",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "docs/plans/strap/spec-it/SkillSpec.json",
+          "docs/plans/freezes/skill/spec-it/r2.5-freeze.json",
+          "docs/plans/freezes/skill/spec-it/r3.2-freeze.json"
+        ],
+        "lines": "116-130,135-146",
+        "reviewer": "docs, system_shape, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/RELEASES/v1.1.0.md:144-145 says 'Round 2 is open: its fork-free line-splitting behavior waits on a baseline run from a session that loads this plugin version'. At the head the ledger says otherwise: r2.5-freeze.json freezes round 2 with B10 green (SkillSpec.json B10 state 'green', runs R-9 baseline and R-10/R-15 green). r3.1-reopen.json and r3.2-freeze.json then open and freeze round 3, where B11-B13 are dropped because baselines R-16..R-18 did not fail. This file becomes the GitHub release body, so the release would describe a spec state that no longer exists and would leave out round 3. The entry also says 'A strap-skills round proved four rules', which reads as the whole proof, but rounds 2 and 3 are missing from it.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:142-145 says the strap round proved four rules and that 'Round 2 is open: its fork-free line-splitting behavior waits on a baseline run from a session that loads this plugin version'. The frozen SkillSpec in this PR shows otherwise. B10 (fork-free line splitting) is green, with baseline R-9 and greens R-10/R-15. Round 2 froze at 19:51 (r2.5-freeze.json). A round 3 then froze (r3.2-freeze.json) after dropping B11-B13 because their baselines R-16..R-18 did not fail. Five judgment rules (B6-B10) are proven, not four. This file becomes the GitHub release body, so it would publish a stale state.\n\nAlso (docs): The header of docs/RELEASES/v1.1.0.md (lines 4-5) says each branch adds 'one line per change below, tagged with its PR number', and every earlier entry starts with '#3xx'. The two entries this PR adds (lines 135 and 146) start with 'Feat(harness):' and 'Fix(harness):' and have no PR number.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:4-5 says each branch adds 'one line per change below, tagged with its PR number'. Every earlier entry starts with '- #NNN'. The two entries this PR adds (lines 135 and 146) start '- Feat(harness):' and '- Fix(harness):' with no '#353'.\n\nAlso (overall, roast): The spec-it entry ends 'Round 2 is open: its fork-free line-splitting behavior waits on a baseline run from a session that loads this plugin version'. The head contradicts it: SkillSpec.json records B10's baseline R-9 and greens R-10/R-15, freeze r2.5 closed round 2, and r3.2 froze round 3 with B11-B13 dropped (their baselines R-16..R-18 did not fail). The entry also says 'four rules' were proved, while B10 makes five judgment behaviors green. Both new entries also lack the PR-number tag the file's own rule asks for (line 5: 'one line per change below, tagged with its PR number'), unlike every other entry (#337 ... #351).\n\nAlso (roast): The spec-it entry says 'Round 2 is open: its fork-free line-splitting behavior waits on a baseline run'. The head carries the r2.5 and r3.2 freezes, B10 green and B11-B13 dropped; the entry mentions neither the third round nor the dropped behaviors, and this file becomes the GitHub release body.\n\nAlso (roast): The file asks for one line per change tagged with its PR number (the prior entry starts '- #351 Feat(lap-stamp)'); the two new entries start '- Feat(harness)' and '- Fix(harness)' with no '#353'.",
+        "fix": [
+          "Replace the last sentence of the spec-it entry (lines 144-145) with the frozen state, for example: 'Round 2 added the fork-free line-splitting behavior (green, frozen at `fc97c392f777`); round 3 drew three more rules (in-place revision, a follow-up fork after the answer round, splitting a seamless compound ask) and dropped them because their baselines already passed, then refroze at the same hash.' Drop the clause that points at the runner fix as a blocker.",
+          "Replace the sentences from 'A strap-skills round proved four rules' to the end of the entry with: 'Two strap-skills rounds proved five rules against failing baselines: no design menu under brainstorm pressure, outcomes and never function or field names, one outcome per line, a question in place of an assumed default, and one goal line per outcome when no fork is open. A third round dropped three candidate behaviors (in-place revision, a second question after the answer round, splitting seamless compound asks) whose baselines already passed.'",
+          "Prefix line 135 with '#353 ' ('- #353 Feat(harness): `spec-it` skill ...') and line 146 with '#353 ' ('- #353 Fix(harness): the `strap-scenario-runner` agent ...').",
+          "Prefix both entries with '#353 ': '- #353 Feat(harness): `spec-it` skill ...' and '- #353 Fix(harness): the `strap-scenario-runner` agent ...'.",
+          "Replace the 'Round 2 is open ...' sentence with the recorded outcome (round 2 froze with B10 green for one goal per outcome when no fork is open; round 3's B11-B13 were dropped because their baselines already passed), adjust 'four rules' to match, and prefix both new entries with '#353'.",
+          "Rewrite the last two sentences of the spec-it entry: name the frozen state (round 3 frozen, B10 green on its stated evidence, three revision and splitting behaviors dropped because their baselines already passed)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I2",
+      "classification": "architectural_ambiguity",
+      "reason": "B10 red is check-only (R-9 never loaded the skill): accept and note it, or reopen, rerun the baseline with the round-1 skill and drop B10 if it holds."
+    },
+    {
+      "id": "I5",
+      "classification": "architectural_ambiguity",
+      "reason": "Carrying TODO ids and issues to write-plan --refs is a new spec-it behavior: SKILL.md prose or a check --refs flag, proven in a new strap round."
+    },
+    {
+      "id": "M4",
+      "classification": "out_of_scope",
+      "reason": "Retiring todo-33h5 (and re-scoping todo-8wd7) belongs after the merge, through todo-edit."
+    },
+    {
+      "id": "M5",
+      "classification": "out_of_scope",
+      "reason": "Old snake name in frozen B4 and B1-B5 nodes needs a reopen round; tracked by todo-57az / #352."
+    },
+    {
+      "id": "M14",
+      "classification": "out_of_scope",
+      "reason": "Renaming the four test_specsheet_lite files moves frozen B1-B5 node ids; needs a reopen round, tracked by todo-57az / #352."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 353 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"aa08b9e7aa38d52af9bc4dcab01601d057e083b3\",\"headRefName\":\"0011-specsheet-lite\",\"headRefOid\":\"f10e7bce0e979cc77d8c70bd4a217678edf229d4\",\"last_sha\":\"f10e7bce0e979cc77d8c70bd4a217678edf229d4\",\"mergeCommit\":null,\"number\":353,\"state\":\"OPEN\",\"title\":\"Docs(strap): add the spec-it skill as the design step before write-plan\",\"url\":\"https://github.com/t968rs/operator-straps/pull/353\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (55 checked, 0 refuted, 9 code findings)",
+        "counts": {
+          "findings_checked": 55,
+          "findings_refuted": 0,
+          "findings_upheld": 55,
+          "code_findings": 9
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0011-specsheet-lite",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0011-specsheet-lite",
+        "head_ref_name": "0011-specsheet-lite",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "aa08b9e7aa38d52af9bc4dcab01601d057e083b3",
+        "head_sha": "f10e7bce0e979cc77d8c70bd4a217678edf229d4",
+        "base_ancestor_command": "git merge-base --is-ancestor aa08b9e7aa38d52af9bc4dcab01601d057e083b3 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor f10e7bce0e979cc77d8c70bd4a217678edf229d4 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - spec_it.py docstring now documents the quoted form `--spec \"<path>\"`, matching the quoting the api part (next_step in spec_it_api.py, owned by w2_fix_1) applies; the driver relays next_step's string unchanged; next_step quotes the --spec path like the title (--spec \"<path>\"); the api and driver tests expect the quoted form and a new api test pins a 'docs/my specs' folder"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - test_specs_refuses_an_absolute_path builds the project outside the raises block and asserts pytest.raises(ConfigError, match=\"specs\"); ConfigError imported from harness_lib.config"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - test_new_sheet_dates_today_by_default brackets new_sheet between two date.today() reads: before <= sheet.day <= date.today()"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - clean-run driver test asserts the `| <n> lines |` field; new driver test passes the absolute sheet path and checks the echoed path and the next: line; new api test pins next_step swapping a double quote in the title for a single quote (asserts the prefix only, so it holds whether or not the --spec path is quoted)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - slug folds accents via NFKD; sheet_path steps to -2, -3 ... while the page at the path holds a different '# ' title (_title_at), so 'C++ API' and 'C# API' land in c-api.md and c-api-2.md and same-title rewrites keep their path"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - module docstring now says 'no code fence', notes the model refuses only the BANNED patterns and that keeping function, field and module names out of the prose is the skill's rule; Test module docstring and release note now credit the model with refusing code fences only; SKILL.md overview states the model refuses fences while function, field and module names are the skill's Outcomes rule"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - SpecSheet._statements raises ValueError for a str value; new_sheet passes goals and avoid through unchanged so the model sees the original type"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - _statement and SpecSheet._title refuse text unless text.splitlines() is [] or [text] (_one_line), covering every break splitlines honors including '\\r' in the title; spec_it_api.py needed no edit since write_sheet/load_sheet go through the model"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - Added a 'Design new work' row for spec-it above write-plan in the README goal table (sheet under artifacts.specs, spec_it.py check, write-plan --spec next line); HARNESS_RULES.md: already routes design through spec-it, cited only, no edit needed."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - Rewrapped the driver bullet at lines 45-49 to the file's ~110 width, moving 'Only the' onto its own line end and 'init and record-run commands keep' onto the next line."
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - Deleted the duplicate round-trip test (and its date import) and pinned the caps with word-bounded regexes on 'at <MAX_LINES> lines' and '<TARGET_LINES>-line target'; SKILL.md: already states both phrases, no edit for this issue"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - Release note spec-it entry now names two rounds proving five rules and a third round dropping three behaviors whose baselines passed, and both new entries carry the #353 tag; SkillSpec.json, r2.5-freeze.json, r3.2-freeze.json: cited as the ledger source, no edit"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - SKILL.md step 3 adds the revise route (load_sheet + model_copy + write_sheet replace=True, keeping title, date and path) and warns that new_sheet dates today; the refusal line and Judgment row now cover a repeated line, the page length and an existing sheet, plus a Judgment row for revising an older sheet (SKILL.md is a frozen part: needs refreeze); spec_it_api.py and spec_it_models.py: load_sheet, write_sheet(replace) and model_copy already support the route, no edit needed"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - parse_sheet reads the date only from line 3, so a request wrapping 'Date: ' to a line start round-trips; SpecSheet._whole refuses a request whose wrapped line opens with '## ', naming the request, so write_sheet refuses what check would; render_sheet shares a _wrapped helper; the splitlines one-line check for title and statements was already present (_one_line); model tests cover both routes and each line-break kind; spec_it_api.py, spec_it.py and SKILL.md need no edit (the refusal names the request field, which the SKILL loop already handles)"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - parse cap test builds an in-layout page of MAX_LINES + 1 lines via model_construct and asserts a plain ValueError matching 'line cap'; fixtures sized from the rendered overhead pin the model cap at exactly MAX_LINES / MAX_LINES + 1 and the driver warn at TARGET_LINES / TARGET_LINES + 1; new driver test refuses an over-cap page; id refusal asserts 'a plan item id'; spec_it_models.py: the parse guard it pins is unchanged"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - Added \"spec-it\" to _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py (alphabetical, after \"roast-my-code\"); the line wrap was adjusted to keep the list formatting."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f10e7bc (working-tree snapshot; developer commits) - README artifacts.specs row and the schema's specs description now state that an override of artifacts.specs or planning_prefixes must list the specs folder in planning_prefixes (outside fixer waves)"
+    }
+  ]
+}
