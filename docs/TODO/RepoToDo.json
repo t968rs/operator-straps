@@ -57,12 +57,12 @@
   },
   "counts": {
     "items": 75,
-    "needs_decision": 45,
+    "needs_decision": 44,
     "trackers": 0,
     "close_candidates": 40,
     "by_status": {
-      "NEEDS_DECISION": 45,
-      "OPEN": 30
+      "NEEDS_DECISION": 44,
+      "OPEN": 31
     },
     "by_impact": {
       "dev_velocity": 42,
@@ -3108,9 +3108,9 @@
       "title": "Banner working-refs line: colors for the branch, TODO and plan link text",
       "keyword": "working-refs",
       "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Which pieces get which color (plan link, own refs, other branch names, issue numbers, separators), and should band-line match the ccstatusline colors or stay subtle?",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
       "tracker": null,
       "sources": [
         {
@@ -3124,19 +3124,17 @@
       ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "The issue shows the banner's TODO / plan line `0007-add-bookmark-hook · [ 0006-pr-sum-updates #268 ]` and asks for colors on the branch, TODO and plan link and text. Current state: the ccstatusline form, plugins/working-refs/hooks/line.ts:190-195 (`statusText`), already draws each TODO label in its palette color (line.ts:20, :47-48, :59) and each other branch name dark 240 (line.ts:17, :99-100), and makes each plan number an OSC 8 link with no color (line.ts:193); the `plan`/`plans` word, issue numbers `#N` (line.ts:65-67), the separators and the `+N` tail stay in the default foreground. The band-line form draws the whole line `subtle` with only other branch names `dimColor` (plugins/band-line/hooks/band.tsx:32, :61-62): no TODO colors and no plan links. The example has no `plan` word and no TODO label, and the issue names neither renderer: unverified whether it came from ccstatusline or band-line, or from an older working-refs.",
-      "proposed_change": "Settle the color map (own-branch head vs other branch names, plan link, TODO labels, issue numbers, separators), then apply it in `statusText` and `segmentStatus` (plugins/working-refs/hooks/line.ts) and, if band-line should match, carry color hints in the `WorkingLine` pieces (plugins/working-refs/types/index.d.ts) so band.tsx can draw them while its plain join still equals `text` (band.tsx:38-46). Extend line.test.ts and band.test.tsx with the new escapes.",
-      "code_snippet": "plugins/working-refs/hooks/line.ts:190\nexport const statusText = (line: WorkingLine | null): string => {\n  if (line === null) return ''\n  const refs = drawRefs(line.labels, line.issues, coloredLabel)\n  const head = joinParts(plansPart(line.plans, p => osc8(fileUrl(p.page), p.id)), refs)\n  return compose(head, line.others.map(segmentStatus), line.more)\n}",
+      "summary": "The issue shows the banner's TODO / plan line `0007-add-bookmark-hook · [ 0006-pr-sum-updates #268 ]` and asks for colors on the branch, TODO and plan link and text. Decided in plan 2030 (D1-D4, values V1-V5): only the ccstatusline form (`statusText`, plugins/working-refs/hooks/line.ts:247) gets colors (D3); band-line keeps its subtle one-color form. A plan number fades through the ramp 51, 45, 74, 67, 243 as its items finish, done read from the plan's receipts (D1, D2), with complete and closed both counting as done (D4); an issue number is 180, another branch's name 246 and the punctuation 240; TODO label colors are unchanged.",
+      "proposed_change": "Apply the plan 2030 color map in `statusText` and `segmentStatus` (plugins/working-refs/hooks/line.ts), with each plan's `done` and `total` read from its receipts, and extend line.test.ts with the new escapes. band-line stays as is (plan 2030 D3).",
+      "code_snippet": "plugins/working-refs/hooks/line.ts:247\nexport const statusText = (line: WorkingLine | null): string => {\n  if (line === null) return ''\n  const refs = drawRefs(line.labels, line.issues, STATUS)\n  const head = joinParts(STATUS, plansPart(line.plans, STATUS), refs)\n  return compose(head, line.others.map(segmentStatus), line.more, STATUS)\n}",
       "files": [
         "plugins/working-refs/hooks/line.ts",
         "plugins/working-refs/hooks/line.test.ts",
-        "plugins/working-refs/types/index.d.ts",
-        "plugins/band-line/hooks/band.tsx",
-        "plugins/band-line/hooks/band.test.tsx"
+        "plugins/working-refs/types/index.d.ts"
       ],
       "blast_radius": {
         "level": "M",
-        "reasoning": "Two mods draw the line: working-refs's ccstatusline text and band-line's Ink band; a shared color hint changes the WorkingLine type both read.",
+        "reasoning": "Two mods draw the line: working-refs's ccstatusline text gets the colors, and band-line's Ink band reads the WorkingLine type that gains each plan's done and total.",
         "consumers": [
           "plugins/band-line/hooks/band.tsx",
           "plugins/working-refs/hooks/watch.ts (statusText written to the line file and line.json, :438-440)"
