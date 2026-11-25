@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { DETACHED_KEY } from './mirror'
 import type { PlanInfo } from './plans'
-import { archivedIdsOf, pageOf, parsePlan, qualifies, refsOf } from './plans'
+import { archivedIdsOf, itemsOf, pageOf, parsePlan, qualifies, refsOf } from './plans'
 
 const SHA = 'a'.repeat(40)
 const OTHER = 'b'.repeat(40)
@@ -16,12 +16,15 @@ const planJson = (over: Record<string, unknown> = {}): string => JSON.stringify(
   base_branch: 'main',
   base_commit: SHA,
   refs: { todo_ids: ['todo-k69m'], issues: [301, 315] },
+  items: [{ id: 'TASK-1', status: 'COMPLETE' }, { id: 'TASK-2', status: 'PENDING' }],
   ...over,
 })
 
+const ITEMS = [{ id: 'TASK-1', status: 'COMPLETE' }, { id: 'TASK-2', status: 'PENDING' }]
+
 const info = (over: Partial<PlanInfo> = {}): PlanInfo => ({
   id: '2025', branch: '1168-todo-banner', baseBranch: 'main', baseCommit: SHA,
-  refs: { todoIds: [], issues: [] }, page: PAGE, ...over,
+  refs: { todoIds: [], issues: [] }, page: PAGE, items: ITEMS, ...over,
 })
 
 const NONE: ReadonlySet<string> = new Set()
@@ -53,12 +56,42 @@ describe('refsOf', () => {
   })
 })
 
+describe('itemsOf', () => {
+  test('each item id and status, in file order', async () => {
+    expect(itemsOf([{ id: 'TASK-2', status: 'PENDING', title: 't' }, { id: 'TASK-1', status: 'COMPLETE' }]))
+      .toEqual([{ id: 'TASK-2', status: 'PENDING' }, { id: 'TASK-1', status: 'COMPLETE' }])
+  })
+
+  test('non-objects and entries without a string id are dropped; a non-string status is null', async () => {
+    const raw = [null, 'TASK-1', ['TASK-1'], { status: 'COMPLETE' }, { id: 7 }, { id: 'TASK-3', status: 1 },
+      { id: 'TASK-4' }]
+    expect(itemsOf(raw)).toEqual([{ id: 'TASK-3', status: null }, { id: 'TASK-4', status: null }])
+  })
+
+  test('an empty id is dropped', async () => {
+    expect(itemsOf([{ id: '', status: 'COMPLETE' }, { id: 'TASK-1' }])).toEqual([{ id: 'TASK-1', status: null }])
+  })
+
+  test('a repeated id keeps only its first entry', async () => {
+    expect(itemsOf([{ id: 'TASK-1', status: 'PENDING' }, { id: 'TASK-2' }, { id: 'TASK-1', status: 'COMPLETE' }]))
+      .toEqual([{ id: 'TASK-1', status: 'PENDING' }, { id: 'TASK-2', status: null }])
+  })
+
+  test('a non-array is no items', async () => {
+    for (const v of [null, undefined, {}, 'TASK-1']) expect(itemsOf(v)).toEqual([])
+  })
+})
+
 describe('parsePlan', () => {
   test('the branch fields, the refs and the sibling page', async () => {
     expect(parsePlan(PLAN, planJson())).toEqual({
       id: '2025', branch: '1168-todo-banner', baseBranch: 'main', baseCommit: SHA,
-      refs: { todoIds: ['todo-k69m'], issues: [301, 315] }, page: PAGE,
+      refs: { todoIds: ['todo-k69m'], issues: [301, 315] }, page: PAGE, items: ITEMS,
     })
+  })
+
+  test('a plan with no items field parses with no items', async () => {
+    expect(parsePlan(PLAN, planJson({ items: undefined }))?.items).toEqual([])
   })
 
   test('a plan with no branch fields or refs still parses, with nulls and no refs', async () => {

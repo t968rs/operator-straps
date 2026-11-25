@@ -15,6 +15,9 @@
  * - A plan is `<prefix>_ActionPlan.json` beside its page `<prefix>_PIP.html` (`harness_lib.plan_doc`).
  * - A catalog item's `keyword` (`TodoCatalog.schema.json` `$defs/item`) labels its TODO id on the line; the
  *   reader re-checks its schema `pattern` and `maxLength` before the keyword reaches the line.
+ * - A plan item's receipt is `<plans>/<plan_id>/receipts/<ITEM>.json` (`harness_lib.plan_receipts`
+ *   `RECEIPTS_DIR`); an item counts as done when its receipt's outcome kind is one whose model implies a status
+ *   in `plan_enums.DONE`, or, with no receipt, when its own status is in `plan_enums.DONE` (plan 2030).
  *
  * `tests/mods/test_working_refs_contract.py` pins every value. Pure: no `$`.
  */
@@ -50,3 +53,10 @@ export const KEYWORD_KEY = 'keyword'
 /** The keyword's `pattern` and `maxLength` in that schema; a catalog that skipped `check` can break either. */
 export const KEYWORD_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_.-]*$'
 export const KEYWORD_MAX = 32
+
+/** The folder of a plan's item receipts, under `<plans>/<plan_id>/`. */
+export const RECEIPTS_DIR = 'receipts'
+/** The receipt outcome kinds (`OutcomeKind`) whose model's status is in `plan_enums.DONE`. */
+export const DONE_OUTCOMES = ['complete', 'closed'] as const
+/** The item statuses of `plan_enums.DONE`, read when an item has no receipt. */
+export const DONE_STATUSES = ['COMPLETE', 'CLOSED_NO_ACTION'] as const
