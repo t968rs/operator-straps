@@ -1,0 +1,20 @@
+{
+  "kind": "reopen",
+  "round": 2,
+  "seq": 1,
+  "tree": null,
+  "files": {},
+  "ignored": {},
+  "at": "2026-11-25T18:26:44+00:00",
+  "base": "a0cbf8c00cdf059d869a1a232a0bb9bcbdade35e",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

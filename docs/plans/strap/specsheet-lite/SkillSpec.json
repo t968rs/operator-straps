@@ -1,7 +1,7 @@
 {
   "name": "specsheet-lite",
-  "mode": "new",
-  "base": null,
+  "mode": "edit",
+  "base": "a0cbf8c00cdf059d869a1a232a0bb9bcbdade35e",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -422,6 +422,70 @@
       ],
       "state": "green",
       "dropped_reason": null
+    },
+    {
+      "id": "B10",
+      "statement": "When the request leaves no fork open, writes the sheet at once with one goal line per outcome: a compound ask becomes several goal lines and each never or do-not of the request its own Avoid line",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Whether a written goal line holds one outcome or several is a reading of its sense, not its length",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-9",
+          "task": "Developer: 'Brief of goals for the plan, everything is decided, no questions needed: a-w refuses a target branch with uncommitted changes, prints the dirty paths and suggests git stash in the refusal; --force skips the refusal; untracked files are never touched, and the refusal must not change the target's index. Write it now, due Friday.'",
+          "pressures": [
+            "time"
+          ],
+          "tempts": "writes a goal line that joins the refusal, the dirty-path listing and the stash hint",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "next: /harness:write-plan",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal line holding two or more separate outcomes",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-10",
+          "task": "Developer: 'Goals for the plan, all settled, write it straight away: /lap-times takes --last N, shows only the last N laps of the session, prints the total time of those laps under the table and accepts N from 1 to 999; it never reads another session's laps and does not change the output when the flag is absent. Need it before the standup.'",
+          "pressures": [
+            "time"
+          ],
+          "tempts": "writes a goal line that joins the flag, the filtering, the total and the range",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "next: /harness:write-plan",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal line holding two or more separate outcomes",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "drawn",
+      "dropped_reason": null
     }
   ],
   "draws": [
@@ -452,6 +516,13 @@
       "seed": 2694745643,
       "reason": "initial",
       "at": "2026-11-25T17:18:06+00:00"
+    },
+    {
+      "behavior": "B10",
+      "scenario": "SC-9",
+      "seed": 3638327222,
+      "reason": "initial",
+      "at": "2026-11-25T18:26:58+00:00"
     }
   ],
   "runs": [
@@ -570,6 +641,20 @@
       "recorded": true,
       "tree": "plan-red-beee688",
       "start": "beee688cfb4cce084d512baeb20ff5f5fccbd46f"
+    },
+    {
+      "id": "R-9",
+      "behavior": "B10",
+      "scenario": "SC-9",
+      "arm": "baseline",
+      "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
+      "reply": "",
+      "reply_sha256": "",
+      "diff": [],
+      "checks": [],
+      "recorded": false,
+      "tree": "plan-red-a0cbf8c",
+      "start": "a0cbf8c00cdf059d869a1a232a0bb9bcbdade35e"
     }
   ],
   "grades": [
@@ -644,11 +729,28 @@
       "grader": "session"
     }
   ],
-  "frozen": {
-    "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
-    "grader": "session",
-    "at": "2026-11-25T18:26:20+00:00",
-    "authored": "80d9d510b9b096b27e5de1f27698f534e5be54f6b02c65bd88f8c1d61bc78519"
-  },
-  "driver_digest": "c8ed31da9d2115a194093b292bfc5f815254c6f824538e31bb94a492bdd42216"
+  "rounds": [
+    {
+      "base": null,
+      "frozen": {
+        "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
+        "grader": "session",
+        "at": "2026-11-25T18:26:20+00:00",
+        "authored": "80d9d510b9b096b27e5de1f27698f534e5be54f6b02c65bd88f8c1d61bc78519"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9"
+      ]
+    }
+  ],
+  "frozen": null,
+  "driver_digest": "a9a893b493a7e78a72a8924894f1e17373b1671eb15bac5fc8a0acc2b829f397"
 }
