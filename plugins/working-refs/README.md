@@ -30,7 +30,12 @@ plan 2027 · todo-x7ty stop_gates (301) · [ 1168-todo-banner todo-48q2 ] [ (det
   item, or without an outcome kind) is done when its own status is `COMPLETE` or `CLOSED_NO_ACTION`. A
   `started` or `blocked` receipt is not done, whatever the item's status says. A plan id that two plan files
   on the line share gets no receipts progress, since the receipts belong to neither for certain: each such
-  plan counts its item statuses alone.
+  plan counts its item statuses alone. The receipt-else-status fallback applies to each item, which differs
+  from the harness: `plan.py status` (`plan_receipts.status_view`) counts an item of a receipts-scheme plan
+  with no receipt as `PENDING`, and reads receipts only for a plan whose `frozen.records` is `receipts`
+  (`book_for`). The line counts receipts for any plan on it, whatever its `frozen.records` scheme, so a
+  `COMPLETE` item with no receipt, or a leftover receipts folder, can show more progress on the line than on
+  the plan page.
 - Every other branch's override follows as `[ <branch> <refs> ]`, most recently set first (`set_at`), the
   branch name in color 246 in the line file and dim in band-line. Segments past `working_refs.max_chars`
   fold into a trailing ` +N`; the plans and the own refs are never cut, and with no own part the first

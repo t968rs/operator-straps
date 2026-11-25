@@ -7,6 +7,10 @@ import type { Listed } from '../types'
  * A plan's done share and the color it takes on the line (plan 2030, issue #343). An item is done when its
  * receipt's outcome kind is in `DONE_OUTCOMES`, or, with no readable receipt, when its own status is in
  * `DONE_STATUSES` (V6); the plan number steps from bright to dim as items finish (V1, V2).
+ * The receipt-else-status fallback applies to each item, where harness `plan_receipts.status_view` counts an
+ * item of a receipts-scheme plan with no receipt as PENDING. Receipts count for any qualifying plan whatever
+ * its `frozen.records` scheme (harness `book_for` reads them only for receipts plans), and a plan id that two
+ * plan files share skips receipts and counts its item statuses.
  * Pure: no `$`; the caller lists the receipts folders, reads the receipts and passes the answers in.
  */
 

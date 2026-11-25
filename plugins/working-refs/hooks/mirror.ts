@@ -18,6 +18,8 @@
  * - A plan item's receipt is `<plans>/<plan_id>/receipts/<ITEM>.json` (`harness_lib.plan_receipts`
  *   `RECEIPTS_DIR`); an item counts as done when its receipt's outcome kind is one whose model implies a status
  *   in `plan_enums.DONE`, or, with no receipt, when its own status is in `plan_enums.DONE` (plan 2030).
+ *   Receipts count for any qualifying plan whatever its `frozen.records` scheme (harness `book_for` reads them
+ *   only for receipts plans); a plan id that two plan files share skips receipts and counts its item statuses.
  *
  * `tests/mods/test_working_refs_contract.py` pins every value. Pure: no `$`.
  */
