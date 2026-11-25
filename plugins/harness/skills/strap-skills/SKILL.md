@@ -332,30 +332,45 @@ writes land where `record-run` looks.
     `base/skill/<name>/r<N>-<m>`; the old tags stay.
 
     **Rename a skill.** A spec is tied to its skill's folder name, so a renamed skill takes its spec along.
-    Before the run, on a frozen spec that is not Locked, move the skill folder (`git mv`, then set the
-    frontmatter `name`) and every part whose path is made from the name: the contract test
-    (`test_<snake>_skill_contract.py`) and, for a harness skill, its models, API and driver modules. Then run
+    On a frozen spec that is not Locked, run
 
     ```
-    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" rename <name> <new-name>
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" rename <name> <new-name> [--dry-run]
     ```
 
-    It refuses a spec that is not frozen (never frozen, or reopened and not yet refrozen) or is Locked, an
-    old skill folder still on disk (remove any leftover untracked files there), a new `SKILL.md` that is
-    missing, a part missing at its new path, and a new name that already has a spec or ledger folder. It moves the spec folder and the ledger folder to the
-    new name (entry files unchanged), re-points each part, planned test node (its file half), planned test
-    copy in the spec folder's `tests/` and check
-    target under the old skill folder or at a path made from the old name, appends a `rename` entry naming the old name and tags the base
-    `base/skill/<new-name>/r<N>`. Entries written before the rename keep their tags under the old stem;
-    later ones tag under the new. The moved parts no longer hash to the stamp, so the `stale:` line follows:
-    run and grade the greens, then `freeze <new-name> --refreeze`. The old name, as a whole word, becomes the
-    new one in each behavior statement and scenario (task, `tempts`, reply check targets, judged subjects),
-    so a check that pins the invocation expects the new name; path check targets are only re-pointed, and
-    recorded replies keep their text. The swap is blind to meaning: a name that is a plain word (`bookmark`,
-    `working`) also rewrites prose such as "the compaction bookmark". The run prints one
-    `swapped: <behavior>[/<scenario>] <field>` line per rewritten field; show those lines to the developer
-    before the greens run, and correct a wrong rewrite only on the developer's call (after `reopen`, since
-    a frozen spec refuses text edits).
+    It moves the skill folder and every part whose path is made from the name (the contract test
+    `test_<snake>_skill_contract.py` and, for a harness skill, its models, API and driver modules), plus each
+    test file a planned node cites whose file name carries the old snake form: `git mv` for a tracked path,
+    one `move: <old> -> <new>` line each. A tree the developer already moved by hand is accepted. Inside the
+    parts and the moved test files, the old name's kebab, snake and title forms (`demo-skill`, `demo_skill`,
+    `Demo Skill`) become the new name's, the frontmatter `name` included, with one `swapped-file: <path>:<line>`
+    line per changed line. Every other tracked file that still names an old form, outside the history folders
+    (plans, ledgers, reviews, summaries, commit messages, scratch, research, spec sheets, planning folders),
+    gets one `stale-name: <path>:<line>` line and is left for the developer to fix. `--dry-run` prints the
+    `move:` lines and changes nothing.
+
+    It refuses, before anything moves, a spec that is not frozen (never frozen, or reopened and not yet
+    refrozen) or is Locked, a move whose target already exists, an old skill folder that holds only untracked
+    leftovers next to a moved one (remove them), a `SKILL.md` or part found at neither path, and a new name
+    that already has a spec or ledger folder. A failure part way moves every file back and restores the
+    swapped text. It moves the spec folder and the ledger folder to the new name (entry files unchanged),
+    re-points each part, planned test node (its file half), planned test copy in the spec folder's `tests/`
+    and check target under the old skill folder or at a path made from the old name, appends a `rename`
+    entry naming the old name and tags the base `base/skill/<new-name>/r<N>`. Entries written before the
+    rename keep their tags under the old stem; later ones tag under the new. The moved parts no longer hash
+    to the stamp, so the `stale:` line follows: run and grade the greens, then
+    `freeze <new-name> --refreeze`. The old name's forms become the new one's in each behavior statement and
+    scenario (task, `tempts`, reply check targets, judged subjects), so a check that pins the invocation
+    expects the new name; path check targets are only re-pointed, and recorded replies keep their text. The
+    swap is blind to meaning: a name that is a plain word (`bookmark`, `working`) also rewrites prose such as
+    "the compaction bookmark". The run prints one `swapped: <behavior>[/<scenario>] <field>` line per
+    rewritten spec field; show those lines and the `swapped-file:` lines to the developer before the greens
+    run, and correct a wrong rewrite only on the developer's call (after `reopen`, since a frozen spec
+    refuses text edits).
+
+    A spec renamed before the moves existed can keep old-named test files. `rename <name> --from <old-name>`
+    finishes that rename under the spec's current name: the same moves, swaps, node re-points and report,
+    with no spec or ledger move and no ledger entry.
 
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
     the `bump:` line from step 5 when one printed, and the `push:` line the freeze printed. The developer
