@@ -95,6 +95,15 @@ def test_runner_works_only_inside_the_tree(repo_root: Path) -> None:
     assert "TREE" in body
 
 
+def test_runner_points_the_skill_api_launcher_at_the_tree(repo_root: Path) -> None:
+    """A skill's own api heredoc (``skill_api.py``) resolves the project from the working directory too."""
+    _, body = _parts(repo_root, _RUNNER)
+    rule = body.split("**Project drivers take `TREE` as the project.**", 1)[1].split("\n- **", 1)[0]
+    rule = " ".join(rule.split())
+    assert "skill_api.py" in rule
+    assert "any other driver that takes `--repo`" in rule
+
+
 def test_runner_reply_is_the_printed_block_verbatim(repo_root: Path) -> None:
     _, body = _parts(repo_root, _RUNNER)
     assert "verbatim" in body.lower()
