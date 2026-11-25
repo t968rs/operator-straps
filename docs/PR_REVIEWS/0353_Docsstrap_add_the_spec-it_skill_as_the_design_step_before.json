@@ -8,7 +8,7 @@
   "base_sha": "2d7b5b912634e285f5568882b412045db1dc5c14",
   "head_sha": "f10e7bce0e979cc77d8c70bd4a217678edf229d4",
   "review_date": "2026-11-25",
-  "verdict": "NOT READY TO MERGE - important: I2, I5",
+  "verdict": "READY TO MERGE - 19 of 22 findings resolved, 3 bubbled",
   "stats": {
     "additions": 2411,
     "deletions": 72,
@@ -46,8 +46,6 @@
     "docs/_scratch/pr_review/0353/pr353_20261125T210712Z/findings/failing_tests_1.json"
   ],
   "bubbles": [
-    "I2",
-    "I5",
     "M4",
     "M5",
     "M14"
@@ -733,6 +731,18 @@
       "status": "RESOLVED",
       "date": "2026-11-25",
       "evidence": "f10e7bc (working-tree snapshot; developer commits) - README artifacts.specs row and the schema's specs description now state that an override of artifacts.specs or planning_prefixes must list the specs folder in planning_prefixes (outside fixer waves)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f4218e4 (working-tree snapshot; developer commits) - spec-it round 4 reran B10 as B16 with the skill loaded (baseline R-20 held, B16 dropped with the reason); B10 stays frozen, release note states its red came from the hand-off check (outside fixer waves)"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "f4218e4 (working-tree snapshot; developer commits) - spec-it round 4: spec_it.py check --refs (B14, mechanical) and the SKILL.md refs rule (B15, baseline R-19 failed, green R-21 passed); frozen at 64168e9f3c4c (outside fixer waves)"
     }
   ]
 }
