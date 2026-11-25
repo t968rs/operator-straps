@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 73,
-    "needs_decision": 43,
+    "items": 75,
+    "needs_decision": 44,
     "trackers": 0,
     "close_candidates": 40,
     "by_status": {
-      "NEEDS_DECISION": 43,
-      "OPEN": 30
+      "NEEDS_DECISION": 44,
+      "OPEN": 31
     },
     "by_impact": {
-      "dev_velocity": 40,
+      "dev_velocity": 42,
       "docs_tooling": 24,
       "maintainability": 2,
       "runtime_failure": 5,
@@ -74,13 +74,13 @@
     },
     "by_loe": {
       "XS": 4,
-      "S": 22,
-      "M": 32,
+      "S": 23,
+      "M": 33,
       "L": 13,
       "XL": 2
     },
     "sources_absorbed": {
-      "gh_issue": 65,
+      "gh_issue": 67,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 8
@@ -2046,8 +2046,67 @@
       "why_ranked": "Severity 2 (debt with a concrete cost: no typed model of the stored item exists beyond the JSON Schema), impact dev_velocity (tooling only, no output changes), size M."
     },
     {
-      "id": "todo-zes6",
+      "id": "todo-7xjk",
       "rank": 33,
+      "title": "writing-docstrings -p relays every writer reply in full; the session reply is long and unreadable",
+      "keyword": "writing-docstrings",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "What survives the condensed -p reply: only paths and counts (as the issue asks), or also the `Defects (not fixed)` and `Undocumented` entries, and should those move to a detail file the reply points at?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#341",
+          "url": "https://github.com/t968rs/operator-straps/issues/341"
+        }
+      ],
+      "gh_issues": [
+        341
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue's transcript shows a seven-file -p run whose session reply is every docstring-writer reply pasted whole: per-symbol `Kept (in layout):` lists (27 symbols for one file), `Tier overrides:`, `Undocumented`, multi-sentence `Defects (not fixed):` entries and free-form `Note for review` / `Notes:` paragraphs. Goal (issue): the docstring writers / skill relay only the paths and the counts and types of docstrings written. Confirmed in the tree: plugins/harness/skills/writing-docstrings/SKILL.md:76 tells the session to relay the replies unedited, concatenated in row order under -p; plugins/harness/agents/docstring-writer.md:191-200 defines the per-file reply with `Tier overrides`, `Kept (in layout)`, `Undocumented`, `Defects (not fixed)` and `Check` headings, and docstring-writer.md:211-212 requires every kept symbol listed with its reason. The format defines no `Notes:` heading (docstring-writer.md:193-200, only `Not in scope:` at :215), so the transcript's note paragraphs are writers going past the format. The reply format is pinned by scenarios in docs/plans/strap/writing-docstrings/SkillSpec.json (e.g. around :641), so a change goes through a strap reopen round. Related: todo-hnp3 (B9 reply_lacks tier-line check) touches the same agent file.",
+      "proposed_change": "Shorten the -p reply: (a) cut the writer reply to `<path>: <n> rewritten, <n> kept` plus counts by kind (e.g. `kept: 14 (brief 9, compact 5)`), dropping the per-symbol `Kept (in layout)` list, and (b) have the session (SKILL.md step 4) print one table of path / rewritten / kept / defects instead of concatenating replies. Keep defects and undocumented symbols reachable: either as a count with a pointer to a per-run detail file under state_dir, or listed once in a short section after the table (the decision below). Forbid free-form notes outside the format. Update docstring-writer.md Reply section, SKILL.md step 4 and the SkillSpec scenarios through a reopen round; any refreeze follows the plan-change SOP.",
+      "files": [
+        "plugins/harness/skills/writing-docstrings/SKILL.md",
+        "plugins/harness/agents/docstring-writer.md",
+        "docs/plans/strap/writing-docstrings/SkillSpec.json"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Changes the docstring-writer reply contract and the skill's relay step; the strap SkillSpec scenarios that check the reply shape must be redrawn.",
+        "consumers": [
+          "plugins/harness/skills/writing-docstrings/SKILL.md",
+          "docs/plans/strap/writing-docstrings/SkillSpec.json"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Two prose files plus a strap reopen round with new or edited reply checks and a refreeze."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (an unreadable reply is debt with a concrete cost on every -p run), dev_velocity impact, M size."
+    },
+    {
+      "id": "todo-zes6",
+      "rank": 34,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "keyword": "pr-team",
       "kind": "feature",
@@ -2107,7 +2166,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 34,
+      "rank": 35,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2162,7 +2221,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 35,
+      "rank": 36,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "keyword": "parallel2",
       "kind": "skill",
@@ -2224,7 +2283,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 36,
+      "rank": 37,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "keyword": "strap_scaffold",
       "kind": "bug",
@@ -2275,7 +2334,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 37,
+      "rank": 38,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2323,7 +2382,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 38,
+      "rank": 39,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2398,7 +2457,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 39,
+      "rank": 40,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "keyword": "end-of-branch",
       "kind": "skill",
@@ -2457,7 +2516,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 40,
+      "rank": 41,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "keyword": "HARNESS_RULES",
       "kind": "skill",
@@ -2514,7 +2573,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 41,
+      "rank": 42,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "keyword": "parallel2",
       "kind": "feature",
@@ -2578,7 +2637,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 42,
+      "rank": 43,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "keyword": "pr-team-orchestrator",
       "kind": "feature",
@@ -2639,7 +2698,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 43,
+      "rank": 44,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "keyword": "write-plan",
       "kind": "feature",
@@ -2701,7 +2760,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 44,
+      "rank": 45,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "keyword": "fold-in-review",
       "kind": "feature",
@@ -2769,7 +2828,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 45,
+      "rank": 46,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "keyword": "strap",
       "kind": "feature",
@@ -2846,7 +2905,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 46,
+      "rank": 47,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2906,7 +2965,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 47,
+      "rank": 48,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2983,7 +3042,7 @@
     },
     {
       "id": "todo-ea49",
-      "rank": 48,
+      "rank": 49,
       "title": "harness: rebase-plan skill: plan and check restructures of existing branch commits, sharing branch-commit-msg piping",
       "keyword": "rebase-plan",
       "kind": "skill",
@@ -3044,8 +3103,68 @@
       "why_ranked": "Severity 2 missing guard against stray and collection-breaking commits after a rebase, dev_velocity impact, L size."
     },
     {
+      "id": "todo-t7sw",
+      "rank": 50,
+      "title": "Banner working-refs line: colors for the branch, TODO and plan link text",
+      "keyword": "working-refs",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#343",
+          "url": "https://github.com/t968rs/operator-straps/issues/343"
+        }
+      ],
+      "gh_issues": [
+        343
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue shows the banner's TODO / plan line `0007-add-bookmark-hook · [ 0006-pr-sum-updates #268 ]` and asks for colors on the branch, TODO and plan link and text. Decided in plan 2030 (D1-D4, values V1-V5): only the ccstatusline form (`statusText`, plugins/working-refs/hooks/line.ts:247) gets colors (D3); band-line keeps its subtle one-color form. A plan number fades through the ramp 51, 45, 74, 67, 243 as its items finish, done read from the plan's receipts (D1, D2), with complete and closed both counting as done (D4); an issue number is 180, another branch's name 246 and the punctuation 240; TODO label colors are unchanged.",
+      "proposed_change": "Apply the plan 2030 color map in `statusText` and `segmentStatus` (plugins/working-refs/hooks/line.ts), with each plan's `done` and `total` read from its receipts, and extend line.test.ts with the new escapes. band-line stays as is (plan 2030 D3).",
+      "code_snippet": "plugins/working-refs/hooks/line.ts:247\nexport const statusText = (line: WorkingLine | null): string => {\n  if (line === null) return ''\n  const refs = drawRefs(line.labels, line.issues, STATUS)\n  const head = joinParts(STATUS, plansPart(line.plans, STATUS), refs)\n  return compose(head, line.others.map(segmentStatus), line.more, STATUS)\n}",
+      "files": [
+        "plugins/working-refs/hooks/line.ts",
+        "plugins/working-refs/hooks/line.test.ts",
+        "plugins/working-refs/types/index.d.ts"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Two mods draw the line: working-refs's ccstatusline text gets the colors, and band-line's Ink band reads the WorkingLine type that gains each plan's done and total.",
+        "consumers": [
+          "plugins/band-line/hooks/band.tsx",
+          "plugins/working-refs/hooks/watch.ts (statusText written to the line file and line.json, :438-440)"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Escape codes in two render functions plus test expectations, after the color map is chosen."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 cosmetic banner readability, dev_velocity impact, S size."
+    },
+    {
       "id": "todo-zj3h",
-      "rank": 49,
+      "rank": 51,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "keyword": "test-driven-development",
       "kind": "skill",
@@ -3108,7 +3227,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 50,
+      "rank": 52,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "keyword": "Spec-Sheet-Lite",
       "kind": "skill",
@@ -3168,7 +3287,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 51,
+      "rank": 53,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3229,7 +3348,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 52,
+      "rank": 54,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "keyword": "strap",
       "kind": "test",
@@ -3288,7 +3407,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 53,
+      "rank": 55,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "keyword": "bubble-memo",
       "kind": "feature",
@@ -3347,7 +3466,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 54,
+      "rank": 56,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "keyword": "SkillSpec",
       "kind": "bug",
@@ -3401,7 +3520,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 55,
+      "rank": 57,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "keyword": "write-plan",
       "kind": "skill",
@@ -3456,7 +3575,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 56,
+      "rank": 58,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "keyword": "pr-sum",
       "kind": "skill",
@@ -3513,7 +3632,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 57,
+      "rank": 59,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3567,7 +3686,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 58,
+      "rank": 60,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "keyword": "strap-debugging",
       "kind": "skill",
@@ -3628,7 +3747,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 59,
+      "rank": 61,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "keyword": "skill-tests",
       "kind": "test",
@@ -3684,7 +3803,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 60,
+      "rank": 62,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3739,7 +3858,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 61,
+      "rank": 63,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3790,7 +3909,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 62,
+      "rank": 64,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3847,7 +3966,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 63,
+      "rank": 65,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "keyword": "diagnosing-superpowers",
       "kind": "skill",
@@ -3901,7 +4020,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 64,
+      "rank": 66,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "keyword": "writing-skills",
       "kind": "skill",
@@ -3957,7 +4076,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 65,
+      "rank": 67,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "keyword": "plan_render_html",
       "kind": "feature",
@@ -4019,7 +4138,7 @@
     },
     {
       "id": "todo-9ne6",
-      "rank": 66,
+      "rank": 68,
       "title": "`write-plan`: declared data shapes, and an opt-in repo guard against untyped structures",
       "keyword": "write-plan",
       "kind": "feature",
@@ -4084,7 +4203,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 67,
+      "rank": 69,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "keyword": "parallel_lanes",
       "kind": "skill",
@@ -4143,7 +4262,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 68,
+      "rank": 70,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4198,7 +4317,7 @@
     },
     {
       "id": "todo-jt35",
-      "rank": 69,
+      "rank": 71,
       "title": "Config key for a per-project browser icon on the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4258,7 +4377,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 70,
+      "rank": 72,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4321,7 +4440,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 71,
+      "rank": 73,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "keyword": "local-llm",
       "kind": "docs",
@@ -4377,7 +4496,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 72,
+      "rank": 74,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4428,7 +4547,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 73,
+      "rank": 75,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "keyword": "local-llm",
       "kind": "feature",

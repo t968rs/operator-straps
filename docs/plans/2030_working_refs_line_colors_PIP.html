@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2030: working refs line colors</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.action, .why { white-space: pre-line; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2030: working refs line colors</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2030_working_refs_line_colors_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2030</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2030</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-24</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md</code></dd><dt>Branch</dt><dd>0009-banner-formatting -&gt; main</dd><dt>Base commit</dt><dd><code>f8cf38c</code></dd><dt>Frozen</dt><dd>2026-11-25 at <code>19dc80b</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: Progress model: mirror names, plan items and the done share</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Line colors: plan progress, issues, other branches and punctuation</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Scan reads the receipts of the plans on the line and watches them</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: README, version bump and release notes</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 Where does a plan&#x27;s done share come from?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>mod-reads-receipts</code> the mod reads &lt;plans&gt;/&lt;id&gt;/receipts/&lt;ITEM&gt;.json itself</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>live-js</code> the mod reads the page&#x27;s generated &lt;id&gt;/live.js</li><li><code>harness-file</code> the harness writes a progress file per plan</li></ul><p class="why">developer pick (approach A, spec Approaches): receipts are committed and write-once, so the color is right on every checkout; live.js and a harness file are absent until rebuilt</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Which way does the plan gradient run?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>fade</code> bright while active, dim as items finish</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>brighten</code> dim at the start, bright when done</li></ul><p class="why">developer answer: a plan nearing its archive recedes</p></section>
+<section class="decision" id="decision-D3"><h3>D3 Which renderer gets the colors?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>ccstatusline-only</code> the ccstatusline form (statusText) only</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>both</code> ccstatusline and band-line</li></ul><p class="why">proposed in conversation, not corrected; band-line keeps its subtle one-color form</p></section>
+<section class="decision" id="decision-D4"><h3>D4 Does an item closed without action count as done?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>closed-done</code> complete and closed count as done</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>complete-only</code> only complete counts</li></ul><p class="why">proposed in conversation, not corrected; matches plan_enums.DONE</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>V1 plan ramp</td><td>ANSI 256 colors 51, 45, 74, 67, 243 for steps 0 to 4</td><td>spec Builder&#x27;s calls; none in the TODO palette (39, 170, 36, 214, 141, 72, 203, 178)</td><td>fade</td></tr>
+<tr><td>V2 plan step</td><td>0 when no item is done (and for a plan with no items), 4 when every item is done, else 1 + floor(3 * done / total)</td><td>spec Builder&#x27;s calls</td><td>fade</td></tr>
+<tr><td>V3 issue color</td><td>ANSI 256 color 180 on each issue number</td><td>spec Builder&#x27;s calls</td><td>-</td></tr>
+<tr><td>V4 other branch name color</td><td>ANSI 256 color 246, replacing 240</td><td>spec Builder&#x27;s calls; plugins/working-refs/hooks/line.ts:17 (DARK = 240 today)</td><td>-</td></tr>
+<tr><td>V5 punctuation color</td><td>ANSI 256 color 240 on the plan word, the separators, brackets, commas, the parentheses around issues and +N</td><td>spec Builder&#x27;s calls</td><td>-</td></tr>
+<tr><td>V6 done rule</td><td>a receipt whose outcome kind is complete or closed; with no receipt, an item status of COMPLETE or CLOSED_NO_ACTION</td><td>plugins/harness/lib/harness_lib/plan_enums.py:95 (DONE)</td><td>closed-done</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>receipt path</strong>: <code>docs/plans/2028/receipts/TASK-1.json</code>, copied from <code>plugins/harness/lib/harness_lib/plan_receipts.py:36-38</code></li>
+<li><strong>receipt outcome kind</strong>: <code>{&quot;plan_id&quot;: &quot;2028&quot;, &quot;item&quot;: &quot;TASK-1&quot;, &quot;outcome&quot;: {&quot;kind&quot;: &quot;complete&quot;, ...}, ...}</code>, copied from <code>plugins/harness/lib/harness_lib/plan_models.py:257</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>38;5;240|\bDARK\b</code>: <code>.claude/ccstatusline.json</code> (unchanged: this repo&#x27;s copy of the widget&#x27;s stale-branch stamp), <code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json</code> (unchanged: the widget&#x27;s stale-branch stamp keeps 240 (spec Non-goals)), <code>plugins/working-refs/hooks/line.test.ts</code> (TASK-2: expectations follow the new colors), <code>plugins/working-refs/hooks/line.ts</code> (TASK-2: DARK stays 240 for punctuation; other branch names move to 246), <code>tests/lib/test_page_theme.py</code> (unrelated: a CSS theme dict named DARK), <code>tests/skills/test_setup_statusline_contract.py</code> (unchanged: pins the stale-branch stamp), <code>tools/harness_usage_charts.py</code> (unrelated: chart theme)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: Progress model: mirror names, plan items and the done share <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/hooks/mirror.ts</code>, <code>plugins/working-refs/hooks/plans.ts</code>, <code>plugins/working-refs/hooks/plans.test.ts</code>, <code>plugins/working-refs/hooks/progress.ts</code>, <code>plugins/working-refs/hooks/progress.test.ts</code>, <code>tests/mods/test_working_refs_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/working-refs/hooks/mirror.ts:39</code> holds <code>export const PIP_HTML_SUFFIX = &#x27;_PIP.html&#x27;</code></li>
+<li><code>plugins/working-refs/hooks/plans.ts:82</code> holds <code>page,</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_receipts.py:27</code> holds <code>RECEIPTS_DIR = &quot;receipts&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_enums.py:95</code> holds <code>DONE: FrozenSet[ItemStatus] = frozenset({ItemStatus.COMPLETE, ItemStatus.CLOSED_NO_ACTION})</code></li>
+</ul>
+<p class="action">1. Copy docs/plans/2030/tests/tests/mods/test_working_refs_contract.py to tests/mods/.
+2. mirror.ts: export RECEIPTS_DIR = &#x27;receipts&#x27;, DONE_OUTCOMES = [&#x27;complete&#x27;, &#x27;closed&#x27;] as const and DONE_STATUSES = [&#x27;COMPLETE&#x27;, &#x27;CLOSED_NO_ACTION&#x27;] as const (the `as const` form ts_string_array reads), with a header bullet naming harness_lib.plan_receipts and plan_enums.DONE.
+3. plans.ts: PlanInfo gains items: PlanItem[] ({ id: string; status: string | null }), read leniently from data.items (non-objects and entries without a string id dropped; a non-string status is null), each raw item read inline as item.&lt;field&gt; (the contract test pins those names against ActionItem, plan change EX2).
+4. New progress.ts, pure (no $): Progress = { done, total }; outcomeKindOf(text) parses a receipt and returns receipt.outcome then outcome.kind as a string, else null (absent or malformed text); progressOf(items, kinds) counts an item done when its kind is in DONE_OUTCOMES, or, with no kind, when item.status is in DONE_STATUSES (V6), total the item count; PLAN_RAMP = [51, 45, 74, 67, 243] (V1); planStep(p) per V2; planColor(p) = PLAN_RAMP[planStep(p)]; receiptsDirOf(plansDir, id); receiptsSignatureOf(byPlan) over each plan id and the name, size and mtime of each .json entry, sorted. Read item, receipt and outcome fields inline as item.&lt;field&gt;, receipt.&lt;field&gt;, outcome.&lt;field&gt; (the contract test pins those names).
+5. progress.test.ts: every step boundary (0/4 step 0, 1/4 step 1, 2/4 step 2, 3/4 step 3, 4/4 step 4, no items step 0); complete and closed count, started and blocked do not; no receipt falls back to the status; a malformed receipt counts as none; no ramp color is in TODO_PALETTE or 240; the signature moves with a receipt&#x27;s mtime. plans.test.ts: items parsed, malformed entries dropped.</p>
+<ul>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_receipts_dir_matches_plan_receipts</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_done_outcome_kinds_match_the_outcome_models</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_done_statuses_match_plan_enums_done</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_fields_read_by_progress_ts_match_the_models</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_item_fields_read_by_plans_ts_match_action_item</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
+<li>Run <code>python -m pytest tests/mods/test_working_refs_contract.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2030 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Line colors: plan progress, issues, other branches and punctuation <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/types/index.d.ts</code>, <code>plugins/working-refs/hooks/line.ts</code>, <code>plugins/working-refs/hooks/line.test.ts</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/working-refs/types/index.d.ts:10</code> holds <code>export type PlanLink = {</code></li>
+<li><code>plugins/working-refs/hooks/line.ts:17</code> holds <code>export const DARK = &#x27;\x1b[38;5;240m&#x27;</code></li>
+<li><code>plugins/working-refs/hooks/line.ts:99-100</code> holds <code>const segmentStatus = (s: OtherSegment): string =&gt;</code></li>
+<li><code>plugins/working-refs/hooks/line.ts:145</code> holds <code>const plans: PlanLink[] = sorted.map(p =&gt; ({ id: p.id, page: p.page }))</code></li>
+<li><code>plugins/working-refs/hooks/line.ts:193</code> holds <code>const head = joinParts(plansPart(line.plans, p =&gt; osc8(fileUrl(p.page), p.id)), refs)</code></li>
+</ul>
+<p class="action">1. types/index.d.ts: PlanLink gains done and total (the plan&#x27;s done share, plan 2030).
+2. line.ts: LineView gains progress: ReadonlyMap&lt;string, Progress&gt; keyed by plan id; SHOW_ALL holds an empty map, and a plan missing from it takes progressOf(items, empty map). buildLine fills done and total on each PlanLink. statusText draws each plan number in planColor inside its OSC 8 link text, each issue number in 180 (V3), other branch names in 246 (V4), and the plan word, &#x27; · &#x27;, &#x27;, &#x27;, &#x27;[ &#x27;, &#x27; ]&#x27;, the parentheses around issues and +N in DARK 240 (V5); TODO labels keep todoColor. Plain text, the cap, formatRefs and segmentText do not change.
+3. line.test.ts: expectations for each colored piece; the escape-stripped ccstatusline form still equals the plain form; a plan at 0, partial and full progress draws 51, a middle step and 243.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2030 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Scan reads the receipts of the plans on the line and watches them <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1, TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/hooks/watch.ts</code>, <code>plugins/working-refs/hooks/watch.test.ts</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/working-refs/hooks/watch.ts:172</code> holds <code>signature: undefined as string | undefined,</code></li>
+<li><code>plugins/working-refs/hooks/watch.ts:425</code> holds <code>const qualifying = hasPlans ? await qualifyingPlans(</code></li>
+<li><code>plugins/working-refs/hooks/watch.ts:431</code> holds <code>const line = buildLine(branch ?? &#x27;&#x27;, qualifying, overrides, viewOf(hide, w.cfg.maxChars))</code></li>
+<li><code>plugins/working-refs/hooks/watch.ts:522</code> holds <code>return signature !== memo.signature</code></li>
+</ul>
+<p class="action">1. watch.ts runScan: for each qualifying plan, read &lt;plans&gt;/&lt;id&gt;/receipts/&lt;ITEM&gt;.json for each item (absent: no kind), build the kinds map with outcomeKindOf, compute progressOf and pass the map to buildLine through viewOf. List each qualifying plan&#x27;s receipts folder and keep receiptsSignatureOf and the qualifying ids in the memo (resetMemo clears both).
+2. filesMoved also lists the receipts folders of the memo&#x27;s plan ids and compares the signature, so a record moves the color at the next tool call; plans not on the line are not listed.
+3. watch.test.ts: a qualifying receipts plan draws its number in its step color in line.txt and line.json; a new complete receipt followed by a Write tool call redraws it a step dimmer; the atom&#x27;s plans carry done and total.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2030 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: README, version bump and release notes <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1, TASK-2, TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/README.md</code>, <code>plugins/working-refs/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.1.0.md</code></p>
+<p class="action">1. working-refs README: the colors (plan ramp V1 by V2 with the V6 done rule, issues 180, other branch names 246, punctuation 240, TODO labels unchanged), the receipts the scan reads, the tool.call hook row naming the receipts of the plans on the line, and done and total on the state table&#x27;s line.plans.
+2. Bump working-refs 0.3.1 to 0.4.0.
+3. docs/RELEASES/v1.1.0.md: a working-refs row 0.3.1 | 0.4.0, drop working-refs from the Unchanged line, and one Feat(working-refs) line for issue #343 (tag it with the PR number once the PR exists).</p>
+<ul>
+<li>Run <code>claude plugin validate --strict plugins/working-refs</code>: passes</li>
+<li>Run <code>python -m pytest tests/mods/test_working_refs_contract.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2030 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2030/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

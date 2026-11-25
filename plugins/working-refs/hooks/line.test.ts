@@ -2,24 +2,38 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { Refs, WorkingLine } from '../types'
 import {
-  buildLine, DARK, fileUrl, fnv1a32, formatRefs, type LineView, osc8, plainText, RESET_FG, statusText, todoColor,
-  TODO_PALETTE,
+  BRANCH_FG, buildLine, DARK, fileUrl, fnv1a32, formatRefs, ISSUE_FG, type LineView, osc8, plainText, RESET_FG,
+  statusText, todoColor, TODO_PALETTE,
 } from './line'
 import type { Overrides } from './overrides'
-import type { PlanInfo } from './plans'
+import type { PlanInfo, PlanItem } from './plans'
+import type { Progress } from './progress'
 
 const ESC = '\x1b'
+/** `text` in the ANSI 256 color `n`, then the default foreground. */
+const ink = (n: number, text: string): string => `${ESC}[38;5;${n}m${text}${RESET_FG}`
 /** A TODO label as the ccstatusline form draws it: in the id's color, then the default foreground. */
-const painted = (id: string, label: string = id): string => `${ESC}[38;5;${todoColor(id)}m${label}${RESET_FG}`
+const painted = (id: string, label: string = id): string => ink(todoColor(id), label)
+/** Punctuation (V5), an issue number (V3) and another branch's name (V4) as the ccstatusline form draws them. */
+const dk = (text: string): string => ink(240, text)
+const iss = (text: string): string => ink(180, text)
+const br = (text: string): string => ink(246, text)
+/** A plan number: its progress color inside its OSC 8 link; 51 is step 0, nothing done. */
+const num = (url: string, id: string, color: number = 51): string => osc8(url, ink(color, id))
+const SEP = dk(' · ')
+const COMMA = dk(', ')
 /** Every OSC 8 link escape and SGR color escape dropped. */
 const strip = (s: string): string => s.replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '').replace(/\x1b\[[0-9;]*m/g, '')
 const KEYWORDS: ReadonlyMap<string, string> = new Map([['todo-x7ty', 'stop_gates'], ['todo-k69m', 'banner']])
 const page = (id: string): string => `E:/repo/docs/PLANS/${id}_x_PIP.html`
 
-const plan = (id: string, refs: Partial<Refs> = {}): PlanInfo => ({
+const plan = (id: string, refs: Partial<Refs> = {}, items: PlanItem[] = []): PlanInfo => ({
   id, branch: 'topic', baseBranch: 'main', baseCommit: 'a'.repeat(40),
-  refs: { todoIds: [], issues: [], ...refs }, page: page(id),
+  refs: { todoIds: [], issues: [], ...refs }, page: page(id), items,
 })
+/** `total` items, the first `done` of them COMPLETE. */
+const itemsOf = (done: number, total: number): PlanItem[] =>
+  Array.from({ length: total }, (_, i) => ({ id: `TASK-${i + 1}`, status: i < done ? 'COMPLETE' : 'PENDING' }))
 
 const NONE: Overrides = new Map()
 const SET_AT = '2026-11-18T00:00:00Z'
@@ -28,7 +42,7 @@ const override = (branch: string, refs: Refs): Overrides => new Map([[branch, { 
 const overridesOf = (...rows: Array<[string, string[], number[], string?]>): Overrides =>
   new Map(rows.map(([b, todoIds, issues, setAt]) => [b, { refs: { todoIds, issues }, setAt: setAt ?? SET_AT }]))
 const view = (over: Partial<LineView> = {}): LineView => ({
-  retired: new Set(), isClosed: () => false, keywords: new Map(), maxChars: 1000, ...over,
+  retired: new Set(), isClosed: () => false, keywords: new Map(), progress: new Map(), maxChars: 1000, ...over,
 })
 
 describe('formatRefs', () => {
@@ -82,8 +96,8 @@ describe('buildLine', () => {
   test('one plan: its link, then its refs', async () => {
     const line = buildLine('topic', [plan('2025', { todoIds: ['todo-k69m'], issues: [301] })], NONE)
     expect(line).toEqual({
-      branch: 'topic', plans: [{ id: '2025', page: page('2025') }], todoIds: ['todo-k69m'], issues: [301],
-      labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)',
+      branch: 'topic', plans: [{ id: '2025', page: page('2025'), done: 0, total: 0 }], todoIds: ['todo-k69m'],
+      issues: [301], labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)',
       head: 'plan 2025 · todo-k69m (301)', others: [], more: 0, text: 'plan 2025 · todo-k69m (301)',
     })
   })
@@ -103,7 +117,7 @@ describe('buildLine', () => {
   test('the branch\'s override replaces the plans\' refs; the links stay', async () => {
     const plans = [plan('2025', { todoIds: ['todo-k69m'], issues: [301] })]
     const line = buildLine('topic', plans, override('topic', { todoIds: ['todo-zz99'], issues: [] }))
-    expect(line?.plans).toEqual([{ id: '2025', page: page('2025') }])
+    expect(line?.plans).toEqual([{ id: '2025', page: page('2025'), done: 0, total: 0 }])
     expect(line?.text).toBe('plan 2025 · todo-zz99')
   })
 
@@ -125,6 +139,25 @@ describe('buildLine', () => {
   test('nothing qualifies and no override: no line', async () => {
     expect(buildLine('topic', [], NONE)).toBeNull()
     expect(buildLine('topic', [], override('topic', { todoIds: [], issues: [] }))).toBeNull()
+  })
+})
+
+describe('buildLine: plan progress (plan 2030)', () => {
+  test('each link carries the done share the view holds for its plan', async () => {
+    const progress: ReadonlyMap<string, Progress> = new Map([['2025', { done: 2, total: 5 }]])
+    const line = buildLine('topic', [plan('2025', {}, itemsOf(0, 5))], NONE, view({ progress }))
+    expect(line?.plans).toEqual([{ id: '2025', page: page('2025'), done: 2, total: 5 }])
+  })
+
+  test('a plan missing from the view counts its items\' statuses alone', async () => {
+    const line = buildLine('topic', [plan('2024', {}, itemsOf(1, 3)), plan('2025')], NONE)
+    expect(line?.plans.map(p => [p.id, p.done, p.total])).toEqual([['2024', 1, 3], ['2025', 0, 0]])
+  })
+
+  test('the plain text does not change with progress', async () => {
+    const progress: ReadonlyMap<string, Progress> = new Map([['2025', { done: 3, total: 3 }]])
+    const line = buildLine('topic', [plan('2025', { issues: [7] }, itemsOf(3, 3))], NONE, view({ progress }))
+    expect(line?.text).toBe('plan 2025 · #7')
   })
 })
 
@@ -284,11 +317,20 @@ describe('fileUrl', () => {
 
 describe('the rendered forms', () => {
   const line = (over: Partial<WorkingLine> = {}): WorkingLine => ({
-    branch: 'topic', plans: [{ id: '2025', page: 'E:/r/2025_x_PIP.html' }], todoIds: ['todo-k69m'], issues: [301],
-    labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)',
+    branch: 'topic', plans: [{ id: '2025', page: 'E:/r/2025_x_PIP.html', done: 0, total: 0 }],
+    todoIds: ['todo-k69m'], issues: [301], labels: [{ id: 'todo-k69m', keyword: null }], refs: 'todo-k69m (301)',
     head: 'plan 2025 · todo-k69m (301)', others: [], more: 0, text: 'plan 2025 · todo-k69m (301)', ...over,
   })
   const K69M = painted('todo-k69m')
+  /** The own refs `todo-k69m (301)` as the ccstatusline form draws them. */
+  const OWN = `${K69M} ${dk('(')}${iss('301')}${dk(')')}`
+
+  test('the named colors are V3 180, V4 246 and V5 240', async () => {
+    expect(ISSUE_FG).toBe(`${ESC}[38;5;180m`)
+    expect(BRANCH_FG).toBe(`${ESC}[38;5;246m`)
+    expect(DARK).toBe(`${ESC}[38;5;240m`)
+    expect(RESET_FG).toBe(`${ESC}[39m`)
+  })
 
   test('osc8 wraps the text in the hyperlink escapes', async () => {
     expect(osc8('file:///E:/a.html', '2025')).toBe(`${ESC}]8;;file:///E:/a.html${ESC}\\2025${ESC}]8;;${ESC}\\`)
@@ -299,45 +341,88 @@ describe('the rendered forms', () => {
     expect(plainText(null)).toBe('')
   })
 
-  test('the ccstatusline form links each plan number to its page', async () => {
-    expect(statusText(line())).toBe(`plan ${osc8('file:///E:/r/2025_x_PIP.html', '2025')} · ${K69M} (301)`)
-    const two = line({ plans: [{ id: '2024', page: '/r/a.html' }, { id: '2025', page: '/r/b.html' }] })
+  test('the ccstatusline form links each plan number to its page, the plan word and commas dark', async () => {
+    expect(statusText(line())).toBe(`${dk('plan')} ${num('file:///E:/r/2025_x_PIP.html', '2025')}${SEP}${OWN}`)
+    const two = line({
+      plans: [{ id: '2024', page: '/r/a.html', done: 0, total: 2 }, { id: '2025', page: '/r/b.html', done: 0, total: 0 }],
+    })
     expect(statusText(two)).toBe(
-      `plans ${osc8('file:///r/a.html', '2024')}, ${osc8('file:///r/b.html', '2025')} · ${K69M} (301)`,
+      `${dk('plans')} ${num('file:///r/a.html', '2024')}${COMMA}${num('file:///r/b.html', '2025')}${SEP}${OWN}`,
+    )
+  })
+
+  test('a plan number steps from bright to dim with its done share: 51, a middle step, 243', async () => {
+    const at = (done: number, total: number): string =>
+      statusText(line({ plans: [{ id: '2025', page: '/r/b.html', done, total }], todoIds: [], issues: [], labels: [] }))
+    const drawn = (color: number): string => `${dk('plan')} ${num('file:///r/b.html', '2025', color)}`
+    expect(at(0, 4)).toBe(drawn(51))
+    expect(at(1, 4)).toBe(drawn(45))
+    expect(at(2, 4)).toBe(drawn(74))
+    expect(at(3, 4)).toBe(drawn(67))
+    expect(at(4, 4)).toBe(drawn(243))
+  })
+
+  test('a built line colors each plan by the progress it was built with', async () => {
+    const progress: ReadonlyMap<string, Progress> = new Map([['2024', { done: 1, total: 2 }]])
+    const plans = [plan('2023', {}, itemsOf(0, 3)), plan('2024', {}, itemsOf(0, 2)), plan('2025', {}, itemsOf(2, 2))]
+    const built = buildLine('topic', plans, NONE, view({ progress }))
+    const [a, b, c] = ['2023', '2024', '2025'].map(id => fileUrl(page(id)))
+    expect(statusText(built)).toBe(
+      `${dk('plans')} ${num(a, '2023', 51)}${COMMA}${num(b, '2024', 74)}${COMMA}${num(c, '2025', 243)}`,
     )
   })
 
   test('the ccstatusline form, escapes stripped, is the plain form', async () => {
-    const built = buildLine('topic', [plan('2024'), plan('2025', { issues: [5] })], NONE)
-    const stripped = statusText(built).replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '')
-    expect(stripped).toBe(plainText(built))
+    const built = buildLine('topic', [plan('2024'), plan('2025', { issues: [5, 6] })], NONE)
+    expect(statusText(built)).toBe(
+      `${dk('plans')} ${num(fileUrl(page('2024')), '2024')}${COMMA}${num(fileUrl(page('2025')), '2025')}` +
+      `${SEP}${iss('#5')}${COMMA}${iss('#6')}`,
+    )
+    expect(strip(statusText(built))).toBe(plainText(built))
   })
 
-  test('other branch names are dark in the ccstatusline form only, +N kept', async () => {
+  test('other branch names are 246 and the brackets and +N dark, in the ccstatusline form only', async () => {
     const ov = overridesOf(['topic', ['todo-k69m'], [301]], ['other', ['todo-zz99'], []], ['third', [], [5]])
     const built = buildLine('topic', [plan('2025')], ov, view({ maxChars: 52 }))
     expect(built?.text).toBe('plan 2025 · todo-k69m (301) · [ other todo-zz99 ] +1')
     expect(statusText(built)).toBe(
-      `plan ${osc8(fileUrl(page('2025')), '2025')} · ${K69M} (301) · [ ${DARK}other${RESET_FG} ${painted('todo-zz99')} ] +1`,
+      `${dk('plan')} ${num(fileUrl(page('2025')), '2025')}${SEP}${OWN}${SEP}` +
+      `${dk('[ ')}${br('other')} ${painted('todo-zz99')}${dk(' ]')} ${dk('+1')}`,
     )
     expect(strip(statusText(built))).toBe(plainText(built))
     expect(plainText(built)).not.toContain(DARK)
+    expect(plainText(built)).not.toContain(BRANCH_FG)
   })
 
-  test('each TODO label is colored by its id in the own refs and every segment; issues stay plain', async () => {
+  test('each TODO label keeps its id\'s color; issue numbers are 180 inside dark parentheses', async () => {
     const ov = overridesOf(
-      ['topic', ['todo-x7ty', 'todo-zz99'], [301]], ['other', ['todo-k69m'], [5], '2026-11-19T00:00:00Z'],
-      ['third', [], [7]],
+      ['topic', ['todo-x7ty', 'todo-zz99'], [301, 302]], ['other', ['todo-k69m'], [5], '2026-11-19T00:00:00Z'],
+      ['third', [], [7, 8]],
     )
     const built = buildLine('topic', [plan('2025')], ov, view({ keywords: KEYWORDS }))
-    expect(built?.text)
-      .toBe('plan 2025 · todo-x7ty stop_gates, todo-zz99 (301) · [ other todo-k69m banner (5) ] [ third #7 ]')
-    const own = `${painted('todo-x7ty', 'todo-x7ty stop_gates')}, ${painted('todo-zz99')} (301)`
-    const other = `[ ${DARK}other${RESET_FG} ${painted('todo-k69m', 'todo-k69m banner')} (5) ]`
-    expect(statusText(built)).toBe(
-      `plan ${osc8(fileUrl(page('2025')), '2025')} · ${own} · ${other} [ ${DARK}third${RESET_FG} #7 ]`,
+    expect(built?.text).toBe(
+      'plan 2025 · todo-x7ty stop_gates, todo-zz99 (301, 302) · [ other todo-k69m banner (5) ] [ third #7, #8 ]',
     )
+    const own = `${painted('todo-x7ty', 'todo-x7ty stop_gates')}${COMMA}${painted('todo-zz99')} ` +
+      `${dk('(')}${iss('301')}${COMMA}${iss('302')}${dk(')')}`
+    const other = `${dk('[ ')}${br('other')} ${painted('todo-k69m', 'todo-k69m banner')} ${dk('(')}${iss('5')}${dk(')')}${dk(' ]')}`
+    const third = `${dk('[ ')}${br('third')} ${iss('#7')}${COMMA}${iss('#8')}${dk(' ]')}`
+    expect(statusText(built)).toBe(`${dk('plan')} ${num(fileUrl(page('2025')), '2025')}${SEP}${own}${SEP}${other} ${third}`)
     expect(strip(statusText(built))).toBe(plainText(built))
+  })
+
+  test('every colored piece ends in the default-foreground reset, so no color bleeds', async () => {
+    const ov = overridesOf(['topic', ['todo-x7ty'], [301]], ['other', ['todo-k69m'], [5]], ['third', [], [7]])
+    const built = buildLine('topic', [plan('2025', {}, itemsOf(1, 2))], ov, view({ keywords: KEYWORDS, maxChars: 80 }))
+    // one segment drawn, so the branch color, brackets and segment issues reach the check
+    expect(built?.text).toBe('plan 2025 · todo-x7ty stop_gates (301) · [ other todo-k69m banner (5) ] +1')
+    const status = statusText(built)
+    expect(status).toContain(br('other'))
+    // every color opened is reset before the next one opens or the text ends
+    const colors = status.replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '')
+    expect(colors).toMatch(/^(?:[^\x1b]*\x1b\[38;5;\d+m[^\x1b]*\x1b\[39m)*[^\x1b]*$/)
+    expect(status.endsWith(RESET_FG)).toBe(true)
+    expect(strip(status)).toBe(plainText(built))
   })
 
   test('the plain form and the atom\'s texts carry no color', async () => {
@@ -355,7 +440,8 @@ describe('the rendered forms', () => {
     )
     const built = buildLine('topic', [], ov, view({ keywords: KEYWORDS, maxChars: 30 }))
     expect(built?.text).toBe('[ a todo-x7ty stop_gates ] +1')
-    expect(statusText(built)).toBe(`[ ${DARK}a${RESET_FG} ${painted('todo-x7ty', 'todo-x7ty stop_gates')} ] +1`)
+    expect(statusText(built))
+      .toBe(`${dk('[ ')}${br('a')} ${painted('todo-x7ty', 'todo-x7ty stop_gates')}${dk(' ]')} ${dk('+1')}`)
   })
 
   test('no line, no text', async () => {

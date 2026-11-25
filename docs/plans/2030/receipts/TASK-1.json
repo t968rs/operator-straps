@@ -1,0 +1,29 @@
+{
+  "plan_id": "2030",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "409e546c374fceb6db2acd504baa4fbaa399e397"
+    },
+    "tests": {
+      "nodes": [
+        "tests/mods/test_working_refs_contract.py::test_receipts_dir_matches_plan_receipts",
+        "tests/mods/test_working_refs_contract.py::test_done_outcome_kinds_match_the_outcome_models",
+        "tests/mods/test_working_refs_contract.py::test_done_statuses_match_plan_enums_done",
+        "tests/mods/test_working_refs_contract.py::test_fields_read_by_progress_ts_match_the_models",
+        "tests/mods/test_working_refs_contract.py::test_item_fields_read_by_plans_ts_match_action_item"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/mods/test_working_refs_contract.py::test_receipts_dir_matches_plan_receipts tests/mods/test_working_refs_contract.py::test_done_outcome_kinds_match_the_outcome_models tests/mods/test_working_refs_contract.py::test_done_statuses_match_plan_enums_done tests/mods/test_working_refs_contract.py::test_fields_read_by_progress_ts_match_the_models tests/mods/test_working_refs_contract.py::test_item_fields_read_by_plans_ts_match_action_item"
+    }
+  },
+  "evidence": "staged tree 409e546: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-24",
+  "seal": "3b7b86bdbfccc9f65bcdebd4db7d5d3a760b8f6b55d205309f5d298e14dfffe5"
+}

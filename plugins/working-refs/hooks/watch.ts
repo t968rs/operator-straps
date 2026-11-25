@@ -1,7 +1,9 @@
 import type { EngineInterface, On } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
-import type { WorkingLine } from '../types'
+import type { Listed, WorkingLine } from '../types'
+
+export type { Listed } from '../types'
 import {
   catalogFileOf, issuesCacheFileOf, lineFileOf, lineJsonFileOf, openIssuesFileOf, overridesFileOf, plansFolderOf,
   readConfig, type WorkingRefsConfig,
@@ -13,6 +15,7 @@ import { buildLine, type LineView, statusText } from './line'
 import { PIP_HTML_SUFFIX, PLAN_SUFFIX } from './mirror'
 import { type Overrides, parseOverrides } from './overrides'
 import { archivedIdsOf, type MergeBaseOf, pageOf, parsePlan, type PlanInfo, qualifies } from './plans'
+import { outcomeKindOf, type Progress, progressOf, receiptsDirOf, receiptsSignatureOf } from './progress'
 
 /**
  * Engine glue for working-refs: finds the project, scans its plans folder, runs git for the archive tags, HEAD
@@ -20,10 +23,12 @@ import { archivedIdsOf, type MergeBaseOf, pageOf, parsePlan, type PlanInfo, qual
  * ccstatusline form in `<state_dir>/working-refs/line.txt` (D6) and, stamped with the branch, `line.json`
  * (plan 2027). Override refs hide by the checked-out catalog's `retired_ids`, the open-issue list `todo_sync.py
  * untracked` writes and the mod's own `gh issue view` cache, which a recheck pass refreshes past
- * `todo.gh.max_age_hours`; every TODO id takes its keyword label from the same catalog (plan 2028). Scans run at
+ * `todo.gh.max_age_hours`; every TODO id takes its keyword label from the same catalog (plan 2028). Each plan on
+ * the line takes its done share from its `<plans>/<id>/receipts/<ITEM>.json` receipts (plan 2030). Scans run at
  * `session.start`, when git-status's snapshot names another branch, when HEAD or the archive tags moved at a
- * prompt, when the plans folder's signature or the override file's, the catalog's or the open list's mtime moved
- * after a file or shell tool call or at a prompt, and when a recheck changed whether an issue hides.
+ * prompt, when the plans folder's signature, the receipts signature of the plans on the line or the override
+ * file's, the catalog's or the open list's mtime moved after a file or shell tool call or at a prompt, and when a
+ * recheck changed whether an issue hides.
  * Every host failure degrades to an empty line; no hook throws into a tool call, a prompt or a session start.
  * Functions taking `$` are function declarations: the engine follows `$` past an import only into one.
  */
@@ -84,9 +89,6 @@ export const rootCandidates = (rawEnv: string | undefined, rawCwd: string | unde
 
 /** `<dir>/.claude/harness.json`, without a doubled slash at `/`. */
 export const configPathOf = (dir: string): string => `${dir.endsWith('/') ? dir : `${dir}/`}${HARNESS_CONFIG_REL}`
-
-/** What a folder listing gives of one entry. */
-export type Listed = { name: string; kind: string; size: number; mtimeMs: number }
 
 const isPlanFile = (name: string): boolean => name.endsWith(PLAN_SUFFIX)
 const isWatchedName = (name: string): boolean => isPlanFile(name) || name.endsWith(PIP_HTML_SUFFIX)
@@ -170,6 +172,10 @@ const memo = {
   head: undefined as string | undefined,
   archived: undefined as string | undefined,
   signature: undefined as string | undefined,
+  /** The ids of the plans on the last scan's line, whose receipts folders the probes list. */
+  lineIds: [] as string[],
+  /** `receiptsSignatureOf` those plans' receipts folders at the last scan. */
+  receiptsSignature: undefined as string | undefined,
   overridesMtime: undefined as number | undefined,
   catalogMtime: undefined as number | undefined,
   openIssuesMtime: undefined as number | undefined,
@@ -190,6 +196,8 @@ const resetMemo = (): void => {
   memo.head = undefined
   memo.archived = undefined
   memo.signature = undefined
+  memo.lineIds = []
+  memo.receiptsSignature = undefined
   memo.overridesMtime = undefined
   memo.catalogMtime = undefined
   memo.openIssuesMtime = undefined
@@ -350,6 +358,55 @@ async function qualifyingPlans(
   return [...byBranch, ...rest.filter(p => qualifies(p, key, mergeBaseOf, archived))]
 }
 
+/** The receipts folder listing of each plan id, by id; a missing folder lists empty. */
+async function listReceipts($: Dollar, folder: string, ids: readonly string[]): Promise<Map<string, Listed[]>> {
+  const byPlan = new Map<string, Listed[]>()
+  for (const id of ids) if (!byPlan.has(id)) byPlan.set(id, await listOf($, receiptsDirOf(folder, id)))
+  return byPlan
+}
+
+/** The `.json` file names of a receipts listing (the files `receiptsSignatureOf` counts). */
+const receiptNames = (listed: readonly Listed[]): Set<string> =>
+  new Set(listed.filter(e => e.kind === 'file' && e.name.endsWith('.json')).map(e => e.name))
+
+/**
+ * One plan's done share: each item's `<ITEM>.json` read only when the listing holds it, its outcome kind taken
+ * by `outcomeKindOf`; an unlisted or unreadable receipt gives no kind, so the item's status counts.
+ */
+async function planProgress($: Dollar, folder: string, plan: PlanInfo, listed: readonly Listed[]): Promise<Progress> {
+  const names = receiptNames(listed)
+  const dir = receiptsDirOf(folder, plan.id)
+  const kinds = new Map<string, string | null>()
+  for (const item of plan.items) {
+    const name = `${item.id}.json`
+    if (names.has(name)) kinds.set(item.id, outcomeKindOf(await readText($, `${dir}/${name}`), item.id))
+  }
+  return progressOf(plan.items, kinds)
+}
+
+/** The plan ids held by exactly one qualifying plan file, in order. */
+const soleIds = (qualifying: readonly PlanInfo[]): string[] => {
+  const ids = qualifying.map(p => p.id)
+  return ids.filter(id => ids.indexOf(id) === ids.lastIndexOf(id))
+}
+
+/** What the receipts of the plans on the line give: each plan's done share, their signature and the plan ids. */
+type Receipts = { progress: Map<string, Progress>; signature: string; ids: string[] }
+
+/**
+ * The receipts of the qualifying plans. An id two plan files share is neither listed nor in the progress map:
+ * which file a receipt belongs to is unknown, so each falls back to its own item statuses.
+ */
+async function readReceipts($: Dollar, folder: string, qualifying: readonly PlanInfo[]): Promise<Receipts> {
+  const ids = soleIds(qualifying)
+  const byPlan = await listReceipts($, folder, ids)
+  const progress = new Map<string, Progress>()
+  for (const plan of qualifying.filter(p => ids.includes(p.id))) {
+    progress.set(plan.id, await planProgress($, folder, plan, byPlan.get(plan.id) ?? []))
+  }
+  return { progress, signature: receiptsSignatureOf(byPlan), ids }
+}
+
 /** Writes the line to the atom when it changed. */
 async function storeLine($: Dollar, line: WorkingLine | null): Promise<void> {
   const held = await read($, lineAtom).catch(() => null)
@@ -403,13 +460,16 @@ async function readHide($: Dollar, w: Watch): Promise<HideState> {
   return { retired, keywords, list, cache, catalogMtime, openIssuesMtime }
 }
 
-const viewOf = (h: HideState, maxChars: number): LineView => ({
-  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), keywords: h.keywords, maxChars,
+const viewOf = (h: HideState, maxChars: number, progress: ReadonlyMap<string, Progress>): LineView => ({
+  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), keywords: h.keywords, progress, maxChars,
 })
 
 const maxAgeOf = (w: Watch): number => w.cfg.ghMaxAgeHours * HOUR_MS
 
-/** One full scan: plans, git, overrides and what hides their refs, then the atom and the line files. */
+/**
+ * One full scan: plans, git, the receipts of the plans on the line, overrides and what hides their refs, then the
+ * atom and the line files.
+ */
 async function runScan($: Dollar, facts?: GitFacts): Promise<void> {
   const w = await resolveWatch($)
   if (w === undefined) return
@@ -423,14 +483,16 @@ async function runScan($: Dollar, facts?: GitFacts): Promise<void> {
   const { head, tags } = hasPlans ? (facts ?? (await gitFactsOf($, w.root))) : { head: undefined, tags: undefined }
   const archived = archivedIdsOf(tags ?? '')
   const qualifying = hasPlans ? await qualifyingPlans($, w.root, plans, branch, archived) : []
+  const receipts = await readReceipts($, folder, qualifying)
   const text = overridesMtime === undefined ? undefined : await readText($, overridesPath)
   const stored = parseOverrides(text)
   // no snapshot: no override applies, so the own entry is never drawn as another branch's
   const overrides: Overrides = branch === null ? new Map() : stored
   const hide = await readHide($, w)
-  const line = buildLine(branch ?? '', qualifying, overrides, viewOf(hide, w.cfg.maxChars))
+  const line = buildLine(branch ?? '', qualifying, overrides, viewOf(hide, w.cfg.maxChars, receipts.progress))
   Object.assign(memo, {
     isScanned: true, branch, head, archived: tags, signature: signatureOf(entries), overridesMtime, hasPlans,
+    lineIds: receipts.ids, receiptsSignature: receipts.signature,
     catalogMtime: hide.catalogMtime, openIssuesMtime: hide.openIssuesMtime,
     recheckDueAt: dueAtOf(overrideIssues(stored), hide.list, hide.cache, maxAgeOf(w)),
   })
@@ -512,15 +574,21 @@ function finishScan($: Dollar): void {
 // ---------------------------------------------------------------------------
 // Probes
 
-/** Whether the plans folder's signature or the override file's, the catalog's or the open list's mtime moved. */
+/**
+ * Whether the plans folder's signature, the receipts signature of the plans on the last scan's line (no other
+ * plan's receipts folder is listed) or the override file's, the catalog's or the open list's mtime moved. Each
+ * is compared as soon as it is read, in that order, and the first that moved ends the probe.
+ */
 async function filesMoved($: Dollar, w: Watch): Promise<boolean> {
-  const signature = signatureOf(await listOf($, plansFolderOf(w.root, w.cfg)))
-  const overridesMtime = await mtimeOf($, overridesFileOf(w.root, w.cfg))
+  const folder = plansFolderOf(w.root, w.cfg)
+  if (signatureOf(await listOf($, folder)) !== memo.signature) return true
+  const receipts = receiptsSignatureOf(await listReceipts($, folder, memo.lineIds))
+  if (receipts !== memo.receiptsSignature) return true
+  if ((await mtimeOf($, overridesFileOf(w.root, w.cfg))) !== memo.overridesMtime) return true
   const catalog = catalogFileOf(w.root, w.cfg)
   const catalogMtime = catalog === null ? undefined : await mtimeOf($, catalog)
-  const openIssuesMtime = await mtimeOf($, openIssuesFileOf(w.root, w.cfg))
-  return signature !== memo.signature || overridesMtime !== memo.overridesMtime
-    || catalogMtime !== memo.catalogMtime || openIssuesMtime !== memo.openIssuesMtime
+  if (catalogMtime !== memo.catalogMtime) return true
+  return (await mtimeOf($, openIssuesFileOf(w.root, w.cfg))) !== memo.openIssuesMtime
 }
 
 /** Whether an override issue fell due for a `gh` recheck while the session sat idle. */
@@ -530,8 +598,8 @@ async function isRecheckDue($: Dollar): Promise<boolean> {
 }
 
 /**
- * After a file or shell tool call: a scan when the plans folder's signature or the override file's, the catalog's
- * or the open list's mtime moved.
+ * After a file or shell tool call: a scan when the plans folder's signature, the receipts signature of the plans
+ * on the line or the override file's, the catalog's or the open list's mtime moved.
  */
 async function afterToolCall($: Dollar): Promise<void> {
   if (!memo.isScanned) return requestScan($)

@@ -69,6 +69,8 @@ type World = {
   timeouts: Array<number | undefined>
   /** Every `$.fs.write` path. */
   writes: string[]
+  /** Every `$.fs.list` path. */
+  lists: string[]
   /** Every gh argv, with the cwd and timeout it ran with. */
   ghs: Array<{ argv: string[]; cwd: string | undefined; timeoutMs: number | undefined }>
   /** What `gh issue view <n>` answers: a state, or 'fail' (a non-zero exit); absent numbers fail. */
@@ -134,7 +136,10 @@ function fsHooks(on: On, w: World): void {
     return { deny: 'ENOENT' }
   })
   on('fs.exists', (_$, e) => ({ value: w.files.has(keyOf(e.path)) || isDir(w.files, e.path) }))
-  on('fs.list', (_$, e) => (isDir(w.files, e.path) ? { value: listing(w.files, e.path) } : { deny: 'ENOENT' }))
+  on('fs.list', (_$, e) => {
+    w.lists.push(e.path)
+    return isDir(w.files, e.path) ? { value: listing(w.files, e.path) } : { deny: 'ENOENT' }
+  })
   on('fs.write', (_$, e) => {
     w.writes.push(e.path)
     w.setFile(e.path, e.text)
@@ -204,7 +209,7 @@ function world(on: On, opts: WorldOpts = {}): World {
       ...opts.repo,
     },
     git: opts.branch === null ? null : snapshot(opts.branch ?? 'feat'),
-    gitVersion: 1, gits: [], timeouts: [], writes: [], ghs: [], gh: {}, line: undefined,
+    gitVersion: 1, gits: [], timeouts: [], writes: [], lists: [], ghs: [], gh: {}, line: undefined,
     clock: mock.clock(on, { now: NOW }),
     setFile: (path, text, mtimeMs) => files.set(keyOf(path), {
       text, mtimeMs: mtimeMs ?? w.clock.now(), path: files.get(keyOf(path))?.path ?? path,
@@ -317,9 +322,9 @@ describe('qualifying plans', () => {
     addPlan(w, '2025_banner_refs', planJson())
     await start($, w)
     expect(w.line?.text).toBe('plan 2025 · todo-k69m (301)')
-    expect(w.line?.plans).toEqual([{ id: '2025', page: `${PLANS}/2025_banner_refs_PIP.html` }])
+    expect(w.line?.plans).toEqual([{ id: '2025', page: `${PLANS}/2025_banner_refs_PIP.html`, done: 0, total: 0 }])
     expect(lineText(w)).toBe(statusText(w.line ?? null))
-    expect(lineText(w)).toContain('\x1b]8;;file:///repo/docs/PLANS/2025_banner_refs_PIP.html\x1b\\2025')
+    expect(lineText(w)).toContain('\x1b]8;;file:///repo/docs/PLANS/2025_banner_refs_PIP.html\x1b\\\x1b[38;5;51m2025\x1b[39m')
     // rule 1 holds, so no merge base is resolved
     expect(mergeBaseRuns(w)).toEqual([])
   })
@@ -527,7 +532,9 @@ describe('line.txt', () => {
     addPlan(w, '2025_banner_refs', planJson(), NOW - 60_000, `${WT}/docs/PLANS`)
     await start($, w)
     expect(w.line?.text).toBe('plan 2025 · todo-k69m (301)')
-    expect(w.line?.plans).toEqual([{ id: '2025', page: `${WT}/docs/PLANS/2025_banner_refs_PIP.html` }])
+    expect(w.line?.plans).toEqual([
+      { id: '2025', page: `${WT}/docs/PLANS/2025_banner_refs_PIP.html`, done: 0, total: 0 },
+    ])
     expect(w.files.get(keyOf(WT_LINE_FILE))?.text).toBe(statusText(w.line ?? null))
     expect(lineText(w)).toBeUndefined()
   })
@@ -750,5 +757,105 @@ describe('gh rechecks (plan 2027)', () => {
     await prompt($, w)
     expect(ghIssues(w)).toEqual([9])
     expect(w.line ?? null).toBeNull()
+  })
+})
+
+describe('plan progress from receipts (plan 2030)', () => {
+  const RECEIPTS = `${PLANS}/2025/receipts`
+  const ITEMS = ['TASK-1', 'TASK-2', 'TASK-3', 'TASK-4'].map(id => ({ id, status: 'PENDING' }))
+  const receipt = (item: string, kind = 'complete', named = item): string =>
+    JSON.stringify({ plan_id: '2025', item: named, outcome: { kind } })
+  /** The plan number as line.txt draws it in ramp color `color`, without its link wrapper. */
+  const drawn = (color: number): string => `\x1b[38;5;${color}m2025\x1b[39m`
+  const WRITE = { tool: 'Write', file_path: `${RECEIPTS}/TASK-2.json`, content: '{}' }
+
+  test('a qualifying plan draws its number in its step color in line.txt and line.json', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson({ items: ITEMS }))
+    w.setFile(`${RECEIPTS}/TASK-1.json`, receipt('TASK-1'), NOW - 5_000)
+    await start($, w)
+    expect(w.line?.plans).toEqual([{ id: '2025', page: `${PLANS}/2025_banner_refs_PIP.html`, done: 1, total: 4 }])
+    expect(lineText(w)).toContain(drawn(45))
+    expect(fileJson(w, LINE_JSON_FILE).text).toBe(lineText(w))
+  })
+
+  test('a new complete receipt then a Write call redraws the number a step dimmer', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson({ items: ITEMS }))
+    w.setFile(`${RECEIPTS}/TASK-1.json`, receipt('TASK-1'), NOW - 5_000)
+    await start($, w)
+    w.setFile(`${RECEIPTS}/TASK-2.json`, receipt('TASK-2'), NOW - 1_000)
+    await callTool($, w, WRITE)
+    expect(w.line?.plans.map(p => [p.done, p.total])).toEqual([[2, 4]])
+    expect(lineText(w)).toContain(drawn(74))
+    expect(fileJson(w, LINE_JSON_FILE).text).toContain(drawn(74))
+  })
+
+  test('a malformed receipt or one naming another item counts as none: the status decides', async ($, on) => {
+    const w = world(on)
+    const items = [{ id: 'TASK-1', status: 'COMPLETE' }, { id: 'TASK-2', status: 'PENDING' }]
+    addPlan(w, '2025_banner_refs', planJson({ items }))
+    w.setFile(`${RECEIPTS}/TASK-1.json`, '{not json', NOW - 5_000)
+    w.setFile(`${RECEIPTS}/TASK-2.json`, receipt('TASK-2', 'complete', 'TASK-9'), NOW - 5_000)
+    await start($, w)
+    expect(w.line?.plans.map(p => [p.done, p.total])).toEqual([[1, 2]])
+  })
+
+  test('a receipt of a plan not on the line moves nothing at the next tool call', async ($, on) => {
+    const w = world(on, { repo: { mergeBase: { main: OLD_BASE } } })
+    addPlan(w, '2025_banner_refs', planJson({ branch: 'other', items: ITEMS }))
+    await start($, w)
+    expect(w.line ?? null).toBeNull()
+    const before = w.gits.length
+    const listsBefore = w.lists.length
+    w.setFile(`${RECEIPTS}/TASK-2.json`, receipt('TASK-2'), NOW - 1_000)
+    await callTool($, w, WRITE)
+    expect(w.gits.length).toBe(before)
+    const listed = w.lists.slice(listsBefore).map(keyOf)
+    // the probe ran (it listed the plans folder) but never the off-line plan's receipts folder
+    expect(listed).toContain(keyOf(PLANS))
+    expect(w.lists.map(keyOf)).not.toContain(keyOf(RECEIPTS))
+  })
+
+  test('a plan with no receipts folder at start takes its first receipt at the next Write call', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson({ items: ITEMS }))
+    await start($, w)
+    expect(w.line?.plans.map(p => [p.done, p.total])).toEqual([[0, 4]])
+    w.setFile(`${RECEIPTS}/TASK-1.json`, receipt('TASK-1'), NOW - 1_000)
+    await callTool($, w, WRITE)
+    expect(w.line?.plans.map(p => [p.done, p.total])).toEqual([[1, 4]])
+    expect(lineText(w)).toContain(drawn(45))
+  })
+
+  test('a deleted receipt then a Write call drops the count and redraws the brighter step', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson({ items: ITEMS }))
+    w.setFile(`${RECEIPTS}/TASK-1.json`, receipt('TASK-1'), NOW - 5_000)
+    w.setFile(`${RECEIPTS}/TASK-2.json`, receipt('TASK-2'), NOW - 5_000)
+    await start($, w)
+    expect(lineText(w)).toContain(drawn(74))
+    w.files.delete(keyOf(`${RECEIPTS}/TASK-2.json`))
+    await callTool($, w, WRITE)
+    expect(w.line?.plans.map(p => [p.done, p.total])).toEqual([[1, 4]])
+    expect(lineText(w)).toContain(drawn(45))
+  })
+
+  test('two qualifying plan files sharing an id each draw their own status-based share', async ($, on) => {
+    const w = world(on)
+    addPlan(w, '2025_banner_refs', planJson({
+      items: [{ id: 'TASK-1', status: 'COMPLETE' }, { id: 'TASK-2', status: 'PENDING' }],
+    }))
+    addPlan(w, '2025_dup', planJson({
+      documentation: 'docs/PLANS/2025_dup_PIP.html', items: [{ id: 'TASK-1', status: 'PENDING' }],
+    }))
+    // a receipt under the shared id belongs to neither file, so it counts for none
+    w.setFile(`${RECEIPTS}/TASK-2.json`, receipt('TASK-2'), NOW - 5_000)
+    await start($, w)
+    expect(w.line?.plans.map(p => [p.page, p.done, p.total])).toEqual([
+      [`${PLANS}/2025_banner_refs_PIP.html`, 1, 2],
+      [`${PLANS}/2025_dup_PIP.html`, 0, 1],
+    ])
+    expect(w.lists.map(keyOf)).not.toContain(keyOf(RECEIPTS))
   })
 })

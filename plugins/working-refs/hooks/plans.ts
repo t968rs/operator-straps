@@ -7,6 +7,9 @@ import { DETACHED_KEY, ISSUES_KEY, PIP_HTML_SUFFIX, PLAN_SUFFIX, TODO_IDS_KEY } 
  * Pure: no `$`; the caller lists the folder, runs git and passes the answers in.
  */
 
+/** One ActionItem as the mod reads it: its id and its own `status` (null when not a string). */
+export type PlanItem = { id: string; status: string | null }
+
 /** The fields of one `<prefix>_ActionPlan.json` the line needs. */
 export type PlanInfo = {
   /** The 4-digit `plan_id`. */
@@ -18,6 +21,8 @@ export type PlanInfo = {
   refs: Refs
   /** The sibling `<prefix>_PIP.html`, beside the plan file. */
   page: string
+  /** The plan's items in file order (plan 2030). */
+  items: PlanItem[]
 }
 
 /** The merge base of HEAD and a base branch's tip, resolved by the caller (D9); null when git gave none. */
@@ -52,6 +57,17 @@ export const refsOf = (v: unknown): Refs =>
   isObject(v) ? { todoIds: uniqueStrings(v[TODO_IDS_KEY]), issues: uniqueIssues(v[ISSUES_KEY]) }
     : { todoIds: [], issues: [] }
 
+/** An `items` array read leniently: non-objects and blank or non-string ids dropped, the first per id kept. */
+export const itemsOf = (v: unknown): PlanItem[] => {
+  if (!Array.isArray(v)) return []
+  const seen = new Set<string>()
+  return v.filter(isObject).flatMap(item => {
+    if (typeof item.id !== 'string' || item.id === '' || seen.has(item.id)) return []
+    seen.add(item.id)
+    return [{ id: item.id, status: typeof item.status === 'string' ? item.status : null }]
+  })
+}
+
 const parse = (text: string): Json | null => {
   try {
     const data: unknown = JSON.parse(text)
@@ -80,6 +96,7 @@ export const parsePlan = (planPath: string, text: string): PlanInfo | null => {
     baseCommit: (nonBlank(data.base_commit) ?? '').toLowerCase(),
     refs: refsOf(data.refs),
     page,
+    items: itemsOf(data.items),
   }
 }
 

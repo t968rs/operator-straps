@@ -15,13 +15,31 @@ plan 2027 · todo-x7ty stop_gates (301) · [ 1168-todo-banner todo-48q2 ] [ (det
 - Each TODO id is labelled with its catalog item's `keyword` (`todo-x7ty stop_gates`); an id whose item has no
   keyword, or that the catalog does not list, prints alone. In the line file each label (the id alone when it
   has none) is drawn in its TODO's own color: ANSI 256 color 39, 170, 36, 214, 141, 72, 203 or 178, picked by
-  the FNV-1a 32-bit hash of the id, so a TODO keeps its color across branches and segments. Issues, plan links
-  and band-line's plain form stay uncolored, and the cap measures the plain text. The `/harness:working` reply
-  stays unlabelled.
+  the FNV-1a 32-bit hash of the id, so a TODO keeps its color across branches and segments. The
+  `/harness:working` reply stays unlabelled.
+- The other pieces of the line file are colored too (ANSI 256 colors): each plan number by how far its plan
+  is (below), each issue number 180, another branch's name 246, and the punctuation (the word `plan` or
+  `plans`, the separators, commas, brackets, the parentheses around issues and `+N`) 240. Only the
+  ccstatusline form (`line.txt`, the `text` of `line.json`) is colored; the plain `text` band-line reads is
+  unchanged, and the cap measures the plain text.
+- A plan number steps through the ramp 51, 45, 74, 67, 243 as its items finish: step 0 (51) when no item is
+  done or the plan has no items, step 4 (243) when every item is done, else step 1 + floor(3 * done / total)
+  (45, 74 or 67). The ramp shares no color with the TODO palette.
+- An item is done when its receipt `<artifacts.plans>/<id>/receipts/<ITEM>.json`, naming that item, has an
+  outcome kind of `complete` or `closed`. An item with no valid receipt (absent, unreadable, naming another
+  item, or without an outcome kind) is done when its own status is `COMPLETE` or `CLOSED_NO_ACTION`. A
+  `started` or `blocked` receipt is not done, whatever the item's status says. A plan id that two plan files
+  on the line share gets no receipts progress, since the receipts belong to neither for certain: each such
+  plan counts its item statuses alone. The receipt-else-status fallback applies to each item, which differs
+  from the harness: `plan.py status` (`plan_receipts.status_view`) counts an item of a receipts-scheme plan
+  with no receipt as `PENDING`, and reads receipts only for a plan whose `frozen.records` is `receipts`
+  (`book_for`). The line counts receipts for any plan on it, whatever its `frozen.records` scheme, so a
+  `COMPLETE` item with no receipt, or a leftover receipts folder, can show more progress on the line than on
+  the plan page.
 - Every other branch's override follows as `[ <branch> <refs> ]`, most recently set first (`set_at`), the
-  branch name dark in the line file and dim in band-line. Segments past `working_refs.max_chars` fold into a
-  trailing ` +N`; the plans and the own refs are never cut, and with no own part the first segment always
-  shows.
+  branch name in color 246 in the line file and dim in band-line. Segments past `working_refs.max_chars`
+  fold into a trailing ` +N`; the plans and the own refs are never cut, and with no own part the first
+  segment always shows.
 - Nothing qualifies and no branch has a visible override: the line is empty, and the widget prints nothing.
 
 ## What hides
@@ -87,7 +105,7 @@ wrong-typed value keeps the default:
 | `session.start` | Forgets the last session and scans, after the dispatch. |
 | `state.set` git-status `git` | Scans when the snapshot names another branch than the last scan used. |
 | `prompt.submit` | After the dispatch: scans when the snapshot's branch, `git rev-parse HEAD` or the archive tags moved (git only while a plan was read; a rebase or a merge from the base moves HEAD), or the files did; starts a `gh` recheck once an override issue fell due. |
-| `tool.call` Bash, PowerShell, Edit, MultiEdit, Write | After the call: scans when the plans folder's signature or the mtime of the override file, the catalog or the open-issue list moved. |
+| `tool.call` Bash, PowerShell, Edit, MultiEdit, Write | After the call: scans when the plans folder's signature, the receipts of the plans on the line (the name, size and mtime of each `.json` in their `<id>/receipts/` folders; no other plan's folder is listed) or the mtime of the override file, the catalog or the open-issue list moved. |
 
 The plans folder's signature is the name, size and mtime of each `*_ActionPlan.json` and `*_PIP.html`, so a
 plan rewritten in place counts; the folder's own mtime does not move then. Every git call runs through
@@ -101,7 +119,7 @@ hides requests a scan.
 
 | Key | Meaning |
 |-----|---------|
-| `line` | The branch's working line (plans, own refs, their keyword `labels` and formatted plain `refs`, `head`, the drawn `others` segments each with its `labels` and `issues`, `more`, plain `text`); null before the first scan and while nothing qualifies and no branch's override shows. Written only when it changed. |
+| `line` | The branch's working line (`plans`, each with its link and its `done` and `total` item counts; own refs, their keyword `labels` and formatted plain `refs`, `head`, the drawn `others` segments each with its `labels` and `issues`, `more`, plain `text`); null before the first scan and while nothing qualifies and no branch's override shows. Written only when it changed. |
 
 ## Files
 
@@ -112,6 +130,7 @@ hides requests a scan.
 | `<state_dir>/working-refs/line.json` | this mod only | `{ "version": 1, "branch", "text" }`: the ccstatusline form stamped with the branch it was built for; the widget prints the stamp dark when the checkout's HEAD names another branch. Not written before git-status's first snapshot. |
 | `<state_dir>/working-refs/issues.json` | this mod only | `{ "version": 1, "issues": { <n>: { "state", "checked_at", "tried_at" } } }`: the `gh` answers for override issues. |
 | `<state_dir>/todo-sync/open_issues.json` | `todo_sync.py untracked` only | `{ "version": 1, "fetched_at", "open": [...] }`: every open issue at the last complete listing. |
+| `<artifacts.plans>/<id>/receipts/<ITEM>.json` | `plan.py record` (read only here) | The receipt of a plan item; its `item` and `outcome.kind` decide whether the item counts as done. Read for the plans on the line only. |
 
 The files live under the checkout's own `state_dir`, so each worktree has its own line; an absolute `state_dir`
 is kept as given, so every checkout then shares them. After every scan the rendered text is compared with
@@ -135,8 +154,10 @@ for an empty line.
   open list are compared by mtime alone, so a rewrite that keeps the mtime is missed.
 - Archive tags and `origin/<base>` are read from the local copies, never fetched: a plan archived on another
   clone shows until its tag is fetched, and a stale `origin/<base>` can miss the merge-base rule.
-- The harness key defaults are copied into `hooks/mirror.ts`; the contract test keeps them aligned in this
-  repository, but an installed working-refs and harness at different versions can disagree.
+- The harness key defaults, the receipts folder name (`RECEIPTS_DIR`) and the done outcome kinds and statuses
+  (`DONE_OUTCOMES`, `DONE_STATUSES`) are copied into `hooks/mirror.ts`; the contract test keeps them aligned in
+  this repository, but an installed working-refs and harness at different versions can disagree on the receipts
+  layout or on which outcomes and statuses count as done.
 
 ## Checks
 

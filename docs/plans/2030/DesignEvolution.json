@@ -1,0 +1,93 @@
+{
+  "plan_id": "2030",
+  "feature": "working refs line colors",
+  "branch_lineage": "main-->0009-banner-formatting",
+  "primary_documents": {
+    "plan": "docs/plans/2030_working_refs_line_colors_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "task-2 lane",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 files",
+        "indicated": "only types/index.d.ts, hooks/line.ts and hooks/line.test.ts change; watch.ts and watch.test.ts belong to TASK-3"
+      },
+      "issue": {
+        "category": "signature-mismatch",
+        "why_categorical": "a caller and two expectations outside the item's files",
+        "why_free_form": "watch.ts viewOf builds a LineView without the now-required progress field, so buildLine throws on view.progress.get and 24 watch tests see no line; watch.test.ts expects PlanLink as {id, page}, which now also carries done and total, and pins the OSC 8 link text, which now holds the plan color"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 also passes progress: new Map() from viewOf in hooks/watch.ts, adds done: 0, total: 0 to the two PlanLink expectations in hooks/watch.test.ts and expects the plan number in color 51 (step 0) inside the OSC 8 link text of the qualifying-plan test; TASK-3 then fills progress from the receipts"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the caller change TASK-2's command (claude plugin test plugins/working-refs, every test passes) fails with 26 watch.test.ts failures"
+      },
+      "date": "2026-11-24"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "TASK-1 quality review (M1), refreeze approved by the developer",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 action 3 and tests",
+        "indicated": "plans.ts reads plan items leniently from data.items; the contract test pins only the data.<field> reads of plans.ts and the item/receipt/outcome reads of progress.ts"
+      },
+      "issue": {
+        "category": "dyad-drift",
+        "why_categorical": "a field read the contract test does not pin",
+        "why_free_form": "itemsOf reads each raw ActionItem as e.id and e.status; no contract test scans those names, so a renamed ActionItem.status reads every status as null and the suite still passes"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "itemsOf reads each raw item inline as item.<field>, and the contract test test_item_fields_read_by_plans_ts_match_action_item pins those names against ActionItem.model_fields"
+      },
+      "why_new_outcome": {
+        "category": "review-pin-update",
+        "free_form": "the item fields the mod reads from a plan file get the same contract pin as the ActionPlan fields"
+      },
+      "date": "2026-11-24"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "PR 348 review (M3, M6, M8), option B chosen by the developer",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided: Done counting; plan TASK-3 action 1",
+        "indicated": "a plan with a receipts/ folder counts its items by receipt outcome kind and a plan without the folder by item status; every qualifying plan's receipts folder is listed"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the spec's per-plan done rule and TASK-3's listing scope differ from what plan V6 and the code do",
+        "why_free_form": "progress.ts falls back to an item's own status for each item without a usable receipt, where harness status_view counts a receipts-scheme plan's item with no receipt as PENDING; the scan reads receipts for any qualifying plan whatever its frozen.records scheme, where harness book_for reads them only for receipts plans; a plan id shared by two plan files is never listed, since a receipt's owner file is unknown"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "V6 stands: the receipt-else-status fallback applies per item, receipts count for any qualifying plan, and a plan id shared by two plan files counts its item statuses; progress.ts, mirror.ts and the README state the divergence from status_view and book_for. Receipts plans keep their items PENDING, so the divergence shows only on hand-made states"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "matching the harness rule would change V6 and need a refreeze for a case receipts plans do not produce; documenting the divergence keeps the plan as written"
+      },
+      "date": "2026-11-24"
+    }
+  ]
+}
