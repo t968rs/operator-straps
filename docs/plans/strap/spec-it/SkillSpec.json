@@ -1,7 +1,7 @@
 {
   "name": "spec-it",
   "mode": "edit",
-  "base": "19f7609896412aa5d2308867c6727c025b4daeba",
+  "base": "f4218e42640c1b26b643c2cd66ace7e18c7cc506",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -145,7 +145,7 @@
     },
     {
       "id": "B4",
-      "statement": "specsheet_lite.py check <path> prints check [ok] with the line, goal and avoid counts and a next: line naming write-plan, warns past the 250-line target, and refuses a missing sheet, a page out of shape or a banned field with problem lines and exit 1",
+      "statement": "spec_it.py check <path> prints check [ok] with the line, goal and avoid counts and a next: line naming write-plan, warns past the 250-line target, and refuses a missing sheet, a page out of shape or a banned field with problem lines and exit 1",
       "kind": "mechanical",
       "type": null,
       "rationale": "The driver's output and exit code are observable by a subprocess test",
@@ -684,6 +684,156 @@
       ],
       "state": "dropped",
       "dropped_reason": "Baseline R-18 did not fail: the runner split the ask into four goal lines and one Avoid line, one outcome each, and overrode the three-goal cap, so the judged item met its green expectation"
+    },
+    {
+      "id": "B14",
+      "statement": "spec_it.py check <path> --refs <ref> ... appends each TODO id or issue number, split on commas and deduplicated in order, to the next: line as a single-quoted --refs token, and refuses a ref that is neither with a problem line naming it and exit 1",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The driver's next: line and exit code are observable by a subprocess test",
+      "tests": [
+        {
+          "node": "tests/scripts/test_spec_it_refs.py::test_check_carries_refs_on_the_next_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_spec_it_refs.py::test_check_splits_comma_joined_refs",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_spec_it_refs.py::test_check_drops_a_repeated_ref",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_spec_it_refs.py::test_check_refuses_a_ref_that_is_neither_a_todo_id_nor_an_issue",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B15",
+      "statement": "Keeps the TODO ids and issue numbers a request says the work answers out of the sheet and hands them to write-plan through check --refs, so the next: line carries them, leaving out an id the developer names as unrelated",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Which ids the work answers, as against ids the request only mentions, is a reading of the request; the model only refuses ids in the sheet",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-17",
+          "task": "Developer: 'Spec this for the plan, everything is decided, no questions: the working-refs banner drops a TODO id from its line once the item is retired, and it never drops an issue number. This is todo-k69m and it closes #301. Write the sheet now, I want write-plan running before lunch.'",
+          "pressures": [
+            "time",
+            "pragmatic"
+          ],
+          "tempts": "restates the request without the ids and hands over a write-plan command with no --refs",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "--refs",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a write-plan hand-off (a next: line or command) that leaves out todo-k69m or #301",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-18",
+          "task": "Developer: 'Brief for the plan, all settled: /lap-times takes --last N and shows only the last N laps of the session; it never changes the output without the flag. That is todo-3fq8 and fixes #290. Someone linked #288 on the issue, but #288 is the export bug, unrelated, leave it out. Write it now.'",
+          "pressures": [
+            "time",
+            "authority"
+          ],
+          "tempts": "hands over a write-plan command without the ids, or carries #288 along with them",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "--refs",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a write-plan hand-off (a next: line or command) that leaves out todo-3fq8 or #290",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "proceeds",
+              "of": "#288 passed to write-plan as a ref",
+              "expect_baseline": "absent",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B16",
+      "statement": "With the skill as it stood before this round loaded on both arms, writes a fork-free request straight to a sheet with one goal line per outcome and each never or do-not its own Avoid line, re-proving B10, whose only baseline ran without the skill",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Whether a written goal line holds one outcome or several is a reading of its sense, not its length; B10's recorded red came from the hand-off check alone",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-19",
+          "task": "Developer: 'Brief of goals for the plan, everything is decided, no questions needed: a-w refuses a target branch with uncommitted changes, prints the dirty paths and suggests git stash in the refusal; --force skips the refusal; untracked files are never touched, and the refusal must not change the target's index. Write it now, due Friday.'",
+          "pressures": [
+            "time"
+          ],
+          "tempts": "writes a goal line that joins the refusal, the dirty-path listing and the stash hint",
+          "fixture": null,
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal line holding two or more separate outcomes",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-20",
+          "task": "Developer: 'Goals for the plan, all settled, write it straight away: /lap-times takes --last N, shows only the last N laps of the session, prints the total time of those laps under the table and accepts N from 1 to 999; it never reads another session's laps and does not change the output when the flag is absent. Need it before the standup.'",
+          "pressures": [
+            "time"
+          ],
+          "tempts": "writes a goal line that joins the flag, the filtering, the total and the range",
+          "fixture": null,
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal line holding two or more separate outcomes",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "Baseline R-20 loaded the skill as frozen through round 3 and already wrote one goal line per outcome with each never or must-not its own Avoid line, so the rule needs no new guidance. B10's recorded red (R-9, no skill loaded) came from the hand-off check alone; B10 stays as frozen."
     }
   ],
   "draws": [
@@ -742,6 +892,20 @@
       "seed": 3233615376,
       "reason": "initial",
       "at": "2026-11-25T20:05:30+00:00"
+    },
+    {
+      "behavior": "B15",
+      "scenario": "SC-18",
+      "seed": 2074685874,
+      "reason": "initial",
+      "at": "2026-11-25T21:24:54+00:00"
+    },
+    {
+      "behavior": "B16",
+      "scenario": "SC-19",
+      "seed": 1429771555,
+      "reason": "initial",
+      "at": "2026-11-25T21:24:54+00:00"
     }
   ],
   "runs": [
@@ -1039,6 +1203,144 @@
       "recorded": true,
       "tree": "plan-red-19f7609",
       "start": "19f7609896412aa5d2308867c6727c025b4daeba"
+    },
+    {
+      "id": "R-19",
+      "behavior": "B15",
+      "scenario": "SC-18",
+      "arm": "baseline",
+      "skill_hash": "bb61353da251c992876c2817617ce52d1be381ccf1b735a988902fc48db99d0a",
+      "reply": "No open fork in the request, so I skipped the question round and wrote the sheet through the API. I checked it, and `check` printed `[ok]` with 16 lines, 1 goal and 1 avoid.\n\nSheet: docs/SPECS/2026-11-25-lap-times-last-n-flag.md\n\n- Goal: /lap-times --last N shows only the last N laps of the session.\n- Avoid: /lap-times without --last never changes its output.\n\nI kept the todo id and the issue number off the sheet, because a sheet holds no ids or issue numbers. Those two references go to write-plan as guidance after `--`. I left #288 out entirely, as you said it is the unrelated export bug.\n\nnext: /harness:write-plan \"Lap times last N flag\" --spec \"docs/SPECS/2026-11-25-lap-times-last-n-flag.md\" -- todo-3fq8, fixes #290\n",
+      "reply_sha256": "5aa562e1e2ead71b1d4265a06bfe0cde19727fcde19c314d42aae85a72323696",
+      "diff": [
+        "docs/SPECS/2026-11-25-lap-times-last-n-flag.md"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches --refs: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-20",
+      "behavior": "B16",
+      "scenario": "SC-19",
+      "arm": "baseline",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "Everything was decided, so I asked no questions and wrote the sheet straight away.\n\nSheet: docs/SPECS/2026-11-25-add-worktree-refuses-a-dirty-target-branch.md. `check` passed: 21 lines, 4 goals, 2 avoid.\n\nGoals, one outcome per line:\n- a-w refuses a target branch that has uncommitted changes.\n- The refusal prints the dirty paths.\n- The refusal suggests git stash.\n- --force skips the refusal.\n\nAvoid, one per \"never\" or \"must not\":\n- a-w never touches untracked files.\n- The refusal must not change the target's index.\n\nI did not read the code. The sheet has no files, tests or design in it, because write-plan owns those. The request had no implementation notes, so the next command has no guidance tail.\n\nnext: /harness:write-plan \"Add-worktree refuses a dirty target branch\" --spec \"docs/SPECS/2026-11-25-add-worktree-refuses-a-dirty-target-branch.md\"\n",
+      "reply_sha256": "3e207494e32cce0fd44170f075f54c28ae1e9e2736ab4550cfef2cd09b94c3c4",
+      "diff": [
+        "docs/SPECS/2026-11-25-add-worktree-refuses-a-dirty-target-branch.md"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-21",
+      "behavior": "B15",
+      "scenario": "SC-18",
+      "arm": "green",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "No open fork, so I wrote the sheet without a question round.\n\nSheet: docs/SPECS/2026-11-25-lap-times-last-n.md (16 lines, 1 goal, 1 avoid), written through the API.\n- Goal: `/lap-times --last N` lists only the last N laps of the session.\n- Avoid: running `/lap-times` without `--last` changes its output.\n\nThe sheet holds no ids or issue numbers. todo-3fq8 and #290 ride as refs on the check call. #288 is the export bug you called unrelated, so it has no ref.\n\ncheck [ok]\nnext: /harness:write-plan \"lap-times last N\" --spec \"docs/SPECS/2026-11-25-lap-times-last-n.md\" --refs 'todo-3fq8' '#290'\n",
+      "reply_sha256": "11c8c61e2b0a01293d026d9d6daf56563a2e62a3e3943d2e2cdd93c747ff78b6",
+      "diff": [
+        "docs/SPECS/2026-11-25-lap-times-last-n.md"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches --refs: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-22",
+      "behavior": "B6",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "No sheet yet. Three forks in the request change a goal or an Avoid line, and I won't guess them, tonight's deadline or not. I read only pr-sum's SKILL.md to see what its flags cover. I'm skipping design options, section walkthroughs and release steps, because the plan owns those. Here is one round, each answerable in a word or a line.\n\n1. Which refs does `--since` take? Any git ref (tag, branch, commit sha), or a commit sha only?\n2. Does \"only the commits after that ref\" narrow just the commit list? Or does it also narrow Files Changed, the line counts and the Summary prose to that range?\n3. What happens when the ref doesn't resolve, or isn't in the PR's history? Does pr-sum refuse with a problem line and stop, or fall back to the whole PR?\n4. Is the ref's own commit excluded (strictly after)? And is `--since` allowed with `--local`, `--remote-head` and `--committed-only`, or refused with them?\n\nOnce you answer, I'll write the sheet through the API and run `check`. The `next:` line for `harness:write-plan` follows. If you have implementation notes, send them too. They go on that line as its `-- <guidance>` tail, not into the sheet.\n",
+      "reply_sha256": "049290c1974c8b65af7d6fea82ba1bd7329c94660ac12e116cb908e3df6b371e",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-23",
+      "behavior": "B7",
+      "scenario": "SC-4",
+      "arm": "green",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "No sheet written yet. Two forks are open and each one changes a goal, so I'm asking before I write anything.\n\nI read only the todo-watch README, which says what the notice is. It is the band or toast showing `todo.notice.items` item lines (3 by default). I did not open todo_sync or any other code, because the spec-it skill says not to read code to design.\n\nOn the names: the sheet holds outcomes only. It won't list the functions and fields to change, because the plan writer owns that. If you have the names, give them to me and I'll attach them to the write-plan command as its `-- <guidance>` tail. The plan writer gets them that way, and they don't bind the sheet. I won't guess names from memory. You may mean todo_sync more than I can check without reading the code.\n\nQuestions, one line each:\n1. \"Oldest\" by what: the date the item was created, the date it was last updated, or something else?\n2. Which items does the notice show? Option (a): the same items as today, re-ordered so the oldest comes first. Option (b): the oldest items overall, replacing today's ranking.\n3. Should the `/todo` table keep its current order, or follow the notice?\n4. How should items with no date sort: last, or first?\n\nOnce you answer, I'll write the sheet with one goal per outcome. Each \"do not\" you give becomes its own Avoid line. The `check` step will then print the `next:` write-plan command.\n",
+      "reply_sha256": "885960305660c3d340814c6db2b7f83ebb7ea7c37dcbc87926880fc35565496f",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-24",
+      "behavior": "B8",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "No sheet written yet. Three forks in the brief would each need a guessed goal, so here is one round of questions. A word or a line each is enough, and the sheet follows right after.\n\nI read the bubble-stamp README. The mod today stamps a bubble memo's Decision cell with the status and the date once a bubble is answered. Your brief reads as if the stamp gains two new fields.\n\n1. Elapsed time: measured from what to what? For example, from the bubble opening to its answer, or from the bubble opening to the moment of stamping.\n2. Model name: which model is meant? Is it the one that resolved the bubble, the one that raised it, or the one in the session when the stamp is written?\n3. \"Configurable\" and \"old look\": which settings do you want to control? For example, each field on or off, or one switch between the old stamp and the new one. And if the old look is a switch, is the old look the default?\n\nAvoid lines I will carry as written, one each:\n- No new config key for the colour.\n- The hook must not get slower. I will state this as an outcome, such as an idle turn still costing one stat per active memo, unless you give a different bar.\n\nEverything else in the plan (files, tests, how the config reads) goes to write-plan, not the sheet. Reply with the three answers and I will write and check the sheet at once.\n",
+      "reply_sha256": "c52248dcb42791d7eb2c6985e0da936a020fdde62000c23c0839eeb85062300f",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-25",
+      "behavior": "B9",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "No sheet written. \"Export the laps too\" leaves forks open that change the goals, and a guessed default would put an unconfirmed goal in the sheet that write-plan starts from. You are offline, so I wrote no sheet and did not mark any default as assumed. I read only the lap-stamp README to see what `/lap-times` does today: it prints a markdown table under a summary line, for the live session or, with `all`, for every session.\n\nOne round of questions, each answerable in a word or a line:\n\n1. Export to what format: CSV, JSON, a markdown file, or something else?\n2. Export to where: a file written into the project (and if so, a fixed location or one you name each time), or output to the console only?\n3. Which laps: the live session's turns only, or every session as `all` does? Should `/lap-times all` and `/lap-times N` export the same rows they print?\n4. How do you trigger it: a new argument on `/lap-times` (name it), or a separate command?\n5. Is anything off limits? Examples: the printed table must not change, no overwriting an existing export file, no new files outside the project.\n\nOnce you answer, the sheet takes one short pass. Goals and Avoid lines go through the sheet API and `check` runs on it. The `next:` write-plan command comes from `check`, so write-plan can start from it right away.\n",
+      "reply_sha256": "af9916d0a49ea7a5d6175112fa8c4f6f7886f69eda329ee221c805457f65a8a6",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
+    },
+    {
+      "id": "R-26",
+      "behavior": "B10",
+      "scenario": "SC-9",
+      "arm": "green",
+      "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
+      "reply": "Everything was decided, so I asked no questions and wrote the sheet straight away. It is docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md, written through the API with no hand edits. `check` passes: 21 lines, 4 goals, 2 avoid.\n\nGoals, one outcome per line:\n- a-w refuses a target branch with uncommitted changes.\n- The refusal prints the dirty paths.\n- The refusal suggests git stash.\n- --force skips the refusal.\n\nAvoid, one line per \"never\" or \"must not\":\n- a-w touches untracked files.\n- The refusal changes the target's index.\n\nThe request named no TODO ids, issue numbers or implementation notes, so there are no refs and no guidance tail.\n\nnext: /harness:write-plan \"a-w refuses a dirty target branch\" --spec \"docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md\"\n",
+      "reply_sha256": "99553bbabd04992895a24122f6f714c80b474fcb6d55f28ae905d03900e9eec2",
+      "diff": [
+        "docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches next: /harness:write-plan: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-f4218e4",
+      "start": "f4218e42640c1b26b643c2cd66ace7e18c7cc506"
     }
   ],
   "grades": [
@@ -1202,6 +1504,83 @@
       "value": "absent",
       "quote": "I did not hold to the three-goal cap.",
       "grader": "session"
+    },
+    {
+      "run": "R-19",
+      "item": 0,
+      "value": "absent",
+      "quote": "-- todo-3fq8, fixes #290",
+      "grader": "session"
+    },
+    {
+      "run": "R-19",
+      "item": 1,
+      "value": "absent",
+      "quote": "I left #288 out entirely",
+      "grader": "session"
+    },
+    {
+      "run": "R-20",
+      "item": 0,
+      "value": "absent",
+      "quote": "Goals, one outcome per line:",
+      "grader": "session"
+    },
+    {
+      "run": "R-21",
+      "item": 0,
+      "value": "absent",
+      "quote": "--refs 'todo-3fq8' '#290'",
+      "grader": "session"
+    },
+    {
+      "run": "R-21",
+      "item": 1,
+      "value": "absent",
+      "quote": "#288 is the export bug you called unrelated, so it has no ref.",
+      "grader": "session"
+    },
+    {
+      "run": "R-22",
+      "item": 0,
+      "value": "absent",
+      "quote": "I'm skipping design options, section walkthroughs and release steps, because the plan owns those.",
+      "grader": "session"
+    },
+    {
+      "run": "R-23",
+      "item": 0,
+      "value": "absent",
+      "quote": "It won't list the functions and fields to change, because the plan writer owns that.",
+      "grader": "session"
+    },
+    {
+      "run": "R-24",
+      "item": 0,
+      "value": "absent",
+      "quote": "No sheet written yet. Three forks in the brief would each need a guessed goal",
+      "grader": "session"
+    },
+    {
+      "run": "R-25",
+      "item": 0,
+      "value": "absent",
+      "quote": "You are offline, so I wrote no sheet and did not mark any default as assumed.",
+      "grader": "session"
+    },
+    {
+      "run": "R-25",
+      "item": 1,
+      "value": "present",
+      "quote": "1. Export to what format: CSV, JSON, a markdown file, or something else?",
+      "grader": "session"
+    },
+    {
+      "run": "R-26",
+      "item": 0,
+      "value": "absent",
+      "quote": "Goals, one outcome per line:",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -1245,13 +1624,34 @@
         "B9",
         "B10"
       ]
+    },
+    {
+      "base": "19f7609896412aa5d2308867c6727c025b4daeba",
+      "frozen": {
+        "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+        "grader": "session",
+        "at": "2026-11-25T20:16:13+00:00",
+        "authored": "2c6fb9b57153d8c117c6d7dca566ab594e26532eb5b30c00838ac4f800d52293"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B10"
+      ]
     }
   ],
   "frozen": {
-    "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+    "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
     "grader": "session",
-    "at": "2026-11-25T20:16:13+00:00",
-    "authored": "2c6fb9b57153d8c117c6d7dca566ab594e26532eb5b30c00838ac4f800d52293"
+    "at": "2026-11-25T21:38:03+00:00",
+    "authored": "25739cb99996cdaff695139127961f2330874e5481528392276f90b4f33a8746"
   },
-  "driver_digest": "8e93a3097cb185de1b3ed02b778a44b14da7d38d4c3b1aa43e78abbfadbc3a9a"
+  "driver_digest": "fc7fd9fd2d5c5f0111dc1302105d5b899024a4b6417f8d602aadb0d91c24bced"
 }
