@@ -117,12 +117,41 @@ following. The mod adds no key of its own.
 
 | Hook | Does |
 |------|------|
-| `session.start`, `session.attach` | Loads the session's rows from the laps file into memory. |
+| `session.start`, `session.attach` | Loads the session's rows from the laps file into memory; the first load in an active project also registers `/lap-times`, and a load that finds no project lets it pass on until the next load in a project registers it again. |
 | `prompt.submit` | Records a lap press, or the wake reason of a non-lap submission. |
 | `session.append` (door `delivery`, the main loop) | A lap press delivered into the running turn attaches to that turn and restarts its lap (D2); a `queue` row is not a delivery. |
 | `turn.start`, `turn.complete` (the main conversation) | Records the start; at the stop, builds the row, appends it and adds it to memory. |
 | Render of an assistant reply block | Stamps the block whose fingerprint matches a row. |
 | Render of the `TurnDuration` line | Stamps it when exactly one empty-answer row matches its duration. |
+| `command.run` (`/lap-times`) | Prints the lap times table (below); `/lap-times` is registered at the first `session.start` or `session.attach` in an active project. |
+
+## /lap-times
+
+`/lap-times [all] [N]` prints the laps as a markdown table under one summary line (scope, turn count, total lap,
+longest lap). With no argument it shows the live session's turns: from memory, or from the laps file after a
+`/clear` or a resume that raised no `session.start` (memory still holds the previous session then). `all` reads
+every session from the laps file plus any turn whose write was refused, adds a date and a short session id, and
+its summary names the session count. `N` keeps the newest
+N rows (default 50); the `#` column still numbers each row's place in the whole list, and the summary adds
+`last N shown` when rows are trimmed. Anything else prints the usage line. An empty scope prints a
+`no turns recorded` line, and a laps file that does not read where the command needs it prints a one-line
+failure.
+
+```
+lap-stamp · this session · 2 turns · lap total 1m 15s · longest 1m 10s
+
+| # | Stop     | Kind   |    Lap | Since prompt | Wake              | Stop reason |
+|--:|----------|--------|-------:|-------------:|-------------------|-------------|
+| 1 | 14:00:05 | prompt |     5s |              |                   | answer      |
+| 2 | 14:01:15 | wake   | 1m 10s |       1m 15s | task-notification | answer      |
+```
+
+Every cell is padded to its column's width and durations are right-aligned, so the table lines up as plain text
+and still renders as markdown. Every line fits the terminal width at the moment the command runs when the stop
+time and the lap alone fit: columns go least useful first (stop reason, wake, session, `#`, date, kind, since
+prompt) until the table fits or only the stop time and the lap remain, and those two are never dropped, even
+past the width. The summary line is cut with an ellipsis. The command answers without a model turn,
+and its output stays out of the model's requests.
 
 ## State
 

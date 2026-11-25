@@ -5,7 +5,8 @@ import type { ClockState, LapRow, StopReason } from '../types'
 import { delivered, EMPTY_CLOCK, isLapPress, seedLastPrompt, started, stopped, submitted } from './clock'
 import { lapsPathOf, readConfig, type LapConfig } from './config'
 import { HARNESS_CONFIG_REL, rootCandidates } from './root'
-import { buildRow, newestPromptAt, parseRows, rowLine } from './row'
+import { buildRow, newestPromptAt, parseAllRows, parseRows, rowLine } from './row'
+import { lapTimesText, parseLapArgs, USAGE } from './table'
 
 /**
  * Engine glue for lap-stamp: the main loop's turn events drive the clock (./clock), each stopped turn becomes
@@ -19,12 +20,16 @@ import { buildRow, newestPromptAt, parseRows, rowLine } from './row'
 
 type Dollar = EngineInterface
 type Watch = { root: string; cfg: LapConfig }
-/** Per-registration memory: the serial queue, the last known project and git's answered top levels ('' failed). */
+/**
+ * Per-registration memory: the serial queue, the last known project, git's answered top levels ('' failed) and
+ * whether `/lap-times` is registered.
+ */
 type Ctx = {
   tail: Promise<unknown>
   watch: Watch | undefined
   isKnown: boolean
   toplevels: Map<string, string>
+  isCommandRegistered: boolean
 }
 /** What a main-loop `turn.complete` hands the row. */
 type Stop = { turnId: string; answer: string; reason: StopReason }
@@ -307,6 +312,8 @@ async function completed($: Dollar, ctx: Ctx, e: Stop, at: Promise<number | unde
  */
 async function load($: Dollar, ctx: Ctx, isFresh: boolean): Promise<void> {
   const w = await watchOf($, ctx, isFresh)
+  if (w === undefined) ctx.isCommandRegistered = false
+  else await registerLapTimes($, ctx)
   const session = w === undefined ? undefined : await sessionIdOf($)
   if (w === undefined || session === undefined) return
   const text = await lapsText($, lapsPathOf(w.root, w.cfg))
@@ -319,6 +326,77 @@ async function load($: Dollar, ctx: Ctx, isFresh: boolean): Promise<void> {
   const newestAt = newestPromptAt(rows)
   const isSwitch = known !== null && known !== session
   await update($, clockAtom, c => (isSwitch ? clockFor(c, session, known, text) : seedLastPrompt(c, newestAt)))
+}
+
+// ---------------------------------------------------------------------------
+// The /lap-times command
+
+const LAP_TIMES = 'lap-times'
+const LAP_TIMES_DESCRIPTION = 'Show lap times as a table: this session, or all sessions with `all`'
+const LAP_TIMES_UNAVAILABLE = 'lap-stamp: the laps file could not be read.'
+
+/**
+ * Registers `/lap-times` once per registration of the hooks, at a load in a project the glue serves; a refusal
+ * leaves it unregistered. A load that resolves to no project clears the flag (load), so the command passes on
+ * there and registers again at the next load in a project.
+ */
+async function registerLapTimes($: Dollar, ctx: Ctx): Promise<void> {
+  if (ctx.isCommandRegistered) return
+  await $.command
+    .register({ name: LAP_TIMES, description: LAP_TIMES_DESCRIPTION, argumentHint: '[all] [N]' })
+    .then(() => {
+      ctx.isCommandRegistered = true
+    })
+    .catch(noop)
+}
+
+/** The laps file's text in the project the glue serves; undefined when inactive or the file does not read. */
+async function servedLapsText($: Dollar, ctx: Ctx): Promise<string | undefined> {
+  const w = await watchOf($, ctx, false)
+  return w === undefined ? undefined : lapsText($, lapsPathOf(w.root, w.cfg))
+}
+
+/**
+ * The live session's rows: from memory when it is the session the rows atom holds (or the id does not read),
+ * else from the laps file (a /clear or a resume raises no `session.start`); undefined when the file does not read.
+ */
+async function sessionRows($: Dollar, ctx: Ctx): Promise<LapRow[] | undefined> {
+  const known = await read($, sessionAtom)
+  const live = await sessionIdOf($)
+  if (live === undefined || live === known) {
+    return known === null ? [] : (await read($, rowsAtom)).filter(r => r.session === known)
+  }
+  const text = await servedLapsText($, ctx)
+  return text === undefined ? undefined : parseRows(text, live)
+}
+
+/**
+ * The rows `/lap-times` shows: the live session's (sessionRows), or every session's from the laps file plus the
+ * held rows the file lacks (a refused write), so both views count the current session alike.
+ */
+async function lapTimesRows($: Dollar, ctx: Ctx, isAllSessions: boolean): Promise<LapRow[] | undefined> {
+  if (!isAllSessions) return sessionRows($, ctx)
+  const text = await servedLapsText($, ctx)
+  return text === undefined ? undefined : mergeRows(parseAllRows(text), await read($, rowsAtom))
+}
+
+/** The `/lap-times` answer for `args` at a terminal `columns` wide: the table, the usage line or a failure. */
+async function lapTimesAnswer($: Dollar, ctx: Ctx, args: string, columns: number): Promise<string> {
+  const parsed = parseLapArgs(args)
+  if (parsed === null) return USAGE
+  const rows = await serial(ctx, () => lapTimesRows($, ctx, parsed.isAllSessions))
+  return rows === undefined ? LAP_TIMES_UNAVAILABLE : lapTimesText(rows, { ...parsed, columns })
+}
+
+/** Answers `/lap-times` while registered, for the person alone; passes it on otherwise. */
+function registerCommand(on: On, ctx: Ctx): void {
+  on('command.run', { command: LAP_TIMES }, async ($, e, next) => {
+    if (!ctx.isCommandRegistered) return next(e)
+    const text = await lapTimesAnswer($, ctx, e.args, e.presentation.columns)
+    return { text, isTextDisplayOnly: true as const }
+  }).catch((_$, e, next) =>
+    ctx.isCommandRegistered ? { text: LAP_TIMES_UNAVAILABLE, isTextDisplayOnly: true as const } : next(e),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -394,7 +472,10 @@ function registerTurns(on: On, ctx: Ctx): void {
 
 /** Registers the lap hooks; each observes, returns what the host returned and never throws its own failure. */
 export function registerLap(on: On): void {
-  const ctx: Ctx = { tail: Promise.resolve(), watch: undefined, isKnown: false, toplevels: new Map() }
+  const ctx: Ctx = {
+    tail: Promise.resolve(), watch: undefined, isKnown: false, toplevels: new Map(), isCommandRegistered: false,
+  }
   registerPresses(on, ctx)
   registerTurns(on, ctx)
+  registerCommand(on, ctx)
 }

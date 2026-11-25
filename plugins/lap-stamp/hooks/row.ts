@@ -149,11 +149,16 @@ function parseLine(line: string): LapRow | null {
 
 /** Rows of one session from a JSONL text, in file order. Blank, malformed, wrong-version and wrong-typed lines are skipped, never fatal. */
 export function parseRows(text: string, session: string): LapRow[] {
+  return parseAllRows(text).filter(row => row.session === session)
+}
+
+/** Every valid row of the laps file text, of every session, in file order; malformed lines skipped. */
+export function parseAllRows(text: string): LapRow[] {
   const rows: LapRow[] = []
   const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
   for (const line of body.split(/\r\n|\n|\r/)) {
     const row = parseLine(line)
-    if (row !== null && row.session === session) rows.push(row)
+    if (row !== null) rows.push(row)
   }
   return rows
 }
