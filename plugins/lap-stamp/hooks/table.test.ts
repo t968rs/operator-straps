@@ -5,8 +5,9 @@ import { buildRow } from './row'
 import { lapTimesText, parseLapArgs, rowWidth } from './table'
 
 /**
- * The `/lap-times` table: a markdown table of laps rows whose every line fits the terminal width, columns
- * dropped least useful first; the summary line above it; and the arguments that pick the rows.
+ * The `/lap-times` table: a markdown table of laps rows whose every line fits the terminal width, down to the
+ * stop time and the lap, which are never dropped; columns are dropped least useful first. The summary line
+ * above the table and the arguments that pick the rows are covered here too.
  */
 
 const T0 = Date.UTC(2026, 10, 25, 14, 0, 0)
@@ -73,11 +74,13 @@ describe('lapTimesText', () => {
     const rows = [rowAt(5), rowAt(75, {}, 'wake')]
     const text = lapTimesText(rows, { isAllSessions: false, limit: 50, columns: 50 })
     expect(widest(text.split('\n').slice(2).join('\n'))).toBeLessThanOrEqual(50)
-    const header = text.split('\n')[2]
-    expect(header).toContain('Stop')
-    expect(header).toContain('Lap')
-    expect(header).not.toContain('Stop reason')
-    expect(header).not.toContain('Wake')
+    expect(text.split('\n')[2]).toBe('| # | Stop     | Kind   |    Lap | Since prompt |')
+  })
+
+  test('the drop order is by rank: Session goes before Date, which stays', () => {
+    const rows = [rowAt(5), rowAt(9, { session: 'session-two-id' })]
+    const lines = lapTimesText(rows, { isAllSessions: true, limit: 50, columns: 60 }).split('\n')
+    expect(lines[2]).toBe('| # | Date  | Stop     | Kind   | Lap | Since prompt |')
   })
 
   test('the summary line is cut to the width too', () => {
@@ -88,6 +91,12 @@ describe('lapTimesText', () => {
   test('stop time and lap are never dropped, however narrow', () => {
     const header = lapTimesText([rowAt(5)], { isAllSessions: false, limit: 50, columns: 10 }).split('\n')[2]
     expect(header).toBe('| Stop     | Lap |')
+  })
+
+  test('a width of 0 means unknown: no column is dropped', () => {
+    const rows = [rowAt(5), rowAt(75, {}, 'wake')]
+    const header = lapTimesText(rows, { isAllSessions: false, limit: 50, columns: 0 }).split('\n')[2]
+    expect(header).toBe('| # | Stop     | Kind   |    Lap | Since prompt | Wake              | Stop reason |')
   })
 
   test('all sessions add the date and a short session id', () => {

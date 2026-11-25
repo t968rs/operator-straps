@@ -4,7 +4,8 @@ import { clockOf, formatDuration } from './stamp'
 /**
  * The `/lap-times` table: the laps rows as a markdown table whose cells are padded to their column's width, so
  * it lines up as plain text in the terminal and still renders as a table. Every table line fits the terminal
- * width: columns are dropped least useful first, and the stop time and the lap are never dropped. Pure.
+ * width when the stop time and the lap alone fit: columns are dropped least useful first, and the stop time and
+ * the lap are never dropped, even past the width. Pure.
  */
 
 /** What `/lap-times` shows: this session or every session, and how many of the newest rows. */
@@ -64,11 +65,12 @@ type Filled = { col: Column; cells: string[]; width: number }
 /** The column filled from the rows shown; `first` is the 0-based place of the first shown row. */
 function filled(col: Column, rows: readonly LapRow[], first: number): Filled {
   const cells = rows.map((r, i) => escaped(col.cell(r, first + i + 1)))
-  return { col, cells, width: Math.max(col.header.length, ...cells.map(c => c.length)) }
+  return { col, cells, width: cells.reduce((m, c) => Math.max(m, c.length), col.header.length) }
 }
 
 /** The columns that fit `columns`: dropped by rank, highest first, until the line fits or none can go. */
 function fitColumns(all: readonly Filled[], columns: number): Filled[] {
+  if (columns <= 0) return [...all]
   let kept = [...all]
   while (rowWidth(kept.map(f => f.width)) > columns) {
     const droppable = kept.filter(f => f.col.dropRank > 0)
@@ -92,7 +94,7 @@ function tableLines(cols: readonly Filled[], rowCount: number): string[] {
 function summaryLine(rows: readonly LapRow[], shown: number, opts: TableOptions): string {
   const scope = opts.isAllSessions ? `all sessions (${new Set(rows.map(r => r.session)).size})` : 'this session'
   const total = rows.reduce((sum, r) => sum + r.lap_ms, 0)
-  const longest = Math.max(...rows.map(r => r.lap_ms))
+  const longest = rows.reduce((m, r) => Math.max(m, r.lap_ms), 0)
   const turns = `${rows.length} turn${rows.length === 1 ? '' : 's'}`
   const parts = ['lap-stamp', scope, turns, `lap total ${formatDuration(total)}`, `longest ${formatDuration(longest)}`]
   if (shown < rows.length) parts.push(`last ${shown} shown`)
