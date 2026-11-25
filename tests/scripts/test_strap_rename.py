@@ -1,10 +1,13 @@
 """``strap.py rename``: a frozen spec follows its skill to a new name.
 
-The skill folder moves first (by hand, with ``git mv``); ``rename`` then moves the spec folder and the ledger
-folder to the new name, re-points the parts under the old skill folder and the planned test copies, names
-each text field the name swap rewrote, writes a ``rename`` entry naming
+``rename`` moves the skill folder and every part made from the old name (a tree the developer already moved
+by hand is accepted), swaps the old name's kebab, snake and title forms inside the moved parts, moves each
+test file a planned node cites whose name is made from the old name, reports the old name where it lingers in
+other tracked files, then moves the spec folder and the ledger folder to the new name, re-points the parts
+and the planned test copies, names each text field the name swap rewrote, writes a ``rename`` entry naming
 the old name and tags the base under the new stem. Entries written before the rename keep their tags under
 the old stem, so ``check`` reports nothing untagged, and the next refreeze tags under the new stem.
+``--dry-run`` prints the moves and changes nothing; ``--from <old-name>`` finishes an earlier rename.
 """
 from __future__ import annotations
 
@@ -18,8 +21,9 @@ from conftest import git
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _strap_lock_helpers as helpers  # noqa: E402
-from _strap_lock_helpers import (LOCKED, NAME, PLANS, SKILL, STEM, Strap, commit_all,  # noqa: E402
-                                 kind_of, ok, peeled, refused, write)
+from _strap_lock_helpers import (ADD_PART, LOCKED, NAME, PLANS, PLANNED_TEST, SKILL, STEM,  # noqa: E402
+                                 Strap, _file_test, _mechanical_code, commit_all, kind_of, ok, peeled,
+                                 refused, skill_text, write)
 
 # the shared fixtures, by name
 driver, project, strap, piped = helpers.driver, helpers.project, helpers.strap, helpers.piped
@@ -29,6 +33,39 @@ NEW = "renamed-skill"
 NEW_STEM = f"skill/{NEW}"
 NEW_SKILL = f"plugins/harness/skills/{NEW}/SKILL.md"
 NEW_SPEC = f"{PLANS}/strap/{NEW}/SkillSpec.json"
+OLD_FOLDER = f"plugins/harness/skills/{NAME}"
+NEW_FOLDER = f"plugins/harness/skills/{NEW}"
+
+
+def _safe(strap: Strap, *args: str):
+    """``strap`` with an argparse exit (an unknown flag or a missing argument) returned as its exit code."""
+    try:
+        return strap(*args)
+    except SystemExit as exc:
+        return int(exc.code or 0), "", ""
+
+
+def _tracked(project: Path, rel: str) -> bool:
+    return bool(git(project, "ls-files", "--", rel))
+
+
+def _freeze_with_extra(strap: Strap, piped, project: Path, extra: str) -> None:
+    """A frozen spec whose B1 (widget) and B2 cite ``tests/test_widget.py`` and ``extra``; committed."""
+    ok(strap("new", NAME))
+    ok(piped(_mechanical_code("Writes widget.txt", "tests/test_widget.py::test_widget_exists"), "api", NAME))
+    ok(piped(_mechanical_code("Writes extra.txt", f"{extra}::test_extra_exists"), "api", NAME))
+    write(project, SKILL, skill_text("Body."))
+    ok(piped(ADD_PART, "api", NAME))
+    write(project, PLANNED_TEST, _file_test("widget"))
+    write(project, f"{PLANS}/strap/{NAME}/tests/{extra}", _file_test("extra"))
+    ok(strap("red", NAME))
+    write(project, "tests/test_widget.py", _file_test("widget"))
+    write(project, extra, _file_test("extra"))
+    write(project, "widget.txt", "widget\n")
+    write(project, "extra.txt", "extra\n")
+    commit_all(project)
+    ok(strap("freeze", NAME))
+    commit_all(project)
 
 
 def _move_skill(project: Path) -> None:
@@ -209,11 +246,13 @@ def test_the_rename_entry_commit_tag_names_the_commit_that_added_it(frozen: str,
     assert peeled(project, tag, "commit") == rename_commit
 
 
-def test_rename_refuses_a_skill_folder_not_yet_moved(frozen: str, strap: Strap, project: Path) -> None:
-    err = refused(strap("rename", NAME, NEW))
-    assert NEW_SKILL in err, err
-    assert "check [ok]" in ok(strap("check", NAME))
-    assert (project / SKILL).is_file()
+def test_rename_moves_a_skill_folder_not_yet_moved(frozen: str, strap: Strap, project: Path) -> None:
+    """The skill folder moves with git, and the frontmatter name follows the swap."""
+    out = ok(strap("rename", NAME, NEW))
+    assert out.startswith(f"rename [done] | {NAME} -> {NEW}"), out
+    assert not (project / OLD_FOLDER).exists()
+    assert _tracked(project, NEW_SKILL) and not _tracked(project, SKILL)
+    assert (project / NEW_SKILL).read_text(encoding="utf-8").startswith(f"---\nname: {NEW}\n")
 
 
 def test_rename_refuses_a_spec_never_frozen(prepared: Path, strap: Strap) -> None:
@@ -249,15 +288,97 @@ def test_rename_names_an_old_folder_left_behind(frozen: str, strap: Strap, proje
     assert "does not exist" not in err, err
 
 
-def test_rename_refuses_a_part_not_yet_moved(frozen: str, strap: Strap, piped, project: Path) -> None:
+def test_rename_moves_a_part_not_yet_moved(frozen: str, strap: Strap, piped, project: Path) -> None:
     old_test = "tests/skills/test_demo_skill_skill_contract.py"
-    write(project, old_test, '"""Contract."""\n')
+    new_test = "tests/skills/test_renamed_skill_skill_contract.py"
+    write(project, old_test, '"""Contract for demo_skill."""\n')
     ok(piped(f'add_part(name, "contract_test", "{old_test}")\n', "api", NAME))
     commit_all(project)
     _move_skill(project)
-    err = refused(strap("rename", NAME, NEW))
-    assert "part tests/skills/test_renamed_skill_skill_contract.py does not exist" in err, err
+    out = ok(strap("rename", NAME, NEW))
+    assert "| 2 part(s) re-pointed |" in out, out
+    assert _tracked(project, new_test) and not (project / old_test).exists()
+    assert (project / new_test).read_text(encoding="utf-8") == '"""Contract for renamed_skill."""\n'
+
+
+def test_rename_dry_run_prints_each_move_and_changes_nothing(frozen: str, strap: Strap,
+                                                              project: Path) -> None:
+    out = ok(_safe(strap, "rename", NAME, NEW, "--dry-run"))
+    assert f"move: {OLD_FOLDER} -> {NEW_FOLDER}" in out.splitlines(), out
+    assert (project / SKILL).is_file() and not (project / NEW_FOLDER).exists()
     assert (project / PLANS / "strap" / NAME / "SkillSpec.json").is_file()
+    assert not (project / NEW_SPEC).exists()
+    assert git(project, "status", "--porcelain") == ""
+
+
+def test_rename_refuses_before_any_move_when_a_target_exists(frozen: str, strap: Strap,
+                                                              project: Path) -> None:
+    write(project, f"{NEW_FOLDER}/notes.md", "Someone else's skill.\n")
+    err = refused(strap("rename", NAME, NEW))
+    assert f"move target {NEW_FOLDER} already exists" in err, err
+    assert (project / SKILL).is_file()
+    assert (project / f"{NEW_FOLDER}/notes.md").is_file() and not (project / NEW_SKILL).exists()
+    assert (project / PLANS / "strap" / NAME / "SkillSpec.json").is_file()
+
+
+def test_rename_swaps_the_old_name_forms_inside_the_moved_parts(frozen: str, strap: Strap,
+                                                                 project: Path) -> None:
+    write(project, SKILL, skill_text(f"# Demo Skill\n\nRun /harness:{NAME}; see demo_skill_api and "
+                                      f"{NAME}-extra."))
+    commit_all(project)
+    out = ok(strap("rename", NAME, NEW))
+    text = (project / NEW_SKILL).read_text(encoding="utf-8")
+    assert text == (f"---\nname: {NEW}\ndescription: Use when testing the lock.\n---\n\n# Renamed Skill\n\n"
+                    f"Run /harness:{NEW}; see renamed_skill_api and {NAME}-extra.\n"), text
+    lines = out.splitlines()
+    assert f"swapped-file: {NEW_SKILL}:2" in lines, out
+    assert f"swapped-file: {NEW_SKILL}:6" in lines and f"swapped-file: {NEW_SKILL}:8" in lines, out
+
+
+def test_a_renamed_skill_checks_with_no_name_problem(frozen: str, strap: Strap, project: Path) -> None:
+    ok(strap("rename", NAME, NEW))
+    commit_all(project)
+    out = ok(strap("check", NEW))
+    assert "check [ok]" in out, out
+
+
+def test_rename_moves_a_test_file_a_planned_node_cites(strap: Strap, piped, project: Path) -> None:
+    """A test file named from the old name that a planned node cites moves, swapped, and the node follows;
+    its planned copy follows too."""
+    _freeze_with_extra(strap, piped, project, "tests/test_demo_skill_extra.py")
+    out = ok(strap("rename", NAME, NEW))
+    move = "move: tests/test_demo_skill_extra.py -> tests/test_renamed_skill_extra.py"
+    assert move in out.splitlines(), out
+    assert _tracked(project, "tests/test_renamed_skill_extra.py")
+    assert not (project / "tests/test_demo_skill_extra.py").exists()
+    spec = json.loads((project / NEW_SPEC).read_text(encoding="utf-8"))
+    nodes = [test["node"] for behavior in spec["behaviors"] for test in behavior["tests"]]
+    assert nodes == ["tests/test_widget.py::test_widget_exists",
+                     "tests/test_renamed_skill_extra.py::test_extra_exists"]
+    assert (project / PLANS / "strap" / NEW / "tests/tests/test_renamed_skill_extra.py").is_file()
+
+
+def test_rename_reports_an_old_name_outside_the_parts(frozen: str, strap: Strap, project: Path) -> None:
+    write(project, "README.md", f"# Project\n\nUse {NAME} for the demo.\n")
+    commit_all(project)
+    out = ok(strap("rename", NAME, NEW))
+    assert "stale-name: README.md:3" in out.splitlines(), out
+    assert (project / "README.md").read_text(encoding="utf-8") == f"# Project\n\nUse {NAME} for the demo.\n"
+
+
+def test_rename_from_finishes_an_earlier_rename(strap: Strap, piped, project: Path) -> None:
+    """A spec renamed before the moves existed keeps an old-named test file; ``--from`` moves it and its
+    node under the spec's current name, writing no ledger entry."""
+    from harness_lib import freeze_ledger as fl
+    _freeze_with_extra(strap, piped, project, "tests/test_old_skill_extra.py")
+    before = list(fl.load_entries(fl.ledger_dir(project / PLANS, STEM)))
+    out = ok(_safe(strap, "rename", NAME, "--from", "old-skill"))
+    assert "move: tests/test_old_skill_extra.py -> tests/test_demo_skill_extra.py" in out.splitlines(), out
+    assert _tracked(project, "tests/test_demo_skill_extra.py")
+    spec = json.loads((project / PLANS / "strap" / NAME / "SkillSpec.json").read_text(encoding="utf-8"))
+    assert spec["name"] == NAME
+    assert spec["behaviors"][1]["tests"][0]["node"] == "tests/test_demo_skill_extra.py::test_extra_exists"
+    assert list(fl.load_entries(fl.ledger_dir(project / PLANS, STEM))) == before
 
 
 def test_rename_refuses_a_name_that_already_has_a_spec(frozen: str, strap: Strap, project: Path) -> None:
@@ -287,3 +408,21 @@ def test_rename_moves_both_folders_back_when_the_commit_fails(frozen: str, strap
     assert [kind_of(e) for e in fl.load_entries(ledger)] == ["freeze"]
     assert not (project / NEW_SPEC).parent.exists()
     assert not fl.ledger_dir(project / PLANS, NEW_STEM).exists()
+
+
+def test_rename_moves_everything_back_when_the_commit_fails(frozen: str, strap: Strap, driver,
+                                                             project: Path,
+                                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failure after the moves leaves the skill folder, its swapped text and the spec as they were."""
+    write(project, SKILL, skill_text(f"Run /harness:{NAME}."))
+    commit_all(project)
+    skill_before = (project / SKILL).read_bytes()
+
+    def _fail(*_args, **_kwargs):
+        raise driver.sl.LockRefused(["entry write failed"])
+
+    monkeypatch.setattr(driver.sl, "commit", _fail)
+    assert "entry write failed" in refused(strap("rename", NAME, NEW))
+    assert (project / SKILL).read_bytes() == skill_before
+    assert not (project / NEW_FOLDER).exists()
+    assert git(project, "status", "--porcelain") == ""

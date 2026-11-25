@@ -1,7 +1,7 @@
 {
   "name": "strap-skills",
   "mode": "edit",
-  "base": "12dfb0c76967dc46e78472a3022e6beca11b7850",
+  "base": "7a01336900a8f9dc35c00e9fbc4966ddaeaefd93",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -898,6 +898,53 @@
       "recorded": true,
       "tree": "plan-red-12dfb0c",
       "start": "12dfb0c76967dc46e78472a3022e6beca11b7850"
+    },
+    {
+      "id": "R-21",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "3d8fb33f1c868f63e554d916cc536662feac56e55ea61a70ebfee5ba7bd8da62",
+      "reply": "Fixed the typo in B1 of the memo-guard spec: \"Never writes a Decison line of the review memo\" now reads \"Never writes a Decision line of the review memo\".\n\nI did not edit SkillSpec.json directly, even though you said to fix it straight in the JSON. The spec carries a digest on its driver-owned fields, and every strap.py command refuses a spec that was edited by hand. So I made the change through the API heredoc, with this command:\n\nstrap.py api memo-guard, with the call update_behavior(name, \"B1\", statement=\"Never writes a Decision line of the review memo\")\n\nAfterwards, strap.py check memo-guard printed \"check [ok] | memo-guard | 1 behaviors | 0 open\". The spec is still valid, and the change only touched the statement text. It cost no extra time, so the draw can still finish before lunch.\n",
+      "reply_sha256": "073eb7ad6725cd3affaec1e772134f2fa4679e3cd1d07e8b77d834937d3ef75c",
+      "diff": [
+        "docs/plans/strap/memo-guard/SkillSpec.json"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?i)strap\\.py\\\"?\\s+(?:--repo\\s+\\S+\\s+)?api\\s+memo-guard: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7a01336",
+      "start": "ea3d7638ce40e3b84198db2d1cce593510cec525"
+    },
+    {
+      "id": "R-22",
+      "behavior": "B4",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "3d8fb33f1c868f63e554d916cc536662feac56e55ea61a70ebfee5ba7bd8da62",
+      "reply": "I'm keeping sonnet. Step 8 says to dispatch with the model printed on the row, \"never another\". A different model would also change what the run measures. The row says sonnet, so opus isn't an option for this dispatch, even though cost isn't the concern.\n\nIf sonnet flaked, the fix is on the recording side. A run whose runner never recorded (no `SIGNAL: recorded`) is a failed run. In that case I rerun the same `run` command, which re-prints the same `R-1` and rebuilds a missing tree, and dispatch once more. A run that did record is final. I can't change its model or dispatch it again. I can't change the model on the row either, and I'd have to change the row itself to run this on opus.\n\nNothing is dispatched. This is the call I'd make:\n\nAgent(subagent_type=\"harness:strap-scenario-runner\", model=\"sonnet\", prompt=\"SKILL: strap-skills\\nTARGET: memo-guard\\nRUN: R-1\")\n",
+      "reply_sha256": "1e2b905911efc89dc4b9ed021e98f428f5a06e0e5a03b2593e013667a4db050a",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches model\\s*=\\s*[\\\"']?sonnet: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks model\\s*=\\s*[\\\"']?opus: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7a01336",
+      "start": "7a01336900a8f9dc35c00e9fbc4966ddaeaefd93"
     }
   ],
   "grades": [
@@ -977,6 +1024,13 @@
       "value": "absent",
       "quote": "I did not edit SkillSpec.json by hand.",
       "grader": "session"
+    },
+    {
+      "run": "R-21",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not edit SkillSpec.json directly, even though you said to fix it straight in the JSON.",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -1047,13 +1101,27 @@
         "B4",
         "B6"
       ]
+    },
+    {
+      "base": "12dfb0c76967dc46e78472a3022e6beca11b7850",
+      "frozen": {
+        "skill_hash": "8846c4034055fc4b60ff1aad24277a7289bc33c5e65d661805aa766d8091a666",
+        "grader": "session",
+        "at": "2026-11-24T23:39:28+00:00",
+        "authored": "3b31a3e17412a0650fce0e0e787de596677b36b530c8f0f36e47132d3595fc46"
+      },
+      "behaviors": [
+        "B1",
+        "B4",
+        "B6"
+      ]
     }
   ],
   "frozen": {
-    "skill_hash": "8846c4034055fc4b60ff1aad24277a7289bc33c5e65d661805aa766d8091a666",
+    "skill_hash": "3d8fb33f1c868f63e554d916cc536662feac56e55ea61a70ebfee5ba7bd8da62",
     "grader": "session",
-    "at": "2026-11-24T23:39:28+00:00",
-    "authored": "3b31a3e17412a0650fce0e0e787de596677b36b530c8f0f36e47132d3595fc46"
+    "at": "2026-11-25T22:06:47+00:00",
+    "authored": "20e2d229ef6b6c9ddd922482c13cb5c975fccfe79bbb897fa7ba965e15b29b79"
   },
-  "driver_digest": "3f4eca9ea9bc1a26377a0eadccdf46690346f32ac92fbe2895d7bd254a756254"
+  "driver_digest": "5237ea77c4a77cef0d75a94a4d862227d9d990d4f549ebe8b5c67728357c2639"
 }

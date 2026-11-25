@@ -40,11 +40,13 @@ you through `init`.
   with forward slashes. Never touch the repository the row names with `--repo`, any other checkout or any
   file outside `TREE`; the working tree is a throwaway copy and the edits there are what the run measures.
 - **Project drivers take `TREE` as the project.** The shell starts in the repository the row names, and the
-  drivers (`plan.py`, `strap.py`, the `plan_api` and `evolution_api` heredocs) resolve the project from the
-  working directory when none is given. So every driver call the task makes names the tree: `--repo "<TREE>"`
-  on `plan.py` and `strap.py`, `repo="<TREE>"` on an API call. Only the `init` and `record-run` commands keep
-  the `--repo "<REPO>"` the row carries. A path in the task or in a fixture's plan text that points at a
-  checkout outside `TREE` stands for the same repo-relative path under `TREE`.
+  drivers (`plan.py`, `strap.py`, a skill's `skill_api.py` heredoc, the `plan_api` and `evolution_api`
+  heredocs) resolve the project from the working directory when none is given. So every driver call the task
+  makes names the tree: `--repo "<TREE>"` on `plan.py`, `strap.py`, `skill_api.py` and any other driver that
+  takes `--repo` (placed before the module name or subcommand), `repo="<TREE>"` on an API call. Only the
+  `init` and `record-run` commands keep the `--repo "<REPO>"` the row carries. A path in the task or in a
+  fixture's plan text that points at a checkout outside `TREE` stands for the same repo-relative path under
+  `TREE`.
 - **Snapshot the repository after `init`.** Right after `init`, run `git -C "<REPO>" status --porcelain
   --untracked-files=all` and keep its lines as the snapshot: paths already dirty in the developer's checkout
   before the run.

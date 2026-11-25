@@ -1,0 +1,31 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "a9940db3a8320407686516aa3dddf91541c0509c",
+  "files": {
+    "plugins/harness/lib/harness_lib/specsheet_lite_api.py": "13a9949019bdb3210b4e086babc588ea73c09a9a",
+    "plugins/harness/lib/harness_lib/specsheet_lite_models.py": "dc1813460313c690fdb314d7233b2273a4993cfd",
+    "plugins/harness/scripts/specsheet_lite.py": "9ddf853d41746039cd95bdf02b557091b75b5a34",
+    "plugins/harness/skills/specsheet-lite/SKILL.md": "360f2e7255963c0b44000723aa1cd6ad66010a91",
+    "tests/skills/test_specsheet_lite_skill_contract.py": "0ced7a9430e2edbc7b2aef23eaec5746f85340ec"
+  },
+  "ignored": {
+    "docs/plans/strap/specsheet-lite/tests/tests/contract/test_specsheet_lite_wiring.py": "acbabc83c8d3f7c2c5542810e8fe1c591b85d72845096f2178949027ef82b5bc",
+    "docs/plans/strap/specsheet-lite/tests/tests/lib/test_specsheet_lite_api.py": "a4e80cd3ab2838c9b3e468bedede4b5b1ec7c58514402b549f7c4cb2cd74ecac",
+    "docs/plans/strap/specsheet-lite/tests/tests/lib/test_specsheet_lite_models.py": "136e2d72e047625eb641791f1a34042ffeb9b6926ceeb6c11cbba77858304c09",
+    "docs/plans/strap/specsheet-lite/tests/tests/scripts/test_specsheet_lite.py": "2f13f2535e5bac4f13ce34cea82437df30a9e81974c0c3a8dd749a5a8810e9b8"
+  },
+  "at": "2026-11-25T18:26:20+00:00",
+  "base": null,
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
+  "grader": "session",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

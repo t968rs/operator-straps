@@ -1,0 +1,288 @@
+{
+  "plan_id": "2032",
+  "plan_created": "2026-11-25",
+  "source_document": "docs/SPECS/2026-11-25-strap-py-rename-does-the-moves-and-the-name-swap.md",
+  "documentation": "docs/plans/2032_strap_py_rename_does_the_moves_and_the_name_swap_PIP.html",
+  "branch": "0011-specsheet-lite",
+  "base_branch": "main",
+  "refs": {
+    "todo_ids": [
+      "todo-57az"
+    ],
+    "issues": [
+      352
+    ]
+  },
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "rename moves the skill folder and the name-made parts itself",
+      "action": "New module harness_lib/strap_rename.py plans the moves from named_paths and the profile's skill folder: each old path that exists moves to its new path (git mv when tracked, Path.rename otherwise); an old path already moved by hand is accepted; a target that already exists refuses before any move, and an old folder holding only untracked leftovers keeps its 'still exists' refusal. strap.py cmd_rename runs the moves before the spec and ledger moves, prints one 'move: <old> -> <new>' line each, and _move_back undoes them in reverse on a failure. --dry-run prints the move lines and changes nothing.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/lib/harness_lib/strap_rename.py",
+        "tests/scripts/test_strap_rename.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:1326-1327",
+          "expect": "_named(sub, \"rename\""
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:1239-1244",
+          "expect": "def cmd_rename"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:1188-1201",
+          "expect": "def _rename_problems"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:1225-1236",
+          "expect": "def _move_back"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_scaffold.py:126-130",
+          "expect": "def named_paths"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_moves_a_skill_folder_not_yet_moved",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_moves_a_part_not_yet_moved",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_dry_run_prints_each_move_and_changes_nothing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_refuses_before_any_move_when_a_target_exists",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_moves_everything_back_when_the_commit_fails",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "rename swaps the old name's forms inside the moved parts",
+      "action": "After the moves, each part file (and each moved test file) has the old name's kebab, snake and title forms replaced by the new name's as whole words (the kebab form bounded by non-name characters, the snake form allowed inside identifiers such as demo_skill_api, the title form 'Demo Skill'), the frontmatter name included; one 'swapped-file: <path>:<line>' line per changed line. The original bytes are kept so _move_back restores them.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/lib/harness_lib/strap_rename.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:1157-1170",
+          "expect": "pattern = re.compile(rf\"(?<![a-z0-9-]){re.escape(spec.name)}(?![a-z0-9-])\")"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_swaps_the_old_name_forms_inside_the_moved_parts",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_a_renamed_skill_checks_with_no_name_problem",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "cited test files follow the rename; other old-name hits are reported",
+      "action": "A planned test node whose file name carries the old snake form moves with the rename (the file moved and swapped like a part, the node re-pointed, the planned copy moved by _planned_test_moves). git grep over tracked files, outside the parts, the moved files, the spec folder, the ledgers and the artifacts history folders, prints one 'stale-name: <path>:<line>' line per hit of an old form and changes nothing.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/lib/harness_lib/strap_rename.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:1207-1214",
+          "expect": "def _planned_test_moves"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_moves_a_test_file_a_planned_node_cites",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_reports_an_old_name_outside_the_parts",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "rename --from finishes an earlier rename",
+      "action": "'strap.py rename <name> --from <old-name>' (new_name omitted) runs the moves, swaps, node re-points and report from <old-name> to the spec's current name, on a frozen spec, without moving the spec or the ledger and without a ledger entry; exactly one of new_name and --from.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/lib/harness_lib/strap_rename.py"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:1326-1327",
+          "expect": "_named(sub, \"rename\""
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_rename.py::test_rename_from_finishes_an_earlier_rename",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "strap-skills documents the new rename and refreezes",
+      "action": "strap-skills SKILL.md 'Rename a skill' and its README row describe the moves, --dry-run, the swapped-file and stale-name lines and --from; docs/RELEASES/v1.1.0.md gains a line. SKILL.md is a strap-skills part, so run the greens of its judgment behaviors on the new hash and refreeze with the developer's OK.",
+      "files": [
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "plugins/harness/skills/strap-skills/README.md",
+        "docs/RELEASES/v1.1.0.md",
+        "docs/plans/strap/strap-skills/SkillSpec.json"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:334-337",
+          "expect": "**Rename a skill.**"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/README.md:37",
+          "expect": "\"rename add-bookmark to bookmark\""
+        }
+      ],
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze strap-skills --refreeze",
+          "expect": "freeze [done] | strap-skills"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "spec-it finishes its rename from specsheet-lite",
+      "action": "Run rename spec-it --from specsheet-lite: the four tests/*/test_specsheet_lite*.py files move to their spec_it names and B1-B5's planned nodes follow; then refreeze spec-it with the developer's OK.",
+      "files": [
+        "docs/plans/strap/spec-it/SkillSpec.json",
+        "tests/lib/test_specsheet_lite_models.py",
+        "tests/lib/test_specsheet_lite_api.py",
+        "tests/scripts/test_specsheet_lite.py",
+        "tests/contract/test_specsheet_lite_wiring.py"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py rename spec-it --from specsheet-lite",
+          "expect": "rename [done] | spec-it",
+          "writes": [
+            "tests/lib/test_spec_it_models.py",
+            "tests/lib/test_spec_it_api.py",
+            "tests/scripts/test_spec_it.py",
+            "tests/contract/test_spec_it_wiring.py",
+            "docs/plans/strap/spec-it/SkillSpec.json"
+          ]
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check spec-it",
+          "expect": "check [ok] | spec-it"
+        }
+      ]
+    }
+  ],
+  "base_commit": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Who performs the moves a rename needs?",
+      "options": [
+        {
+          "id": "python-moves",
+          "summary": "rename runs git mv itself, cross-OS, with --dry-run printing the list"
+        },
+        {
+          "id": "print-only",
+          "summary": "rename prints a move list for the developer to run"
+        }
+      ],
+      "chosen": "python-moves",
+      "rationale": "Developer chose the catalog recommendation (todo-57az)."
+    },
+    {
+      "id": "D2",
+      "question": "What happens to the old name inside files?",
+      "options": [
+        {
+          "id": "swap-parts-report-rest",
+          "summary": "swap kebab, snake and title forms in the moved parts and cited test files; only report other tracked files"
+        },
+        {
+          "id": "report-only",
+          "summary": "report every hit, swap nothing"
+        }
+      ],
+      "chosen": "swap-parts-report-rest",
+      "rationale": "Developer chose the catalog recommendation (todo-57az)."
+    },
+    {
+      "id": "D3",
+      "question": "How does a spec renamed before this change finish its rename?",
+      "options": [
+        {
+          "id": "from-flag",
+          "summary": "rename <name> --from <old-name> runs the moves, swaps and node re-points without moving the spec or ledger"
+        },
+        {
+          "id": "hand",
+          "summary": "the developer moves the files and edits the nodes by hand"
+        }
+      ],
+      "chosen": "from-flag",
+      "rationale": "The spec's goal for spec-it's leftovers; node ids are locked to the api, so only the driver can move them."
+    }
+  ],
+  "values": [],
+  "formats": [],
+  "sweeps": [],
+  "ledger": "plan/2032-strap-py-rename-does-the-moves-and-the-name-swap"
+}

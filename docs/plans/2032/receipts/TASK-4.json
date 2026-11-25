@@ -1,0 +1,25 @@
+{
+  "plan_id": "2032",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "1bc3734d6782d86a77799e01fe964362a80404a0"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_strap_rename.py::test_rename_from_finishes_an_earlier_rename"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_strap_rename.py::test_rename_from_finishes_an_earlier_rename"
+    }
+  },
+  "evidence": "staged tree 1bc3734: 1 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-25",
+  "seal": "d4ff8b53fb6af1141fa2308ca9337b88b5a813cb00e1f4c04c8d5ae46dc67917"
+}

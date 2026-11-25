@@ -1,0 +1,29 @@
+{
+  "plan_id": "2032",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "1bc3734d6782d86a77799e01fe964362a80404a0"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_strap_rename.py::test_rename_moves_a_skill_folder_not_yet_moved",
+        "tests/scripts/test_strap_rename.py::test_rename_moves_a_part_not_yet_moved",
+        "tests/scripts/test_strap_rename.py::test_rename_dry_run_prints_each_move_and_changes_nothing",
+        "tests/scripts/test_strap_rename.py::test_rename_refuses_before_any_move_when_a_target_exists",
+        "tests/scripts/test_strap_rename.py::test_rename_moves_everything_back_when_the_commit_fails"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_strap_rename.py::test_rename_moves_a_skill_folder_not_yet_moved tests/scripts/test_strap_rename.py::test_rename_moves_a_part_not_yet_moved tests/scripts/test_strap_rename.py::test_rename_dry_run_prints_each_move_and_changes_nothing tests/scripts/test_strap_rename.py::test_rename_refuses_before_any_move_when_a_target_exists tests/scripts/test_strap_rename.py::test_rename_moves_everything_back_when_the_commit_fails"
+    }
+  },
+  "evidence": "staged tree 1bc3734: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-25",
+  "seal": "a22bf40e7db87f9aff36cb7a95cbb15c1ab01f513e67455f8f699318523ddc0e"
+}

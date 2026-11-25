@@ -1,0 +1,28 @@
+{
+  "kind": "freeze",
+  "round": 3,
+  "seq": 2,
+  "tree": "e81e423a34a21f287cc717f28ff518c3514dc318",
+  "files": {
+    "docs/plans/strap/spec-it/fixtures/revise-bubble-stamp/docs/SPECS/2026-11-20-bubble-stamp-shows-the-elapsed-time.md": "206c84884b8e755aae7733c1a8a3bbd178ee544b",
+    "docs/plans/strap/spec-it/fixtures/revise-lap-times/docs/SPECS/2026-11-20-lap-times-shows-the-last-n-laps.md": "7b5dfc13fd781e9782ce52273a63734d1a219a43",
+    "plugins/harness/lib/harness_lib/spec_it_api.py": "ae1cb115f0c8b42c668fb9f7b3e768bcfc259e78",
+    "plugins/harness/lib/harness_lib/spec_it_models.py": "00a14d405ce7393c0200233d0b82746582bbf820",
+    "plugins/harness/scripts/spec_it.py": "9e93ad4a5cacbe08528a12f83fd42505761ae71a",
+    "plugins/harness/skills/spec-it/SKILL.md": "8302d7ca4c379984c9c7192581d419cfd77fcd04",
+    "tests/skills/test_spec_it_skill_contract.py": "d461424b4981b7634861072ef91065caaa6def07"
+  },
+  "ignored": {},
+  "at": "2026-11-25T20:16:13+00:00",
+  "base": "19f7609896412aa5d2308867c6727c025b4daeba",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+  "grader": "session",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

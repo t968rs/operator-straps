@@ -1,0 +1,24 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "4199ed01fe9d3cc996dd6178209920db890a5844",
+  "files": {
+    "docs/plans/2032_strap_py_rename_does_the_moves_and_the_name_swap_ActionPlan.json": "75d2e643fea6f1390de1f3a85a1185c53639f6c0"
+  },
+  "ignored": {
+    "docs/plans/2032/tests/tests/scripts/test_strap_rename.py": "d5b15cb5022140b5f05db4b5615bd86d9f0329c79af00a012937a46329fee6d9"
+  },
+  "at": "2026-11-25T21:45:45+00:00",
+  "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "history": false,
+  "digest": "bcd89329ec21a4a4d7bd841bfc08e8ac4b04e399413a2e55b5d91628e7c5743d",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

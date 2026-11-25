@@ -74,7 +74,6 @@ reconcile the ledger's commit tags; the other commands leave them to the next of
 import argparse
 import datetime as dt
 import importlib.util
-import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -89,6 +88,7 @@ from harness_lib import plan_red as pr
 from harness_lib import strap_api as sa
 from harness_lib import strap_lock as sl
 from harness_lib import strap_models as sm
+from harness_lib import strap_rename as srn
 from harness_lib import strap_runs as sr
 from harness_lib.branch_capture import CaptureError, git, git_out
 from harness_lib.config import active, activate, load_config
@@ -1148,60 +1148,83 @@ def swapped_lines(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
     return lines
 
 
-def _renamed_node(node: str, repoint: Callable[[str], str]) -> str:
-    """A planned pytest node with its file part re-pointed by ``repoint`` and its test part kept."""
+def _renamed_node(node: str, repoint: Callable[[str], str], old: str, new: str) -> str:
+    """A planned pytest node with its file part re-pointed by ``repoint`` (then, when its file name carries
+    the old name's snake form, renamed to the new one's) and its test part kept."""
     file, sep, rest = node.partition("::")
-    return repoint(file) + sep + rest
+    file = repoint(file)
+    return (srn.renamed_file(file, old, new) or file) + sep + rest
 
 
-def _renamed_behaviors(spec: SkillSpec, new_name: str, repoint: Callable[[str], str]) -> List[Behavior]:
-    """Each behavior with the old name, as a whole word, replaced in its statement and scenario text, so a
-    check that pins the invocation expects the new name, and each planned test node and path check target
-    re-pointed by ``repoint``; recorded replies stay as they were."""
-    pattern = re.compile(rf"(?<![a-z0-9-]){re.escape(spec.name)}(?![a-z0-9-])")
-
-    def swap(text: str) -> str:
-        return pattern.sub(new_name, text)
+def _renamed_behaviors(spec: SkillSpec, old: str, new: str, repoint: Callable[[str], str]) -> List[Behavior]:
+    """Each behavior with the old name's forms replaced in its statement and scenario text, so a check that
+    pins the invocation expects the new name, and each planned test node and path check target re-pointed;
+    recorded replies stay as they were."""
+    swap = srn.swapper(old, new)
     return [behavior.model_copy(update={
         "statement": swap(behavior.statement),
-        "tests": [test.model_copy(update={"node": _renamed_node(test.node, repoint)})
+        "tests": [test.model_copy(update={"node": _renamed_node(test.node, repoint, old, new)})
                   for test in behavior.tests],
         "scenarios": [_renamed_scenario(scenario, swap, repoint) for scenario in behavior.scenarios]})
         for behavior in spec.behaviors]
 
 
-def _renamed(spec: SkillSpec, new_name: str) -> SkillSpec:
+def _renamed(spec: SkillSpec, new_name: str, from_name: Optional[str] = None) -> SkillSpec:
     """``spec`` under ``new_name``: each part, planned test node and path check target at a path made from
-    the old name (the contract test, the models, api and driver modules) or under the old skill folder
-    re-pointed at the new name's, and the old name in the behaviors' text replaced."""
+    the old name (``from_name``, else ``spec.name``: the contract test, the models, api and driver modules)
+    or under the old skill folder re-pointed at the new name's, and the old name in the behaviors' text
+    replaced."""
+    source = spec.model_copy(update={"name": from_name or spec.name})
     target = spec.model_copy(update={"name": new_name})
-    named = dict(zip(named_paths(spec), named_paths(target)))
-    old, new = profile_of(spec).skill_folder + "/", profile_of(target).skill_folder + "/"
+    named = dict(zip(named_paths(source), named_paths(target)))
+    old, new = profile_of(source).skill_folder + "/", profile_of(target).skill_folder + "/"
 
     def repoint(path: str) -> str:
         return _renamed_path(path, named, old, new)
     parts = [part.model_copy(update={"path": repoint(part.path)}) for part in spec.parts]
-    behaviors = _renamed_behaviors(spec, new_name, repoint)
+    behaviors = _renamed_behaviors(spec, source.name, new_name, repoint)
     return target.model_copy(update={"parts": parts, "behaviors": behaviors})
 
 
-def _rename_problems(spec: SkillSpec, renamed: SkillSpec) -> List[str]:
-    """A frozen spec whose skill folder already moved, every part present, and a free spec folder."""
+def _file_moves(spec: SkillSpec, renamed: SkillSpec, old_name: str) -> List[Tuple[str, str]]:
+    """Every move the rename needs, skill folder first: the folder, each part outside it at a path made from
+    the old name, each planned node's test file named from it."""
+    old = profile_of(spec.model_copy(update={"name": old_name})).skill_folder
+    new = profile_of(renamed).skill_folder
+    moves = [(old, new)]
+    moves += [(a.path, b.path) for a, b in zip(spec.parts, renamed.parts)
+              if a.path != b.path and not a.path.startswith(old + "/")]
+    moves += [(node_file(a.node), node_file(b.node)) for x, y in zip(spec.behaviors, renamed.behaviors)
+              for a, b in zip(x.tests, y.tests) if node_file(a.node) != node_file(b.node)]
+    return list(dict.fromkeys(moves))
+
+
+def _rename_problems(spec: SkillSpec, renamed: SkillSpec, old_name: str,
+                     moves: Sequence[Tuple[str, str]]) -> List[str]:
+    """A frozen spec, no move onto an existing target, a SKILL.md and every part present before or after
+    its move, and a free spec folder for a new name."""
     if spec.frozen is None:
         return [f"{spec.name} is not frozen; rename a frozen spec, then refreeze it"]
     root = _root()
-    old, new = profile_of(spec), profile_of(renamed)
-    problems = []
-    if (root / old.skill_folder).exists():
-        problems.append(f"{old.skill_folder} still exists; move it to {new.skill_folder} "
-                        "(remove leftover untracked files)")
-    if not (root / new.skill_md).is_file():
-        problems.append(f"{new.skill_md} does not exist; move {old.skill_folder} to {new.skill_folder} first")
-    problems += [f"part {part.path} does not exist" for part in renamed.parts
-                 if part.path != new.skill_md and not (root / part.path).is_file()]
-    if _strap_dir(renamed.name).exists():
+    old = profile_of(spec.model_copy(update={"name": old_name}))
+    new = profile_of(renamed)
+    problems = srn.move_problems(root, moves)
+    if not (root / new.skill_md).is_file() and not (root / old.skill_md).is_file():
+        problems.append(f"{new.skill_md} does not exist; neither does {old.skill_md}")
+    problems += [f"part {b.path} does not exist" for a, b in zip(spec.parts, renamed.parts)
+                 if b.path != new.skill_md and not (root / a.path).is_file()
+                 and not (root / b.path).is_file()]
+    if renamed.name != spec.name and _strap_dir(renamed.name).exists():
         problems.append(f"{_rel(_strap_dir(renamed.name))} exists; {renamed.name} already has a spec")
     return problems
+
+
+def _history_folders() -> List[str]:
+    """The project folders that keep history (plans, ledgers, reviews, summaries, commit messages, scratch,
+    research, spec sheets, planning prefixes): an old name there is a record, not a stale reference."""
+    art = active().artifacts
+    return [art.plans, art.reviews, art.summaries, art.commit_messages, art.scratch, art.research, art.specs,
+            *art.planning_prefixes]
 
 
 def _planned_test_moves(spec: SkillSpec, renamed: SkillSpec) -> List[Tuple[Path, Path]]:
@@ -1236,32 +1259,80 @@ def _move_back(old: str, new: str, spec_file: Tuple[Path, bytes],
     spec_file[0].write_bytes(spec_file[1])
 
 
+def _rename_names(spec: SkillSpec, args: argparse.Namespace) -> Tuple[str, str]:
+    """``(old, new)``: the spec's name and the new name, or ``--from``'s old name and the spec's name."""
+    if (args.new_name is None) == (args.from_name is None):
+        raise Refused(["give the new name, or --from <old-name> to finish an earlier rename, not both"])
+    old, new = (args.from_name, spec.name) if args.from_name else (spec.name, args.new_name)
+    sa.spec_path(old)
+    sa.spec_path(new)
+    return old, new
+
+
+def _rename_files(spec: SkillSpec, renamed: SkillSpec, old: str, todo: Sequence[Tuple[str, str]],
+                  done: List[Tuple[str, str]], swaps: "srn.Swaps") -> None:
+    """Run the moves, then swap the old name's forms inside the parts and the moved test files."""
+    root = _root()
+    srn.run_moves(root, todo, done)
+    moved_tests = [b for a, b in _file_moves(spec, renamed, old) if a not in {p.path for p in spec.parts}]
+    srn.swap_files(root, [part.path for part in renamed.parts] + moved_tests,
+                   srn.swapper(old, renamed.name), swaps)
+
+
+def _rename_report(spec: SkillSpec, renamed: SkillSpec, old: str, swaps: "srn.Swaps",
+                   todo: Sequence[Tuple[str, str]]) -> List[str]:
+    """The move, swapped-file and stale-name lines of a finished rename."""
+    skip = [*swaps.originals, *(b for _, b in todo), *(p.path for p in renamed.parts),
+            _rel(_strap_dir(old)), _rel(_strap_dir(renamed.name)), *_history_folders()]
+    return ([f"move: {a} -> {b}" for a, b in todo] + [f"swapped-file: {line}" for line in swaps.lines]
+            + [f"stale-name: {hit}" for hit in srn.stale_hits(_root(), old, skip)])
+
+
 def cmd_rename(args: argparse.Namespace) -> int:
-    """Move a frozen spec, its ledger and its parts' paths to a new skill name, with a ``rename`` entry."""
+    """Move a skill, its frozen spec, its ledger and its parts to a new name, with a ``rename`` entry; with
+    ``--from``, finish an earlier rename under the spec's current name, with no entry."""
     spec = load(args.name, unlocked=True)
-    sa.spec_path(args.new_name)
-    renamed = _renamed(spec, args.new_name)
-    problems = _rename_problems(spec, renamed)
+    old, new = _rename_names(spec, args)
+    finishing = old != spec.name
+    renamed = _renamed(spec, new, old)
+    moves = _file_moves(spec, renamed, old)
+    problems = _rename_problems(spec, renamed, old, moves)
     if problems:
         raise Refused(problems)
     root = _root()
-    pending = sl.rename_pending(root, spec, args.new_name)
-    sl.preflight(root, pending)
+    todo = srn.pending_moves(root, moves)
+    if args.dry_run:
+        print(f"rename [dry-run] | {old} -> {new} | {len(todo)} move(s) | nothing changed")
+        _print_lines([f"move: {a} -> {b}" for a, b in todo])
+        return 0
+    pending = None if finishing else sl.rename_pending(root, spec, new)
+    if pending is not None:
+        sl.preflight(root, pending)
     before = spec_bytes(spec.name)
-    _strap_dir(spec.name).rename(_strap_dir(renamed.name))
+    done: List[Tuple[str, str]] = []
+    swaps = srn.Swaps()
     copies: List[Tuple[Path, Path]] = []
     try:
+        _rename_files(spec, renamed, old, todo, done, swaps)
+        if not finishing:
+            _strap_dir(spec.name).rename(_strap_dir(new))
         _move_planned_tests(_planned_test_moves(spec, renamed), copies)
         save(renamed)
-        sl.move_ledger(spec.name, renamed.name)
-        lines = sl.commit(root, pending)
+        if pending is not None:
+            sl.move_ledger(spec.name, new)
+        lines = sl.commit(root, pending) if pending is not None else []
     except (*PROBLEMS, sl.LockRefused):
-        _move_back(spec.name, renamed.name, before, copies)
+        _move_back(spec.name, new, before, copies)
+        srn.restore_files(root, swaps)
+        srn.undo_moves(root, done)
         raise
     moved = sum(1 for a, b in zip(spec.parts, renamed.parts) if a.path != b.path)
-    print(f"rename [done] | {spec.name} -> {renamed.name} | {moved} part(s) re-pointed | "
-          f"{len(copies)} planned test(s) moved | ledger {sl.stem(spec.name)} -> {sl.stem(renamed.name)}")
-    _print_lines([line for line in [stale_line(renamed)] if line] + swapped_lines(spec, renamed) + lines)
+    ledger = "ledger unchanged" if finishing else f"ledger {sl.stem(spec.name)} -> {sl.stem(new)}"
+    print(f"rename [done] | {old} -> {new} | {moved} part(s) re-pointed | "
+          f"{len(copies)} planned test(s) moved | {len(todo)} file move(s) | {ledger}")
+    stale = [line for line in [stale_line(renamed)] if line]
+    report = _rename_report(spec, renamed, old, swaps, todo)
+    _print_lines(stale + report + swapped_lines(spec, renamed) + lines)
     return 0
 
 
@@ -1323,8 +1394,12 @@ def _parser() -> argparse.ArgumentParser:
     _named(sub, "lock", "Lock a frozen spec (only on the developer's explicit ask).")
     relink = _named(sub, "relink", "Re-point a base lost to a rewrite.")
     relink.add_argument("--to", help="The commit to re-point at (default: the patch-id match on HEAD).")
-    _named(sub, "rename", "Move a frozen spec and its ledger to the skill's new name.").add_argument(
-        "new_name", help="The skill's new name; its folder must already sit there.")
+    rename = _named(sub, "rename", "Move a skill, its frozen spec and its ledger to a new name.")
+    rename.add_argument("new_name", nargs="?", default=None,
+                        help="The skill's new name (omit it with --from).")
+    rename.add_argument("--from", dest="from_name", default=None,
+                        help="Finish an earlier rename from this old name under the spec's current name.")
+    rename.add_argument("--dry-run", action="store_true", help="Print the moves and change nothing.")
     run = _named(sub, "run", "Create a scenario run and print the runner row.")
     run.add_argument("behavior", help="Behavior id, such as B1.")
     run.add_argument("--arm", required=True, choices=[arm.value for arm in Arm])
