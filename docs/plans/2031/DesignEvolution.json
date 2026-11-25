@@ -116,6 +116,33 @@
         "free_form": "CLAUDE.md requires a walking test to declare WALK_ROOTS so PR selection reaches it, and the mod count has one owner"
       },
       "date": "2026-11-25"
+    },
+    {
+      "id": "EX5",
+      "discovered_by": "developer request after the first live turn (TASK-10)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-8"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-8 action",
+        "indicated": "render returns the original tree with dim, right-aligned Text rows under it; the TurnDuration stamp is dim Text on the same row"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the developer asked for a colored stamp after seeing it live",
+        "why_free_form": "The developer asked for the lap timer in oxblood, maroon, dark orange or similar. Dim text reads as part of the engine's own chrome; a color sets the stamp apart. Pure maroon (#800000) nearly vanishes on a dark terminal background, so the color sits between oxblood and dark orange."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Both stamp sites draw Text with color STAMP_COLOR = '#B7410E' (rust), exported from hooks/render.tsx, instead of dimColor; the render and register tests select stamp rows by that color; the mod README names it."
+      },
+      "why_new_outcome": {
+        "category": "discoverability",
+        "free_form": "a colored stamp is told apart from the engine's dim lines at a glance"
+      },
+      "date": "2026-11-25"
     }
   ]
 }
