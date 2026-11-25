@@ -1,0 +1,25 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "46d634ead25d02a2354d91be15fc4af8e5b312d6",
+  "files": {
+    "docs/plans/2031_lap_stamp_turn_timer_ActionPlan.json": "bb6064a4ea204cc927b1a2312c46c4b0ed1c849a"
+  },
+  "ignored": {
+    "docs/plans/2031/tests/tests/contract/test_lap_stamp_registration.py": "d7e3bc46a5c1ae2732e154c6d8402082d27c899df84366eeb0c76b4fb8cf0dea",
+    "docs/plans/2031/tests/tests/mods/test_lap_stamp_config_mirror.py": "d40ebea33cb3ae9fd36a8dd29aaef8cc7d7f501c81e5b0dc18613a2ddd49b5fb"
+  },
+  "at": "2026-11-25T07:56:00+00:00",
+  "base": "c85706275a25775dca711bd5e3b7522eeaa23a1a",
+  "history": false,
+  "digest": "0d22343c6194183b11d9c0651b43a00baf5bcf1e7da0cc7d12a67291a872015a",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

@@ -1,0 +1,544 @@
+{
+  "plan_id": "2031",
+  "plan_created": "2026-11-25",
+  "source_document": "docs/superpowers/specs/2026-11-25-lap-stamp-design.md",
+  "documentation": "docs/plans/2031_lap_stamp_turn_timer_PIP.html",
+  "branch": "0010-timestamps-timestamps",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Scaffold and shared contract: manifest, types, fingerprint",
+      "action": "Copy each planned test file this item names from docs/plans/2031/tests/<repo path> to its repo path first. (the registration test).\n1. plugins/lap-stamp/.claude-plugin/plugin.json (name lap-stamp, version 0.1.0 (V7), description, author, homepage, repository, license MIT, types ./types/index.d.ts, as bubble-stamp's), hooks/hooks.json {\"modules\": [\"./register.ts\"]}, tsconfig.json and .gitignore copied from bubble-stamp.\n2. types/index.d.ts, the invariant every later lane builds on: LapRow (spec D5, snake_case JSON keys: v 1, session, turn, kind 'prompt'|'wake', wake string|null, prompt_at, start_at, stop_at, last_prompt_at (ISO 8601 with local offset, string|null where D4 allows), lap_ms, since_prompt_ms number|null, reason 'answer'|'aborted'|'refusal'|'error', answer_hash string|null, answer_len); Timing (kind, wake, promptAt, startAt, stopAt, lastPromptAt, lapMs, sincePromptMs, epoch ms); ClockState (pending presses {at, origin}, running turn {turnId, startAt, attachedAt number|null, wake string|null} | null, consumedAt number|null, lastPromptAt number|null, pendingWake string|null); and the PluginState augmentation 'lap-stamp': { rows: LapRow[]; clock: ClockState; session: string | null }.\n3. hooks/fingerprint.ts, pure: normalizeAnswer (drop <context>...</context> spans, CRLF to LF, trim), fnv1a64Hex, fingerprintOf(text) -> {hash, len} | null for empty normalized text (V6). hooks/fingerprint.test.ts: context spans dropped, line endings unified, known FNV-1a 64 vectors ('' -> cbf29ce484222325, 'a' -> af63dc4c8601ec8c), empty text -> null.\n4. hooks/register.ts exports `register: Register = () => undefined` until TASK-9 wires it.",
+      "files": [
+        "plugins/lap-stamp/.claude-plugin/plugin.json",
+        "plugins/lap-stamp/hooks/hooks.json",
+        "plugins/lap-stamp/tsconfig.json",
+        "plugins/lap-stamp/.gitignore",
+        "plugins/lap-stamp/types/index.d.ts",
+        "plugins/lap-stamp/hooks/fingerprint.ts",
+        "plugins/lap-stamp/hooks/fingerprint.test.ts",
+        "plugins/lap-stamp/hooks/register.ts",
+        "tests/contract/test_lap_stamp_registration.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/bubble-stamp/hooks/hooks.json:1",
+          "expect": "{ \"modules\": [\"./register.ts\"] }"
+        },
+        {
+          "at": "plugins/bubble-stamp/tsconfig.json:2",
+          "expect": "\"extends\": \"./.claude-plugin/types/tsconfig.json\""
+        },
+        {
+          "at": "plugins/bubble-stamp/.gitignore:2",
+          "expect": ".claude-plugin/types/"
+        },
+        {
+          "at": "plugins/bubble-stamp/types/index.d.ts:12-14",
+          "expect": "declare module 'claude-code' {"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_the_mod_manifest_and_hooks",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_engine_scaffolding",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Config and project root: the mirrored state_dir and the laps path",
+      "action": "Copy each planned test file this item names from docs/plans/2031/tests/<repo path> to its repo path first. (the mirror test).\n1. hooks/config.ts, pure: DEFAULT_STATE_DIR = '.claude/state/harness' and LAPS_PATH = 'lap-stamp/laps.jsonl' (V4), readConfig(text) -> {stateDir} merging harness.json's state_dir over the default (malformed JSON or a wrong type keeps it), lapsPathOf(root, cfg).\n2. hooks/root.ts, a copy of bubble-stamp's root rule (HARNESS_CONFIG_REL, rootCandidates).\n3. hooks/config.test.ts: default, override, malformed text, a non-string state_dir, path join.",
+      "files": [
+        "plugins/lap-stamp/hooks/config.ts",
+        "plugins/lap-stamp/hooks/root.ts",
+        "plugins/lap-stamp/hooks/config.test.ts",
+        "tests/mods/test_lap_stamp_config_mirror.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/config/defaults.json:12",
+          "expect": "\"state_dir\": \".claude/state/harness\","
+        },
+        {
+          "at": "plugins/bubble-stamp/hooks/root.ts:8",
+          "expect": "export const HARNESS_CONFIG_REL = '.claude/harness.json'"
+        },
+        {
+          "at": "plugins/session-bookmark/hooks/notes.ts:12",
+          "expect": "export const DEFAULT_STATE_DIR = '.claude/state/harness'"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_lap_stamp_config_mirror.py::test_the_mirrored_state_dir_equals_defaults_json",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_lap_stamp_config_mirror.py::test_the_laps_file_sits_in_the_mod_folder_under_state_dir",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "Clock: lap presses, turn kind and the values a row records",
+      "action": "1. hooks/clock.ts, pure reducers over ClockState (types/index.d.ts): LAP_PRESS_ORIGINS = ['composer', 'bridge'] (V1); submitted(state, {originKind, at}) queues a lap press or, for any other origin, sets pendingWake; delivered(state, at) attaches a press to the running turn (spec D2: it restarts that turn's lap); started(state, turnId, at) attaches the newest pending press newer than consumedAt, else marks the turn a wake with pendingWake; stopped(state, turnId, at) -> {state, timing: Timing} per D4 (prompt: lap from the attached press; wake: lap from start, since_prompt from lastPromptAt, null when none) and sets consumedAt and lastPromptAt. A stop for a turn that never started (no running turn or another id) returns timing null. seedLastPrompt(state, at) takes the newest prompt_at read back from the JSONL (D4).\n2. hooks/clock.test.ts: idle press then turn (prompt kind, lap = stop - press); press during a run with delivery (restarts that turn's lap) and without (anchors the next turn); several presses keep the last; a task-notification start is a wake with wake 'task-notification' and since_prompt; no prompt ever gives since_prompt null; a pending press never anchors two turns; a stray stop.",
+      "files": [
+        "plugins/lap-stamp/hooks/clock.ts",
+        "plugins/lap-stamp/hooks/clock.test.ts"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "Row codec: build, serialize and read back the JSONL",
+      "action": "1. hooks/row.ts, pure: buildRow({session, turn, timing, reason, answer}) -> LapRow, the answer fingerprinted with fingerprintOf (null hash and length 0 for empty, D8); isoLocal(ms, offsetMin) formats ISO 8601 with the local offset; rowLine(row) one JSON line; parseRows(text, session) reads a JSONL text leniently (blank, malformed, wrong-version and wrong-typed lines skipped, D10) and keeps the session's rows in file order; newestPromptAt(rows) for clock.seedLastPrompt. No paths and no prompt or answer text in a row.\n2. hooks/row.test.ts: round trip, every skip case, empty answer, the offset form, session filter.",
+      "files": [
+        "plugins/lap-stamp/hooks/row.ts",
+        "plugins/lap-stamp/hooks/row.test.ts"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "Stamp text and matching: format, candidate list, TurnDuration match",
+      "action": "1. hooks/stamp.ts, pure: formatDuration(ms) per V3; clockOf(iso) the local HH:MM:SS of a row's stop_at; stampText(row) 'HH:MM:SS · lap <dur>' plus ' · since prompt <dur>' on a wake row with one (D6); rowsForBlock(rows, text) -> the rows whose answer_hash and answer_len equal the block's fingerprint (empty-answer rows never match, D7); blockStamp(rows) -> one stamp for one row, 'identical replies: ' + each candidate's '<HH:MM:SS> lap <dur>[ · since prompt <dur>]' joined by ' | ' in file order for several, null for none; durationRow(rows, durationMs) -> the one row whose stop_at - start_at is within V2 of durationMs when exactly one row of the session is and it has an empty answer, else null (D8); wrapRight(text, width) splits a too-wide stamp on ' | ' into right-aligned lines, never dropping a candidate.\n2. hooks/stamp.test.ts: every format band and boundary (59 s, 60 s, 3599 s, 3600 s), prompt and wake stamps, a miss, one match, three identical replies, an empty-answer row never matched by text, the TurnDuration cases (none, one empty, one answered, two in tolerance), wrapping.",
+      "files": [
+        "plugins/lap-stamp/hooks/stamp.ts",
+        "plugins/lap-stamp/hooks/stamp.test.ts"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "Registration and docs: marketplace, CI, READMEs, CLAUDE.md, release notes",
+      "action": "1. plugins/lap-stamp/README.md: what the stamp shows (D6, D7 candidate list, D8), the lap rules (D1, D2, D4), the laps.jsonl row fields (D5) and its git-ignored home under state_dir, activation (.claude/harness.json), the hooks it registers, fail-open behavior (D10), known limitations (the live-session checks of TASK-10).\n2. .claude-plugin/marketplace.json: a lap-stamp entry after parallel2-lanes (category productivity, keywords mod, timer).\n3. .github/workflows/ci.yml: plugins/lap-stamp joins the mod test loop.\n4. README.md: install line and a Bundled Mods table row (Automatic, `lap-stamp`); the companion list says it is active only with .claude/harness.json.\n5. CLAUDE.md: nine -> ten TypeScript mods with lap-stamp in the list; a config-key mirror line: `lap-stamp` mirrors `state_dir` in `hooks/config.ts`, checked by `tests/mods/test_lap_stamp_config_mirror.py`.\n6. docs/RELEASES/v1.1.0.md (the proposed release, marketplace metadata.version): a lap-stamp row '| lap-stamp | - | 0.1.0 |', the intro naming a plugin added, one Feat(lap-stamp) line. The CHANGELOG [Unreleased] entry already points at that file and does not change.",
+      "files": [
+        "plugins/lap-stamp/README.md",
+        ".claude-plugin/marketplace.json",
+        ".github/workflows/ci.yml",
+        "README.md",
+        "CLAUDE.md",
+        "docs/RELEASES/v1.1.0.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "CLAUDE.md:4",
+          "expect": "plus nine TypeScript mods"
+        },
+        {
+          "at": "CLAUDE.md:31",
+          "expect": "`session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead"
+        },
+        {
+          "at": ".github/workflows/ci.yml:128",
+          "expect": "plugins/parallel2-lanes plugins/working-refs; do"
+        },
+        {
+          "at": ".claude-plugin/marketplace.json:9",
+          "expect": "\"version\": \"1.1.0\""
+        },
+        {
+          "at": "README.md:163",
+          "expect": "claude plugin install bubble-stamp@operator-straps"
+        },
+        {
+          "at": "docs/RELEASES/v1.1.0.md:20",
+          "expect": "| working-refs | 0.3.1 | 0.4.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/lap-stamp",
+          "expect": "passes",
+          "writes": []
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_the_marketplace_lists_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_ci_runs_the_mod_tests",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_the_readme_documents_and_installs_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_claude_md_names_and_counts_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_the_mod_has_a_readme",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_lap_stamp_registration.py::test_the_release_notes_list_the_mod",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "Lap glue: the turn events, the laps file and the session's rows",
+      "action": "1. hooks/lap.ts, `registerLap(on)` (function declarations for every `$` function, as bubble-stamp): active only with .claude/harness.json (root.ts candidates, config.ts readConfig). Main loop only (agentId absent). prompt.submit -> clock.submitted with e.origin.kind and the wall clock; session.append with door 'delivery' or 'queue' and a lap-press origin while a main turn runs -> clock.delivered (the delivery signal TASK-10 confirms); turn.start -> clock.started; turn.complete -> clock.stopped, buildRow with e.answer and e.reason, append rowLine to <state_dir>/lap-stamp/laps.jsonl (creating the folder), push the row onto the 'lap-stamp' rows atom. session.start and session.attach read the file once, parseRows for the session id, seed the atom and clock.seedLastPrompt (D9). Every hook awaits next first and swallows its own failures (D10); nothing is written into any reply, prompt or transcript row.\n2. hooks/lap.test.ts (engine-level, claude-code/testing as bubble-stamp's stamp.test.ts): a prompted turn appends one row with kind prompt; a task-notification turn appends a wake row with since_prompt; a subagent turn appends nothing; a refused write keeps the atom row and throws nothing; a restart reads the rows back; no harness.json, no file.",
+      "files": [
+        "plugins/lap-stamp/hooks/lap.ts",
+        "plugins/lap-stamp/hooks/lap.test.ts"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-3",
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/bubble-stamp/hooks/stamp.ts:26",
+          "expect": "const memosAtom = atom({ plugin: 'bubble-stamp', key: 'memos' } as const, {})"
+        },
+        {
+          "at": "plugins/bubble-stamp/hooks/stamp.ts:236-239",
+          "expect": "if (e.agentId === undefined) await serial(() => checkAll($)).catch(noop)"
+        },
+        {
+          "at": "plugins/bubble-stamp/hooks/stamp.test.ts:1",
+          "expect": "import type { Engine } from 'claude-code/testing'"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ]
+    },
+    {
+      "id": "TASK-8",
+      "title": "Render: right-aligned stamps under matched replies and TurnDuration lines",
+      "action": "1. hooks/render.tsx, `registerRender(on)`: ui.render on {component: 'AssistantMessage'} reads the 'lap-stamp' rows atom only (no file I/O, D9), and when blockStamp(rowsForBlock(rows, e.text)) is not null returns the original tree with dim, right-aligned Text rows under it (wrapRight); isSummary and onScreen pass through unchanged. ui.render on {component: 'TurnDuration'} draws durationRow's stamp right-aligned on the same row. Any miss or error renders next(e) untouched. The atom read makes a new row redraw the latest reply.\n2. hooks/render.test.tsx (as parallel2-lanes band.test.tsx): a matched block gains the stamp row; a miss and a summary row are untouched; identical replies draw the candidate list; a TurnDuration line with one empty-answer row in tolerance gains a stamp, an answered one does not.",
+      "files": [
+        "plugins/lap-stamp/hooks/render.tsx",
+        "plugins/lap-stamp/hooks/render.test.tsx"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-4",
+        "TASK-5"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/parallel2-lanes/hooks/band.tsx:16",
+          "expect": "const runsAtom = atom({ plugin: 'parallel2-lanes', key: 'runs' } as const, [])"
+        },
+        {
+          "at": "plugins/parallel2-lanes/hooks/band.tsx:45",
+          "expect": "on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        }
+      ]
+    },
+    {
+      "id": "TASK-9",
+      "title": "Wire the mod and prove a turn end to end",
+      "action": "1. hooks/register.ts: `register: Register = on => { registerLap(on); registerRender(on) }`.\n2. hooks/register.test.tsx: one engine drives prompt.submit, turn.start, turn.complete with an answer, then renders an AssistantMessage with that text: the laps file holds one row and the block draws 'HH:MM:SS · lap <dur>' right-aligned; a second identical reply draws the candidate list; a wake turn draws since prompt.",
+      "files": [
+        "plugins/lap-stamp/hooks/register.ts",
+        "plugins/lap-stamp/hooks/register.test.tsx"
+      ],
+      "dependencies": [
+        "TASK-7",
+        "TASK-8"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "claude plugin test plugins/lap-stamp",
+          "expect": "every test passes",
+          "writes": []
+        },
+        {
+          "run": "claude plugin validate --strict plugins/lap-stamp",
+          "expect": "passes",
+          "writes": []
+        }
+      ]
+    },
+    {
+      "id": "TASK-10",
+      "title": "Live-session confirmation of the host facts the design reads",
+      "action": "The developer runs a session with `claude --plugin-dir plugins/lap-stamp` (CLAUDE.md: local plugin edits are exercised this way before merge) and confirms, with the session's help: (a) the drawn AssistantMessage text of a reply's last block fingerprints equal to turn.complete's answer (spec Left to the builder); (b) prompt.submit fires at Enter for a queued composer prompt, and the session.append door that marks its delivery into a running turn; (c) the bridge and slash-command origin kinds (D1); (d) the TurnDuration props (D8); (e) whether --resume keeps the session id. A fact that differs goes to DesignEvolution through evolution_api and its fix is recorded with --cite, never by editing the plan.",
+      "files": [
+        "plugins/lap-stamp/README.md"
+      ],
+      "dependencies": [
+        "TASK-9"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "claude --plugin-dir plugins/lap-stamp",
+          "expect": "a prompted turn, a queued prompt, a background-agent wake, an aborted turn and two identical replies each stamp as the spec says; laps.jsonl holds one row per main turn",
+          "writes": [
+            ".claude/state/harness/lap-stamp/laps.jsonl"
+          ]
+        }
+      ]
+    }
+  ],
+  "base_commit": "c85706275a25775dca711bd5e3b7522eeaa23a1a",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How does a redrawn reply find its JSONL row?",
+      "options": [
+        {
+          "id": "text-fingerprint",
+          "summary": "hash of the normalized answer, matched at render"
+        },
+        {
+          "id": "stamp-in-reply",
+          "summary": "write the stamp into the reply text"
+        },
+        {
+          "id": "ordinal",
+          "summary": "nth drawn reply maps to nth row"
+        }
+      ],
+      "chosen": "text-fingerprint",
+      "rationale": "developer answer 'a' (spec Approaches)"
+    },
+    {
+      "id": "D2",
+      "question": "What do identical replies draw?",
+      "options": [
+        {
+          "id": "candidate-list",
+          "summary": "every copy lists all candidate rows"
+        },
+        {
+          "id": "no-stamp",
+          "summary": "no stamp on any copy"
+        },
+        {
+          "id": "latest-marked",
+          "summary": "latest row with a marker"
+        }
+      ],
+      "chosen": "candidate-list",
+      "rationale": "developer answer (spec D7)"
+    },
+    {
+      "id": "D3",
+      "question": "What does a turn with no lap press show?",
+      "options": [
+        {
+          "id": "all-three",
+          "summary": "clock time, lap from wake-up, since last prompt"
+        },
+        {
+          "id": "clock-only",
+          "summary": "clock time only"
+        }
+      ],
+      "chosen": "all-three",
+      "rationale": "developer answer (spec Goals, D4)"
+    },
+    {
+      "id": "D4",
+      "question": "Where does the lap start for a prompted turn?",
+      "options": [
+        {
+          "id": "prompt-submit",
+          "summary": "the developer's prompt.submit (lap button)"
+        },
+        {
+          "id": "turn-start",
+          "summary": "the turn's turn.start"
+        }
+      ],
+      "chosen": "prompt-submit",
+      "rationale": "developer answer: the prompt hits the lap button (spec D1, D4)"
+    },
+    {
+      "id": "D5",
+      "question": "Do older replies keep their stamps when redrawn?",
+      "options": [
+        {
+          "id": "keep",
+          "summary": "every redrawn reply is matched to its row"
+        },
+        {
+          "id": "latest-only",
+          "summary": "only the latest reply"
+        }
+      ],
+      "chosen": "keep",
+      "rationale": "developer answer (spec Goals)"
+    }
+  ],
+  "values": [
+    {
+      "name": "V1 lap-press origins",
+      "value": "prompt.submit origin.kind 'composer' or 'bridge'",
+      "source": "spec D1"
+    },
+    {
+      "name": "V2 TurnDuration tolerance",
+      "value": "2000 ms between the line's durationMs and stop_at - start_at",
+      "source": "spec D8",
+      "assumes": [
+        "text-fingerprint"
+      ]
+    },
+    {
+      "name": "V3 duration format",
+      "value": "'Ns' under 60 s, 'Mm Ss' under 3600 s, 'Hh Mm' above",
+      "source": "spec D6"
+    },
+    {
+      "name": "V4 laps file",
+      "value": "<state_dir>/lap-stamp/laps.jsonl, state_dir default .claude/state/harness",
+      "source": "spec D5; plugins/harness/config/defaults.json:12"
+    },
+    {
+      "name": "V5 row version",
+      "value": "v = 1",
+      "source": "spec D5"
+    },
+    {
+      "name": "V6 fingerprint",
+      "value": "FNV-1a 64 of the normalized text as 16 lower-case hex chars, plus the normalized length; null hash and length 0 for empty text",
+      "source": "spec D7, D8",
+      "assumes": [
+        "text-fingerprint"
+      ]
+    },
+    {
+      "name": "V7 plugin version",
+      "value": "lap-stamp 0.1.0",
+      "source": "new plugin"
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "parallel2-lanes",
+      "hits": {
+        ".claude-plugin/marketplace.json": "TASK-6: gains a lap-stamp entry",
+        ".github/workflows/ci.yml": "TASK-6: the mod test loop gains plugins/lap-stamp",
+        "CLAUDE.md": "TASK-6: mod count nine -> ten and the list gains lap-stamp",
+        "README.md": "TASK-6: install line and Bundled Mods table row",
+        ".claude/settings.json": "unchanged: enabling the mod in this repository is the developer's call",
+        "plugins/harness/skills/parallel2/README.md": "unchanged: names its own mod",
+        "plugins/harness/skills/parallel2/SKILL.md": "unchanged: names its own mod",
+        "plugins/parallel2-lanes/.claude-plugin/plugin.json": "unchanged: another mod",
+        "plugins/parallel2-lanes/README.md": "unchanged: another mod",
+        "plugins/parallel2-lanes/hooks/band.test.tsx": "unchanged: another mod",
+        "plugins/parallel2-lanes/hooks/band.tsx": "unchanged: another mod",
+        "plugins/parallel2-lanes/hooks/lanes.ts": "unchanged: another mod",
+        "plugins/parallel2-lanes/hooks/spawn.test.ts": "unchanged: another mod",
+        "plugins/parallel2-lanes/hooks/spawn.ts": "unchanged: another mod",
+        "plugins/parallel2-lanes/types/index.d.ts": "unchanged: another mod",
+        "tests/contract/test_parallel2_lanes_registration.py": "unchanged: another mod's registration test",
+        "docs/RELEASES/v0.7.0.md": "unchanged: a past release's notes",
+        "docs/RELEASES/v0.7.1.md": "unchanged: a past release's notes",
+        "docs/RELEASES/v1.0.0.md": "unchanged: a past release's notes",
+        "docs/RELEASES/v1.1.0.md": "TASK-6: names parallel2-lanes in its Unchanged line; gains a lap-stamp row",
+        "docs/TODO/RepoToDo.json": "unchanged: TODO items that name the parallel2-lanes mod"
+      }
+    }
+  ],
+  "ledger": "plan/2031-lap-stamp-turn-timer"
+}
