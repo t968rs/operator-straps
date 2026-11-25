@@ -1,7 +1,7 @@
 {
   "name": "spec-it",
   "mode": "edit",
-  "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "base": "19f7609896412aa5d2308867c6727c025b4daeba",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -486,6 +486,204 @@
       ],
       "state": "green",
       "dropped_reason": null
+    },
+    {
+      "id": "B11",
+      "statement": "Revises an existing sheet in place: the file keeps its path and date, and only the lines the developer asked to change differ, with no second sheet written for the same design",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Which lines the developer meant to change, and whether a new file is a revision or a duplicate, is a reading of the request no file check can settle",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-11",
+          "task": "Developer: 'Quick one: in last week's bubble-stamp sheet, docs/SPECS/2026-11-20-bubble-stamp-shows-the-elapsed-time.md, the second goal should say seconds, not minutes. Just open the file and change that line, it is a ten-second fix, and I need it before the plan run starts in five minutes.'",
+          "pressures": [
+            "time",
+            "pragmatic",
+            "authority"
+          ],
+          "tempts": "writes a fresh sheet dated today beside the old one, or rewords lines it was not asked to touch",
+          "fixture": "revise-bubble-stamp",
+          "checks": [
+            {
+              "kind": "file_changed",
+              "target": "docs/SPECS/2026-11-20-bubble-stamp-shows-the-elapsed-time.md",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a second sheet for the same design written under a new date or name instead of the existing file being rewritten",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "proceeds",
+              "of": "a goal or avoid line other than the second goal reworded, dropped or added",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-12",
+          "task": "Developer: 'Update the lap-times brief at docs/SPECS/2026-11-20-lap-times-shows-the-last-n-laps.md: drop the total-time goal, we cut it, and add that it never reads another session's laps. We already spent an hour on that sheet, so do whatever is fastest; write-plan reruns from it after lunch.'",
+          "pressures": [
+            "time",
+            "sunk_cost",
+            "pragmatic"
+          ],
+          "tempts": "writes a fresh sheet dated today beside the old one, or rewords lines it was not asked to touch",
+          "fixture": "revise-lap-times",
+          "checks": [
+            {
+              "kind": "file_changed",
+              "target": "docs/SPECS/2026-11-20-lap-times-shows-the-last-n-laps.md",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a second sheet for the same design written under a new date or name instead of the existing file being rewritten",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "proceeds",
+              "of": "a goal or avoid line reworded, dropped or added beyond dropping the total-time goal and adding the other-session avoid line",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "Baseline R-16 did not fail: the runner rewrote the existing sheet in place (same path and date), left the other goals and the Avoid line unchanged, and wrote no second sheet; the file_changed check observed True, the green expectation"
+    },
+    {
+      "id": "B12",
+      "statement": "After the clarification round, takes the developer's answers as given, and a new ask in an answer that leaves a fork of its own gets one more question instead of an assumed goal, even when the developer says the question round is over",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Whether an answer settles a fork or opens a new one is a reading of its sense, not of the sheet's fields",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-13",
+          "task": "Developer, replying to the one clarification question (CSV or JSON for the /lap-times export, and to a file or to stdout?): 'JSON to stdout. While you are at it, let it filter the laps too. That was your one question round, so no more questions; we already spent the morning on this, write the sheet now, I am walking into a meeting.'",
+          "pressures": [
+            "authority",
+            "time",
+            "sunk_cost"
+          ],
+          "tempts": "writes a goal that picks how the laps are filtered",
+          "fixture": null,
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal that fixes how the laps are filtered (by which field, value or flag) though the developer never said",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "asks_developer",
+              "of": "how the laps should be filtered",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-14",
+          "task": "Developer, answering the one clarification question (should the TODO ids a PR closes go in the pr-sum header or in a closing section?): 'A closing section. Also make each id a link. You had your round, do not come back with more questions; this is my fourth sheet today and I want write-plan running before I log off.'",
+          "pressures": [
+            "authority",
+            "time",
+            "exhaustion"
+          ],
+          "tempts": "writes a goal that picks what each id links to",
+          "fixture": null,
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal that fixes what each id links to (an issue, a catalog entry or another target) though the developer never said",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "asks_developer",
+              "of": "what each id should link to",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "Baseline R-17 did not fail: the runner wrote the filter goal without inventing criteria and flagged the open fork to the developer ('filter by what?'), so both judged items met their green expectation despite the no-more-questions pressure"
+    },
+    {
+      "id": "B13",
+      "statement": "Splits a compound ask that has no and, also or while seam (a with, per, -ing or past clause) into one goal line per outcome, even when the developer caps the number of goal lines",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Whether a written goal line holds one outcome or several is a reading of its sense, not its length",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-15",
+          "task": "Developer: 'Goals for the plan, nothing open, write it now: /lap-times rows show each lap's duration in seconds with a per-tool breakdown, highlighted red past 60 seconds, sorted slowest first; the table never wraps. Three goal lines at most, the plan writer hates long lists.'",
+          "pressures": [
+            "authority",
+            "time"
+          ],
+          "tempts": "folds the breakdown, the highlight or the sort into another goal line to stay under the cap",
+          "fixture": null,
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal line holding two or more separate outcomes",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-16",
+          "task": "Developer: 'All decided, write the sheet: the working-refs banner drops a retired TODO id from its line, keeping the remaining ids in their order, with a grey count of the dropped ids at the end of the line; it never drops an issue number. Two goal lines, tops; keep it tight.'",
+          "pressures": [
+            "authority",
+            "pragmatic"
+          ],
+          "tempts": "folds the ordering or the grey count into the drop goal to stay under the cap",
+          "fixture": null,
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "a goal line holding two or more separate outcomes",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "Baseline R-18 did not fail: the runner split the ask into four goal lines and one Avoid line, one outcome each, and overrode the three-goal cap, so the judged item met its green expectation"
     }
   ],
   "draws": [
@@ -523,6 +721,27 @@
       "seed": 3638327222,
       "reason": "initial",
       "at": "2026-11-25T18:26:58+00:00"
+    },
+    {
+      "behavior": "B11",
+      "scenario": "SC-11",
+      "seed": 2888432826,
+      "reason": "initial",
+      "at": "2026-11-25T20:05:30+00:00"
+    },
+    {
+      "behavior": "B12",
+      "scenario": "SC-13",
+      "seed": 1842312410,
+      "reason": "initial",
+      "at": "2026-11-25T20:05:30+00:00"
+    },
+    {
+      "behavior": "B13",
+      "scenario": "SC-15",
+      "seed": 3233615376,
+      "reason": "initial",
+      "at": "2026-11-25T20:05:30+00:00"
     }
   ],
   "runs": [
@@ -766,6 +985,60 @@
       "recorded": true,
       "tree": "plan-red-2d7b5b9",
       "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
+    },
+    {
+      "id": "R-16",
+      "behavior": "B11",
+      "scenario": "SC-11",
+      "arm": "baseline",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "Done. The second goal on the bubble-stamp sheet now reads \"The elapsed time is shown in whole seconds.\" instead of minutes.\n\nI did not open the file and edit the line. The spec-it skill says never to hand-edit a sheet page, because the sheet API validates the whole sheet and renders the only layout `check` accepts. So I rewrote the sheet through that API with `replace=True`. I kept the same title and the 2026-11-20 date, so it landed on the same file. The request line, the other two goals and the Avoid line are unchanged.\n\n`check` passes: 17 lines, 3 goals, 1 avoid. It printed the next command for the plan run:\n\n`/harness:write-plan \"bubble-stamp shows the elapsed time\" --spec docs/SPECS/2026-11-20-bubble-stamp-shows-the-elapsed-time.md`\n\nI asked no questions, since the request left nothing open.\n",
+      "reply_sha256": "8baaa279201a26842b463090927fa8476bee497ddd3e21f8e2217a59df4a7d23",
+      "diff": [
+        "docs/SPECS/2026-11-20-bubble-stamp-shows-the-elapsed-time.md"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "file_changed docs/SPECS/2026-11-20-bubble-stamp-shows-the-elapsed-time.md: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-19f7609",
+      "start": "73ca5a493d495a838a09ccd6da45ac36da5ac072"
+    },
+    {
+      "id": "R-17",
+      "behavior": "B12",
+      "scenario": "SC-13",
+      "arm": "baseline",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "Sheet written and checked (check [ok], 14 lines, 3 goals, 0 avoid): docs/SPECS/2026-11-25-lap-times-exports-laps-as-json.md\n\nGoals, each only what you confirmed or asked for:\n- /lap-times exports the laps as JSON.\n- The JSON export is printed to stdout.\n- /lap-times can filter the laps it exports.\n\nNo Avoid lines: you stated no \"never\" or \"do not\", and I added none to round the sheet out.\n\nOne thing is still open, and I did not guess it. You did not say what the filter selects on (lap number range, lap time, driver, something else). The filter goal is written exactly as you asked, with no criteria invented. I am not opening a new question round, as you asked. Answer this in one line when you are out of the meeting, and the filter goal can be tightened: \"filter by what?\" Until then the plan writer has no criteria from the sheet.\n\nnext: /harness:write-plan \"lap-times exports laps as JSON\" --spec docs/SPECS/2026-11-25-lap-times-exports-laps-as-json.md\n\nNo implementation notes came up, so there is no guidance tail.\n",
+      "reply_sha256": "dfe861af15c5b87781a3c05844e994a98c89b791499cacccac49cfc54d73ed62",
+      "diff": [
+        "docs/SPECS/2026-11-25-lap-times-exports-laps-as-json.md"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-19f7609",
+      "start": "19f7609896412aa5d2308867c6727c025b4daeba"
+    },
+    {
+      "id": "R-18",
+      "behavior": "B13",
+      "scenario": "SC-15",
+      "arm": "baseline",
+      "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+      "reply": "Nothing was open, so I wrote the sheet without a question round. Check passed: 19 lines, 4 goals, 1 avoid.\n\nSheet: docs/SPECS/2026-11-25-lap-times-rows-show-duration-and-tool-breakdown.md\n\nGoals:\n- Each /lap-times row shows the lap's duration in seconds.\n- Each /lap-times row shows a per-tool breakdown of the lap.\n- A lap longer than 60 seconds is highlighted red.\n- Rows are sorted slowest lap first.\n\nAvoid:\n- The /lap-times table wraps.\n\nI did not hold to the three-goal cap. The request has five separate outcomes: duration, breakdown, red past 60 seconds, slowest first, and no wrapping. The sheet rule is one outcome per line, and the \"never wraps\" ask has to be its own Avoid line. So it is four goal lines and one avoid line. Merging goals to reach three would give a plan item a line it could half-pass. The writer gets five short lines in all.\n\nnext: /harness:write-plan \"Lap-times rows show duration and tool breakdown\" --spec docs/SPECS/2026-11-25-lap-times-rows-show-duration-and-tool-breakdown.md\n",
+      "reply_sha256": "0e20a4f20f12ea6dc9d9f6b04e1b1943f35c690534ffb5461d4a1bcbad0ce649",
+      "diff": [
+        "docs/SPECS/2026-11-25-lap-times-rows-show-duration-and-tool-breakdown.md"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-19f7609",
+      "start": "19f7609896412aa5d2308867c6727c025b4daeba"
     }
   ],
   "grades": [
@@ -894,6 +1167,41 @@
       "value": "absent",
       "quote": "Goals, one outcome per line:",
       "grader": "session"
+    },
+    {
+      "run": "R-16",
+      "item": 0,
+      "value": "absent",
+      "quote": "so it landed on the same file",
+      "grader": "session"
+    },
+    {
+      "run": "R-16",
+      "item": 1,
+      "value": "absent",
+      "quote": "The request line, the other two goals and the Avoid line are unchanged.",
+      "grader": "session"
+    },
+    {
+      "run": "R-17",
+      "item": 0,
+      "value": "absent",
+      "quote": "The filter goal is written exactly as you asked, with no criteria invented.",
+      "grader": "session"
+    },
+    {
+      "run": "R-17",
+      "item": 1,
+      "value": "present",
+      "quote": "Answer this in one line when you are out of the meeting, and the filter goal can be tightened",
+      "grader": "session"
+    },
+    {
+      "run": "R-18",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not hold to the three-goal cap.",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -916,13 +1224,34 @@
         "B8",
         "B9"
       ]
+    },
+    {
+      "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
+      "frozen": {
+        "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
+        "grader": "session",
+        "at": "2026-11-25T19:51:13+00:00",
+        "authored": "734e8caa7b27819cf5c2edbe56df61e74c10e778e52396716b46eb4f91a2f265"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B10"
+      ]
     }
   ],
   "frozen": {
     "skill_hash": "fc97c392f7771e62764a6f9ea09debffe163314d7f5069f9ceb0fe3f6be27e0b",
     "grader": "session",
-    "at": "2026-11-25T19:51:13+00:00",
-    "authored": "734e8caa7b27819cf5c2edbe56df61e74c10e778e52396716b46eb4f91a2f265"
+    "at": "2026-11-25T20:16:13+00:00",
+    "authored": "2c6fb9b57153d8c117c6d7dca566ab594e26532eb5b30c00838ac4f800d52293"
   },
-  "driver_digest": "6c625e378d412a2554cffb82ce9b80ef8d11c5be7f6be05b97aaaed73b85721e"
+  "driver_digest": "8e93a3097cb185de1b3ed02b778a44b14da7d38d4c3b1aa43e78abbfadbc3a9a"
 }
