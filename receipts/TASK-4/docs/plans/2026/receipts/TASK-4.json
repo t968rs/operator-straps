@@ -1,0 +1,25 @@
+{
+  "plan_id": "2026",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "9883c1a6c30e8004288916ce1f02e42f796fd6cf"
+    },
+    "tests": {
+      "nodes": [
+        "tests/mods/test_session_bookmark_notes_contract.py::test_the_notes_argument_is_the_documented_one"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/mods/test_session_bookmark_notes_contract.py::test_the_notes_argument_is_the_documented_one"
+    }
+  },
+  "evidence": "staged tree 9883c1a: 1 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "1e81cf271fdba0e89d2344d7f064417e3f24e9a8801a564b4352236dbd724296"
+}

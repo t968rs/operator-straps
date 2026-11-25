@@ -1,0 +1,19 @@
+{
+  "plan_id": "2027",
+  "item": "TASK-5",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b34c4f1ee497eb6ea65c3987453923361a0e545b"
+    }
+  },
+  "evidence": "staged tree b34c4f1",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-19",
+  "seal": "0e01435a7ee2a03860c4f0d423282fa1d61db10477e2166a00210b16def6f59e"
+}

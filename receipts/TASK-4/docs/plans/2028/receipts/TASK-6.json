@@ -1,0 +1,28 @@
+{
+  "plan_id": "2028",
+  "item": "TASK-6",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "cb49cb0c229ca1d0649446fed87b68f73665b0b2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_todo_keyword_prose.py::test_sync_drafts_a_keyword_from_the_suggestion",
+        "tests/skills/test_todo_keyword_prose.py::test_add_drafts_a_keyword_from_the_suggestion",
+        "tests/skills/test_todo_keyword_prose.py::test_the_keyword_is_one_word_the_agent_may_choose",
+        "tests/skills/test_todo_keyword_prose.py::test_update_lists_the_keyword"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_todo_keyword_prose.py::test_sync_drafts_a_keyword_from_the_suggestion tests/skills/test_todo_keyword_prose.py::test_add_drafts_a_keyword_from_the_suggestion tests/skills/test_todo_keyword_prose.py::test_the_keyword_is_one_word_the_agent_may_choose tests/skills/test_todo_keyword_prose.py::test_update_lists_the_keyword"
+    }
+  },
+  "evidence": "staged tree cb49cb0: 4 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-20",
+  "seal": "ddb89f4e3940d15a3dd01b8663c281184cd7056b2b07f2fcd50c9b775b183511"
+}

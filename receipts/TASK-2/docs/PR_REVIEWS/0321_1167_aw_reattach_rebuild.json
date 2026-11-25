@@ -1,0 +1,376 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 321,
+  "pr_title": "1167 aw reattach rebuild",
+  "branch": "1167-aw-reattach-rebuild",
+  "base_branch": "main",
+  "base_sha": "368b1178afe72ef97ea011552c79928ce9c647a6",
+  "head_sha": "5ddecd17a8a8253f387f261f7bf3e3db58ea9198",
+  "review_date": "2026-11-18",
+  "verdict": "READY TO MERGE - 9 of 9 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 394,
+    "deletions": 14,
+    "files_changed": 9,
+    "source": {
+      "additions": 393,
+      "deletions": 14,
+      "files_changed": 8
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0321/pr321_20261119T005729Z/findings/tests.json",
+    "docs/_scratch/pr_review/0321/pr321_20261119T005729Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0321/pr321_20261119T005729Z/findings/docs.json",
+    "docs/_scratch/pr_review/0321/pr321_20261119T005729Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0321/pr321_20261119T005729Z/findings/overall.json",
+    "docs/_scratch/pr_review/0321/pr321_20261119T005729Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The new plan_live tests are behavioral: they use real receipts, ledger entries, plan JSON and pages under tmp_path, with no stubs around sourced_plans or refresh_live.",
+    "test_other_paths_feed_no_plan covers the negative boundaries well: a nested receipt, a skill freeze ledger, live.js itself, the PIP page, planned tests and a different plans root.",
+    "refresh_live has four tested outcomes: rebuilt, skipped for sealed records or a missing page (parametrized), skipped when the plan file is gone, and PlanError when the ledger has no entries.",
+    "The attach integration tests run the real script against a make_project repository with a git worktree and cover the staged, --committed and --continue paths.",
+    "test_a_move_that_lands_no_plan_file_rebuilds_nothing can fail: plan 0001 is a frozen receipts plan with a page, so rebuilding every plan unconditionally would break it. The committed test also asserts that plan 0001 is not rebuilt.",
+    "The failed-rebuild test checks the warning line, the exit code 0, that the receipt is staged in the target and that the worktree is removed, which pins the rule that a warning never turns into a refusal.",
+    "The integration module is marked cross_os because it depends on git worktree paths, and it names attach_worktree.py literally, so tools/select_tests.py picks it up.",
+    "landed_paths uses diff-index --cached against the pre-move HEAD with -z and --no-renames, so staged, fast-forwarded and resolved lands all report both sides of a rename, and unusual path names come through intact.",
+    "Moved records the target HEAD before the move on both the start and resume paths, so the rebuild set comes out the same whether the move landed directly or after a --continue.",
+    "The plan library loads only when a landed path sits under the plans folder, which keeps pydantic off the a-w path for projects without plans.",
+    "_SOURCES builds its patterns from the owning modules' constants (RECEIPTS_DIR, CATALOG_NAME, PLAN_SUFFIX, FREEZES_DIR, plan_stem layout), so a rename in those modules carries through.",
+    "Live lines are computed before finish(), so a failed worktree removal still carries them in the AttachError report.",
+    "The report formats in all three docs match the code exactly: `live: rebuilt <plans>/<id>/live.js` is refresh_line's f-string, and the `live: warning:` line names `plan.py render <id>` in both warning paths.",
+    "The 'move still exits 0' claim holds. refresh_line catches PlanError (the freeze ledger's LedgerError arrives converted by hydrate_frozen), ValueError (which covers pydantic ValidationError) and OSError, and live_lines catches ConfigError, AttachError and ImportError.",
+    "The release table's harness 0.79.1 matches plugin.json. The latest tag is v0.7.0, so extending the still-proposed v1.0.0 notes follows the release rule.",
+    "The new SKILL bullet sits right after the 'ignored files are deleted with the worktree' bullet, so the one exception is scoped where a reader meets the rule.",
+    "The SKILL.md bullet, the module docstring and the code agree on the rebuild trigger set (receipts, freeze ledger entries, plan JSON, DesignEvolution), the 'live: rebuilt' and 'live: warning:' line shapes and the exit code staying 0.",
+    "The Moved NamedTuple records the target HEAD in both start() and resume() before any landing step, so staged, --committed and --continue all measure landed paths from the right base.",
+    "live_lines runs after clear_state and before finish, so the rebuild happens before the worktree goes, as documented. A failed rebuild is a warning line, never a refusal after the move has landed.",
+    "plan_live is imported only when plan paths landed, which keeps a-w free of pydantic. ImportError is caught and reported as a warning.",
+    "refresh_line catches PlanError, ValueError and OSError. Since pydantic ValidationError is a ValueError and hydrate_frozen turns LedgerError into PlanError, the realistic plan-load failures are covered.",
+    "The rebuild goes to target / plans rather than cfg.path(...), so it hits the checkout the files landed in even when config_root falls back to the main checkout.",
+    "refresh_live uses the same gate as plan_render_html.refresh_pip (uses_receipts plus an existing page), so a-w rebuilds live.js exactly when plan.py render would refresh it.",
+    "moved_plans imports the pydantic-backed plan library only after a plans path landed, so a-w keeps running without pydantic on moves that touch no plan.",
+    "Moved captures the target HEAD before the move in both start() and resume(), so the landed set is right for staged, --committed and --continue moves alike.",
+    "The sourced_plans patterns are built from library constants (RECEIPTS_DIR, CATALOG_NAME, PLAN_SUFFIX, FREEZES_DIR) instead of repeating the names as literals.",
+    "The integration tests run the real script with a non-default artifacts.plans and cover the staged, --committed, --continue, no-plan and failed-rebuild paths, including a check that an unmoved plan is not rebuilt.",
+    "The module docstring, SKILL.md, the README row, the release-note table and line, and the version bump all change together; v1.0.0 has no tag yet, so extending its notes follows the release rule.",
+    "The rebuild runs after the move lands and before the worktree is removed, and every failure path (config, git, import, plan load) degrades to a `live: warning:` line naming `plan.py render`, keeping exit code 0.",
+    "landed_paths diffs the target index against the pre-move HEAD, so staged, --committed fast-forward and --continue moves share one detection path; the end-to-end tests cover all three modes plus the no-plan and failed-rebuild cases.",
+    "The pydantic-dependent plan library is imported lazily, so a-w keeps running without it and an ImportError becomes a warning.",
+    "refresh_live mirrors refresh_pip's gate (frozen receipts plan with an existing page), so the attach never writes a live.js plan.py render would not."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "refresh_live docstring overstates its match with plan.py render",
+        "file": "plugins/harness/lib/harness_lib/plan_live.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ],
+        "lines": "4-6,94-99",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "refresh_live says it rebuilds live.js 'when plan.py render would: a frozen receipts plan whose HTML page exists', and the module docstring says it rebuilds 'the way plan.py render does'. render (plan_render_html.refresh_pip) also writes live.js for a frozen receipts plan whose page is missing, through write_pip, which writes the page as well. refresh_live returns None in that case. That behavior is reasonable for an attach, because without a page nothing reloads live.js, but the docstrings describe a wider match than the code has.",
+        "fix": [
+          "Reword the refresh_live docstring to 'Rebuild live.js as plan.py render does for a frozen receipts plan whose HTML page exists; a plan without a page is left for render to write', and change 'the way plan.py render does' in the module docstring to match."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "A landed HTML page does not trigger a live.js rebuild, although refresh_live gates on the page",
+        "file": "plugins/harness/lib/harness_lib/plan_live.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "tests/lib/test_plan_live.py",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "27-33,36-41",
+        "reviewer": "overall, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "refresh_live (plan_live.py:94-106) rebuilds only when the plan's _PIP.html page exists, so the page is part of what decides whether a target needs live.js. _SOURCES (plan_live.py:28-33) leaves the page out, and test_other_paths_feed_no_plan (tests/lib/test_plan_live.py:96) pins that. Take a frozen receipts plan whose JSON, ledger and receipts are already on the target, with no page there. If the worktree regenerates the missing page (refresh_pip writes the page when it is missing, plan_render_html.py:257-268) and the move lands only that page, a-w rebuilds nothing. The target then shows its new page without live.js and every item reads PENDING, which is the issue #320 symptom this PR fixes.\n\nAlso (adv_code): refresh_live rebuilds only when `<id>_*_PIP.html` exists, yet sourced_plans deliberately excludes the page (test_other_paths_feed_no_plan pins `work/plans/0001_Add_operators_PIP.html` as feeding no plan). When the target holds a frozen receipts plan with its receipts but no page (never rendered there, or deleted), and the worktree runs `plan.py render <id>` (refresh_pip falls through to write_pip, writing the page and live.js), the attach moves the page alone; live.js is ignored and discarded with the worktree, and nothing rebuilds it, so the newly landed page reloads a missing live.js.\n\nAttack: Project on main with frozen receipts plan 0001 (plan JSON, ledger freeze entry with records=receipts, a committed receipts/TASK-1.json) but no `work/plans/0001_Sample_PIP.html`; cut a detached worktree, write only `work/plans/0001_Sample_PIP.html` there (what `plan.py render 0001` writes alongside live.js), run `attach_worktree.py main --worktree <wt>`. The page is staged in the target, `pl.sourced_plans([\"work/plans/0001_Sample_PIP.html\"], \"work/plans\")` is `[]`, no `live:` line prints, and `work/plans/0001/live.js` is absent in the target.",
+        "fix": [
+          "Add rf\"^(\\d+)_[^/]*{re.escape(pd.PIP_HTML_SUFFIX)}$\" to _SOURCES, move \"work/plans/0001_Add_operators_PIP.html\" from test_other_paths_feed_no_plan to the test_each_live_source_names_its_plan cases, and add the page to the source lists in the attach_worktree.py docstring, SKILL.md and the release note.",
+          "Keep the page out of the sources and say so in the _SOURCES comment and the a-w docs: a page that lands alone gets no rebuild, and the developer runs plan.py render <id>.",
+          "Add `rf\"^(\\d+)_[^/]*{re.escape(pd.PIP_HTML_SUFFIX)}$\"` to plan_live._SOURCES and move `work/plans/0001_Add_operators_PIP.html` from test_other_paths_feed_no_plan into test_each_live_source_names_its_plan"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "a-w SKILL omits the page condition and pre-staged paths of the live.js rebuild",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/a-w/SKILL.md",
+          "README.md",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "55-59",
+        "reviewer": "docs, skill_package, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/a-w/SKILL.md:55-59 says live.js is rebuilt 'for every frozen receipts plan whose receipts, freeze ledger entries, plan JSON or DesignEvolution the move landed'. The code applies two more rules. First, plan_live.refresh_live returns None and prints nothing unless the plan's HTML PIP (pd.pip_html_path) exists. Second, attach_worktree.landed_paths diffs the target index against the pre-move HEAD, so paths the target already held staged also count as landed. The module docstring (attach_worktree.py:40-45) states both rules, and docs/RELEASES/v1.0.0.md:265 states the page rule ('with a page'). The skill the agent follows states neither. An agent that sees no `live: rebuilt` line for a moved plan with no page, or an extra line for a plan the worktree never touched, has no text to explain it. The README row (README.md:32) has the same gap: 'for each plan whose receipts, ledger or plan files the move lands'.\n\nAlso (skill_package): The module docstring (attach_worktree.py:44) and landed_paths (attach_worktree.py:361-367) count every path the target's index differs on from its pre-move HEAD, including paths the developer had already staged in the target. The new SKILL.md bullet (SKILL.md:55-59) says only plans 'the move landed' get a rebuild. An agent reading the skill cannot account for a 'live: rebuilt' line for a plan the worktree never touched.\n\nAlso (overall): landed_paths diffs the target index against the pre-move HEAD (attach_worktree.py:361-367). The module docstring (attach_worktree.py:44) states that paths the target already held staged count as landed. SKILL.md:55-59, the README a-w row and docs/RELEASES/v1.0.0.md:263-268 say only 'whose ... the move landed'. A developer reading the skill will not expect a 'live: rebuilt' line for a plan the worktree never touched but that the target had staged.",
+        "fix": [
+          "In plugins/harness/skills/a-w/SKILL.md:55-59, change 'for every frozen receipts plan whose' to 'for every frozen receipts plan with an HTML page whose', and add after 'the move landed under `artifacts.plans`' the parenthetical '(paths the target already held staged count too)'. In README.md:32, change 'for each plan whose' to 'for each frozen plan with a page whose'.",
+          "Append to the SKILL.md:55-59 bullet: '(paths the target already held staged count as landed)', the same wording as the module docstring.",
+          "Append '(paths the target already held staged count as landed)' to the SKILL.md bullet at lines 55-59, matching the module docstring."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "plans_folder activates the config a second time",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "plugins/harness/lib/harness_lib/review_adversarial.py"
+        ],
+        "lines": "370-373,376-385",
+        "reviewer": "runtime, skill_package, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plans_folder calls activate(load_config(config_root(target))) only to read artifacts.plans. On the plain-run path load_rules has already activated the same config, so the driver now activates twice, against the project rule that drivers activate once. None of the library code the rebuild calls (plan_live, plan_doc, plan_receipts, evolution_doc, freeze_ledger) reads active(), so the activation does nothing.\n\nAlso (skill_package): plans_folder (attach_worktree.py:370-373) turns artifacts.plans into a path prefix with only a backslash swap and strip('/'). The schema's relPath allows './docs/plans' or 'docs/./plans', and git diff-index paths never carry those segments, so no landed path matches. The rebuild then quietly does nothing and prints no live: warning line, even though the docstring and SKILL.md promise a rebuild or a warning. review_adversarial.py:85 already builds the same prefix with posixpath.normpath.\n\nAlso (adv_code): plans_folder only swaps backslashes and strips slashes, so `artifacts.plans` = `./work/plans` (accepted by the relPath schema pattern, and resolved fine by `active().path(...)` everywhere else) yields the prefix `./work/plans/`. The landed paths git reports never start with `./`, so moved_plans returns no plan ids and the attach prints neither `live: rebuilt` nor a `live: warning:` line. The same applies to `work//plans` or `work/plans/.`. The developer gets a page with no live.js and no hint to run `plan.py render`.\n\nAttack: Build the tests/skills/test_attach_worktree_plan_live.py `repos` fixture but with `make_project(config={\"artifacts\": {\"plans\": \"./work/plans\"}}, ...)`, write the TASK-1 receipt in the worktree and run `attach_worktree.py main --worktree <wt>`. Probe result: rc 0, the receipt is staged in the target, the output has no `live:` line at all, and `work/plans/0001/live.js` does not exist. The same run with `work/plans` prints `live: rebuilt work/plans/0001/live.js` and writes the file.",
+        "fix": [
+          "Read the key without activating: cfg = load_config(config_root(target)) at line 372.",
+          "Or activate once in attach() for both the start and resume paths, and have plans_folder read active().artifacts.plans.",
+          "Return posixpath.normpath(cfg.artifacts.plans.replace('\\\\', '/')).strip('/') in plans_folder, matching review_adversarial.py:85; plan_live.sourced_plans re-strips the value it receives, so passing the normalized string through keeps both sides in agreement.",
+          "Normalise in plans_folder with `posixpath.normpath(cfg.artifacts.plans.replace('\\\\', '/')).strip('/')` (the form review_adversarial.py already uses), and add a parametrized case with `./work/plans` to tests/skills/test_attach_worktree_plan_live.py",
+          "Apply the same normpath in plan_live.sourced_plans so its own prefix matches for any caller"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "live_lines lets an OSError escape after the move landed",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/lib/harness_lib/plan_live.py"
+        ],
+        "lines": "398,401-414,435",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The attach module docstring (lines 40-45) and live_lines (lines 404-405) promise that a failed rebuild is a 'live: warning:' line, never a refusal. live_lines catches only (ConfigError, AttachError, ImportError) around moved_plans, but plans_folder -> config_root -> project_root/main_worktree runs git through harness_lib.project, whose timeout raises TimeoutError (an OSError), and run_git can raise OSError when git cannot launch. Such an error escapes attach() after resolve.clear_state and before finish(): main() does not catch it, so the run ends in a traceback with the move landed, the worktree not removed and no report lines printed. refresh_line already lists OSError for the per-plan step.\n\nAlso (overall): The live_lines docstring (attach_worktree.py:401-406) says a failure is a warning line and never a refusal. Its except clause (line 409) catches only ConfigError, AttachError and ImportError. moved_plans -> plans_folder -> config_root runs project_root/main_worktree, whose git call can raise TimeoutError (an OSError, harness_lib/project.py:32). On the --continue path load_rules never ran, so this is the first config lookup of the run. An escaped exception leaves attach() (line 435) after clear_state and before finish. The landed move's report, with its backup sha and undo lines, is never printed, the worktree is not removed, and the run exits 1 with a traceback.\n\nAlso (overall): refresh_live writes to write_live(plans_dir, plan.plan_id) (plan_live.py:106), which is the id inside the plan JSON. refresh_line builds its report as f\"live: rebuilt {plans}/{plan_id}/{written.name}\" (attach_worktree.py:398) from the id that sourced_plans parsed out of the file or folder name. If a plan file's prefix and its plan_id disagree, the line names a folder that was not written, and live.js lands in a folder the page does not read.",
+        "fix": [
+          "Add OSError to the except tuple in live_lines (line 409): except (ConfigError, AttachError, ImportError, OSError) as exc.",
+          "Add OSError to the except tuple at attach_worktree.py:409.",
+          "Wrap the live_lines call in attach() with a broad except Exception that turns any error into the generic 'live: warning: live.js not rebuilt (...)' line, so the move's report always reaches finish().",
+          "Build the line from the returned path: f\"live: rebuilt {written.relative_to(target).as_posix()}\".",
+          "Or have refresh_live write under the plan_id argument it was asked to refresh, so the reported folder and the written folder cannot differ."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "write-plan README's list of live.js rebuilders is now stale",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "files": [
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "84-85,124-126",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/write-plan/README.md:84-85 says 'after a pull, `PLAN render <id>` rebuilds it', and lines 124-126 list the steps that rebuild live.js and keep the plan folder's .gitignore line: 'record, freeze, render, `evolution_api`'. With this PR the a-w attach also rebuilds live.js in the target. It calls plan_live.write_live, which runs _ignore_live, so it also creates or appends `<plans>/<id>/.gitignore` there. That write can leave an unstaged or untracked file in the target next to a staged move, and the a-w SKILL bullet (SKILL.md:55-59) does not mention it either. The plan lifecycle README is where a developer looks to learn when live.js comes back, and it now misses the attach.\n\nAlso (skill_package): The rebuild goes through plan_live.write_live (plan_live.py:67-74), whose _ignore_live creates or appends <plans>/<id>/.gitignore in the target. write-plan README.md:125 lists every driver that rebuilds live.js and adds that line (record, freeze, render, evolution_api) and omits a-w. README.md:85 names only 'PLAN render <id>' as the way to rebuild after a pull. Neither the a-w SKILL.md nor its docstring says the attach can leave an unstaged .gitignore change in the target outside the move's staged result.",
+        "fix": [
+          "In plugins/harness/skills/write-plan/README.md:125, change '(record, freeze, render, `evolution_api`)' to '(record, freeze, render, `evolution_api`, and an a-w attach that lands the plan's files)'. At line 85, append 'an a-w attach rebuilds it in the target'. Optionally, add to the a-w SKILL.md bullet that the rebuild may add the `live.js` line to the plan folder's `.gitignore` in the target.",
+          "Add a-w to the list at write-plan README.md:125 ('record, freeze, render, evolution_api, and an a-w attach that lands plan files') and note at README.md:85 that an a-w attach rebuilds live.js itself.",
+          "Add a clause to the a-w SKILL.md:55-59 bullet saying the rebuild may also create or extend the plan folder's .gitignore in the target as an unstaged change."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Test module docstring leaves out the HTML page condition and the already-staged rule",
+        "file": "tests/skills/test_attach_worktree_plan_live.py",
+        "files": [
+          "tests/skills/test_attach_worktree_plan_live.py",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "1-7",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring says a-w rebuilds live.js 'for every frozen receipts plan whose receipts, freeze ledger, plan JSON or DesignEvolution the move wrote'. The code (plan_live.refresh_live, attach_worktree.py:40-45) also requires the plan's HTML page to exist, and it counts paths the target already held staged as landed. The fixtures include a page, so the tests pass, but the prose contract does not match what they exercise. The already-staged rule has no test.",
+        "fix": [
+          "Change lines 4-6 to say 'every frozen receipts plan with an HTML page whose ... the move landed (paths the target already held staged count)'.",
+          "Optionally add a staged-move test: stage a receipt for plan 0001 in the target before the attach, move an unrelated worktree file, and assert `live: rebuilt work/plans/0001/live.js`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "The integration fixture ignores every per-plan .gitignore and so never checks the target's working tree after a rebuild",
+        "file": "tests/skills/test_attach_worktree_plan_live.py",
+        "files": [
+          "tests/skills/test_attach_worktree_plan_live.py",
+          "plugins/harness/lib/harness_lib/plan_live.py"
+        ],
+        "lines": "36,101-105",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "_IGNORES (tests/skills/test_attach_worktree_plan_live.py:36) adds 'work/plans/**/.gitignore' plus a root 'live.js' rule. Real projects track the per-plan .gitignore that write_live keeps (plan_live.py:58-64; D9 says no project adds an ignore line). Because the fixture ignores those files, the tests never see that a rebuild can create or edit <plans>/<id>/.gitignore in the target as an unstaged change. No test asserts what the target's working tree looks like after the attach, so a regression in that side effect would go unnoticed.",
+        "fix": [
+          "Drop the '**/.gitignore' and root 'live.js' lines from _IGNORES and assert the target's 'git status --porcelain' after a rebuild (for example, the plan folder's .gitignore shows as untracked or modified, and live.js stays ignored).",
+          "Keep the fixture and add a comment explaining why the per-plan .gitignore is ignored, plus one test that pins the target-side .gitignore state."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Stopped attach is not checked for an early live.js rebuild",
+        "file": "tests/skills/test_attach_worktree_plan_live.py",
+        "lines": "146",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_continue_rebuilds_live_js_after_a_resolution only checks that the first attach exits 2. It never asserts that the stopped run printed no `live:` line and left no live.js in the target. If the rebuild ran at the stop as well as at --continue, the test would still pass, so it does not pin the contract that the rebuild runs only after a successful move (module docstring lines 4-6; attach_worktree.py:40-45).",
+        "fix": [
+          "Keep the stopped run's CompletedProcess. Assert `stopped.returncode == 2`, `not any(line.startswith(\"live:\") for line in stopped.stdout.splitlines())` and `_live(main, \"0001\") is None` before the resolution step."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 321 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"de26e1d580f9bb10249161c921d33bcfb151efb0\",\"headRefName\":\"1167-aw-reattach-rebuild\",\"headRefOid\":\"5ddecd17a8a8253f387f261f7bf3e3db58ea9198\",\"last_sha\":\"5ddecd17a8a8253f387f261f7bf3e3db58ea9198\",\"mergeCommit\":null,\"number\":321,\"state\":\"OPEN\",\"title\":\"1167 aw reattach rebuild\",\"url\":\"https://github.com/t968rs/operator-straps/pull/321\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (17 checked, 0 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 17,
+          "findings_refuted": 0,
+          "findings_upheld": 17,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1167-aw-reattach-rebuild",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1167-aw-reattach-rebuild",
+        "head_ref_name": "1167-aw-reattach-rebuild",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "de26e1d580f9bb10249161c921d33bcfb151efb0",
+        "head_sha": "5ddecd17a8a8253f387f261f7bf3e3db58ea9198",
+        "base_ancestor_command": "git merge-base --is-ancestor de26e1d580f9bb10249161c921d33bcfb151efb0 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 5ddecd17a8a8253f387f261f7bf3e3db58ea9198 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - plan_live.py module docstring and refresh_live docstring now say 'as plan.py render does for a frozen receipts plan whose HTML page exists' and name a page-less plan as left for render to write; the plan_render_html.py half is the other part; no edit in this part: refresh_pip docstring (plan_render_html.py:257-268) already states the render behavior (live.js rebuilt on a frozen receipts plan, page written only when missing, otherwise write_pip); the overstated docstrings are in plan_live.py lines 5-6 and 94-99, owned by the other fixer"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - live_lines except tuple at attach_worktree.py:409 now includes OSError, so a git TimeoutError or launch failure during moved_plans becomes a live: warning line; refresh_line builds its report line from the returned path (written.relative_to(target)), so the reported folder is the one written"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - already present in this part: attach_worktree.py:40-45 states the page rule and the already-staged rule; the test module docstring edit is the other part's; module docstring lines 5-7 now name the HTML page condition and that paths the target already held staged count as landed"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - already present in this part: review_adversarial.py _plans() (lines 81-86) reads active() and normalizes with posixpath.normpath and strip('/') with no activate call; the double activation lives in attach_worktree.py plans_folder, owned by the other part; plans_folder reads load_config(config_root(target)) without activate and returns posixpath.normpath(...).strip('/') as review_adversarial.py does; plan_live.sourced_plans applies the same normpath to its prefix, pinned by test_an_unnormalized_plans_folder_still_matches (./work/plans, work//plans, work/plans/., backslashes)."
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - test_continue_rebuilds_live_js_after_a_resolution keeps the stopped CompletedProcess and asserts returncode 2, no live: line in its stdout, and no live.js in the target before the resolution step"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - plan_live._SOURCES gains the <id>_*_PIP.html pattern (comment and sourced_plans docstring say the page counts); the PIP.html case moves to test_each_live_source_names_its_plan (as 0005) and test_other_paths_feed_no_plan keeps a _PIP.md negative; attach_worktree.py docstring and SKILL.md list the HTML page among the landed sources. docs/RELEASES/v1.0.0.md:266 is outside the file set and still lists the old four sources."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - The repos fixture drops the root .gitignore (per-plan .gitignore and root live.js rules) and says why in its docstring; new test_a_rebuild_leaves_the_plan_gitignore_unstaged_and_live_js_ignored asserts the target status shows the staged receipt and an untracked work/plans/0001/.gitignore, no live.js line, and check-ignore confirms live.js is ignored. plan_live.py: cited write_live/_ignore_live behaviour needed no edit for this issue."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - a-w SKILL.md live.js bullet names the page condition, the HTML page as a landed source, pre-staged paths counting as landed and the unstaged .gitignore side effect; root README a-w row says frozen plan with a page and the pre-staged rule (outside fixer waves)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-18",
+      "evidence": "5ddecd1 (working-tree snapshot; developer commits) - write-plan README adds the a-w attach to the live.js rebuilders in both places (outside fixer waves)"
+    }
+  ]
+}

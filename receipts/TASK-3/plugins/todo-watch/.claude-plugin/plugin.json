@@ -1,0 +1,12 @@
+{
+  "name": "todo-watch",
+  "version": "0.5.3",
+  "description": "The next TODO items and a live sync status line in a band above the prompt (kept until dismissed, or optionally one toast at session start), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/todo-watch#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,45 @@
+body { max-width: 84rem; }
+h1 { margin-bottom: 0; }
+h1 .repo { display: block; color: var(--code-fg); }
+.rendered { margin: .1rem 0 1rem; font-size: 13px; color: var(--muted); }
+#render-info { margin: 1rem 0; }
+#render-info h5 { margin: 0 0 .2rem; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); }
+#render-info p { margin: .2rem 0; font-size: 13px; }
+table.items { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
+table.items th, table.items td { border: 1px solid var(--line); padding: .3em .55em; text-align: left;
+  vertical-align: top; }
+table.items th { position: sticky; top: 0; background: var(--bg); color: var(--heading);
+  border-bottom: 2px solid var(--accent); }
+table.items tr.row:nth-child(odd) { background: var(--code); }
+table.items tr.row:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
+details#rest > summary h2 { display: inline; }
+td.c-rank, td.c-score { text-align: right; font-variant-numeric: tabular-nums; }
+td.c-size, td.c-status, td.c-kind { text-align: center; white-space: nowrap; }
+td.c-gh { white-space: nowrap; }
+td.c-id { white-space: nowrap; user-select: all; cursor: copy; }
+.id { font: 600 13px ui-monospace, monospace; color: var(--code-fg); white-space: nowrap; }
+a.stub { text-decoration: none; }
+a.stub:hover { text-decoration: underline; }
+a.stub { font: 12px ui-monospace, monospace; color: var(--accent); }
+details summary { cursor: pointer; }
+details[open] summary { margin-bottom: .35rem; }
+details p { margin: .3rem 0 .3rem 1rem; color: var(--muted); }
+details p strong { color: var(--fg); }
+.badge { font: 600 12px ui-monospace, monospace; padding: .05em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); white-space: nowrap; }
+.badge.status[data-status="OPEN"] { color: var(--accent); }
+.badge.status[data-status="NEEDS_DECISION"] { color: var(--run); font-weight: 700; }
+.badge.status[data-status="PARTIAL"], .badge.status[data-status="IN_PROGRESS"] { color: var(--ok); }
+.badge.status[data-status="BLOCKED"] { color: var(--bad); }
+.badge.kind { font-weight: 500; }
+.badge.kind[data-kind="bug"] { color: var(--bad); }
+.badge.kind[data-kind="feature"] { color: var(--accent); }
+.badge.kind[data-kind="skill"] { color: var(--code-fg); }
+.badge.kind[data-kind="test"], .badge.kind[data-kind="refactor"] { color: var(--run); }
+#summary { border: 1px solid var(--line); border-radius: 6px; padding: .25rem 1rem .75rem; margin: 1rem 0; }
+#summary h2 { margin: .5rem 0; }
+dl.summary { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0; }
+dl.summary dt { font-weight: 600; } dl.summary dd { margin: 0; }
+.count { margin-right: .6rem; white-space: nowrap; }
+.none { color: var(--muted); }

@@ -1,0 +1,181 @@
+{
+  "name": "merge-commit-msg",
+  "mode": "edit",
+  "base": "035cc6a51a07cfd26669fe127b4ae36471a4bbca",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/merge-commit-msg/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/merge-commit-msg/message_format.md"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_merge_commit_msg_skill_contract.py"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "capture and build take the squash mode as --squash, -s or a bare squash right after the PR number, all three alike, and refuse any other second token with a problem line and exit 1",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Exit codes, stderr and identical stdout across the three forms are facts a pytest node compares",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_three_forms_capture_identically",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_unknown_mode_token_is_a_problem",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_unknown_mode_token_is_a_problem_in_build",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "capture in squash mode fills the subject '<title> (#N)', heads the output '# PR #N squash message', states '- Mode: squash' (and '- Mode: merge' without a mode), and refuses a PR title that is not a Conventional-Commit subject",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The printed skeleton, the facts and the refusal are stdout and stderr facts",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_subject_line",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_states_the_mode",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_refuses_a_non_conventional_title",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_default_capture_adds_only_the_merge_mode_line",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "build with the flag writes the squash subject and a 'squash message' receipt; without the flag it accepts either exact subject and applies that mode's title check; it rejects a paraphrased subject and names --squash on a cross-mode subject",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The TXT on disk, the receipt and the problem lines decide each case",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_writes_the_squash_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_build_without_a_flag_accepts_either_exact_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_rejects_a_paraphrased_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_names_the_flag_on_a_merge_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_subject_without_a_flag_still_needs_a_conventional_title",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "harness_lib.commit_txt exposes subject_parts, the one Conventional-Commit subject parser the squash title check uses, with the private name kept as an alias",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "An importable function and its return values are facts a pytest node checks",
+      "tests": [
+        {
+          "node": "tests/lib/test_commit_txt_subject_parts.py::test_subject_parts_splits_type_scope_summary",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_commit_txt_subject_parts.py::test_private_name_is_the_same_function",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "SKILL.md, message_format.md, the README and HARNESS_RULES.md name the three mode forms, keep squash after -- as guidance, state both subjects, add a squash worked example and a mode-mismatch Common Mistakes row",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Text of the shipped docs is a file-state fact a contract test greps",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_argument_hint_names_the_squash_forms",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_description_triggers_on_a_squash_message",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_states_both_subjects",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_common_mistakes_cover_a_mode_mismatch",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_format_card_states_both_subjects_and_a_squash_example",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_rules_name_the_squash_mode",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [],
+  "runs": [],
+  "grades": [],
+  "frozen": {
+    "skill_hash": "001c86c052e13e896dc97c52293949b5446560b69283e8f91e3e62cda65dfd65",
+    "grader": "session",
+    "at": "2026-11-11T15:16:59+00:00",
+    "authored": "df768d942803bcf2cb39b0c4d3b88cee880df2f394f679d35cad466c067d20c9"
+  },
+  "driver_digest": "cd54b147f34a920368eaacede9fc5f72cd1268666a1f78a00db4bd8ad35e2aaa"
+}

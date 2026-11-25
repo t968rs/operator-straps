@@ -1,0 +1,810 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 292,
+  "pr_title": "feat serialize catalog writes",
+  "branch": "1159-FEAT-serialize-catalog-writes",
+  "base_branch": "main",
+  "base_sha": "a845e25b2709b5017d92c76a950378201a1d8471",
+  "head_sha": "d6836ca0c4f3e609b24152938ef427b655a450bd",
+  "review_date": "2026-11-16",
+  "verdict": "READY TO MERGE - 25 of 26 findings resolved, 0 bubbled, 1 refuted",
+  "stats": {
+    "additions": 4620,
+    "deletions": 138,
+    "files_changed": 53,
+    "source": {
+      "additions": 4291,
+      "deletions": 138,
+      "files_changed": 51
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)",
+    "failing_tests_1 (tests)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/config.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/tests.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/docs.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/overall.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0292/pr292_20261116T153234Z/findings/failing_tests_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The scratch_folder schema entry reuses the shared relPath def and its description matches `HarnessConfig.todo_inbox()` (<scratch_folder>/todo-inbox/).",
+    "The key lands in the four places together: defaults.json, harness.schema.json, config.py dataclass and builder, README table, plus the todo-watch mirror and its mirror test.",
+    "test_catalog_lock.py drives the real O_EXCL lock with planted bodies and only stubs pid_alive, covering token-scoped release, a successor's lock surviving, break_if_unchanged refusing a changed body, and lease aging.",
+    "The CLI lock suite runs each guarded subcommand (refresh, retire, add --spec, split, init, migrate-ids, add --inbox) through driver.main against a planted live lock and checks the catalog bytes are unchanged.",
+    "test_todo_sync_lock_reference_scan.py proves end to end in a real git repo that a lease owner naming the retired id never surfaces as a reference.",
+    "test_a_failed_render_after_the_write_never_adds_the_items_twice pins the idempotence that matters most: the inbox files are gone before the follow-up runs, so a second drain is empty.",
+    "inbox.test.ts covers the drain pacing races (owed rerun, wait cap, one line across competing carriers, deduplication of repeated failures) with a held fake process and a controllable clock instead of stubbing requestDrain.",
+    "The gh timeout test stubs only subprocess.run and pins GH_TIMEOUT_SECONDS and the error text together; write_atomic retries are tested against a real filesystem, including temp-file cleanup.",
+    "catalog_lock.break_if_unchanged removes a lock only under a tokened O_EXCL guard and only while the body is still the one it saw, so two breakers or a broken holder never delete a successor's lock.",
+    "pid_alive probes Windows processes with OpenProcess/GetExitCodeProcess instead of os.kill, which would kill the target.",
+    "inbox put writes each item under a hidden name before renaming it, and both the Python queued() and the TS isQueuedName skip hidden and rejected names the same way.",
+    "The inbox summaries are taken at once and handed back on abort, drop or a thrown next, so no summary reaches two carriers and none is lost.",
+    "Every gh call now times out at 120 s with a labeled error, so a hung gh cannot hold the catalog write lock indefinitely.",
+    "lease release checks the token before doing anything and frees the lease even when the recount, render or check fails.",
+    "todo-editor gives every add and sync run a spec path of its own (add-<stamp>-<rand>.json) and says why: parallel agents would otherwise overwrite each other's spec between write and put.",
+    "Every lease-holding operation (retire, split, refresh) releases on every stop condition, including the migrate-ids refusal, with the one exception (a failed release) spelled out so the agent never reruns it.",
+    "The add-todo and sync-gh-todo drain steps work without the todo-watch mod and explain each summary form (added, rejected, empty) and what `inbox: empty` means after a mod drain.",
+    "The README flow diagrams move the catalog write to the main session's `add --inbox` row, matching the new split of who queues and who writes.",
+    "DesignEvolution EX1 records the state_dir reference-scan deviation with its cause, and the TASK-5 receipt cites it as an extra file, so the plan trail matches the code.",
+    "The v1.0.0 release notes move todo-watch out of Unchanged into the version table and match the plugin.json bumps (harness 0.73.0, todo-watch 0.5.0).",
+    "Both skills' drain steps match the driver's output contract exactly: `inbox: added N item(s): <id> (#N|note), ...[; rejected M (<files>)]; check drift=<d>`, `inbox: rejected M (<files>)` and `inbox: empty` mirror inbox.drain_lines (inbox.py:304-315) and _added_text (inbox.py:300-301).",
+    "The skills and the todo-editor agent agree on the split: the agent only runs `inbox put` (with `--file-issue` under add, matching todo_sync.py:74-78 and the agent's add step 4), its `Added` line lists `queued:` items with `(needs decision)` and the issue number the skills' report steps name, and its Check line defers to the drain.",
+    "The drain fallback implements design decision 7 (docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md:96-99): the harness skills drain on their own, so the todo-watch mod stays optional, and the `inbox: empty` case explains the mod-already-drained path.",
+    "Step renumbering is consistent inside each skill: the report steps cite the new drain step by number (add-todo Step 5 -> Step 4 line, sync-gh-todo Step 4 -> Step 3 line), and add-todo's Related list now describes `inbox put` and `add --inbox` instead of the old direct `add`.",
+    "Every cross-linked file in the Related list (add_todo.py, agents/todo-editor.md, reference/skill_arguments.md, scripts/todo_sync.py) exists at the head.",
+    "catalog_lock removes a lock only through break_if_unchanged, under an O_EXCL guard that carries a token, so two breakers that read the same stale body, or a holder that was broken, cannot delete a newer lock; test_a_broken_holder_leaves_its_successor_lock_in_place and test_a_break_refuses_a_body_that_changed_since_it_was_read pin this.",
+    "pid_alive checks liveness on Windows with OpenProcess/GetExitCodeProcess instead of os.kill (which would terminate the process), and treats ERROR_ACCESS_DENIED as alive; a cross_os test fails if os.kill is called.",
+    "drain writes the catalog first, deletes the accepted files next and only then renders and checks, so a failed render never adds an item twice; test_a_failed_render_after_the_write_never_adds_the_items_twice covers that order.",
+    "inbox put runs a full dry run against the catalog before it files any issue, and a failed inbox write afterwards names the issues already filed, so a rerun does not file them again.",
+    "The scratch_folder key touches all four required places, the todo-watch config.ts mirror and its mirror test; harness_patterns merges the new exclusion in memory for projects whose exclusions file was seeded earlier.",
+    "EX1 found that a lease owner naming an item id would make the lock file show up in that item's retire reference scan, and added a git-backed regression test.",
+    "The mod runs one drain at a time with at most one owed rerun, caps every wait at the hook's remaining budget, and hands back summaries it could not attach (restorePending), so no summary is lost or shown twice; inbox.test.ts covers the foreground, notification and abort races.",
+    "Every new test that walks a folder declares WALK_ROOTS = (), so tools/select_tests.py does not run it on unrelated changes.",
+    "The new `scratch_folder` key lands in all four required places (defaults.json, harness.schema.json, the HarnessConfig field plus builder, and the README key table), and the todo-watch mirror is pinned by test_todo_watch_config_mirror.py, as the project CLAUDE.md checklist requires.",
+    "The `todo_sync.py` module docstring documents every new subcommand and flag (`inbox put`, `lease acquire/release/break`, `--lease`, `--inbox`), plus the lock path, the 10 s wait and which commands take no lock; the code at `_dispatch` and `GUARDED` matches it.",
+    "Prose and code are cross-checked by guard tests: test_todo_inbox_prose_contract.py parses every `TS ...` command in todo-editor.md with the driver's own parser, and the sync-gh-todo contract test asserts the skill drains only through `add --inbox`.",
+    "Spec Decided 7 (the harness works without the mod) carries through consistently: both skills run the `add --inbox` fallback, and the README, release notes and agent text all describe the mod as optional.",
+    "catalog_lock.py's module docstring spells out the staleness matrix and the compare-before-unlink guard, and the implementation (`_is_stale`, `break_if_unchanged`, `_clear_stale_guard`) follows it line for line.",
+    "Release notes, the version table and both plugin.json bumps agree (harness 0.73.0, todo-watch 0.5.0, todo-watch removed from Unchanged).",
+    "catalog_lock removes every lock through break_if_unchanged under an O_EXCL .break guard, so two breakers that read one stale body never delete the successor's fresh lock.",
+    "The lock owner names only the command, never an item id, and retire's reference scan now skips state_dir, so the lock file cannot show up as a reference to the id being retired.",
+    "inbox.put writes every file under a hidden name and renames only after all are written, so a drain never sees half a put, and a failed put names issues already filed.",
+    "Windows pid liveness uses OpenProcess/GetExitCodeProcess instead of os.kill, which would terminate the holder.",
+    "gh calls now time out after 120 s, so an issue filing under the write lock cannot hold other writers off indefinitely.",
+    "All 108 in-scope Python tests pass at the PR head (pytest -p no:cacheprovider, 15.6 s).",
+    "test_catalog_lock pins every staleness branch (dead pid, live same-host holder past the write age, foreign host by age, lease by age only) and the token-guarded release that never deletes a successor's lock.",
+    "test_todo_sync_lock_reference_scan builds a real git repo without a .gitignore, so the lock file is untracked and visible to git grep --untracked; the state_dir skip is genuinely exercised.",
+    "test_todo_sync_catalog_lock_cli covers every catalog-writing subcommand (refresh, retire, add --spec, add --inbox, split, init, migrate-ids) against a planted live lock and checks that the catalog bytes are unchanged.",
+    "test_a_failed_render_after_the_write_never_adds_the_items_twice pins the delete-before-follow-up order that prevents a double add.",
+    "The pid_alive cross_os test monkeypatches os.kill to fail on Windows, which guards the documented behavior that os.kill terminates the target process there."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "finish step 1 sends the agent to fix the T9 counts error that only the lease release may fix",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/lib/harness_lib/todo_sync/locking.py"
+        ],
+        "lines": "242-248",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Retire step 4 (todo-editor.md:86-89) hand-appends close_candidates entries after the real retire run, so counts.close_candidates no longer matches and `TS check` reports a T9 error (rules_todo.py:276-284). finish step 1 (todo-editor.md:242-243) says a finding the agent's edits caused (T1, T3-T10) is fixed and the check rerun, but the Rules (todo-editor.md:57-60) forbid hand-editing `counts`, and the recount that clears it runs only in step 2's `lease release` (locking.py:115-124, spec Decided 6, written for exactly this T9). The agent is told to fix an error it may not touch: it either hand-edits counts (breaking the rule) or loops. Step 2 then takes `error` from the step 1 check less only the T2 finding (todo-editor.md:247-248), so the reply's `Check` line still reports the T9 error the release already cleared.",
+        "fix": [
+          "In finish step 1 exempt T9 alongside T2: 'a T9 counts finding is left for step 2, whose recount clears it'; in step 2 take `error` and `warn` from the step 1 check less any T2 snapshot finding and any T9 counts finding.",
+          "Move the error/warn source after the release: run `TS check --format summary` once after `TS lease release` (check takes no lock) and take drift, error and warn from it."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "_rel_path claims escape protection it does not enforce",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/todo-watch/hooks/config.ts",
+          "tests/lib/test_config_scratch_folder.py",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "480-490",
+        "reviewer": "runtime, system_shape, config, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The _rel_path docstring (config.py:481-485) says it repeats relPath 'so a load without jsonschema never accepts a path that escapes the project root'. The check rejects only a leading slash, a backslash or a drive letter, so '../shared/' passes, and so does the schema's relPath pattern. todo_inbox() then resolves outside the project. inbox put writes there, add --inbox deletes and renames files there, and default_exclusions writes a '../...' pattern. That breaks the plugin's 'data goes to the project' rule. The module already has _inside_root (config.py:517) for exactly this check.\n\nAlso (system_shape): config.py:480-489 `_rel_path` says it repeats the schema's relPath shape 'so a load without `jsonschema` never accepts a path that escapes the project root'. It rejects only a leading slash or backslash and a drive prefix. `../outside` and `docs/../../x` pass the check, and they pass the schema's relPath pattern as well. `todo_inbox()` (config.py:233-236) then points `inbox put` at a folder outside the project, and `history_paths` and the seeded exclusions take a pattern outside the repo. The mod mirror (config.ts `pathOr`, which skips `insideRoot`) would list that folder too. This contradicts the docstring and the project rule that drivers write only under the consuming project. The module already has `_inside_root` (config.py:517-521) for exactly this check on `todo.*` paths. The new tests (tests/lib/test_config_scratch_folder.py) cover only a non-string value.\n\nAlso (config): The `_rel_path` docstring says a load without jsonschema 'never accepts a path that escapes the project root', but the check (and the schema's relPath pattern in harness.schema.json line 38 via #/$defs/relPath) only rejects a leading slash, backslash or drive letter. A value such as `../outside` loads, and `todo_inbox()` then resolves the inbox (written by inbox.py `_write_items`) outside the project. The same file already has a `..` climb check for the todo paths (config.py ~518), so the contrast makes the claim misleading.\n\nAlso (overall): config.py:480-485 says the check 'never accepts a path that escapes the project root', but it rejects only a leading slash, backslash or drive letter. `scratch_folder: \"../elsewhere\"` passes both this check and the schema's relPath pattern (harness.schema.json:9). inbox put would then write queued items outside the project, and the todo-watch mod lists them from there.",
+        "fix": [
+          "Normalize and bound the value: return _inside_root(posixpath.normpath(value.replace('\\\\', '/')), where) after the existing shape check (keep the original spelling when the trailing slash matters to todo_inbox).",
+          "Or drop the escape claim from the docstring, if a scratch folder above the root is intended.",
+          "In `_rel_path`, normalize (`posixpath.normpath(value.replace('\\\\', '/'))`) and pass the result through `_inside_root(..., where)`; apply `insideRoot` to `scratchFolder` in config.ts readConfig (falling back to the default); add a test that `scratch_folder: \"../x\"` raises ConfigError.",
+          "Or reword the `_rel_path` docstring so it claims only what it checks (no rooted or drive-prefixed path), and document in the README row that `..` is not refused.",
+          "Reword the `_rel_path` docstring to say it rejects absolute paths and drive letters only",
+          "Reject `..` climbing for scratch_folder with the existing climb helper near config.py:518, and add a schema note or test for it",
+          "Also reject any `..` segment in `_rel_path` (e.g. `'..' in PurePosixPath(value.replace('\\\\', '/')).parts`), and add a test case to tests/lib/test_config_scratch_folder.py.",
+          "Or narrow the docstring to what is checked: no leading slash, backslash or drive letter."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "An accepted inbox file that cannot be deleted is drained again, duplicating a note item",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/todo-watch/hooks/inbox.ts"
+        ],
+        "lines": "180-202,223-232,282-288",
+        "reviewer": "adv_code_runtime, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "drain writes the catalog first and only then deletes the accepted inbox files (plugins/harness/lib/harness_lib/todo_sync/inbox.py:286-288). When a delete fails (a Windows handle held on the file past the 5 x 50 ms retry, or the todo-watch 60 s DRAIN_TIMEOUT_MS killing the child between write_edits and _remove_accepted), the file keeps its queued name, so queued() lists it again. The error only asks a person to delete it before the next drain, but todo-watch starts that next drain on its own at the next subagent turn end (drainQueued in plugins/todo-watch/hooks/checks.ts) or session start. A note item (no issue) is then added a second time under a fresh id; an issue item is refused as already in the catalog and set aside as .rejected.json, a spurious rejection.\n\nAlso (runtime): When _remove_accepted cannot delete a file whose items already landed, _problems (inbox.py:227-228) tells a person to delete it 'before the next drain'. The todo-watch mod starts a drain at every subagent turn end and session start while a queued *.json is listed (checks.ts drainQueued), so the next drain usually runs before anyone can act. A note item (no issue number for _check_spec to refuse) is then added a second time under a new id.\n\nAttack: Pytest probe (ran at the PR head, passes, prints 'count 2'): with tests/lib/_todo_helpers.build(make_project), write docs/_scratch/todo-inbox/20261113T000001Z-00-aaaaaa.json holding {\"items\": [<a valid note item, no issue, title 'A local note'>]}; monkeypatch inbox._unlink_with_retry to raise PermissionError(13, 'file in use') and call inbox.drain(cfg) (raises TodoSyncError 'could not be deleted'); undo the patch and call inbox.drain(cfg) again (what the todo-watch turn-end trigger does next). The catalog now holds two items titled 'A local note' with different ids. Real-world trigger: on Windows, keep the inbox file open from another process (Python open() shares no delete) while 'todo_sync.py add --inbox' runs.",
+        "fix": [
+          "Claim each queued file before the catalog write: rename it to a hidden name (for example '.<name>.draining', which queued() and isQueuedName already skip), absorb the claimed files, write the catalog, then delete the claimed files; on a failed catalog write rename them back. A file that cannot be claimed is skipped this drain instead of being added twice.",
+          "Record the drained inbox file names in a ledger under state_dir inside the same lock, and have queued() or _absorb skip a name the ledger already holds.",
+          "Rename an accepted file that cannot be deleted to a non-queued name (for example <stem>.added.json, skipped by queued() and isQueuedName), and retry the delete on a later drain.",
+          "Or record the accepted file names in state_dir and have queued() skip them until they are gone."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Notes about an unfreed lock or lease never reach the user",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/locking.py",
+          "plugins/harness/lib/harness_lib/catalog_lock.py"
+        ],
+        "lines": "425-428",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "locking._free_noting (locking.py:89-94) and catalog_lock.hold (catalog_lock.py:362-367) record a failed release with exc.add_note(...) so the original error is not replaced. main() prints only ' '.join(str(exc).split()), and str() of an exception leaves out __notes__. When `lease release` hits a recount, render or check failure and the free also fails, the user sees only the first error. The driver docstring says the lease is freed regardless, so the user assumes it is gone while it keeps blocking every writer, including the todo-watch drain, for up to 30 minutes. The same gap hides 'lock ... was not released' from a guarded write.",
+        "fix": [
+          "In main(), add the exception's notes to the problem line: message = ' '.join(' '.join([str(exc), *getattr(exc, '__notes__', ())]).split()).",
+          "Or have _free_noting and hold raise a TodoSyncError/LockError whose message already names the release failure, in place of add_note."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Skills say a drain `problem:` line leaves the queued items in the inbox, but a drain can fail after the items landed",
+        "file": "plugins/harness/skills/add-todo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/add-todo/SKILL.md",
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "80-86",
+        "reviewer": "system_shape, docs, skill_package, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "add-todo SKILL.md:85-86 and sync-gh-todo SKILL.md:75-76 tell the main session: 'A `problem:` line ends the run: relay it once without rerunning the drain; the queued items stay in the inbox.' inbox.drain writes the catalog and deletes the accepted files before the render and check. When either of those fails, or an accepted file cannot be deleted, it raises `inbox: added <ids>, then: <reason>` (inbox.py:286-295) and the driver prints that as a `problem:` line with exit 2. The items are then already in the catalog and their inbox files are gone. A second case: when the todo-watch mod's drain holds the write lock for more than the 10 s wait, the skill's fallback drain refuses with a lock holder named `todo_sync.py add --inbox`, while the mod's drain is in fact adding those items. In both cases the relayed text tells the developer the items are still queued, which invites a manual re-add. A re-added `note` item has no issue number to dedupe on, so it would land twice.\n\nAlso (docs): Both skills say a `problem:` line from `add --inbox` leaves 'the queued items ... in the inbox'. inbox.drain writes the catalog and deletes the accepted files before the render and check (inbox.py:286-288), and a later render, check or report failure raises `inbox: added <ids>, then: <error>` (inbox.py:290-295): those items are in the catalog and gone from the inbox. The session told they are still queued may report them as not added.\n\nAlso (skill_package): add-todo Step 4 (lines 85-86) and sync-gh-todo Step 3 (lines 75-76) say: 'A `problem:` line ends the run: relay it once without rerunning the drain; the queued items stay in the inbox.' The driver contradicts that in two cases. (1) inbox.drain (plugins/harness/lib/harness_lib/todo_sync/inbox.py:286-295) writes the catalog and deletes the accepted files before the render/check follow-up; a follow-up failure raises `inbox: added <ids>, then: <reason>`, so the items already landed and their files are gone, and _problems (inbox.py:227-228) can also report landed files that could not be deleted and must be removed by hand before the next drain. (2) When the todo-watch mod's own drain (up to 60 s, plugins/todo-watch/hooks/inbox.ts:19) still holds the lock past the 10 s wait (todo_sync.py:110-111), the skill's drain refuses with a lock-held `problem:` naming `todo_sync.py add --inbox` as owner while that mod drain is landing the items. In both cases the session is told to report the items as still queued when they are, or are about to be, in the catalog.\n\nAlso (overall): The add-todo and sync-gh-todo drain steps say a `problem:` line ends the run 'without rerunning the drain; the queued items stay in the inbox'. When the todo-watch mod's drain outlasts the Agent hook's wait cap, the skill's `add --inbox` finds the files still listed, waits 10 s on the lock and refuses with `lock ... held by 'todo_sync.py add --inbox'`. In that case the items are being added, not left queued, and the mod's summary line arrives as context later. The relayed message tells the developer the opposite.",
+        "fix": [
+          "Reword both skill paragraphs: a `problem:` line that opens with `inbox: added` means those ids landed and only the render, check or file cleanup failed; a lock refusal naming `todo_sync.py add --inbox` means another drain (the todo-watch mod) holds the lock and the items arrive through its summary line; any other `problem:` line leaves the queued items in the inbox.",
+          "Replace the sentence in both skills with: 'A `problem:` line ends the run: relay it once without rerunning the drain. When it opens with `inbox: added`, those items landed and only the render or check failed; otherwise the queued items stay in the inbox.'",
+          "In both skills replace the closing sentence with: 'A `problem:` line ends the run: relay it once without rerunning the drain. When it opens with `inbox: added`, those items landed and only the follow-up failed; when it names a lock held by `todo_sync.py add --inbox`, the todo-watch mod is draining and its summary line arrives as context; otherwise the queued items stay in the inbox.'",
+          "Add one sentence to both drain steps: a `problem:` line naming the holder `todo_sync.py add --inbox` means the todo-watch drain is still running; its summary line arrives as context and nothing needs rerunning."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "todo-watch README still says the mod only reads; the inbox drain, its triggers and scratch_folder are missing",
+        "file": "plugins/todo-watch/README.md",
+        "files": [
+          "plugins/todo-watch/README.md",
+          "plugins/todo-watch/hooks/inbox.ts",
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/todo-watch/hooks/config.ts",
+          "README.md",
+          "plugins/todo-watch/hooks/register.ts"
+        ],
+        "lines": "1,9-14,34-52,96-106",
+        "reviewer": "overall, system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/todo-watch/README.md:9-10 says the mod \"only reads, gates and displays\", but the mod now runs `todo_sync.py add --inbox` (plugins/todo-watch/hooks/inbox.ts:108-111), which writes RepoToDo.json, renders the snapshot and deletes or renames inbox files. Lines 12-14 say no hook blocks a tool call or a prompt, but the Agent tool hook and task-notification prompts now wait up to waitCapMs (60 s) for a drain (checks.ts:560-569, 526-530). The config table (lines 34-40) lists every mirrored key except the new `scratch_folder` / DEFAULT_SCRATCH_FOLDER, which config.ts now reads. The hook table (lines 101-104) has no entry for `tool.call` on Agent, the subagent `turn.complete` drain or the `session.start` drain. Anyone reading only this README would think the mod can never cause a catalog write.\n\nAlso (system_shape): The PR makes todo-watch trigger catalog writes. It runs `todo_sync.py add --inbox` on a todo-editor Agent result (checks.ts:632), on any subagent turn end with a queued file (checks.ts:645, drainQueued at 591) and at session.start (register.ts). It also attaches `inbox:` summary lines to tool results and prompts, and mirrors the new `scratch_folder` key (config.ts DEFAULT_SCRATCH_FOLDER, pinned by test_todo_watch_config_mirror.py). plugins/todo-watch/README.md was not touched. Line 9-10 still says 'the mod only reads, gates and displays'. The mirrored-key table (34-49) has no `scratch_folder` row, though line 51 says the mirror test covers 'these values'. The Hooks table (98-106) lists no `tool.call` on `Agent` and describes `turn.complete` as main-loop only. No behavior row (M-rule) or State entry covers the drain, its 60 s cap or the pending-summary queue. The root README's mod row (README.md:41) also lists only the check re-runs. The release notes and the harness README describe the drain, so the mod's own README now contradicts them (lens check 3: lockstep).\n\nAlso (docs): todo-watch 0.5.0 now runs `todo_sync.py add --inbox` when a harness:todo-editor agent returns and at session start, and attaches an `inbox: ...` or `inbox: drain failed: ...` line to the agent result or the next prompt (plugins/todo-watch/hooks/inbox.ts). The plugin README has no mention of the inbox, the drain or `scratch_folder`, and the root README feature row for todo-watch (README.md:41) lists only the band, the TODO_SYNC line and /todo. A user cannot learn from either that the mod spawns catalog writes.",
+        "fix": [
+          "Rewrite plugins/todo-watch/README.md lines 9-10 to say the mod also drains the TODO inbox through `todo_sync.py add --inbox` (the only write it causes, made by the Python driver under the catalog lock). Add a `scratch_folder` | `docs/_scratch/` | `<scratch_folder>/todo-inbox` (inbox the drain lists) row to the config table. Add hook-table rows for `tool.call` on Agent (a completed harness:todo-editor drains and appends the summary), subagent `turn.complete` (drain when an item is queued) and `session.start` (drain left-over items). Qualify the 'No hook blocks' sentence with the capped drain wait.",
+          "Update plugins/todo-watch/README.md: reword lines 9-10 (the mod also runs the harness inbox drain, never writing the catalog itself); add a `scratch_folder` row (`docs/_scratch/`, the inbox folder `<scratch_folder>/todo-inbox` it lists); add Hooks rows for `tool.call` on `Agent` (foreground todo-editor result drains and appends the summary), `turn.complete` for subagent loops (drain when the inbox lists a queued file) and the session.start drain; add a behavior rule or a 'Inbox drains' subsection under Check runs giving the `add --inbox` argv, the 60 s DRAIN_TIMEOUT_MS, the single-flight-plus-one-owed pacing and how a pending summary reaches a tool result or prompt.",
+          "Extend the README.md:41 todo-watch row's notes with one bullet: drains the TODO inbox when a todo-editor agent returns.",
+          "Add a short section to plugins/todo-watch/README.md on the inbox drain (triggers, the single-flight run, the `inbox:` context line, `scratch_folder`), and one bullet to the todo-watch row in README.md:41."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "band layout test expects the 2.1.325 engine's stacked parts; CI pins claude-code 2.1.322 and fails it",
+        "file": "plugins/todo-watch/hooks/band.test.tsx",
+        "files": [
+          "plugins/todo-watch/hooks/band.test.tsx",
+          ".github/workflows/ci.yml"
+        ],
+        "lines": "172-174",
+        "reviewer": "failing_tests_1",
+        "fix_kind": "judgment",
+        "summary": "CI job log (mod tests step, claude-code@2.1.322 pinned at .github/workflows/ci.yml:119): (fail) the band above the prompt > layout and color: items first, truncated at the edge; the status in a theme color. Expected [\"1  First\", \"2  Second\", \"✓ in sync\", \"engine\"], received [\"1  First\", \"2  Second\", \"✓ in sync\"]. The branch changed band.test.tsx:173-174 to expect the engine's own node after the band, which the local 2.1.325 engine draws (each plugin's AbovePrompt tree stacked as its own part); 2.1.322 does not draw the part beneath while the plugin draws. Verified: claude plugin test plugins/todo-watch passes 138/138 locally under claude --version 2.1.325, and the CI log shows the single failure with every other band test passing. CI exits 1, so the PR is red.",
+        "fix": [
+          "Make the assertion hold on both engines: compare the band's own lines ([...START_LINES, '✓ in sync']) against clean.all with a trailing 'engine' node allowed but not required, and say in the comment that 2.1.323+ stacks the part beneath while 2.1.322 replaces it",
+          "Lift the CI pin at .github/workflows/ci.yml:116-119 to 2.1.325 and update its comment, after confirming claude plugin validate --strict and claude plugin test pass for every plugin the CI steps name under 2.1.325"
+        ]
+      },
+      {
+        "id": "I8",
+        "name": "Unreadable-lock and break-guard paths untested",
+        "file": "tests/lib/test_catalog_lock.py",
+        "files": [
+          "tests/lib/test_catalog_lock.py",
+          "plugins/harness/lib/harness_lib/catalog_lock.py"
+        ],
+        "lines": "1-9,92-100",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test module's docstring (line 6) says an unreadable lock goes stale 'when older than WRITE_STALE_SECONDS', but no test plants an unreadable body. That leaves _is_stale(body None) and _unlink_if_same(observed None) with no coverage. The <lock>.break guard is not covered either: a busy guard should make break_if_unchanged return False by the deadline or raise LockError without one, and a guard older than WAIT_SECONDS should be cleared only while its token is unchanged. The catalog_lock module docstring presents these as the race protections, yet a regression in any of them (for example a half-written lock that never goes stale and blocks every writer) would pass the suite.",
+        "fix": [
+          "Add tests that: write a non-JSON lock body, check that hold refuses while its mtime is fresh, then backdate it past WRITE_STALE_SECONDS with os.utime and check that hold breaks it; plant a fresh '<lock>.break' guard and assert break_if_unchanged(path, body, deadline=time.monotonic()) is False and that a call without a deadline raises LockError (with WAIT_SECONDS patched small); backdate the guard past WAIT_SECONDS and assert the break succeeds."
+        ]
+      },
+      {
+        "id": "I9",
+        "name": "Spec-order sort test cannot catch a lost zero pad",
+        "file": "tests/lib/test_todo_sync_inbox.py",
+        "files": [
+          "tests/lib/test_todo_sync_inbox.py",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "101-109,112-122",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_put_names_sort_in_spec_order_on_a_repeated_stamp queues six items, so the indices are 0..5. inbox._write_items zero-pads the index (width = max(2, len(str(len(items) - 1)))) so names still sort in spec order past index 9. Unpadded single digits sort the same way, so the test passes even if the padding is removed. It only fails if the index is dropped altogether. A regression in the padding would let a drain of a 10+ item put land items out of spec order, and no test would catch it.\n\nAlso (tests): The put docstring promises 'A put is all or nothing: a failed inbox write leaves nothing queued'. _write_items deletes every hidden or renamed file written so far when a later write fails. The only failure test, test_a_failed_inbox_write_names_the_issue_already_filed, makes write_atomic refuse on the first call, so nothing has been written yet. It checks only the error text and never asserts that the inbox is empty. The cleanup loop, and the failure of a rename after the first file has gone visible, have no coverage.\n\nAlso (adv_code_tests): The put docstring promises that a failed inbox write leaves nothing queued, and _write_items enforces that by deleting every file written so far (plugins/harness/lib/harness_lib/todo_sync/inbox.py:109-113). No test reaches that path with a file already on disk. test_a_failed_inbox_write_names_the_issue_already_filed fails the first write_atomic, so nothing exists to clean up, and it never asserts that the inbox is empty. If the cleanup were removed, a rename that fails on the second item would leave the first item queued while put reports failure. A retried put would then queue that item twice, and a local note would land in the catalog twice.\n\nAttack: Replace inbox._write_items with a copy that omits the try/except cleanup (inbox.py:102-113). All five put tests in tests/lib/test_todo_sync_inbox.py still pass. Then, with report._replace_with_retry raising OSError on call 4, inbox.put(cfg, spec of _item(9), _item(12)) raises while inbox.queued(cfg) lists one file that the next drain adds. The same failure against the real code leaves the folder empty. Run as probes/test_cleanup_probe.py, 7 passed.",
+        "fix": [
+          "Queue at least 11 items (for example issues 9 and 12..21) so that index 10 must sort after index 2. Keep the existing assertions that the sorted names equal result.paths and that the issues come back in spec order.",
+          "Add a test that patches inbox.write_atomic to succeed once and then raise OSError on a two-item spec. Assert that put raises and that `_names(cfg) == []`.",
+          "Add a second case where `inbox._report._replace_with_retry` fails on the second rename, and assert that the first renamed file is gone too. Also assert the empty inbox in the existing #42 test.",
+          "Add a test that patches report._replace_with_retry to raise OSError on its 4th call (two hidden writes, then the second rename) during a two-item put, then asserts pytest.raises(OSError) and that inbox_dir holds no file.",
+          "Extend test_a_failed_inbox_write_names_the_issue_already_filed so the second write fails, and assert that the inbox folder is empty afterwards."
+        ]
+      },
+      {
+        "id": "I10",
+        "name": "Drain failure branches have no tests",
+        "file": "tests/lib/test_todo_sync_inbox.py",
+        "files": [
+          "tests/lib/test_todo_sync_inbox.py",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "125-141",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "drain's docstring lists several failure behaviors. (1) A catalog that cannot be ranked raises and leaves the inbox untouched (_probe). (2) Accepted files that cannot be deleted are named to be deleted before the next drain (_remove_accepted / _problems). (3) Refused files that cannot be set aside are reported and refused again next time (_set_aside_all). (4) When items landed, the message opens with the ids added. Only the render-failure path is tested (test_a_failed_render_after_the_write_never_adds_the_items_twice). A regression in _probe would set every queued file aside as rejected because of a catalog-level fault, and no test would see it.",
+        "fix": [
+          "Add tests that: corrupt the catalog ranking so drain raises 'catalog cannot be ranked' and the queued files are still there; patch inbox._unlink_with_retry to raise OSError and assert the error names the file and opens with 'inbox: added'; patch inbox._set_aside to raise OSError and assert the 'could not be set aside' sentence."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README todo.gh.repo row still names add --file-issue for add-todo --issue",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/default_exclusions.py"
+        ],
+        "lines": "534,545-548",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The key table's `todo.gh.repo` row says it is used by `todo_sync.py add --file-issue` (`add-todo --issue`). After this change `add-todo --issue` files through `todo_sync.py inbox put --file-issue` (todo-editor.md:219-222, README.md:480), so the row names the wrong command for the skill.\n\nAlso (system_shape): README.md:534 (`todo.gh.repo`) still lists `todo_sync.py add --file-issue` (`add-todo --issue`) as its user. add-todo --issue now files through `inbox put --file-issue` (README.md:480, todo-editor.md add step 4). The `exclusions` seeding bullet (README.md:545-548) lists the patterns seeded from artifacts.reviews, summaries, scratch, commit_messages, state_dir and the two rows files. It omits the new `<scratch_folder>/todo-inbox/*` row that default_exclusions._entries now writes (default_exclusions.py:35).",
+        "fix": [
+          "Change the row's Used-by cell to: `todo_sync.py untracked`, `todo_sync.py add --file-issue` and `inbox put --file-issue` (`add-todo --issue`).",
+          "README.md:534: name `todo_sync.py inbox put --file-issue` (`add-todo --issue`) alongside or instead of `add --file-issue`; README.md:545-548: add 'the TODO inbox (`<scratch_folder>/todo-inbox`)' to the seeded folder list."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Plan record misses the TASK-6 trigger change and the out-of-plan files",
+        "file": "docs/plans/1019/DesignEvolution.json",
+        "files": [
+          "docs/plans/1019/DesignEvolution.json",
+          "docs/plans/1019/receipts/TASK-6.json",
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/harness/lib/harness_lib/todo_sync/gh.py",
+          "docs/plans/1019_serialize_catalog_writes_ActionPlan.json"
+        ],
+        "lines": "6-37",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "TASK-6 in the frozen plan says the subagent `turn.complete` drain fires only for an agentId recorded from an `async_launched` todo-editor result. checks.ts:571-584 instead drains at any subagent's turn end whenever the inbox lists a queued file, and records no agentIds. The TASK-6 receipt lists no extra files, but band.test.tsx and summary.test.ts changed. The gh.py timeout (GH_TIMEOUT_SECONDS) belongs to no plan task. DesignEvolution.json records only EX1, so a reader of the plan cannot tell these deviations were intended.\n\nAlso (system_shape): Plan TASK-6 (ActionPlan.json:343) specifies three behaviors. (b) A backgrounded todo-editor's `async_launched` agentId is recorded, and only that agent's `turn.complete` starts a drain. (c) A task-notification prompt waits up to DRAIN_TIMEOUT_MS. (d) The session-start drain lists the inbox. The build differs on two counts. It records no agentId and drains at any subagent's turn end whenever the inbox lists a queued file (checks.ts:645-656, drainQueued at 591). It caps every wait at the hook budget less 1 s (`waitCapMs`, inbox.ts:64-67). The `gh` call timeout (gh.py GH_TIMEOUT_SECONDS, commits 41d3ec0/7168893) lies outside every TASK's file list. DesignEvolution.json holds only EX1 (the state_dir skip), so the plan, the spec's Decided 17 and the code now tell three different stories about when the mod drains.",
+        "fix": [
+          "Add DesignEvolution entries (through the plan driver) for the broadened turn.complete trigger, the todo-watch test adaptations and the gh call timeout, and re-record the TASK-6 receipt with its extra files.",
+          "Add DesignEvolution entries (EX2 for the any-subagent turn-end trigger and the budget-capped wait, EX3 for the `gh` timeout) through the plan driver, so the PIP's Design changes section explains the deviation; leave the frozen spec as written."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Edited docstring lines exceed the 110-character limit",
+        "file": "plugins/harness/lib/harness_lib/default_exclusions.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/default_exclusions.py",
+          "plugins/harness/lib/harness_lib/history.py",
+          "tests/lib/test_catalog_lock.py"
+        ],
+        "lines": "3",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "default_exclusions.py:3 (123 chars) and history.py:4 (126 chars) were lengthened by this change past the project's line length of 110. Local ruff runs E501 and flags them.\n\nAlso (overall): The local ruff config sets line length 110 and enables E501. Three lines now exceed it: default_exclusions.py:3 (123 chars) and history.py:4 (126 chars), both in edited module docstrings, and tests/lib/test_catalog_lock.py:153 (112 chars). CI passes `--extend-ignore E501`, so the build still passes, but a local `ruff check` fails.",
+        "fix": [
+          "Rewrap both module docstrings so every line stays at or under 110 characters.",
+          "Rewrap default_exclusions.py:3-4 and history.py:3-5 at 110 columns, and wrap the signature at tests/lib/test_catalog_lock.py:153 as the other long test signatures in that file are."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "_write_items says a drain never sees part of a put, but the renames are sequential",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "lines": "91-114,120-121",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "inbox._write_items (inbox.py:92-96) says 'so a drain never sees part of a put', and put (inbox.py:120-121) promises 'a failed inbox write leaves nothing queued'. The hidden-then-rename step only keeps a half-written file out of view. The renames at inbox.py:106-108 run one by one, so a concurrent drain (any subagent turn end in the mod) can list and absorb the first k items before rename k+1. If a later rename fails, the rollback deletes files that are already gone, and put raises as if nothing was queued while k items are in the catalog. A rerun of the put then duplicates them.\n\nAlso (overall): inbox.py:95-96 says each item is written under a hidden name and renamed afterwards \"so a drain never sees part of a put\". The renames run one at a time (lines 106-108), so a drain that lists the folder between two renames sees only some of the put's files. A todo-watch drain triggered by any other subagent's turn end can run at that moment. If a later rename then fails, the cleanup at lines 109-113 unlinks files that drain already added to the catalog and the put reports failure, so the agent's rerun queues duplicates. Hiding the files only protects against a half-written file, not against a partial put.",
+        "fix": [
+          "Reword both docstrings to the guarantee that holds: a drain never reads a half-written file, and a put that fails during the renames may already have had its earlier items drained.",
+          "Or give the hidden files one put-id prefix and rename them under the catalog lock, so a drain sees all of a put or none of it.",
+          "Reword the docstring: hidden names keep a drain from reading a half-written file, but a drain may take the renamed files of a put whose later renames are still pending.",
+          "Or make the put visible at once: write all items to a hidden staging subfolder and rename that folder's contents only after a marker, or have queued() ignore a stamp group until a `<stamp>.done` marker exists."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "locking._verify duplicates catalog_lock._check_lease",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/locking.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/locking.py",
+          "plugins/harness/lib/harness_lib/catalog_lock.py"
+        ],
+        "lines": "68-74",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "locking._verify (locking.py:68-74) repeats the body read, the mode check, the token check and the error wording of catalog_lock._check_lease (catalog_lock.py:333-341). The two copies can drift. release then runs the same check a second time through free -> release_lease.\n\nAlso (overall): locking.py:68-74 reads the holder and refuses on 'no lease' or 'carries another token' with the same logic and nearly the same messages as catalog_lock._check_lease (catalog_lock.py:333-341). The two copies can drift, for example if one is later changed to treat a stale lease as no lease.",
+        "fix": [
+          "Make _check_lease public (check_lease) and have _verify call it inside try/except catalog_lock.LockError -> TodoSyncError, as free does.",
+          "Expose the check from catalog_lock (rename `_check_lease` to `check_lease`) and have locking.release call it inside a `try/except catalog_lock.LockError -> TodoSyncError`, then delete `_verify`."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Retire's skipped-folder lists omit the TODO inbox and state_dir",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/skills/todo-edit/SKILL.md"
+        ],
+        "lines": "24-27",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "history_paths now includes `<scratch_folder>/todo-inbox` (history.py:26), and retire.other_references also skips `state_dir` (retire.py:262). The prose that lists what the retire and split reference scan skips was not updated. todo_sync.py:24-27 still lists only the snapshots, plans, reviews, commit_messages, summaries, scratch and the planning prefixes, and todo-editor.md:62-64 tells the agent the same, so it will not know a pending inbox item that names the retired id goes unreported.\n\nAlso (system_shape): The PR adds the TODO inbox to `history_paths` (history.py:22,26) and `state_dir` to the `other_references` skip list (retire.py:255). The three prose copies of that list were not updated. The `retire` docstring (todo_sync.py:26-27) names the snapshots, plans, reviews, commit_messages, summaries, scratch and planning prefixes only. So do todo-editor.md:63-65 and the unchanged todo-edit SKILL.md:63. An agent told the list 'never covers' those folders is not told that an id inside a queued inbox file, or in the lock body, is skipped as well.",
+        "fix": [
+          "Add 'the TODO inbox (`<scratch_folder>/todo-inbox`) and `state_dir`' to the skipped list in the todo_sync.py module docstring (retire entry) and in todo-editor.md's Edit-only rule; the todo-edit skill (plugins/harness/skills/todo-edit/SKILL.md:63) carries the same list.",
+          "Append 'the TODO inbox (`<scratch_folder>/todo-inbox`) and `state_dir`' to the skipped-folder list in todo_sync.py:26-27, todo-editor.md:63-65 and plugins/harness/skills/todo-edit/SKILL.md:63."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "The rejected-only drain line is missing from the add --inbox contract",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "68-73",
+        "reviewer": "runtime, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The driver docstring (todo_sync.py, add entry) lists two outputs for add --inbox: 'inbox: added N item(s): ...[; rejected K (<files>)]; check drift=D' or 'inbox: empty'. drain_lines (inbox.py:310-311) also prints 'inbox: rejected K (<files>)' with no drift when every queued file was refused. The todo-watch summary passes that line on.\n\nAlso (system_shape): todo_sync.py:68-73 documents `add --inbox` output as `inbox: added N item(s): <id> (#N), ...[; rejected K (<files>)]; check drift=D` or `inbox: empty`, and says 'then the snapshot is rendered and the check run'. drain_lines (inbox.py:304-315) also prints `inbox: rejected K (<files>)` when nothing landed and labels a local item `(note)`. `_finish` (inbox.py:235-252) runs the render and check only when items landed. The skills already document all three forms (add-todo SKILL.md:80-83), so the driver docstring is the odd one out. inbox.py's module docstring (5-7) and drain's docstring (267-269) make the same 'then renders the snapshot and runs the check' claim without the condition.",
+        "fix": [
+          "Add the third form to the add --inbox entry in the todo_sync.py module docstring: '..., `inbox: rejected K (<files>)` when every file was refused, or `inbox: empty` ...'.",
+          "In todo_sync.py:68-73, write the line as `inbox: added N item(s): <id> (#N|note), ...[; rejected K (<files>)]; check drift=D`, add the `inbox: rejected K (<files>)` form, and say the render and check run only when an item landed; add 'when any item landed' to inbox.py:6 and inbox.py:268."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "migrate-ids and init take no --lease, so a lease holder cannot run them",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/locking.py"
+        ],
+        "lines": "464-473,523-534",
+        "reviewer": "adv_code_runtime",
+        "fix_kind": "judgment",
+        "summary": "The docstring says every catalog write without --lease TOKEN waits and then refuses while a lease is held, and gives retire, split, refresh and add a --lease option. init (GUARDED, plugins/harness/scripts/todo_sync.py dispatch) and migrate-ids (locking.leased takes its own lease) get none, so the owner of an acquired lease cannot run either until it releases.\n\nAttack: In a project with todo.folder set: run 'todo_sync.py lease acquire --owner batch' (prints 'lease: <token>'), then 'todo_sync.py migrate-ids --lease <token>' fails at argparse (unrecognized arguments), and 'todo_sync.py migrate-ids' waits 10 s and exits 2 with 'problem: lock ... is held by 'batch' (lease, ...)'. Same for 'todo_sync.py init --lease <token>'.",
+        "fix": [
+          "Add --lease TOKEN to init and migrate-ids; pass it to locking.guard for init and make locking.leased run under the given lease (no acquire or free) when a token is passed.",
+          "Or state in the todo_sync.py docstring that init and migrate-ids refuse while any lease is held and must run outside a lease."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "add-todo rule 'the main session does not write the catalog' now sits beside a main-session catalog write",
+        "file": "plugins/harness/skills/add-todo/SKILL.md",
+        "lines": "104-105",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "Step 4 (add-todo lines 71-86) has the main session run `todo_sync.py add --inbox`, which takes the catalog lock and writes the catalog (todo_sync.py:308-317, inbox.py:287). The Rules bullet at line 104 still reads 'The main session does not write the catalog. Not one entry, not \"just this once\"'. The intent (the session never authors entries; ids, ranks and counts belong to todo_sync.py) still holds, but read literally the rule forbids the step the skill now requires, and a session following the rule strictly could skip the drain when the todo-watch mod is not installed, leaving the item queued.",
+        "fix": [
+          "Reword line 104 to: '**The main session does not edit the catalog.** Not one entry, not \"just this once\": the Step 4 drain is its only catalog write, and ids, ranks and counts belong to `todo_sync.py`, the drafting to the agent.'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Edited prose lines not rewrapped",
+        "file": "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "plugins/harness/skills/add-todo/SKILL.md"
+        ],
+        "lines": "19-20,81",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The edits left ragged wrapping against the files' ~115-column prose: add-todo line 13 runs to about 127 columns, sync-gh-todo line 81 to about 130, while sync-gh-todo line 19 stops at about 65 ('...the queued items. The') with 'catalog and the issue text...' pushed to line 20. Cosmetic only; the rendered skill is unaffected.",
+        "fix": [
+          "Rewrap add-todo lines 11-14 and sync-gh-todo lines 15-20 and 80-82 to the surrounding width."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Over-long line in the DEFAULTS literal",
+        "file": "plugins/todo-watch/hooks/config.test.ts",
+        "lines": "45",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The rewrapped DEFAULTS object puts plansDir through researchCatalog on one line of about 140 characters. Every other line in the literal stays within the repository's 110-column width.",
+        "fix": [
+          "Wrap after `topN: DEFAULT_TOP_N,` so that `snapshotsDir: null, researchCatalog: null,` start the next line."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "No Python check that scratch_folder normalizes slashes like the mod",
+        "file": "tests/lib/test_config_scratch_folder.py",
+        "files": [
+          "tests/lib/test_config_scratch_folder.py",
+          "plugins/todo-watch/hooks/config.test.ts"
+        ],
+        "lines": "22-26",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "config.test.ts pins inboxDirOf for 'tmp\\\\scratch\\\\' as 'tmp/scratch/todo-inbox'. On the driver side, HarnessConfig.todo_inbox does the same replace-and-rstrip, but test_config_scratch_folder.py tests only the default trailing slash and a value with no trailing slash. The mod watches the folder the driver writes, so the two must agree, and only one side is pinned.",
+        "fix": [
+          "Add a case to test_scratch_folder_loads_an_override (or a new test) with `scratch_folder: 'tmp\\\\scratch\\\\'` asserting `cfg.todo_inbox() == 'tmp/scratch/todo-inbox'`."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "add --inbox flag guards and lease path untested",
+        "file": "tests/scripts/test_todo_sync_catalog_lock_cli.py",
+        "files": [
+          "tests/scripts/test_todo_sync_catalog_lock_cli.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "180-205",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_drain refuses `add --inbox` with --dry-run or --file-issue, and passes args.lease to locking.guard so a drain can run under an agent's lease. The CLI test covers the drain under a planted write lock and on an empty inbox. It never covers the flag refusal or a drain with `--lease <token>` while a lease is held.",
+        "fix": [
+          "Add a parametrized test asserting that `add --inbox --dry-run` and `add --inbox --file-issue` exit 2 with the refusal text, and a test that acquires a lease, queues one file and drains it with `add --inbox --lease <token>` (exit 0, file gone, lease still held)."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "The sync section's inbox needles are asserted twice",
+        "file": "tests/skills/test_sync_gh_todo_skill_contract.py",
+        "files": [
+          "tests/skills/test_sync_gh_todo_skill_contract.py",
+          "tests/skills/test_todo_inbox_prose_contract.py"
+        ],
+        "lines": "81-84",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_agent_documents_the_sync_operation now asserts 'inbox put --spec' and 'queued' in the agent's sync section, plus the absence of 'TS add --spec'. test_add_and_sync_queue_items_and_never_write_the_catalog['sync'] in the new prose-contract file makes the same three assertions on the same section. One prose edit then fails two tests in two files.",
+        "fix": [
+          "Drop 'inbox put --spec', 'queued' and the 'TS add --spec' absence check from test_agent_documents_the_sync_operation, and leave the inbox-flow contract to test_todo_inbox_prose_contract.py."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Skill drain tests never check that the drain comes after dispatch",
+        "file": "tests/skills/test_todo_inbox_prose_contract.py",
+        "files": [
+          "tests/skills/test_todo_inbox_prose_contract.py",
+          "tests/skills/test_sync_gh_todo_skill_contract.py"
+        ],
+        "lines": "84-89",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_the_add_skill_drains_the_inbox_after_the_agent, and the docstring of test_sync_gh_todo_skill_contract ('drains the inbox once it returns'), both claim ordering. The assertions check only that some launcher line parses as `add --inbox`. A skill that drained before dispatching the agent would still pass.",
+        "fix": [
+          "Assert that the `add --inbox` launcher line's offset in the SKILL.md body is greater than the offset of 'harness:todo-editor', in both skill tests."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Drain's hidden-file skip is never exercised in Python",
+        "file": "tests/lib/test_todo_sync_inbox.py",
+        "files": [
+          "tests/lib/test_todo_sync_inbox.py",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "183-189",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "put writes each item under a hidden '.<final>.json' name and then renames it (inbox._hidden, _write_items). inbox.queued skips such files with `not p.name.startswith('.')`. test_drain_skips_temp_and_rejected_files only plants '.20261113T000001Z-aaaaaa.json.x1.tmp'. That name already fails the `.endswith('.json')` filter, so deleting the hidden-name clause leaves every Python test green. A drain could then absorb a put that is still in progress, and the put's later rename would fail after the items had landed. The TS side does pin the case (isQueuedName with a hidden .json), but nothing pins the driver that actually drains.\n\nAlso (adv_code_tests): test_drain_skips_temp_and_rejected_files plants '.20261113T000001Z-aaaaaa.json.x1.tmp', which queued() already drops for not ending in '.json'. The hidden name _write_items really writes ('.<stamp>-NN-<hex>.json') ends in '.json', so the leading-dot filter at plugins/harness/lib/harness_lib/todo_sync/inbox.py:149, the guard that keeps a drain from picking up a put that is still in progress, has no Python test. The TS isQueuedName test does cover the dotted .json name; the Python side does not.\n\nAttack: Monkeypatch inbox.queued with a copy that drops `and not p.name.startswith(\".\")` (plugins/harness/lib/harness_lib/todo_sync/inbox.py:149) and call test_drain_skips_temp_and_rejected_files: it still passes. With the same patch, a drain over an inbox holding only '.20261113T000001000000Z-00-aaaaaa.json' adds issue #9. Both were run as probes (probes/test_hidden_probe.py, 2 passed).",
+        "fix": [
+          "In test_drain_skips_temp_and_rejected_files, also queue a hidden '.20261113T000001Z-01-aaaaaa.json' (the name put actually leaves) and keep the assertion that nothing is added or rejected.",
+          "Alternatively, add a direct `inbox.queued(cfg)` assertion covering the hidden .json, the .tmp and the .rejected.json names.",
+          "Add a planted file named like a real hidden put, e.g. _queue(cfg, '.20261113T000001000000Z-00-aaaaaa.json', [_item(9)]), to test_drain_skips_temp_and_rejected_files, and keep the existing .tmp file alongside it."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 292 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":11,\"first_sha\":\"b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b\",\"headRefName\":\"1159-FEAT-serialize-catalog-writes\",\"headRefOid\":\"d6836ca0c4f3e609b24152938ef427b655a450bd\",\"last_sha\":\"d6836ca0c4f3e609b24152938ef427b655a450bd\",\"mergeCommit\":null,\"number\":292,\"state\":\"OPEN\",\"title\":\"feat serialize catalog writes\",\"url\":\"https://github.com/t968rs/operator-straps/pull/292\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (44 checked, 1 refuted, 4 code findings)",
+        "counts": {
+          "findings_checked": 44,
+          "findings_refuted": 1,
+          "findings_upheld": 43,
+          "code_findings": 4
+        },
+        "refuted_ids": [
+          "M13"
+        ],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1159-FEAT-serialize-catalog-writes",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1159-FEAT-serialize-catalog-writes",
+        "head_ref_name": "1159-FEAT-serialize-catalog-writes",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b",
+        "head_sha": "d6836ca0c4f3e609b24152938ef427b655a450bd",
+        "base_ancestor_command": "git merge-base --is-ancestor b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor d6836ca0c4f3e609b24152938ef427b655a450bd HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M13",
+      "status": "REFUTED",
+      "date": "2026-11-16",
+      "evidence": "plugins/todo-watch/hooks/config.test.ts:45 is the short 'snapshots: { dir: ... }' line of a readConfig input (about 75 columns), not part of the DEFAULTS literal; the DEFAULTS literal sits at lines 9-14"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Reworded _write_items and put docstrings: hidden names keep a drain from reading a half-written file, the renames run one at a time so a drain may take earlier renamed files, and cleanup deletes only files still present"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Module docstring and drain docstring now say the render and check run only when any item landed; todo_sync.py belongs to the other part; add --inbox docstring lists the `inbox: rejected K (<files>)` form, the `(#N|note)` label, and the render and check running only when an item landed"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Fix lives in the two SKILL.md files (other part); inbox.py: cited only, its drain docstring already states the 'inbox: added <ids>, then:' failure and needs no edit; Reworded sync-gh-todo Step 3: 'problem: inbox: added <ids>, then: <reason>' means those items landed and only the follow-up failed; a lock refusal naming the holder todo_sync.py add --inbox means the todo-watch drain is running and its summary arrives as context; any other problem line leaves the items queued.; add-todo Step 4 closing sentence replaced: an 'inbox: added' problem line means the items landed (render, check or file cleanup failed); a lock held by 'todo_sync.py add --inbox' means the todo-watch drain is running; otherwise the items stay queued."
+    },
+    {
+      "id": "I9",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Spec-order test queues 11 items so index 10 must sort after 02; new test_a_failed_rename_deletes_the_files_already_renamed fails the second final rename and asserts the inbox is empty; inbox.py: cited only, cleanup already correct"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - README.md: todo.gh.repo row now names `todo_sync.py inbox put --file-issue` (`add-todo --issue`) beside `add --file-issue`; the exclusions seeding bullet lists the TODO inbox (`<scratch_folder>/todo-inbox`); default_exclusions.py part already holds the todo-inbox row (_entries, line 35); the README Used-by and seeding-bullet edits belong to the other part's fixer"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - DesignEvolution.json: EX2 (TASK-6 any-subagent turn-end drain with no agentId bookkeeping, waitCapMs-capped waits, band.test.tsx and summary.test.ts adaptations) and EX3 (gh.py GH_TIMEOUT_SECONDS outside every TASK) added through evolution_api.add; plan.py check 1019 passes. Cited files: TASK-6 receipt is sealed and EX2 records its extra files, so no re-record; checks.ts, gh.py and the frozen ActionPlan are the deviation sources, documented, not changed"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - tests/lib/test_config_scratch_folder.py: new test that scratch_folder 'tmp\\\\scratch\\\\' gives todo_inbox() 'tmp/scratch/todo-inbox', matching config.test.ts; no edit in config.test.ts: it already pins inboxDirOf for 'tmp\\\\scratch\\\\' (line 144); the missing Python case is in tests/lib/test_config_scratch_folder.py, the other part's edit"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - config.py _rel_path now refuses a value whose normalized form climbs above the root (posixpath.normpath + _inside_root), keeping the original spelling, docstring matched; config.ts readConfig falls back to the default scratch folder for a rooted or climbing value (scratchOr); schema description notes the bound; tests cover '..', '../shared/', 'docs/../../x', '..\\\\outside' refused and 'tmp/../agents/' loading"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - plugins/todo-watch/README.md: intro says the mod also runs the `add --inbox` drain (its only catalog write, made by the driver), the no-block sentence names the capped drain wait, scratch_folder row added, new Inbox drains subsection (argv, 60 s cap, triggers, single flight with one owed rerun, pending summaries, waitCapMs), Hooks rows for tool.call on Agent, subagent turn.complete, session.start drain and prompt.submit summaries; README.md:41 todo-watch row gains a drain bullet. Cited files: inbox.ts, checks.ts, config.ts, register.ts are the documented behavior, unchanged for this issue"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - band.test.tsx layout test compares the band's own lines with a trailing 'engine' node allowed but not required, comment names 2.1.323+ stacking vs 2.1.322 replacing. Cited file: ci.yml pin left at 2.1.322 (the test fix makes the pin lift unnecessary)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - retire skipped-folder lists now name the TODO inbox (`<scratch_folder>/todo-inbox`) and `state_dir` in the todo_sync.py retire docstring and the todo-editor.md Edit-only rule; todo-edit SKILL.md step 3 skipped-folder list now names the TODO inbox (`<scratch_folder>/todo-inbox`) and `state_dir`; todo_sync.py docstring and todo-editor.md are the other part's"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - no driver change: the flag refusals and args.lease pass-through already exist; the regression tests are in the test part owned by another fixer; added parametrized test refusing add --inbox with --dry-run and --file-issue (exit 2, refusal text) and a test draining one queued file under a held lease with --lease <token> (exit 0, file gone, lock still present)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - finish step 1 leaves a T9 counts finding for step 2; step 2 excludes T9 counts findings from error and warn, since the release recount clears them; No edit in locking.py: the T9 recount already runs in lease release (_recount, locking.py:115-124); the fix (finish step 1 exemption or a post-release check) is in todo-editor.md, the other part."
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - main() prints the exception notes with the message via new _problem_text helper, so a failed lease free shows beside the original error; No edit to catalog_lock.py: hold keeps add_note so the original error survives, and the fix belongs in todo_sync.py main(), which joins the exception's __notes__ into the problem line (other part).; No edit in locking.py: _free_noting keeps the add_note so the original error is not replaced; the user-visible note is rendered by main() in todo_sync.py, the other part."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Wrapped the test_a_lease_survives_a_dead_pid_and_breaks_by_age signature in tests/lib/test_catalog_lock.py like the file's other long test signatures, so every line stays within 110 columns.; rewrapped the default_exclusions.py module docstring to 110 columns; history.py module docstring rewrapped so every line is at or under 110 characters; default_exclusions.py and test_catalog_lock.py are the other part's"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Rewrapped sync-gh-todo SKILL.md lines 15-20 and the Step 4 paragraph (80-82) to the surrounding ~110-column width.; add-todo intro paragraph (lines 11-14) rewrapped to the surrounding width."
+    },
+    {
+      "id": "I8",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - Added tests: an unreadable lock body refuses a hold while fresh and is broken once backdated past WRITE_STALE_SECONDS; a fresh <lock>.break guard makes break_if_unchanged return False at a deadline and raise LockError without one; a guard older than WAIT_SECONDS is cleared and the break proceeds; a stale guard whose token changes between reads is kept. Extended the test module docstring; catalog_lock.py needed no edit for this issue."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - add-todo Rules bullet reworded to 'The main session does not edit the catalog', naming the Step 4 drain as its only catalog write."
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - added an offset check that the add --inbox drain line follows 'harness:todo-editor' in the sync skill test (new test_skill_drains_the_inbox_after_dispatching_the_agent) and in the add skill test"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - drain now claims each queued file (rename to hidden .<name>.draining) after the probe and before absorb/write, absorbs from the claims, moves every claim back on a failed absorb or catalog write, deletes accepted claims after the write (an undeletable one stays hidden and is named, never re-drained), sets refused claims aside under their queued stem or moves them back when that fails; a file that cannot be claimed stays queued for a later drain; isQueuedName doc comment notes a drain's claim; checks.ts: drainQueued relies on isQueuedName, which already skips the leading-dot claim name"
+    },
+    {
+      "id": "I10",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - added drain failure tests: catalog that cannot be ranked leaves the inbox and catalog untouched; undeletable accepted file names the file, opens with 'inbox: added' and is not added twice; unclaimable file stays queued; failed catalog write restores claimed files; refused file that cannot be set aside is reported and stays queued"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - init and migrate-ids take --lease TOKEN: init passes it to locking.guard through the existing dispatch, migrate-ids passes it to locking.leased, which now runs the body under guard with that held lease (no acquire or free) when a token is given; module and subcommand docstrings name the option"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - catalog_lock._check_lease made public as check_lease; locking._verify removed and locking.release calls catalog_lock.check_lease (locking.py:148) (outside fixer waves)"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - duplicate inbox needles removed from test_sync_gh_todo_skill_contract.py; test_todo_inbox_prose_contract.py keeps them and needed no edit (outside fixer waves)"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "d6836ca (working-tree snapshot; developer commits) - test_drain_skips_temp_and_rejected_files plants the hidden put name and asserts queued() is empty (test_todo_sync_inbox.py:297-305); inbox.py already skips it (outside fixer waves)"
+    }
+  ]
+}

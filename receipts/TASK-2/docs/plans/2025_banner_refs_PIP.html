@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2025: banner refs</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2025: banner refs</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2025_banner_refs_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2025</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2025</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-17</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-17-working-refs-banner-design.md</code></dd><dt>Branch</dt><dd>1168-todo-banner -&gt; main</dd><dt>Base commit</dt><dd><code>0235b57</code></dd><dt>Frozen</dt><dd>2026-11-18 at <code>36b7912</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: PlanRefs on the ActionPlan and the working_refs library</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: plan.py new --refs</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: /harness:working, the per-branch override</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: working-refs mod: scaffold and pure modules</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: working-refs mod: hooks, scans and the line file</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-6">TASK-6: band-line: the working line as a second line</a> <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-7">TASK-7: setup-statusline: the working-refs widget, project level</a> <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-8">TASK-8: Release notes, harness version, live check</a> <span class="status" data-status-for="TASK-8" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 How the work splits between the mod, the widget and the harness (spec Approaches).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>A</code> Mod renders the line; the ccstatusline widget only prints a file</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>B</code> Mod stores refs; a Python widget renders</li><li><code>C</code> No mod; plan.py writes refs and the widget matches each repaint</li></ul><p class="why">Developer&#x27;s choice: no code or plugin path in the widget, one file read per repaint.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 When does a plan qualify for the current branch (spec Section 2)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>either</code> plan.branch equals the branch, or plan.base_commit equals git merge-base HEAD &lt;plan.base_branch&gt;</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>branch-only</code> only plan.branch equals the branch</li></ul><p class="why">Developer: two ways to qualify; every qualifying plan shows its own link.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 When does a plan link leave the banner (spec Section 2)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>archive</code> an archive/&lt;stem&gt;/ tag exists for the plan</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>done</code> the plan has no open items</li></ul><p class="why">Developer: plan.py archive is the trigger; checked by tag since archive writes no file.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 Where the ccstatusline widget lives (spec Section 4).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>project</code> the project&#x27;s .claude/ccstatusline.json, written by setup-statusline</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>user</code> the user&#x27;s ~/.config/ccstatusline/settings.json</li></ul><p class="why">Developer: the plans folder and state_dir are per-project config.</p></section>
+<section class="decision" id="decision-D5"><h3>D5 Where the automatic refs come from (spec Section 1).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>field</code> a structured refs field on the ActionPlan, set by plan.py new --refs</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>prose</code> issue numbers scraped from item prose</li></ul><p class="why">Developer: a distinct field; prose names issues a plan only mentions.</p></section>
+<section class="decision" id="decision-D6"><h3>D6 Which files hold the override and the rendered line (spec Section 2 names one refs.json).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>split</code> overrides.json written only by the harness command; line.txt written only by the mod</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>one</code> one refs.json both sides write</li></ul><p class="why">Plan-level: one writer per file, so a mod rescan never clobbers an override written between its read and write; the plan matches are recomputed on each scan and need no file.</p></section>
+<section class="decision" id="decision-D7"><h3>D7 When a TODO id&#x27;s catalog issues are filled in (spec Section 1 says when the line is built).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>write</code> at write time, by plan.py new and the working command (Python reads the catalog)</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>render</code> at render time, by the mod reading the catalog</li></ul><p class="why">Plan-level: the harness already resolves todo.folder and the catalog; the mod then never reads the catalog or copies its config.</p></section>
+<section class="decision" id="decision-D8"><h3>D8 How the plan link renders in ccstatusline.</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>osc8</code> an OSC 8 hyperlink, visible text &#x27;plan NNNN&#x27;, target the page&#x27;s file:/// URL; widget preserveColors true</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>path</code> the bare page path</li></ul><p class="why">ccstatusline 2.2.32 keeps escapes when preserveColors is true and draws OSC 8 links itself (renderOsc8Link, its git-pr widget); a live check confirms it on screen (TASK-8).</p></section>
+<section class="decision" id="decision-D9"><h3>D9 Which base tip the merge-base clause of D2 compares with (local review I2).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>resolve</code> the tip plan.py new recorded base_commit against: origin/&lt;base&gt; when it exists and local &lt;base&gt; does not contain it, else &lt;base&gt; (branch_capture.resolve_merge_base, without the fetch)</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>local</code> local &lt;base&gt; only</li></ul><p class="why">Plan-level: base_commit comes from resolve_merge_base, so the mod must compute the same merge base or a lagging local main never matches in a sibling worktree.</p></section>
+<section class="decision" id="decision-D10"><h3>D10 Where the ccstatusline widget resolves line.txt (local review I6).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>payload</code> against workspace.project_dir (else cwd) of the status JSON ccstatusline pipes to the command&#x27;s stdin</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>cwd</code> relative to the command&#x27;s working folder</li></ul><p class="why">Plan-level: ccstatusline spawns the command with no cwd option, so a relative path depends on where ccstatusline itself runs; the stdin payload names the session&#x27;s project folder in every worktree.</p></section>
+<section class="decision" id="decision-D11"><h3>D11 How band-line gets the working line (local review I5).</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>atom</code> an atom over the working-refs `line` key, declared in band-line&#x27;s own PluginState; null while working-refs is absent</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>file</code> read &lt;state_dir&gt;/working-refs/line.txt with $.fs</li></ul><p class="why">Plan-level: the engine&#x27;s state reads take any declared {plugin, key} and answer undefined for a key nobody set; only writes are limited to the owner (value &#x27;cross-mod state read&#x27;). The atom also redraws on change, which a file read does not.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>override file</td><td>&lt;state_dir&gt;/working-refs/overrides.json</td><td>decision D6</td><td>split</td></tr>
+<tr><td>line file</td><td>&lt;state_dir&gt;/working-refs/line.txt</td><td>decision D6</td><td>split</td></tr>
+<tr><td>store version</td><td>1</td><td>plugins/session-bookmark/hooks/notes.ts:12 (NOTES_SCHEMA_VERSION pattern)</td><td>-</td></tr>
+<tr><td>detached branch key</td><td>(detached)</td><td>plugins/band-line/types/index.d.ts:6 (git-status branch.head)</td><td>-</td></tr>
+<tr><td>widget timeout</td><td>1000 ms (ccstatusline default)</td><td>ccstatusline 2.2.32 custom-command item.timeout ?? 1000</td><td>-</td></tr>
+<tr><td>new plugin version</td><td>working-refs 0.1.0</td><td>CLAUDE.md Releases</td><td>-</td></tr>
+<tr><td>harness version</td><td>0.78.1 -&gt; 0.79.0 (minor: new skill, new plan field)</td><td>plugins/harness/.claude-plugin/plugin.json</td><td>-</td></tr>
+<tr><td>band-line version</td><td>0.1.1 -&gt; 0.2.0</td><td>plugins/band-line/.claude-plugin/plugin.json:3</td><td>-</td></tr>
+<tr><td>banner-status version</td><td>0.2.1 -&gt; 0.3.0</td><td>plugins/banner-status/.claude-plugin/plugin.json</td><td>-</td></tr>
+<tr><td>release notes file</td><td>docs/RELEASES/v1.0.0.md (proposed next since v0.7.0)</td><td>gh release list --limit 1: v0.7.0</td><td>-</td></tr>
+<tr><td>plan 2025 refs</td><td>todo_ids [&#x27;todo-k69m&#x27;], issues [301, 315]; held in context.tags until the refs field exists (plan_api.write refuses an unknown top-level key, plan_api.py:118), then written as refs by the main session with plan_api.write + freeze --refreeze once TASK-1 is recorded and before TASK-8 is dispatched; every planned red is AssertionError, so the refreeze&#x27;s red check holds after TASK-1</td><td>developer, 2026-11-18</td><td>-</td></tr>
+<tr><td>ccstatusline custom-command input</td><td>spawned with shell: true and no cwd option; stdin is JSON.stringify of the Claude Code status payload (workspace.project_dir, cwd, session_id) plus terminal_width</td><td>ccstatusline 2.2.34 dist: src/utils/custom-command-capture.ts captureCustomCommand and src/widgets/CustomCommand.tsx render (input: jsonInput)</td><td>payload</td></tr>
+<tr><td>cross-mod state read</td><td>read($, {plugin, key}) and $.state.get take any key a PluginState contract declares and answer undefined when unset; $.state.set is refused for another plugin&#x27;s value</td><td>engine types .claude-plugin/types/claude-code/index.d.ts: $.state.get doc (&#x27;{ plugin, key } as the owner&#x27;s contract declares it&#x27;), ReadFunction StateRef overload (StateValue | undefined), $.state.set doc</td><td>atom</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>ActionPlan branch fields the mod reads</strong>: <code>&quot;branch&quot;: &quot;1167-relink-tags&quot;, &quot;base_branch&quot;: &quot;main&quot;, &quot;base_commit&quot;: &quot;&lt;sha40&gt;&quot;</code>, copied from <code>plugins/harness/lib/harness_lib/plan_models.py:416-417</code></li>
+<li><strong>archive tag of a plan</strong>: <code>archive/plan/2024-relink-base-validation/r1</code>, copied from <code>plugins/harness/lib/harness_lib/plan_archive.py:162-163</code></li>
+<li><strong>plan file names the mod pairs</strong>: <code>2025_banner_refs_ActionPlan.json beside 2025_banner_refs_PIP.html</code>, copied from <code>plugins/harness/lib/harness_lib/plan_doc.py:25-27</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>eight TypeScript mods</code>: <code>CLAUDE.md</code> (becomes &#x27;nine TypeScript mods&#x27; and names `working-refs` (TASK-5; test_mod_count))</li>
+<li><strong>S2</strong> <code>working-refs</code>: <code>docs/TODO/RepoToDo.json</code> (todo-k69m&#x27;s proposal prose; left as is, the item retires after merge)</li>
+<li><strong>S3</strong> <code>customCommandCacheTtlSeconds</code>: <code>docs/TODO/RepoToDo.json</code> (todo-k69m&#x27;s prose citing the key; left as is), <code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json</code> (kept at 0; the widget reads one file per repaint (TASK-7))</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: PlanRefs on the ActionPlan and the working_refs library <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_models.py</code>, <code>plugins/harness/schemas/ActionPlan.schema.json</code>, <code>plugins/harness/lib/harness_lib/working_refs.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_models.py:414-417</code> holds <code>source_document: Optional[str] = None documentation: Optional[str] = None</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/ids.py:89-93</code> holds <code>def canonical(raw: str) -&gt; Optional[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:227-228</code> holds <code>if k != &quot;frozen&quot;}</code></li>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:38</code> holds <code>return cfg.path(cfg.state_dir) / NOTES_REL</code></li>
+</ul>
+<p class="action">Copy the planned test file docs/plans/2025/tests/tests/lib/test_working_refs.py to tests/lib/test_working_refs.py first. (1) plan_models.py: add a closed `PlanRefs` model (`todo_ids: List[str]`, `issues: List[int]`, each default empty) and `refs: Optional[PlanRefs] = None` on ActionPlan after `base_branch`. Not Mutable; plan_dict dumps with exclude_unset, so a plan without refs (every frozen plan) keeps its digest. Regenerate the schema with `python tools/gen_plan_schema.py`. (2) New plugins/harness/lib/harness_lib/working_refs.py: OVERRIDES_REL = &#x27;working-refs/overrides.json&#x27;, LINE_REL = &#x27;working-refs/line.txt&#x27;, STORE_VERSION = 1, DETACHED = &#x27;(detached)&#x27;; WorkingRefsError(ValueError); parse_refs(tokens) splits each token on commas and whitespace, reads &#x27;#N&#x27; or all digits as an issue int, else todo_sync.ids.canonical, else raises; duplicates dropped, first order kept. fill_issues(refs, catalog) returns refs unchanged when it names an issue, else the union of the named ids&#x27; catalog gh_issues in id order. read_overrides(path) -&gt; Dict[str, PlanRefs] ({} for an absent file; WorkingRefsError for a file that is not a version-1 object). set_override(path, branch, refs) writes {version, branches: {branch: {todo_ids, issues, set_at (UTC ISO, Z)}}} through a sibling temp file and os.replace (add_note.py write_notes pattern); clear_override(path, branch) -&gt; bool. format_refs(refs) -&gt; &#x27;todo-k69m (301)&#x27;, ids joined &#x27;, &#x27; then issues in parentheses joined &#x27;, &#x27;; issues alone as &#x27;#301, #315&#x27;. Each function under 50 lines, Optional/Union only.</p>
+<ul>
+<li>Test <code>tests/lib/test_working_refs.py::test_parse_refs_canonicalizes_todo_ids_and_issue_numbers</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_parse_refs_drops_duplicates_keeping_the_first_order</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_parse_refs_refuses_a_token_that_is_neither_an_id_nor_an_issue</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_fill_issues_takes_gh_issues_from_the_catalog_when_none_are_named</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_fill_issues_keeps_named_issues_as_they_are</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_set_override_keys_by_branch_and_clear_removes_only_that_branch</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_read_overrides_of_an_absent_file_is_empty</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_working_refs.py::test_a_plan_without_refs_dumps_no_refs_key</code> fails with ImportError, then passes</li>
+<li>Run <code>python tools/gen_plan_schema.py --check</code>: ok: ActionPlan.schema.json matches the models</li>
+<li>Run <code>python -m pytest tests/contract/test_plan_schema_generated.py tests/lib/test_plan_models.py -q</code>: passed</li>
+<li>Record it: <code>plan.py record 2025 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: plan.py new --refs <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/plan.py</code>, <code>plugins/harness/skills/write-plan/SKILL.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/plan.py:285-292</code> holds <code>&quot;base_commit&quot;: base_commit, &quot;frozen&quot;: None, &quot;decisions&quot;: []</code></li>
+<li><code>plugins/harness/scripts/plan.py:296-304</code> holds <code>raw = skeleton(plan_id, spec, base, base_commit, current_branch(repo)</code></li>
+<li><code>plugins/harness/scripts/plan.py:1097-1098</code> holds <code>new.add_argument(&quot;--no-fetch&quot;, action=&quot;store_true&quot;</code></li>
+</ul>
+<p class="action">Copy the planned test file docs/plans/2025/tests/tests/scripts/test_plan_new_refs.py to tests/scripts/test_plan_new_refs.py first. plan.py: `new` gains `--refs` (help: comma- or space-separated TODO ids and issue numbers, e.g. &#x27;todo-k69m,#301&#x27;). cmd_new parses it with working_refs.parse_refs, fills issues with fill_issues from the TODO catalog when `active().todo.catalog` is set and the file reads (an absent or unreadable catalog leaves the refs as named), and passes them to skeleton, which writes `refs` only when given. A WorkingRefsError becomes a pd.PlanError, so the refusal prints `problem:` and exits 1. Update the module docstring&#x27;s `new` section (plan.py:21-27) and the write-plan SKILL.md step 1 line with `--refs`.</p>
+<ul>
+<li>Test <code>tests/scripts/test_plan_new_refs.py::test_new_stores_canonical_refs</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_new_refs.py::test_new_fills_issues_from_the_todo_catalog</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_new_refs.py::test_new_refuses_a_bad_ref_with_a_problem_line</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_plan_driver.py -q</code>: passed</li>
+<li>Record it: <code>plan.py record 2025 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: /harness:working, the per-branch override <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/working/SKILL.md</code>, <code>plugins/harness/skills/working/commands/working.py</code>, <code>README.md</code>, <code>tests/skills/test_skill_guidance_tail_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:21</code> holds <code>NOTES_REL = &quot;session-bookmark/notes.json&quot;</code></li>
+<li><code>plugins/harness/skills/add-bookmark/SKILL.md:4</code> holds <code>argument-hint: &quot;-- &lt;note text&gt; | --list | --clear&quot;</code></li>
+<li><code>tests/skills/test_skill_guidance_tail_contract.py:25-29</code> holds <code>&quot;a-w&quot;, &quot;add-bookmark&quot;, &quot;add-todo&quot;</code></li>
+</ul>
+<p class="action">Copy the planned test file docs/plans/2025/tests/tests/skills/test_working_script.py to tests/skills/test_working_script.py first. New skill plugins/harness/skills/working/: SKILL.md (frontmatter name `working`, argument-hint &#x27;-- &lt;todo-id|#issue&gt;... | --clear | --list&#x27; (the add-bookmark hint shape, which the guidance-tail contract requires), a body that cites `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md` for the split rule and no fenced command carrying $ARGUMENTS; the add-bookmark SKILL.md shape: the first word picks set, clear or list; the reply is the script output verbatim; &#x27;working&#x27; joins _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py) and commands/working.py (add_note.py&#x27;s shape: sys.path lib insert, argparse with --repo and subcommands set TOKENS..., clear, list; main returns 0 or 1 and prints &#x27;working: &lt;reason&gt;&#x27; to stderr). The store is cfg.path(cfg.state_dir) / OVERRIDES_REL. The branch is `git rev-parse --abbrev-ref HEAD`; &#x27;HEAD&#x27; (detached) keys as DETACHED. `set` fills issues from the TODO catalog as plan.py new does and prints &#x27;&lt;branch&gt;: &lt;format_refs&gt;&#x27;; `clear` prints &#x27;cleared &lt;branch&gt;&#x27; or &#x27;no override for &lt;branch&gt;&#x27;; `list` prints one &#x27;&lt;branch&gt;: &lt;format_refs&gt;&#x27; line per branch or &#x27;no overrides&#x27;. Add the skill to the README skill tables and the harness CHANGELOG-style lists the README keeps.</p>
+<ul>
+<li>Test <code>tests/skills/test_working_script.py::test_set_writes_the_override_for_the_current_branch</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_working_script.py::test_a_detached_head_keys_its_override_as_detached</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_working_script.py::test_clear_drops_only_the_current_branch</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_working_script.py::test_list_prints_every_branch_with_its_refs</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_working_script.py::test_a_bad_ref_exits_1_and_writes_nothing</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_working_script.py::test_state_dir_comes_from_the_project_config</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q</code>: passed</li>
+<li>Record it: <code>plan.py record 2025 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: working-refs mod: scaffold and pure modules <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/.claude-plugin/plugin.json</code>, <code>plugins/working-refs/.claude-plugin/icon.png</code>, <code>plugins/working-refs/.gitignore</code>, <code>plugins/working-refs/tsconfig.json</code>, <code>plugins/working-refs/hooks/mirror.ts</code>, <code>plugins/working-refs/hooks/config.ts</code>, <code>plugins/working-refs/hooks/plans.ts</code>, <code>plugins/working-refs/hooks/overrides.ts</code>, <code>plugins/working-refs/hooks/line.ts</code>, <code>plugins/working-refs/hooks/plans.test.ts</code>, <code>plugins/working-refs/hooks/overrides.test.ts</code>, <code>plugins/working-refs/hooks/line.test.ts</code>, <code>plugins/working-refs/types/index.d.ts</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/session-bookmark/hooks/notes.ts:10-11</code> holds <code>export const DEFAULT_STATE_DIR = &#x27;.claude/state/harness&#x27;</code></li>
+<li><code>plugins/band-line/hooks/band.tsx:12</code> holds <code>const gitAtom = atom({ plugin: &#x27;git-status&#x27;, key: &#x27;git&#x27; } as const, null)</code></li>
+<li><code>tests/mods/_mods_helpers.py:29-31</code> holds <code>def ts_number(source: str, name: str) -&gt; float:</code></li>
+</ul>
+<p class="action">Copy the planned test file docs/plans/2025/tests/tests/mods/test_working_refs_contract.py to tests/mods/test_working_refs_contract.py first. New mod plugins/working-refs/ (the band-line layout): .claude-plugin/plugin.json (name working-refs, version 0.1.0, dependencies [&#x27;git-status&#x27;], types ./types/index.d.ts), .claude-plugin/icon.png (copy band-line&#x27;s; tests/contract/test_plugin_icons.py), .gitignore (.claude-plugin/types/), tsconfig.json. hooks/hooks.json waits for TASK-5, which writes register.ts. Pure modules, no `$`: hooks/mirror.ts exports OVERRIDES_PATH, LINE_PATH, DETACHED_KEY, DEFAULT_STATE_DIR, DEFAULT_PLANS, PLAN_SUFFIX, PIP_HTML_SUFFIX, BRANCHES_KEY (&#x27;branches&#x27;), TODO_IDS_KEY (&#x27;todo_ids&#x27;) and ISSUES_KEY (&#x27;issues&#x27;) as `export const NAME = &#x27;...&#x27;` string literals and STORE_VERSION as the number literal `export const STORE_VERSION = 1` (the contract test reads them with ts_string and ts_number; notes.ts and todo-watch config.ts patterns); overrides.ts and plans.ts read the JSON through those key constants, never a spelled-out key. hooks/config.ts reads state_dir and artifacts.plans from a harness.json text over the mirror defaults (todo-watch readConfig pattern); hooks/plans.ts parses an ActionPlan text into {id, branch, baseBranch, baseCommit, refs, page} (page = the sibling PIP_HTML_SUFFIX file; a plan whose documentation is not that page is skipped, spec Builder&#x27;s calls) and qualifies(plan, branch, mergeBaseOf, archivedIds): branch match, or baseCommit equal to mergeBaseOf(baseBranch), the merge base the caller resolves by D9, and no archived id (D2, D3); hooks/overrides.ts parses overrides.json (version check against the number STORE_VERSION, branches map; malformed reads as none); hooks/line.ts builds {plans, todoIds, issues} for a branch (the override&#x27;s refs replace the union of the qualifying plans&#x27; refs; plan links are never overridden) and renders it: plain text &#x27;plan 2025 · todo-k69m (301)&#x27; or &#x27;plans 2024, 2025 · ...&#x27; and the ccstatusline form with each plan number an OSC 8 link to the page&#x27;s file:/// URL (D8); empty when nothing qualifies and no override is set. types/index.d.ts declares the state atom `working-refs.line` ({branch, plans: [{id, page}], todoIds, issues, text} | null, where text is the plain form, so band-line draws it without a second copy of the format). Unit tests beside each module (*.test.ts, band-line test conventions).</p>
+<ul>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_store_paths_match</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_store_version_and_detached_key_match</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_override_and_refs_field_names_match</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_defaults_equal_defaults_json</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_plan_file_suffixes_match_plan_doc</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin test plugins/working-refs</code>: pass</li>
+<li>Record it: <code>plan.py record 2025 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: working-refs mod: hooks, scans and the line file <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/hooks/hooks.json</code>, <code>plugins/working-refs/hooks/register.ts</code>, <code>plugins/working-refs/hooks/watch.ts</code>, <code>plugins/working-refs/hooks/watch.test.ts</code>, <code>plugins/working-refs/README.md</code>, <code>.claude-plugin/marketplace.json</code>, <code>.github/workflows/ci.yml</code>, <code>CLAUDE.md</code>, <code>README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/git-status/hooks/status.ts:155</code> holds <code>const ran = await $.process.run(argv, { timeoutMs: GIT_TIMEOUT_MS })</code></li>
+<li><code>plugins/todo-watch/hooks/checks.ts:249-251</code> holds <code>const st = await $.fs.stat(path).catch(noop)</code></li>
+<li><code>.claude-plugin/marketplace.json:39</code> holds <code>&quot;name&quot;: &quot;band-line&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/branch_capture.py:76-87</code> holds <code>return git_out(repo, &quot;merge-base&quot;, base if local_ahead else remote, &quot;HEAD&quot;).strip()</code></li>
+<li><code>.github/workflows/ci.yml:128</code> holds <code>plugins/bubble-stamp plugins/parallel2-lanes; do claude plugin test &quot;$p&quot;; done</code></li>
+</ul>
+<p class="action">plugins/working-refs/hooks/hooks.json ({modules: [&#x27;./register.ts&#x27;]}), hooks/register.ts and hooks/watch.ts. Resolve the project root and harness.json as todo-watch watch.ts does (session cwd, then CLAUDE_PROJECT_DIR). The branch comes from git-status&#x27;s `git` atom. A scan lists the plans folder, reads every *_ActionPlan.json that has a sibling page, resolves the merge base once per distinct base branch by D9 (no fetch: `git rev-parse --verify --quiet origin/&lt;base&gt;^{commit}`; when it exists, `git merge-base --is-ancestor origin/&lt;base&gt; &lt;base&gt;` picks the local branch on exit 0, else origin/&lt;base&gt;; then `git merge-base &lt;tip&gt; HEAD`; a failed call means no merge-base match for that base) and runs `git for-each-ref --format=%(refname:short) refs/tags/archive/plan/` once (archived ids from the tag names), applies qualifies, reads overrides.json, builds the line and stores it in the `line` atom when it changed. Triggers: session.start; a branch change in git-status&#x27;s snapshot; prompt.submit runs `git rev-parse HEAD` and the tag listing and rescans when HEAD or the archived set moved (spec Builder&#x27;s calls: rebases); after a Write, Edit or Bash tool call and on prompt.submit, a changed signature of the plans folder (the name and mtime of each *_ActionPlan.json and *_PIP.html, so a plan rewritten in place counts, which the folder&#x27;s own mtime misses) or a newer mtime of overrides.json (todo-watch checks.ts mtimeOf pattern). Every git call through $.process.run with a timeout, never throwing (git-status status.ts:155 pattern). line.txt holds the ccstatusline form at &lt;state_dir&gt;/working-refs/line.txt, per checkout (cfg.path, never main_worktree): after every scan compare the rendered text with the file&#x27;s contents (not with the atom, which starts null in each session) and rewrite on any difference, so the session.start scan empties a line another branch or an earlier session left (spec anti-goal). README.md (hooks table, state, files, Checks, Loading). Register the mod: .claude-plugin/marketplace.json entry after band-line; .github/workflows/ci.yml appends plugins/working-refs to the `claude plugin test` loop (line 128), so the mod&#x27;s tests run in CI; CLAUDE.md &#x27;nine TypeScript mods&#x27; naming `working-refs` (S1), and its new-config-key rule names working-refs&#x27; hooks/mirror.ts with tests/mods/test_working_refs_contract.py beside session-bookmark&#x27;s notes.ts; the root README mod tables and install lines. Tests: hooks/watch.test.ts with a world that answers git, fs and state (todo-watch testWorld.ts pattern): a plan on the branch shows; a sibling plan by merge base shows; a lagging local main resolves against origin/main; an archived plan drops on the next prompt; a rebase that moves the merge base rescans; a plan rewritten in place updates the line; an override replaces the refs; line.txt is written, and a stale non-empty line.txt is emptied by the session.start scan when nothing qualifies.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/working-refs</code>: pass</li>
+<li>Run <code>claude plugin validate --strict plugins/working-refs</code>: valid</li>
+<li>Run <code>python -m pytest tests/contract/test_mod_count.py tests/contract/test_plugin_icons.py tests/contract/test_no_repo_literals.py -q</code>: passed</li>
+<li>Record it: <code>plan.py record 2025 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: band-line: the working line as a second line <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/band-line/hooks/band.tsx</code>, <code>plugins/band-line/hooks/band.test.tsx</code>, <code>plugins/band-line/types/index.d.ts</code>, <code>plugins/band-line/README.md</code>, <code>plugins/band-line/.claude-plugin/plugin.json</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/band-line/hooks/band.tsx:25-26</code> holds <code>&lt;Text color={needsAttention(git) ? &#x27;warning&#x27; : &#x27;subtle&#x27;}&gt;{text}&lt;/Text&gt; {below}</code></li>
+</ul>
+<p class="action">plugins/band-line/hooks/band.tsx adds `const refsAtom = atom({ plugin: &#x27;working-refs&#x27;, key: &#x27;line&#x27; } as const, null)` beside gitAtom (D11; the key declared in band-line&#x27;s own types/index.d.ts PluginState, since working-refs is not a dependency: value &#x27;cross-mod state read&#x27;) and, when it holds a value with a non-empty text, draws a second &lt;Text color=&#x27;subtle&#x27;&gt; under the banner text with that text verbatim; formatBanner is untouched and the format is not copied. Without the mod the atom holds null and nothing extra draws. band.test.tsx: the world answers the working-refs atom; a set atom draws the second line; a world where working-refs never sets the key draws the banner exactly as before; another band still stays under it. README: the second line, its source and that working-refs is optional. plugin.json 0.1.1 -&gt; 0.2.0.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/band-line</code>: pass</li>
+<li>Run <code>claude plugin validate --strict plugins/band-line</code>: valid</li>
+<li>Record it: <code>plan.py record 2025 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-7" data-item="TASK-7">
+<h3>TASK-7: setup-statusline: the working-refs widget, project level <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json</code>, <code>plugins/banner-status/skills/setup-statusline/SKILL.md</code>, <code>plugins/banner-status/README.md</code>, <code>plugins/banner-status/.claude-plugin/plugin.json</code>, <code>tests/skills/test_setup_statusline_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/banner-status/skills/setup-statusline/SKILL.md:58</code> holds <code>**Write the defaults** to `&lt;project&gt;/.claude/ccstatusline.json`, only when that file is absent.</code></li>
+<li><code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json:38</code> holds <code>&quot;customCommandCacheTtlSeconds&quot;: 0,</code></li>
+</ul>
+<p class="action">Copy the planned test file docs/plans/2025/tests/tests/skills/test_setup_statusline_contract.py to tests/skills/test_setup_statusline_contract.py first. ccstatusline.defaults.json gains a third line holding one custom-command widget (new uuid id, commandPath `node -e &quot;let s=&#x27;&#x27;;process.stdin.on(&#x27;data&#x27;,d=&gt;s+=d).on(&#x27;end&#x27;,()=&gt;{try{const j=JSON.parse(s),r=(j.workspace||{}).project_dir||j.cwd||&#x27;.&#x27;;process.stdout.write(require(&#x27;fs&#x27;).readFileSync(require(&#x27;path&#x27;).join(r,&#x27;.claude/state/harness/working-refs/line.txt&#x27;),&#x27;utf8&#x27;))}catch(e){}})&quot;`, preserveColors true, timeout 1000); the command resolves line.txt against workspace.project_dir (else cwd) of the status JSON ccstatusline pipes to its stdin (D10, value &#x27;ccstatusline custom-command input&#x27;), so each worktree session prints its own checkout&#x27;s line wherever ccstatusline runs; customCommandCacheTtlSeconds stays 0 (S3). SKILL.md: step 4 gains the widget for an existing project file (opt-in: ask with AskUserQuestion, then add only that line); a new step resolves `state_dir` from `&lt;project&gt;/.claude/harness.json` (default .claude/state/harness) and rewrites the &#x27;.claude/state/harness&#x27; part of commandPath when it differs. The widget is only useful with the working-refs mod; say so. README: the widget row in the Defaults table and the opt-in step. plugin.json 0.2.1 -&gt; 0.3.0.</p>
+<ul>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_skill_resolves_state_dir_and_offers_the_widget_for_an_existing_config</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin validate --strict plugins/banner-status</code>: valid</li>
+<li>Record it: <code>plan.py record 2025 TASK-7 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-8" data-item="TASK-8">
+<h3>TASK-8: Release notes, harness version, live check <span class="status" data-status-for="TASK-8" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-2, TASK-3, TASK-5, TASK-6, TASK-7</p>
+<p><strong>Files:</strong> <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>docs/RELEASES/v1.0.0.md:3-5</code> holds <code>harness bumped its minor version; the agent-watcher, bubble-stamp and todo-watch mods bumped their minor versions</code></li>
+</ul>
+<p class="action">Precondition (main session, before this item is dispatched): plan 2025 carries refs {todo_ids: [&#x27;todo-k69m&#x27;], issues: [301, 315]}, written with plan_api.write and freeze --refreeze once TASK-1 is recorded (value &#x27;plan 2025 refs&#x27;). plugins/harness/.claude-plugin/plugin.json 0.78.1 -&gt; 0.79.0. docs/RELEASES/v1.0.0.md: the summary sentence (lines 3-5) also names the band-line and banner-status minor bumps and the added working-refs plugin; Plugins table rows harness 0.65.1 -&gt; 0.79.0, band-line 0.1.1 -&gt; 0.2.0, banner-status 0.2.1 -&gt; 0.3.0, working-refs (new) 0.1.0; drop band-line and banner-status from the Unchanged line; one Changes line each for plan.py new --refs, /harness:working, the working-refs mod (issues #301, #315, plan 2025), band-line&#x27;s second line and the setup-statusline widget. Then the developer&#x27;s live check in this repository (claude --plugin-dir plugins/working-refs, setup-statusline run once here): the ccstatusline third line shows &#x27;plan 2025 · todo-k69m (301, 315)&#x27; on this branch (plan 2025&#x27;s own refs, value &#x27;plan 2025 refs&#x27;), the plan number opens the page, a worktree session shows its own line, and band-line with and without working-refs draws its banner. Recorded on the developer&#x27;s confirmation.</p>
+<ul>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: valid</li>
+<li>Record it: <code>plan.py record 2025 TASK-8 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2025/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

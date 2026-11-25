@@ -1,0 +1,27 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 2,
+  "tree": "0970f70666dc2b2c7817d40d177accdb4837dc55",
+  "files": {
+    "plugins/harness/skills/a-w/SKILL.md": "7b6af5253dccc66bc36151a1fb68e33034bf679b",
+    "plugins/harness/skills/a-w/commands/attach_merge.py": "230d0529a693d785b5c3a214105820d5ee85c8da",
+    "plugins/harness/skills/a-w/commands/attach_resolve.py": "86a752344bea189bcdb59c332d8a78d4f2aab9f2",
+    "plugins/harness/skills/a-w/commands/attach_worktree.py": "984e6ee9c615d3bf061912eaa9b18193c8d61132",
+    "tests/skills/test_a_w_skill_contract.py": "c930aee86205e12ce1da54c5a68aa86e69922f72"
+  },
+  "ignored": {
+    "docs/plans/strap/a-w/tests/tests/skills/test_attach_worktree_resolve_edges.py": "162626adc1abb28a8902a3a297fa59dbb7fde2a5da9a60c1c6f805bf279925bf"
+  },
+  "at": "2026-11-19T15:12:28+00:00",
+  "base": "1043312d7a73a1515a45c333ab340a4e4fa72430",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "f7e2737bbb0fb59f42cafaef48ca5371a2eeba239ac9887ceeae958b4af645b4",
+  "grader": "judge",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

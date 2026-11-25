@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/config/harness.schema.json",
+  "title": "harness.json",
+  "description": "Per-project contract for the harness plugin, committed at <project>/.claude/harness.json. Every key is optional; plugins/harness/config/defaults.json fills the rest. Objects merge key by key; arrays and scalars replace.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "relPath": {"type": "string", "minLength": 1, "pattern": "^(?![/\\x5c])(?![A-Za-z]:)"},
+    "relPaths": {"type": "array", "items": {"$ref": "#/$defs/relPath"}, "uniqueItems": true},
+    "regex": {"type": "string", "format": "regex", "minLength": 1},
+    "strings": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "argvList": {"type": "array", "items": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}}
+  },
+  "properties": {
+    "$schema": {"type": "string"},
+    "harness_version": {"type": ["string", "null"], "description": "Plugin VERSION the pinned schema copy was synced from."},
+    "base_branch": {"type": ["string", "null"], "description": "PR base branch; null resolves origin/HEAD, else main."},
+    "integration_branches": {"$ref": "#/$defs/strings", "description": "Branches d-w fetches from origin before cutting; empty means [base_branch, main]."},
+    "skills_dir": {"$ref": "#/$defs/relPath", "description": "Where this project keeps its own skills; read by pr-team's per-skill-package shell trigger and by strap-skills' project profile, which writes each skill to <skills_dir>/<name>/. pr-review's trigger finds any skills/<name>/ folder holding a SKILL.md instead."},
+    "agents_dir": {"$ref": "#/$defs/relPath", "description": "Where this project keeps its own agents; read by strap-skills' project profile."},
+    "strap": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "strap-skills settings.",
+      "properties": {
+        "target": {"enum": ["harness", "project"], "description": "Which skills strap-skills writes: harness for the harness plugin's own skills, project for this project's skills_dir."}
+      }
+    },
+    "plugins": {
+      "type": "object",
+      "description": "Settings owned by other plugins of this marketplace, one object per plugin name. Harness stores each section unread; the owning plugin merges its own defaults under it and validates it against its own schema.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9-]*$"},
+      "additionalProperties": {"type": "object"}
+    },
+    "schemas_dir": {"$ref": "#/$defs/relPath", "description": "Pinned schema copy; resolved before the plugin's schemas/."},
+    "state_dir": {"$ref": "#/$defs/relPath", "description": "Runtime state (sentinels, pr-team runtime). Gitignore it."},
+    "scratch_folder": {"$ref": "#/$defs/relPath", "description": "Agent scratch, inside the project root (config load refuses a value that climbs above it with ..); the TODO inbox lives in <scratch_folder>/todo-inbox/."},
+    "matrix_path": {"$ref": "#/$defs/relPath", "description": "pr-review invocation test matrix JSONL (repo data)."},
+    "agent_usage_path": {"$ref": "#/$defs/relPath", "description": "agent usage JSONL: one row per Agent dispatch (repo data)."},
+    "exclusions": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Machine-generated exclusions JSON; written on first use when left at the default path and absent; null disables exclusion filtering."},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviews": {"$ref": "#/$defs/relPath"},
+        "plans": {"$ref": "#/$defs/relPath"},
+        "summaries": {"$ref": "#/$defs/relPath"},
+        "commit_messages": {"$ref": "#/$defs/relPath"},
+        "scratch": {"$ref": "#/$defs/relPath"},
+        "research": {"$ref": "#/$defs/relPath"},
+        "planning_prefixes": {"$ref": "#/$defs/relPaths"}
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "roots": {"$ref": "#/$defs/relPaths", "description": "Test tree prefixes (with trailing slash)."},
+        "file_pattern": {"$ref": "#/$defs/regex", "description": "Regex a repo-relative POSIX path must match to count as a test file."},
+        "registry": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Test registry JSON; null means none."},
+        "registry_names": {"$ref": "#/$defs/strings", "description": "File names that count as registry files for review bucketing."},
+        "planned_registry": {"oneOf": [{"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}, {"type": "null"}], "description": "write-plan: argv that upserts a list of registry entries into a registry, run without a shell and with stdin closed (PATH lookup as worktree_setup; a 600 s timeout kills only the launched process, not its process tree). {entries} (required) becomes a JSON file holding the entries array, {registry} the absolute path of tests.registry, which must be set. plan.py red runs it in the throwaway tree with the plan's registry_entries.json, and plan.py register in the checkout for one item; null keeps the live registry the only source."},
+        "timings": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Test timing report JSON: rows under tests with file (repo-relative) and duration (seconds), summed per file; a row's file must equal the registry entry's file exactly (same characters, forward slashes, no ./ prefix, no ::nodeid suffix) or its time is not matched; null means none."},
+        "fixer_test_seconds": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "null"}], "description": "pr-review fixers defer a registered test whose summed timings exceed this many seconds; null disables the runtime rule."},
+        "defer_flags": {"$ref": "#/$defs/strings", "description": "Dotted paths into a registry entry (e.g. properties.super_slow); a test whose value at any of them is true is deferred out of fixer runs."},
+        "serial_flags": {"$ref": "#/$defs/strings", "description": "Dotted paths into a registry entry (e.g. properties.licensed); fixers whose file sets reach tests that are true at the same path are planned into different waves (or one fixer), so those tests never run at the same time."}
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "guard_suite": {"$ref": "#/$defs/relPaths"},
+        "local_guards": {"$ref": "#/$defs/relPaths"},
+        "local_test_pattern": {"$ref": "#/$defs/regex", "description": "Touched paths matching this regex add local_guards to the structural guard run."},
+        "registry_guards": {"$ref": "#/$defs/relPaths"},
+        "structural_guard_prefixes": {"$ref": "#/$defs/relPaths"},
+        "content_pin_pattern": {"oneOf": [{"$ref": "#/$defs/regex"}, {"type": "null"}]},
+        "lenses": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project lens catalog merged over the plugin's generic lenses."},
+        "domain_pointers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["prefix", "pointer"],
+            "properties": {
+              "prefix": {"$ref": "#/$defs/relPath"},
+              "pointer": {"type": "string", "minLength": 1, "description": "Rule text added to a reviewer brief whose scope touches prefix."}
+            }
+          }
+        },
+        "tracking_paths": {"$ref": "#/$defs/relPaths", "description": "fnmatch globs over repo-relative POSIX paths of tracking documents (plans, trackers). fnmatch `*` crosses `/`, so `docs/*.md` also matches nested files. No pr-review fixer owns them: an issue whose files are all tracking is left to the main session (closeout --resolved), and a path a fix option names never joins a fixer's file set."}
+      }
+    },
+    "commit_buckets": {
+      "type": "array",
+      "description": "Ordered path rules for commit grouping; first match wins.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bucket"],
+        "properties": {
+          "bucket": {"enum": ["Runtime", "Test", "Cicd", "Agent", "Other", "Docs", "Planning", "Artifact"]},
+          "prefixes": {"$ref": "#/$defs/relPaths"},
+          "names": {"$ref": "#/$defs/strings"},
+          "suffixes": {"$ref": "#/$defs/strings"}
+        }
+      }
+    },
+    "canned_messages": {
+      "type": "array",
+      "description": "The project's own canned commit messages, tried in order before the plugin's built-in sets: a change takes a set's message when every changed file matches one of its patterns. A pattern holding a / matches the whole repo-relative path, any other pattern the file name (fnmatch, case-sensitive); fnmatch * crosses /, so docs/*.md also matches nested files. message must pass the commit-message checks build runs (the Word(scope): summary subject with Feature, Fix, Refactor, Test, Build, Docs or Chore; no double quotes, vendor names or filler); the load refuses a set that fails them. A file a set covers that appears or vanishes between capture and build is folded into the blocks (harness_lib.canned_fold) without the coverage check, so a set should cover generated files only. Read by branch-commit-msg, amend-commit-msg, c-msg and merge-commit-msg.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["patterns", "message"],
+        "properties": {
+          "patterns": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "auto_approve_python_c": {"type": "boolean", "description": "Auto-approve `python -c` Bash commands in this project."},
+    "auto_title": {"type": "boolean", "description": "Default of --auto-title for merge-commit-msg capture and pr-sum capture: true lets them rename a PR whose title fails the Word(scope): summary check; --auto-title or --no-auto-title on one run overrides it."},
+    "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/harness/worktrees/{repo}."},
+    "worktree_setup": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs, in order, in each new worktree (dependency install). Each command is an argv array, run without a shell and with stdin closed; a bare program is looked up on PATH (.cmd shims included on Windows), a relative program path resolves against the new worktree. Each step is killed with its process tree after 600 s; the first failure stops the list. A failure is reported, never fatal."},
+    "worktree_baseline": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs after worktree_setup succeeds, to record the test state before any change (name test files, never a directory). Runs like worktree_setup (PATH lookup, stdin closed, 600 s per-step kill). A failure is reported, never fatal. The first failure stops the list; each later command is reported as baseline [skipped]."},
+    "attach": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auto_resolve": {
+          "type": "array",
+          "description": "Rules a-w applies to a path that conflicts when the worktree's changes move onto the target branch. pattern is an fnmatch glob over the repo-relative POSIX path (case-sensitive); in_favor_of names the side whose whole file wins, a deletion included. Two rules naming different sides for one path refuse as ambiguous. a-w reads this list from the target checkout's harness.json, or, when the target checkout has none, the main checkout's, together with --auto-resolve flags. In staged mode a rule also settles a dirty-path overlap in the target: a worktree rule overwrites the dirty target copy after a backup, and a branch rule keeps it and drops the worktree's change to that path.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pattern", "in_favor_of"],
+            "properties": {
+              "pattern": {"type": "string", "minLength": 1},
+              "in_favor_of": {"enum": ["worktree", "branch"]}
+            }
+          }
+        }
+      }
+    },
+    "working_refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Values of the working-refs mod, which draws the working line (the TODO ids and issues each branch works on).",
+      "properties": {
+        "max_chars": {"type": "integer", "exclusiveMinimum": 0, "description": "Total length of the working line: the current branch's refs, then one bracketed segment per other branch with an override; segments past the cap fold into a trailing +N."}
+      }
+    },
+    "runlogs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where the project's run logs (test-runner or script console output) land; read by check-runlogs.",
+      "properties": {
+        "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Run-log folder; subfolders at any depth (e.g. dated archive folders) are searched too. null: check-runlogs needs --dir."},
+        "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required (checked at config load), time (HHMMSS) optional, a date-only name sorts as midnight."}
+      }
+    },
+    "docstrings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The docstring convention's project values; read by the writing-docstrings tier command.",
+      "properties": {
+        "line_length": {"type": "integer", "minimum": 1, "description": "Longest docstring line, indentation included; a longer line gets the long-lines flag."}
+      }
+    },
+    "comments": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The comment convention's project values; read by the writing-comments section command.",
+      "properties": {
+        "divider_width": {"type": "integer", "minimum": 6, "description": "Length of every section divider line, indentation included; a rule or minor divider of another length gets a width flag. At least 6, the shortest rule (`# ` and four dashes)."}
+      }
+    },
+    "todo": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "TODO catalog sync (todo_sync engine, todo-watch mod). Inactive while folder is null. Every other path is relative to folder ('..' allowed, but no path may climb above the project root: config load fails). A null key switches its rule group off. catalog_schema and research.catalog at their defaults are used only when present; a name the project sets must exist (config load fails). A missing TODO catalog is a T1 error and a missing snapshot a T2 warn.",
+      "properties": {
+        "folder": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project-relative folder holding the TODO catalog and its companions, inside the project root; setting it turns the feature on. null: off."},
+        "catalog": {"$ref": "#/$defs/relPath", "description": "Ranked TODO catalog JSON (TodoCatalog shape), relative to folder."},
+        "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft), relative to folder; the default name is used when the file exists, else (or when null) the harness catalogs/TodoCatalog.schema.json. A name set here must exist."},
+        "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\x5c]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
+        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot's top table; the snapshot folds the remaining items into a second table."},
+        "snapshots": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder, relative to folder, where render rewrites the one snapshot page TODO_Snapshot.html (the page T2 reads) and its todo_live.js stamp, which an open page polls to reload itself; null turns T2 and render off."},
+            "name_pattern": {"$ref": "#/$defs/regex", "description": "Legacy: the name pattern of the dated Markdown snapshots earlier releases wrote. Kept so existing configs validate (named group date still required at config load); no rule or command reads it now that render writes TODO_Snapshot.html."}
+          }
+        },
+        "research": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Research implementation catalog JSON, relative to folder; the default name is used when the file exists, else (or when null) the S rules and T3-T5 are off. A name set here must exist. The research root is artifacts.research."},
+            "anchor_pattern": {"$ref": "#/$defs/regex", "description": "Regex a stub line matches to name its catalog entry; named group id required (checked at config load)."},
+            "ignore_folders": {"$ref": "#/$defs/strings", "description": "Top-level research folders S6 does not require an entry for; the folders holding the catalog and the snapshots are excluded automatically."}
+          }
+        },
+        "plans": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pairs": {"type": "boolean", "description": "Check ActionPlan / PIP pairs under artifacts.plans (rules P1-P4)."}
+          }
+        },
+        "gh": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name read by render, which links each item's gh issue number on the snapshot page to https://github.com/<repo>/issues/N (null: links come only from an item's gh_issue source url, else the number is plain text) and by `todo_sync.py untracked`, `add --file-issue` and `inbox put --file-issue`, which pass it to gh as --repo, where null means the repository gh resolves for the checkout; also the repository the working-refs mod's `gh issue view` checks (null: the repository gh resolves for the checkout)."},
+            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start notice does not show it. The working-refs mod rechecks an override's issue with gh once its last answer (gh or the open-issue list) is older than this."}
+          }
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "disabled": {"type": "array", "items": {"type": "string", "pattern": "^[SPTG][0-9]+$"}, "uniqueItems": true, "description": "Rule ids check skips."},
+            "warn_counts": {"type": "boolean", "description": "Count warn findings toward the drift number."}
+          }
+        },
+        "inject_context": {"type": "boolean", "description": "todo-watch adds a TODO_SYNC drift line to the prompt context when it changes."},
+        "notice": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How todo-watch shows its session-start notice: the top items by rank, one per line, then one sync status line. Sync changes update the status line of a shown band and never show the notice again.",
+          "properties": {
+            "style": {"enum": ["toast", "banner"], "description": "toast: a toast that leaves after toast_seconds (a click or the pointer over it also ends or holds it). banner: a band above the prompt, kept until its Dismiss button is pressed."},
+            "toast_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 60, "description": "Seconds a toast stays; 60 is the engine's ceiling. Unused with style banner."},
+            "items": {"type": "integer", "minimum": 1, "maximum": 10, "description": "How many top TODO items, by rank, the todo-watch notice lists."}
+          }
+        }
+      }
+    }
+  }
+}

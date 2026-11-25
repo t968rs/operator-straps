@@ -1,0 +1,31 @@
+{
+  "plan_id": "2028",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "cb49cb0c229ca1d0649446fed87b68f73665b0b2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_todo_sync_keyword_put.py::test_put_refuses_an_item_without_a_keyword_naming_the_guess",
+        "tests/lib/test_todo_sync_keyword_put.py::test_put_says_when_there_is_no_guess",
+        "tests/lib/test_todo_sync_keyword_put.py::test_put_counts_a_blank_keyword_as_missing[empty]",
+        "tests/lib/test_todo_sync_keyword_put.py::test_put_queues_the_agents_own_keyword",
+        "tests/lib/test_todo_sync_keyword_put.py::test_put_refuses_a_keyword_of_two_words",
+        "tests/lib/test_todo_sync_keyword_put.py::test_add_keeps_a_keyword_right_after_the_title",
+        "tests/lib/test_todo_sync_keyword_put.py::test_an_update_may_set_the_keyword"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_todo_sync_keyword_put.py::test_put_refuses_an_item_without_a_keyword_naming_the_guess tests/lib/test_todo_sync_keyword_put.py::test_put_says_when_there_is_no_guess tests/lib/test_todo_sync_keyword_put.py::test_put_counts_a_blank_keyword_as_missing[empty] tests/lib/test_todo_sync_keyword_put.py::test_put_queues_the_agents_own_keyword tests/lib/test_todo_sync_keyword_put.py::test_put_refuses_a_keyword_of_two_words tests/lib/test_todo_sync_keyword_put.py::test_add_keeps_a_keyword_right_after_the_title tests/lib/test_todo_sync_keyword_put.py::test_an_update_may_set_the_keyword"
+    }
+  },
+  "evidence": "staged tree cb49cb0: 7 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-20",
+  "seal": "0205d062ef2e99d70df881532d84d7301cd4c6b4b612ff2006f3d913515173d7"
+}

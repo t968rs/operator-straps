@@ -1,0 +1,30 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "71a22d03927fb770f9b2c1af5709d7444cee8d82",
+  "files": {
+    "docs/plans/1019_serialize_catalog_writes_ActionPlan.json": "cd3ed2560c8ba45b9441c90edf5a9384ea661fa7"
+  },
+  "ignored": {
+    "docs/plans/1019/tests/tests/lib/test_catalog_lock.py": "660f8a37cdd478c13860fe12eeae24d15fca29f625617f7a542331c512737cac",
+    "docs/plans/1019/tests/tests/lib/test_config_scratch_folder.py": "8b0b920f6db958c462d251e18e49383545a83f4624299c594da5e12727c08e9e",
+    "docs/plans/1019/tests/tests/lib/test_todo_sync_inbox.py": "1ad47c3c467d7b4c232e01197845ddce0a5ca0c85e247889821f4e37d560087a",
+    "docs/plans/1019/tests/tests/lib/test_todo_sync_write_atomic.py": "60af1270eb6e41235c36772313bfcf05e540c5cd425afb7298b4c6b9e197119c",
+    "docs/plans/1019/tests/tests/mods/test_todo_watch_config_mirror.py": "e091422936679982908e20fd98e6cb22956317f0c1be888710905fd57005aaff",
+    "docs/plans/1019/tests/tests/scripts/test_todo_sync_catalog_lock_cli.py": "c963b0e5d8c9948dd7f905d4a939bfd726b45a0ba24fc9cce4636810a9db8114",
+    "docs/plans/1019/tests/tests/skills/test_sync_gh_todo_skill_contract.py": "dc0bcecaf2ddc0f5e5a4a97549ebb488e1f60d0dbe1acca3584bfad399c97b1a",
+    "docs/plans/1019/tests/tests/skills/test_todo_inbox_prose_contract.py": "799fa0b5d12358ed2e6d36672f1931b74bc12eb69bf568e669c94d082cf8b5df"
+  },
+  "at": "2026-11-15T17:31:14+00:00",
+  "base": "a845e25b2709b5017d92c76a950378201a1d8471",
+  "history": false,
+  "digest": "5344cc3f73bdefba118018a68080efd7ce4aa27d61b1e1345e0ab501fbe26cf2",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

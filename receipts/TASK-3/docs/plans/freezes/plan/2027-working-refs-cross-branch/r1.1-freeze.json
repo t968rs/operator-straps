@@ -1,0 +1,26 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "94097c9008c32e152d27b67e07f52c2029633323",
+  "files": {
+    "docs/plans/2027_working_refs_cross_branch_ActionPlan.json": "912720d65d087dd294626111d4adc255dd87cd85"
+  },
+  "ignored": {
+    "docs/plans/2027/tests/tests/lib/test_config_working_refs.py": "2b75b7dce8ec5ed3f1374c910a3153da0cc58e0a6e5c1f2bcf01889ba4423620",
+    "docs/plans/2027/tests/tests/lib/test_todo_sync_open_issues.py": "27a1577f581ad6a2385bf3c865cf993d28eca46c5c30f1b019b80436ccc491f0",
+    "docs/plans/2027/tests/tests/mods/test_working_refs_contract.py": "1998add3f8b0e18b7301e222ec99e071f4e4e0169be4ff34bbb6b43465337293",
+    "docs/plans/2027/tests/tests/skills/test_setup_statusline_contract.py": "715ab4b7f8d0c84161ff8a7b7f0619bdc3e68320a7e51f247f002cb5614fcb2c"
+  },
+  "at": "2026-11-19T20:11:00+00:00",
+  "base": "1043312d7a73a1515a45c333ab340a4e4fa72430",
+  "history": false,
+  "digest": "3c905dd7e82ce0107b3efee64c5e90b915b8af52313f7e69ce501191a187d3ee",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

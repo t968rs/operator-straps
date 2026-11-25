@@ -1,0 +1,93 @@
+{
+  "plan_id": "2025",
+  "feature": "banner refs",
+  "branch_lineage": "main-->1168-todo-banner",
+  "primary_documents": {
+    "plan": "docs/plans/2025_banner_refs_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-17-working-refs-banner-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "main session (developer request 2026-11-18)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1",
+        "TASK-8"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "value 'plan 2025 refs'; context.tags",
+        "indicated": "refs held in context.tags until the refs field exists"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "field arrived with TASK-1",
+        "why_free_form": "plan_api.write refuses an unknown top-level key, so plan 2025 could not carry refs before TASK-1 added PlanRefs; TASK-8's live check needs them."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "refs {todo_ids: ['todo-k69m'], issues: [301, 315]} written with plan_api.write after TASK-1 was recorded; freeze r1.2"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "The banner reads plan refs from the typed field; the refreeze was scheduled in the plan's values before the first freeze."
+      },
+      "date": "2026-11-18"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "main session (post-receipt sweep of TASK-7)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 action, widget commandPath",
+        "indicated": "commandPath reads line.txt at require('path').join(r, '.claude/state/harness/working-refs/line.txt'), r being workspace.project_dir, else cwd; the receipt seals commit 36f818b, which holds join"
+      },
+      "issue": {
+        "category": "path-arithmetic",
+        "why_categorical": "join appends an absolute state_dir under the project root",
+        "why_free_form": "The setup-statusline step rewrites the '.claude/state/harness' part of commandPath with the project's state_dir. An absolute state_dir joined to the project root yields a path under the root, so the widget reads a file that does not exist and prints nothing."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "commandPath uses require('path').resolve(r, ...), so a relative state_dir resolves against the project root and an absolute state_dir is kept as given; setup-statusline SKILL.md step 4 and the banner-status README state it"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "resolve gives the same path as join for the default relative state_dir and the right path for an absolute one; the documented state_dir rewrite then works for every valid value."
+      },
+      "date": "2026-11-18"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "main session (post-receipt sweep of TASK-3)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 action, SKILL.md frontmatter argument-hint",
+        "indicated": "argument-hint '-- <todo-id|#issue>... | --clear | --list' (the add-bookmark hint shape)"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "the hint put the tokens after the guidance separator",
+        "why_free_form": "The skill reads its tokens from the words before the first standalone `--` and treats the words after it as guidance (reference/skill_arguments.md). A hint that starts with `--` shows the tokens where the skill ignores them, and disagrees with the usage line the skill prints."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "argument-hint '<todo-id|#issue>... | --clear | --list [-- <guidance>]', the same text as the skill's usage line; the guidance-tail contract ('-- <' in the hint) still holds"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "The hint now follows the shared argument split: tokens first, the optional `-- <guidance>` tail last."
+      },
+      "date": "2026-11-18"
+    }
+  ]
+}

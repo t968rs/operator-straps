@@ -1,0 +1,344 @@
+{
+  "plan_id": "2030",
+  "plan_created": "2026-11-24",
+  "source_document": "docs/superpowers/specs/2026-11-24-working-refs-line-colors-design.md",
+  "documentation": "docs/plans/2030_working_refs_line_colors_PIP.html",
+  "branch": "0009-banner-formatting",
+  "base_branch": "main",
+  "refs": {
+    "todo_ids": [
+      "todo-t7sw"
+    ],
+    "issues": [
+      343
+    ]
+  },
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Progress model: mirror names, plan items and the done share",
+      "action": "1. Copy docs/plans/2030/tests/tests/mods/test_working_refs_contract.py to tests/mods/.\n2. mirror.ts: export RECEIPTS_DIR = 'receipts', DONE_OUTCOMES = ['complete', 'closed'] as const and DONE_STATUSES = ['COMPLETE', 'CLOSED_NO_ACTION'] as const (the `as const` form ts_string_array reads), with a header bullet naming harness_lib.plan_receipts and plan_enums.DONE.\n3. plans.ts: PlanInfo gains items: PlanItem[] ({ id: string; status: string | null }), read leniently from data.items (non-objects and entries without a string id dropped; a non-string status is null).\n4. New progress.ts, pure (no $): Progress = { done, total }; outcomeKindOf(text) parses a receipt and returns receipt.outcome then outcome.kind as a string, else null (absent or malformed text); progressOf(items, kinds) counts an item done when its kind is in DONE_OUTCOMES, or, with no kind, when item.status is in DONE_STATUSES (V6), total the item count; PLAN_RAMP = [51, 45, 74, 67, 243] (V1); planStep(p) per V2; planColor(p) = PLAN_RAMP[planStep(p)]; receiptsDirOf(plansDir, id); receiptsSignatureOf(byPlan) over each plan id and the name, size and mtime of each .json entry, sorted. Read item, receipt and outcome fields inline as item.<field>, receipt.<field>, outcome.<field> (the contract test pins those names).\n5. progress.test.ts: every step boundary (0/4 step 0, 1/4 step 1, 2/4 step 2, 3/4 step 3, 4/4 step 4, no items step 0); complete and closed count, started and blocked do not; no receipt falls back to the status; a malformed receipt counts as none; no ramp color is in TODO_PALETTE or 240; the signature moves with a receipt's mtime. plans.test.ts: items parsed, malformed entries dropped.",
+      "files": [
+        "plugins/working-refs/hooks/mirror.ts",
+        "plugins/working-refs/hooks/plans.ts",
+        "plugins/working-refs/hooks/plans.test.ts",
+        "plugins/working-refs/hooks/progress.ts",
+        "plugins/working-refs/hooks/progress.test.ts",
+        "tests/mods/test_working_refs_contract.py"
+      ],
+      "dependencies": null,
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/working-refs/hooks/mirror.ts:39",
+          "expect": "export const PIP_HTML_SUFFIX = '_PIP.html'"
+        },
+        {
+          "at": "plugins/working-refs/hooks/plans.ts:82",
+          "expect": "page,"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_receipts.py:27",
+          "expect": "RECEIPTS_DIR = \"receipts\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_enums.py:95",
+          "expect": "DONE: FrozenSet[ItemStatus] = frozenset({ItemStatus.COMPLETE, ItemStatus.CLOSED_NO_ACTION})"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/working-refs",
+          "expect": "every test passes"
+        },
+        {
+          "run": "python -m pytest tests/mods/test_working_refs_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_working_refs_contract.py::test_receipts_dir_matches_plan_receipts",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_working_refs_contract.py::test_done_outcome_kinds_match_the_outcome_models",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_working_refs_contract.py::test_done_statuses_match_plan_enums_done",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_working_refs_contract.py::test_fields_read_by_progress_ts_match_the_models",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Line colors: plan progress, issues, other branches and punctuation",
+      "action": "1. types/index.d.ts: PlanLink gains done and total (the plan's done share, plan 2030).\n2. line.ts: LineView gains progress: ReadonlyMap<string, Progress> keyed by plan id; SHOW_ALL holds an empty map, and a plan missing from it takes progressOf(items, empty map). buildLine fills done and total on each PlanLink. statusText draws each plan number in planColor inside its OSC 8 link text, each issue number in 180 (V3), other branch names in 246 (V4), and the plan word, ' · ', ', ', '[ ', ' ]', the parentheses around issues and +N in DARK 240 (V5); TODO labels keep todoColor. Plain text, the cap, formatRefs and segmentText do not change.\n3. line.test.ts: expectations for each colored piece; the escape-stripped ccstatusline form still equals the plain form; a plan at 0, partial and full progress draws 51, a middle step and 243.",
+      "files": [
+        "plugins/working-refs/types/index.d.ts",
+        "plugins/working-refs/hooks/line.ts",
+        "plugins/working-refs/hooks/line.test.ts"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/working-refs/types/index.d.ts:10",
+          "expect": "export type PlanLink = {"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:17",
+          "expect": "export const DARK = '\\x1b[38;5;240m'"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:99-100",
+          "expect": "const segmentStatus = (s: OtherSegment): string =>"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:145",
+          "expect": "const plans: PlanLink[] = sorted.map(p => ({ id: p.id, page: p.page }))"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:193",
+          "expect": "const head = joinParts(plansPart(line.plans, p => osc8(fileUrl(p.page), p.id)), refs)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/working-refs",
+          "expect": "every test passes"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "TASK-3",
+      "title": "Scan reads the receipts of the plans on the line and watches them",
+      "action": "1. watch.ts runScan: for each qualifying plan, read <plans>/<id>/receipts/<ITEM>.json for each item (absent: no kind), build the kinds map with outcomeKindOf, compute progressOf and pass the map to buildLine through viewOf. List each qualifying plan's receipts folder and keep receiptsSignatureOf and the qualifying ids in the memo (resetMemo clears both).\n2. filesMoved also lists the receipts folders of the memo's plan ids and compares the signature, so a record moves the color at the next tool call; plans not on the line are not listed.\n3. watch.test.ts: a qualifying receipts plan draws its number in its step color in line.txt and line.json; a new complete receipt followed by a Write tool call redraws it a step dimmer; the atom's plans carry done and total.",
+      "files": [
+        "plugins/working-refs/hooks/watch.ts",
+        "plugins/working-refs/hooks/watch.test.ts"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/working-refs/hooks/watch.ts:172",
+          "expect": "signature: undefined as string | undefined,"
+        },
+        {
+          "at": "plugins/working-refs/hooks/watch.ts:425",
+          "expect": "const qualifying = hasPlans ? await qualifyingPlans("
+        },
+        {
+          "at": "plugins/working-refs/hooks/watch.ts:431",
+          "expect": "const line = buildLine(branch ?? '', qualifying, overrides, viewOf(hide, w.cfg.maxChars))"
+        },
+        {
+          "at": "plugins/working-refs/hooks/watch.ts:522",
+          "expect": "return signature !== memo.signature"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/working-refs",
+          "expect": "every test passes"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "TASK-4",
+      "title": "README, version bump and release notes",
+      "action": "1. working-refs README: the colors (plan ramp V1 by V2 with the V6 done rule, issues 180, other branch names 246, punctuation 240, TODO labels unchanged), the receipts the scan reads, the tool.call hook row naming the receipts of the plans on the line, and done and total on the state table's line.plans.\n2. Bump working-refs 0.3.1 to 0.4.0.\n3. docs/RELEASES/v1.1.0.md: a working-refs row 0.3.1 | 0.4.0, drop working-refs from the Unchanged line, and one Feat(working-refs) line for issue #343 (tag it with the PR number once the PR exists).",
+      "files": [
+        "plugins/working-refs/README.md",
+        "plugins/working-refs/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.1.0.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/working-refs",
+          "expect": "passes"
+        },
+        {
+          "run": "python -m pytest tests/mods/test_working_refs_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": []
+    }
+  ],
+  "base_commit": "f8cf38cf2c2553011421b9b9d1cf0c89cb81b987",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Where does a plan's done share come from?",
+      "options": [
+        {
+          "id": "mod-reads-receipts",
+          "summary": "the mod reads <plans>/<id>/receipts/<ITEM>.json itself"
+        },
+        {
+          "id": "live-js",
+          "summary": "the mod reads the page's generated <id>/live.js"
+        },
+        {
+          "id": "harness-file",
+          "summary": "the harness writes a progress file per plan"
+        }
+      ],
+      "chosen": "mod-reads-receipts",
+      "rationale": "developer pick (approach A, spec Approaches): receipts are committed and write-once, so the color is right on every checkout; live.js and a harness file are absent until rebuilt"
+    },
+    {
+      "id": "D2",
+      "question": "Which way does the plan gradient run?",
+      "options": [
+        {
+          "id": "fade",
+          "summary": "bright while active, dim as items finish"
+        },
+        {
+          "id": "brighten",
+          "summary": "dim at the start, bright when done"
+        }
+      ],
+      "chosen": "fade",
+      "rationale": "developer answer: a plan nearing its archive recedes"
+    },
+    {
+      "id": "D3",
+      "question": "Which renderer gets the colors?",
+      "options": [
+        {
+          "id": "ccstatusline-only",
+          "summary": "the ccstatusline form (statusText) only"
+        },
+        {
+          "id": "both",
+          "summary": "ccstatusline and band-line"
+        }
+      ],
+      "chosen": "ccstatusline-only",
+      "rationale": "proposed in conversation, not corrected; band-line keeps its subtle one-color form"
+    },
+    {
+      "id": "D4",
+      "question": "Does an item closed without action count as done?",
+      "options": [
+        {
+          "id": "closed-done",
+          "summary": "complete and closed count as done"
+        },
+        {
+          "id": "complete-only",
+          "summary": "only complete counts"
+        }
+      ],
+      "chosen": "closed-done",
+      "rationale": "proposed in conversation, not corrected; matches plan_enums.DONE"
+    }
+  ],
+  "values": [
+    {
+      "name": "V1 plan ramp",
+      "value": "ANSI 256 colors 51, 45, 74, 67, 243 for steps 0 to 4",
+      "source": "spec Builder's calls; none in the TODO palette (39, 170, 36, 214, 141, 72, 203, 178)",
+      "assumes": [
+        "fade"
+      ]
+    },
+    {
+      "name": "V2 plan step",
+      "value": "0 when no item is done (and for a plan with no items), 4 when every item is done, else 1 + floor(3 * done / total)",
+      "source": "spec Builder's calls",
+      "assumes": [
+        "fade"
+      ]
+    },
+    {
+      "name": "V3 issue color",
+      "value": "ANSI 256 color 180 on each issue number",
+      "source": "spec Builder's calls"
+    },
+    {
+      "name": "V4 other branch name color",
+      "value": "ANSI 256 color 246, replacing 240",
+      "source": "spec Builder's calls; plugins/working-refs/hooks/line.ts:17 (DARK = 240 today)"
+    },
+    {
+      "name": "V5 punctuation color",
+      "value": "ANSI 256 color 240 on the plan word, the separators, brackets, commas, the parentheses around issues and +N",
+      "source": "spec Builder's calls"
+    },
+    {
+      "name": "V6 done rule",
+      "value": "a receipt whose outcome kind is complete or closed; with no receipt, an item status of COMPLETE or CLOSED_NO_ACTION",
+      "source": "plugins/harness/lib/harness_lib/plan_enums.py:95 (DONE)",
+      "assumes": [
+        "closed-done"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "receipt path",
+      "example": "docs/plans/2028/receipts/TASK-1.json",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/plan_receipts.py:36-38",
+        "expect": "return receipts_dir(plans_dir, plan_id) / f\"{item_id}.json\""
+      }
+    },
+    {
+      "name": "receipt outcome kind",
+      "example": "{\"plan_id\": \"2028\", \"item\": \"TASK-1\", \"outcome\": {\"kind\": \"complete\", ...}, ...}",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/plan_models.py:257",
+        "expect": "kind: Literal[OutcomeKind.complete]"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "38;5;240|\\bDARK\\b",
+      "hits": {
+        "plugins/working-refs/hooks/line.ts": "TASK-2: DARK stays 240 for punctuation; other branch names move to 246",
+        "plugins/working-refs/hooks/line.test.ts": "TASK-2: expectations follow the new colors",
+        "plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json": "unchanged: the widget's stale-branch stamp keeps 240 (spec Non-goals)",
+        ".claude/ccstatusline.json": "unchanged: this repo's copy of the widget's stale-branch stamp",
+        "tests/skills/test_setup_statusline_contract.py": "unchanged: pins the stale-branch stamp",
+        "tests/lib/test_page_theme.py": "unrelated: a CSS theme dict named DARK",
+        "tools/harness_usage_charts.py": "unrelated: chart theme"
+      }
+    }
+  ],
+  "ledger": "plan/2030-working-refs-line-colors"
+}

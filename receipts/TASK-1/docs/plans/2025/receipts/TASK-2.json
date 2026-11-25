@@ -1,0 +1,28 @@
+{
+  "plan_id": "2025",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "f1bc70c84cb2e5e34cbf839ac785ac159dea5b6c",
+      "commit": "089a2cab75942102a2c8623e4c440ed84e6213a2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_plan_new_refs.py::test_new_stores_canonical_refs",
+        "tests/scripts/test_plan_new_refs.py::test_new_fills_issues_from_the_todo_catalog",
+        "tests/scripts/test_plan_new_refs.py::test_new_refuses_a_bad_ref_with_a_problem_line"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_new_refs.py::test_new_stores_canonical_refs tests/scripts/test_plan_new_refs.py::test_new_fills_issues_from_the_todo_catalog tests/scripts/test_plan_new_refs.py::test_new_refuses_a_bad_ref_with_a_problem_line"
+    }
+  },
+  "evidence": "commit 089a2ca: 3 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "c690ec142ec09c11328968308490610f559ce2524dc8d7daabb5991758687fed"
+}

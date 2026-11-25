@@ -1,0 +1,195 @@
+"""Open GitHub issues that no TODO catalog record mentions, for ``todo_sync.py untracked``.
+
+An issue is tracked when an item resolves it (``gh_issues`` or a ``gh_issue`` source), a tracker (its number
+or a child), a close candidate or a research catalog entry (``issues``) names it. An item's
+``related_gh_issues`` only cross-reference issues the item does not resolve, so an issue named there alone
+is untracked and gets an item of its own. The rows
+``find_untracked`` returns carry what an agent needs to draft an item: the issue text, its comments and
+the text of the PR reviews it links.
+
+``file_issue`` runs the other direction for ``add --file-issue``: it files a new issue for an added item and
+returns its number and URL, which become the item's ``gh_issue`` source.
+
+``find_untracked`` also leaves every open issue number in ``<state_dir>/OPEN_ISSUES_REL``; the working-refs
+mod reads it to tell which of a branch's issues are still open without a ``gh`` call of its own.
+"""
+from __future__ import annotations
+
+import json
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from harness_lib.config import HarnessConfig
+from harness_lib.todo_sync import TodoSyncError, gh, ids
+from harness_lib.todo_sync.report import write_atomic
+from harness_lib.todo_sync.reviews import fetch_reviews, review_links, slug_of
+from harness_lib.todo_sync.sources import Sources
+
+LIST_LIMIT = 1000
+LIST_FIELDS = "number,title,url,labels,body,comments"
+#: The open-issue list ``find_untracked`` leaves under ``state_dir`` for the working-refs mod.
+OPEN_ISSUES_REL = "todo-sync/open_issues.json"
+#: The open-issue list's ``version``; the working-refs mod's ``OPEN_LIST_VERSION`` mirrors it.
+OPEN_ISSUES_VERSION = 1
+
+
+def untracked_path(cfg: HarnessConfig) -> Path:
+    """Where ``untracked`` writes its rows: ``<state_dir>/todo-sync/untracked.json``."""
+    return cfg.path(cfg.state_dir) / "todo-sync" / "untracked.json"
+
+
+def open_issues_path(cfg: HarnessConfig) -> Path:
+    """Where ``find_untracked`` writes the open-issue numbers: ``<state_dir>/OPEN_ISSUES_REL``."""
+    return cfg.path(cfg.state_dir) / OPEN_ISSUES_REL
+
+
+def write_open_issues(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> Path:
+    """Write ``{version, fetched_at, open}`` (the sorted numbers of ``rows``) to ``open_issues_path``."""
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data = {"version": OPEN_ISSUES_VERSION, "fetched_at": stamp, "open": sorted(r["number"] for r in rows)}
+    return write_atomic(open_issues_path(cfg), json.dumps(data) + "\n")
+
+
+def as_number(value: Any) -> Optional[int]:
+    """The issue number in an int, a digit string or a ``#N`` string, else None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    match = re.fullmatch(r"#?(\d+)", value.strip()) if isinstance(value, str) else None
+    return int(match.group(1)) if match else None
+
+
+def _numbers(values: Any) -> Set[int]:
+    return {n for n in (as_number(v) for v in values or []) if n is not None}
+
+
+def _item_numbers(item: Dict[str, Any]) -> Set[int]:
+    found = _numbers(item.get("gh_issues"))
+    for source in item.get("sources") or []:
+        if isinstance(source, dict) and source.get("type") == "gh_issue":
+            found |= _numbers([source.get("ref")])
+    return found
+
+
+def catalog_issue_numbers(catalog: Dict[str, Any]) -> Set[int]:
+    """Issue numbers the TODO catalog records: items, trackers with their children, close candidates."""
+    found: Set[int] = set()
+    for item in catalog.get("items") or []:
+        found |= _item_numbers(item) if isinstance(item, dict) else set()
+    for tracker in catalog.get("trackers") or []:
+        if isinstance(tracker, dict):
+            found |= _numbers([tracker.get("number")]) | _numbers(tracker.get("children"))
+    for candidate in catalog.get("close_candidates") or []:
+        found |= _numbers([candidate.get("number")]) if isinstance(candidate, dict) else set()
+    return found
+
+
+def tracked_numbers(src: Sources) -> Set[int]:
+    """``catalog_issue_numbers`` plus the issues the research catalog's entries list."""
+    if not src.todo.ok:
+        raise TodoSyncError(f"{src.todo.rel}: {src.todo.error}")
+    found = catalog_issue_numbers(src.todo.data)
+    if src.cfg.todo.research.catalog:
+        for entry in src.entries():
+            found |= _numbers(entry.get("issues"))
+    return found
+
+
+def _flatten(raw: Dict[str, Any]) -> Dict[str, Any]:
+    comments = [{"author": (c.get("author") or {}).get("login") or "", "body": c.get("body") or ""}
+                for c in raw.get("comments") or [] if isinstance(c, dict)]
+    return {"number": raw["number"], "title": raw.get("title") or "", "url": raw.get("url") or "",
+            "labels": [str(lab.get("name")) for lab in raw.get("labels") or [] if isinstance(lab, dict)],
+            "body": raw.get("body") or "", "comments": comments, "reviews": [], "reviews_truncated": False,
+            "review_errors": []}
+
+
+def _require_folder(cfg: HarnessConfig) -> None:
+    if not cfg.todo.enabled:
+        raise TodoSyncError("untracked needs todo.folder")
+
+
+def _parse_listing(out: str) -> List[Any]:
+    try:
+        rows = json.loads(out)
+    except ValueError as exc:
+        raise TodoSyncError(f"gh issue list returned no JSON: {exc}") from exc
+    if not isinstance(rows, list):
+        raise TodoSyncError("gh issue list returned no JSON list")
+    return rows
+
+
+def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
+    """Every open issue as a flat row; raises when the listing reaches ``LIST_LIMIT`` (may be cut off)."""
+    _require_folder(cfg)
+    repo = ["--repo", cfg.todo.gh_repo] if cfg.todo.gh_repo else []
+    out = gh.run_gh(cfg.project_root, ["issue", "list", "--state", "open", "--limit", str(LIST_LIMIT),
+                                       "--json", LIST_FIELDS, *repo])
+    rows = _parse_listing(out)
+    if len(rows) >= LIST_LIMIT:
+        raise TodoSyncError(f"gh issue list returned {len(rows)} issues, the limit of {LIST_LIMIT}; "
+                            "the listing may be incomplete, so no untracked result is reported")
+    return [_flatten(raw) for raw in rows if isinstance(raw, dict) and "number" in raw]
+
+
+def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
+    """The open issues no catalog record mentions, sorted by number.
+
+    After a complete listing it writes every open number to ``<state_dir>/todo-sync/open_issues.json``
+    (``write_open_issues``), untracked or not; a listing that reaches ``LIST_LIMIT`` raises and writes none.
+    Refuses a catalog still holding rank-tied ``TODO-NNN`` ids, naming ``migrate-ids``.
+    """
+    _require_folder(cfg)
+    src = Sources(cfg)
+    if src.todo.ok:
+        ids.require_stable(src.todo.data, "untracked")
+    tracked = tracked_numbers(src)
+    rows = open_issues(cfg)
+    write_open_issues(cfg, rows)
+    fresh = sorted((r for r in rows if r["number"] not in tracked), key=lambda r: r["number"])
+    for row in fresh:
+        attach_reviews(cfg, row)
+    return fresh
+
+
+def attach_reviews(cfg: HarnessConfig, row: Dict[str, Any]) -> None:
+    """Fill ``reviews``, ``reviews_truncated`` and ``review_errors`` of ``row`` from its linked PR reviews."""
+    slug = slug_of(row["url"])
+    texts = [row["body"], *(c["body"] for c in row["comments"])]
+    links = review_links(texts, slug) if slug else []
+    if links:
+        row["reviews"], row["reviews_truncated"], row["review_errors"] = fetch_reviews(
+            cfg.project_root, slug, links)
+
+
+def write_untracked(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> Path:
+    """Write ``rows`` to ``untracked_path`` and return it."""
+    return write_atomic(untracked_path(cfg), json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
+
+
+#: The issue URL ``gh issue create`` prints as its last line, and the issue number inside it.
+_CREATED_URL = re.compile(r"(https://\S+/issues/(\d+))\s*$")
+
+
+def file_issue(cfg: HarnessConfig, title: str, body: str) -> Tuple[int, str]:
+    """File one issue (in ``todo.gh.repo``, else the repository ``gh`` resolves); returns number and URL."""
+    repo = ["--repo", cfg.todo.gh_repo] if cfg.todo.gh_repo else []
+    out = gh.run_gh(cfg.project_root, ["issue", "create", "--title", title, "--body-file", "-", *repo],
+                    stdin=body).strip()
+    match = _CREATED_URL.search(out)
+    if match is None:
+        raise TodoSyncError(f"gh issue create printed no issue URL: {out[:200]!r}; the issue may exist, "
+                            "so check gh issue list before a rerun")
+    return int(match.group(2)), match.group(1)
+
+
+def issue_body(spec: Dict[str, Any]) -> str:
+    """The issue text for an ``add`` spec item: its summary, proposed change and files."""
+    parts = [str(spec["summary"]).strip(), "## Proposed change", str(spec["proposed_change"]).strip()]
+    files = spec.get("files") or []
+    if files:
+        parts += ["## Files", "\n".join(f"- {path}" for path in files)]
+    return "\n\n".join(parts) + "\n"

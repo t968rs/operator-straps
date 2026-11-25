@@ -1,0 +1,269 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 285,
+  "pr_title": "Fix(pr-review): stage the Workflow script in the run directory",
+  "branch": "9016-pr-review-adversarial-error",
+  "base_branch": "main",
+  "base_sha": "6a9347a174ca98d323d061bb218d5b31fa3c1639",
+  "head_sha": "a55a5c9f16496f267d9aa65aa948819f7ab96625",
+  "review_date": "2026-11-12",
+  "verdict": "READY TO MERGE - 7 of 7 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 49,
+    "deletions": 10,
+    "files_changed": 6,
+    "source": {
+      "additions": 48,
+      "deletions": 10,
+      "files_changed": 5
+    }
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0285/pr285_20261113T054835Z/findings/tests.json",
+    "docs/_scratch/pr_review/0285/pr285_20261113T054835Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0285/pr285_20261113T054835Z/findings/docs.json",
+    "docs/_scratch/pr_review/0285/pr285_20261113T054835Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0285/pr285_20261113T054835Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The new copy-inside-the-project test asserts the right contract from several angles: the printed path differs from the plugin original, is outside plugin_root, is inside the project, sits directly in the run folder, and has byte-identical content",
+    "The stale-copy test guards its destructive write with an is_relative_to(repo) assertion so a regression cannot overwrite the real plugin script",
+    "The old scriptPath-equals-plugin-root assertion was removed from the Workflow-row test and replaced by a dedicated test, keeping each test on one claim",
+    "stage_workflow_script copies through a sibling .tmp file and os.replace, matching the atomic-write convention of _write_text, so a repeat capture refreshes a stale copy without a half-written script.",
+    "The copy lands under the run directory in the consuming project (artifacts.scratch), so the plugin root stays read-only and the root-separation rule holds; the Workflow script has no imports or relative reads, so it is safe to relocate.",
+    "adversarial_refusals still checks the source script before the run starts, so stage_workflow_script cannot hit a missing source; the tests cover both the copy's location and a stale-copy refresh.",
+    "The module docstring, the workflow_lines docstring and the SKILL.md scriptPath description all agree with the code about the printed path being the staged copy.",
+    "Release table bump harness 0.71.0 -> 0.71.1 matches plugins/harness/.claude-plugin/plugin.json version 0.71.1, and a patch bump fits a fix-only change.",
+    "The v1.0.0 release line states the cause (Workflow reads scriptPath only from the working or an added directory) and the behavior precisely; 'byte for byte' and 'replacing any earlier copy' match shutil.copyfile plus os.replace in pr_review.py:760-770.",
+    "SKILL.md:230 placeholder now names the run directory's copy, matching the path workflow_lines prints at pr_review.py:782.",
+    "The one-line SKILL.md edit matches the code: workflow_lines now prints stage_workflow_script(run).resolve().as_posix(), the run directory's copy, so the documented Workflow row and the printed row agree.",
+    "The refusal text (SKILL.md:48, 164) still correctly names the plugin's Workflow script as the thing checked, since staging reads adversarial_script() as its source.",
+    "Cross-references stay consistent: review-local's SKILL.md and README, the adversarial-reviewer agent example and tests/skills/test_pr_review_adversarial_docs.py name only `scriptPath` or the plugin script generically, so no reference was orphaned by the move to a staged copy.",
+    "stage_workflow_script writes through a .tmp sibling and os.replace, so a printed scriptPath never names a half-written file.",
+    "test_capture_adversarial_prints_a_script_copy_inside_the_project is behavioral: real capture, and it pins the copy outside the plugin root, inside the project, in the current run folder, and byte-identical to the plugin script.",
+    "The Workflow script is self-contained (no relative imports), so a copy outside workflows/ runs unchanged; agent-watcher keys its Workflow matrix rows on args, not scriptPath, so the moved path breaks no mod.",
+    "Version bump (harness 0.71.0 to 0.71.1, patch) and the v1.0.0 release table and change line move together, per the project's release rules.",
+    "The pre-run refusal still checks the plugin's own script, so a missing source is caught before `current` moves."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Stale-copy refresh test cannot fail: the second capture writes a different run folder",
+        "file": "tests/scripts/test_pr_review_adversarial.py",
+        "files": [
+          "tests/scripts/test_pr_review_adversarial.py",
+          "plugins/harness/scripts/pr_review.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "233-240",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_capture_adversarial_refreshes_a_stale_script_copy overwrites the staged copy, then runs a second capture and asserts the printed copy is not the stale text. The autouse _stamps fixture gives every capture a fresh run id, so the second capture stages into a new run directory and prints a different path. The stale file in the first run folder is never touched, and the assertion reads the new, freshly written copy, so it passes whether or not stage_workflow_script overwrites an existing copy. Deleting the copyfile/os.replace refresh logic (or staging with 'if not exists') would leave this test green. The test name and intent (a stale copy in the same run directory is refreshed) are not what the code checks.\n\nAlso (overall): test_capture_adversarial_refreshes_a_stale_script_copy overwrites the first run's copy, captures again and asserts the new copy is not '// stale'. The autouse _stamps fixture (tests/scripts/test_pr_review_adversarial.py:69-77) gives every capture a fresh run id, and rm.start_run (plugins/harness/lib/harness_lib/review_models.py:569-581) refuses an existing run directory, so the second capture stages into a different, empty run folder. `again` is never the stale file: the assertion holds even if stage_workflow_script never overwrote an existing copy (e.g. with the os.replace dropped and an exists-check skip added). The overwrite branch of stage_workflow_script is unreachable from capture in production as well, so the test pins nothing beyond what test_capture_adversarial_prints_a_script_copy_inside_the_project already pins.",
+        "fix": [
+          "Drive the refresh directly: after a first capture -a, write '// stale' to the staged copy, call script.stage_workflow_script(_run_folder(repo)) and assert the returned path equals the earlier one, its bytes equal (plugin_root / rm.ADVERSARIAL_WORKFLOW).read_bytes(), and no adversarial-review.js.tmp remains beside it",
+          "Or assert the second printed path equals the first (same run id, e.g. by pinning run_id_for to a constant for this test) before checking the content",
+          "Exercise the overwrite directly: call script.stage_workflow_script(run) on one tmp run folder, write '// stale' to the returned path, call it again on the same folder, and assert the same path now holds the plugin script's bytes.",
+          "Or state the real contract: assert `again.parent != copy.parent` and that `copy` still reads '// stale' (each capture stages its own copy and leaves earlier runs alone), and rename the test accordingly.",
+          "Or drop the test as a duplicate of test_capture_adversarial_prints_a_script_copy_inside_the_project, and drop '(replacing any earlier copy)' from docs/RELEASES/v1.0.0.md:141."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note claims capture replaces an earlier copy",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "140-141",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The release line says capture copies the script 'into the run directory (replacing any earlier copy)'. Every capture creates a new run directory and start_run refuses an existing one (review_models.py:569-581), so there is never an earlier copy in the directory capture stages into; the tmp-then-os.replace in stage_workflow_script (pr_review.py:767-769) is an atomic-write idiom, not a refresh path a user can reach.",
+        "fix": [
+          "Reword docs/RELEASES/v1.0.0.md:140-141 to 'copies workflows/adversarial-review.js byte for byte into the new run directory and prints that path', dropping '(replacing any earlier copy)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Module docstring line over the 110-column limit",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "32",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The edited capture -a paragraph of the module docstring leaves line 32 (``scriptPath=<abs copy>`` ... ``Without -a nothing of this is written.``) at roughly 150 characters. The project's local ruff run has E501 on at a 110 limit, so the line fails lint locally (CI passes --extend-ignore E501, so it never fails a build). The sentence was joined onto one line when the staged-copy clause was inserted.\n\nAlso (overall): The rewrapped module docstring line pr_review.py:32 ('``scriptPath=<abs copy>`` and ... Without ``-a`` nothing of this is written.') runs to about 150 columns; local ruff (E501 on, line length 110) flags it, though CI's --extend-ignore E501 does not.",
+        "fix": [
+          "Re-wrap lines 30-32 of the module docstring so every line stays within 110 columns, moving 'instead of the dispatch rows. Without ``-a`` nothing of this is written.' onto its own line.",
+          "Rewrap pr_review.py:30-32 so 'Without ``-a`` nothing of this is written.' starts its own docstring line within 110 columns."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Staging runs inside the line builder after plan.json, outside the problem-line contract",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "760-782,854-857",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "stage_workflow_script is called from workflow_lines (pr_review.py:782), a function documented as building the printed row, after `current` moved and plan.json was written (pr_review.py:847-857). An OSError from mkdir/copyfile/os.replace (locked file, permissions, disk) escapes as a traceback instead of the 'problem: ...' line and exit 1 the module docstring promises (pr_review.py:134-136), and leaves a started run with no Workflow row printed.",
+        "fix": [
+          "Stage the copy in _cmd_capture next to adversarial_plan (before writing plan.json), pass the staged path into workflow_lines, and convert an OSError into CaptureError([f\"cannot stage {source}: {exc}\"])."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Workflow row placeholder suggests a workflows/ subfolder in the run directory",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/review-local/SKILL.md"
+        ],
+        "lines": "40,150-153,223-232",
+        "reviewer": "skill_package, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:230 now reads `scriptPath=<abs path to the run directory's copy of workflows/adversarial-review.js>`, which reads naturally as `<run>/workflows/adversarial-review.js`. `stage_workflow_script` (plugins/harness/scripts/pr_review.py, `staged = run / source.name`) writes the copy at the run directory root, `<scratch>/<NNNN>/<RUN_ID>/adversarial-review.js`. The session uses the printed path, so nothing breaks, but the placeholder is the only place the skill names the location, and a session checking the copy (or a developer debugging a Workflow failure) is pointed at a folder that does not exist. The capture table row (SKILL.md:48, `scriptPath=<abs>`) and the downstream list (SKILL.md:1195, 'dispatched by the `${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js` Workflow script') still describe only the plugin-root script, not that the printed path is the staged copy.\n\nAlso (skill_package): The reason for staging (the Workflow tool reads a `scriptPath` only under the session's working directory or an added directory) lives only in the pr_review.py docstring and the release note. SKILL.md:40 still offers `--repo <abs project root>` for every subcommand, and the run directory is `cfg.path(artifacts.scratch)` under that repo. A `capture -a --repo <other project>` from a session rooted elsewhere stages the copy outside the session's working directory, and the Workflow call fails exactly as the pre-fix plugin-root path did. The Phase 1 pre-check (SKILL.md:150-153) covers only a missing Workflow tool.\n\nAlso (overall): The fix stages the script under `<repo>/<artifacts.scratch>/<KEY>/<RUN_ID>/`, which satisfies the Workflow tool only when that run folder is under the session's working directory (or an added directory). pr-review SKILL.md:40 still offers `--repo <abs project root>` as an alternative to running from the checkout; a session rooted in one checkout that captures `-a` for another (a worktree via --repo) gets a scriptPath outside its working directory and hits the same Workflow refusal this PR fixes. Neither the module docstring (pr_review.py:30-32) nor the skill's -a section (SKILL.md:223-238) states the constraint.",
+        "fix": [
+          "Change SKILL.md:230 to `scriptPath=<abs path to <run>/adversarial-review.js, capture's copy of the plugin's workflows/adversarial-review.js>`, and in the SKILL.md:48 capture row write `scriptPath=<abs>` as `scriptPath=<abs path of the run directory's copy of the Workflow script>`; at SKILL.md:1195 say the script runs from that staged copy.",
+          "Add one sentence to the Phase 1 '-a' pre-check (SKILL.md:150-153) or under 'Under -a: one Workflow call' (SKILL.md:223-232): capture copies the Workflow script into the run directory because the Workflow tool reads a scriptPath only under the session's working directory or an added directory, so an `-a` capture runs in the session's own project (no `--repo` pointing elsewhere).",
+          "Add one sentence to the pr-review SKILL.md 'Under -a' section (and the review-local -a step): run `capture -a` from the session's own checkout, without --repo pointing elsewhere, since the Workflow tool reads the staged scriptPath only under the working directory.",
+          "Or have capture -a print a `note:` when the run folder is not under Path.cwd()."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "SKILL.md Downstream list still names the plugin-root Workflow script as the dispatcher",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "1194-1196",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/pr-review/SKILL.md:1195-1196 says the refuters are 'dispatched by the `${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js` Workflow script'. After this PR the Workflow tool runs the run directory's copy (pr_review.py:760-770 stage_workflow_script, :782 prints the staged path), and the plugin-root path is exactly the one the Workflow tool cannot read in a consuming project. Line 230 of the same file was updated; this second mention was not, so the file now gives two different script locations.\n\nAlso (overall): SKILL.md:1194-1196 says the refuters are 'dispatched by the ${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js Workflow script'. After this PR the Workflow call runs the run directory's copy, as SKILL.md:230 now says; the two lines of the same skill disagree on which file the Workflow tool runs.",
+        "fix": [
+          "Reword SKILL.md:1195-1196 to 'dispatched by the run directory's copy of the plugin's `workflows/adversarial-review.js` Workflow script (or by a recovery `Agent` call)'.",
+          "Change SKILL.md:1195 to 'dispatched by the run directory's copy of `${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js` (staged by capture -a)'."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "review-local README describes the plugin's script as what the Workflow runs, without the staged copy",
+        "file": "plugins/harness/skills/review-local/README.md",
+        "files": [
+          "plugins/harness/skills/review-local/README.md",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "102",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/review-local/README.md:102 says 'The plugin's `workflows/adversarial-review.js` runs each slot'. The script content is still the plugin's, but the path the Workflow call receives is now the copy under the run directory (pr_review.py:782). A developer reading the user-facing README and seeing a `scriptPath` under docs/_scratch has no explanation for it; one clause keeps the README in step with SKILL.md:230 and the release note.",
+        "fix": [
+          "Append to review-local/README.md:102 after the sentence: 'capture copies it into the run directory and passes that copy as `scriptPath`, since the Workflow tool reads a script only from the working directory or an added directory.'"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 285 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"a55a5c9f16496f267d9aa65aa948819f7ab96625\",\"headRefName\":\"9016-pr-review-adversarial-error\",\"headRefOid\":\"a55a5c9f16496f267d9aa65aa948819f7ab96625\",\"last_sha\":\"a55a5c9f16496f267d9aa65aa948819f7ab96625\",\"mergeCommit\":null,\"number\":285,\"state\":\"OPEN\",\"title\":\"Fix(pr-review): stage the Workflow script in the run directory\",\"url\":\"https://github.com/t968rs/operator-straps/pull/285\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "9016-pr-review-adversarial-error",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "9016-pr-review-adversarial-error",
+        "head_ref_name": "9016-pr-review-adversarial-error",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "a55a5c9f16496f267d9aa65aa948819f7ab96625",
+        "head_sha": "a55a5c9f16496f267d9aa65aa948819f7ab96625",
+        "base_ancestor_command": "git merge-base --is-ancestor a55a5c9f16496f267d9aa65aa948819f7ab96625 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor a55a5c9f16496f267d9aa65aa948819f7ab96625 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - Release line now says capture copies the script byte for byte into the new run directory; '(replacing any earlier copy)' dropped"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - Module docstring rewrapped: 'Without ``-a`` nothing of this is written.' moved to its own line within 110 columns"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - _cmd_capture stages the Workflow script next to adversarial_plan before plan.json is written and passes the path through capture_lines into workflow_lines; stage_workflow_script converts an OSError into CaptureError(['cannot stage <source>: <exc>'])"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - Replaced the unfalsifiable capture test with test_stage_workflow_script_refreshes_a_stale_copy_in_the_same_run (stages twice into one run folder, asserts same path, plugin bytes restored, no .tmp left) and added test_stage_workflow_script_turns_an_os_error_into_a_problem; v1.0.0.md: no I1 edit, its wording is fixed under M1; pr_review.py: no I1 edit, the overwrite logic stays as written"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - SKILL.md Downstream list now names the run directory's copy of workflows/adversarial-review.js (staged by capture), matching line 230; recovery Agent call kept as the fallback."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - review-local README.md line 103 now says capture copies the script into the run directory and passes that copy as scriptPath, since the Workflow tool reads a script only from the working directory or an added directory."
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "a55a5c9 (working-tree snapshot; developer commits) - pr-review SKILL.md: Workflow row placeholder now names <run>/adversarial-review.js as capture's copy, capture table row names the run directory's copy, Phase 1 -a pre-check states the working-directory constraint (no --repo pointing elsewhere); review-local SKILL.md -a capture step and pr_review.py module docstring state the same constraint"
+    }
+  ]
+}

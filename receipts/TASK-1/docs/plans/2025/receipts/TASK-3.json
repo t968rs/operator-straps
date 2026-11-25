@@ -1,0 +1,31 @@
+{
+  "plan_id": "2025",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "b3ad528b1a5e21e3b4a9426883ab81760257c89d",
+      "commit": "cccb605bf5639400341a4a20d416785c61556cba"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_working_script.py::test_set_writes_the_override_for_the_current_branch",
+        "tests/skills/test_working_script.py::test_a_detached_head_keys_its_override_as_detached",
+        "tests/skills/test_working_script.py::test_clear_drops_only_the_current_branch",
+        "tests/skills/test_working_script.py::test_list_prints_every_branch_with_its_refs",
+        "tests/skills/test_working_script.py::test_a_bad_ref_exits_1_and_writes_nothing",
+        "tests/skills/test_working_script.py::test_state_dir_comes_from_the_project_config"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_working_script.py::test_set_writes_the_override_for_the_current_branch tests/skills/test_working_script.py::test_a_detached_head_keys_its_override_as_detached tests/skills/test_working_script.py::test_clear_drops_only_the_current_branch tests/skills/test_working_script.py::test_list_prints_every_branch_with_its_refs tests/skills/test_working_script.py::test_a_bad_ref_exits_1_and_writes_nothing tests/skills/test_working_script.py::test_state_dir_comes_from_the_project_config"
+    }
+  },
+  "evidence": "commit cccb605: 6 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "52b045b7a3f4b7eff5ab76a27ae335bd5f880a540749b2d89c154c691cbe0b3c"
+}

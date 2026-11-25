@@ -1,0 +1,642 @@
+{
+  "plan_id": "1019",
+  "plan_created": "2026-11-13",
+  "source_document": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md",
+  "documentation": "docs/plans/1019_serialize_catalog_writes_PIP.html",
+  "branch": "1159-FEAT-serialize-catalog-writes",
+  "base_branch": "main",
+  "execution_model": "parallel2 waves",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "catalog_lock: O_EXCL lock file with write and lease modes",
+      "action": "Create harness_lib/catalog_lock.py (standard library only, generic: names no catalog). Constants WAIT_SECONDS=10.0, WRITE_STALE_SECONDS=60.0, LEASE_STALE_SECONDS=1800.0. LockError(RuntimeError). Body JSON {pid, host (socket.gethostname()), owner, mode 'write'|'lease', acquired (time.time()), token (secrets.token_hex(8), on write locks and leases alike)}. hold(path, owner, lease=None, wait=None) is a contextmanager: with lease set, the file must hold a lease whose token matches (else LockError naming 'no lease' or 'token', at once, no wait) and the body runs without touching the file; without lease, create the file with os.open(O_CREAT|O_EXCL|O_WRONLY), retrying with random jitter (20-120 ms) until wait (None reads the module's WAIT_SECONDS at call time, so a test can patch it) runs out, breaking a stale holder first; on timeout raise LockError naming the holder's owner, mode and age. The finally removes the write lock file only when its body still carries this hold's token (read, compare, unlink), so a holder that was broken never deletes its successor's lock. acquire_lease(path, owner, wait=None) -> token (same create/retry/stale rules; a second lease waits and refuses naming the first). release_lease(path, token) removes it; a wrong token raises LockError naming 'token'. break_lock(path) -> Optional[dict] removes any lock and returns its body. read_holder(path) -> Optional[dict]. Staleness of a write lock: same host -> not pid_alive(pid), or age > LEASE_STALE_SECONDS (the ceiling against a reused pid); a live same-host holder is never broken by WRITE_STALE_SECONDS, since a hold spans add_items, render and check (Decided 11) and a git grep reference scan (Decided 16). Another host, or an unreadable body (age by mtime) -> age > WRITE_STALE_SECONDS. Lease -> age > LEASE_STALE_SECONDS only. pid_alive(pid): POSIX os.kill(pid, 0) (ProcessLookupError False, PermissionError True); Windows ctypes WinDLL('kernel32', use_last_error=True) OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION=0x1000) + GetExitCodeProcess == STILL_ACTIVE(259), CloseHandle; a failed OpenProcess with ctypes.get_last_error() == 5 (ERROR_ACCESS_DENIED: an elevated or other-user process) is alive, any other failure dead; never os.kill on Windows. Breaking a stale lock goes through break_if_unchanged(path, observed) -> bool: under an O_EXCL '<lock>.break' guard file (itself stale after WAIT_SECONDS by mtime; a busy guard means another breaker is at work, so retry), re-read the body and unlink the lock only when it still equals the observed stale body; otherwise return False and leave it. Two breakers that read one stale body therefore never remove the fresh lock one of them created. Functions under 50 lines. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/catalog_lock.py",
+        "tests/lib/test_catalog_lock.py"
+      ],
+      "dependencies": null,
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/default_exclusions.py:83-86",
+          "expect": "with open(target, \"x\", encoding=\"utf-8\")"
+        },
+        {
+          "at": "plugins/harness/config/defaults.json:12",
+          "expect": "\"state_dir\": \".claude/state/harness\""
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_hold_creates_the_file_and_removes_it",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_a_lease_blocks_a_plain_writer_and_admits_its_token",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_a_write_lock_of_a_dead_pid_is_broken",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_a_lease_survives_a_dead_pid_and_breaks_by_age",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_a_live_same_host_holder_past_the_write_age_is_kept",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_a_broken_holder_leaves_its_successor_lock_in_place",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_a_break_refuses_a_body_that_changed_since_it_was_read",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_catalog_lock.py::test_pid_alive_reads_this_process_without_signalling_it",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "write_atomic retries os.replace on PermissionError",
+      "action": "In todo_sync/report.py add REPLACE_ATTEMPTS = 5 and REPLACE_DELAY_SECONDS = 0.05 and wrap the os.replace(tmp, path) call of write_atomic in a helper that retries only PermissionError, sleeping REPLACE_DELAY_SECONDS (read at call time) between attempts, and re-raises the last one; any other OSError raises at once. The existing except BaseException branch still unlinks the temp file. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/report.py",
+        "tests/lib/test_todo_sync_write_atomic.py"
+      ],
+      "dependencies": null,
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/report.py:89-100",
+          "expect": "os.replace(tmp, path)"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_write_atomic.py::test_a_transient_permission_error_is_retried",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_write_atomic.py::test_a_persistent_permission_error_propagates_and_cleans_up",
+          "red": "AttributeError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "scratch_folder config key and the todo inbox folder",
+      "action": "New top-level key scratch_folder, default 'docs/_scratch/', in the four places: config/defaults.json (after state_dir), config/harness.schema.json (relPath, description: agent scratch; the TODO inbox lives in <scratch_folder>/todo-inbox/), lib/harness_lib/config.py (HarnessConfig field scratch_folder: str placed before the defaulted canned_messages, _build reads m['scratch_folder'], and a method todo_inbox() -> str returning the repo-relative POSIX folder f'{posix scratch_folder without trailing /}/todo-inbox'), and the README key table row after state_dir (used by: the TODO inbox that the todo-editor agent's add and sync runs write and todo_sync.py add --inbox drains; independent of artifacts.scratch). history.history_paths appends cfg.todo_inbox(); default_exclusions._entries adds (f'{todo_inbox}/*', 'TODO inbox drafts'). artifacts.scratch is unchanged. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "README.md",
+        "plugins/harness/lib/harness_lib/history.py",
+        "plugins/harness/lib/harness_lib/default_exclusions.py",
+        "tests/lib/test_config_scratch_folder.py"
+      ],
+      "dependencies": null,
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/config/defaults.json:12",
+          "expect": "\"state_dir\": \".claude/state/harness\""
+        },
+        {
+          "at": "plugins/harness/config/harness.schema.json:37",
+          "expect": "\"state_dir\": {\"$ref\": \"#/$defs/relPath\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:203",
+          "expect": "state_dir: str"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:221-222",
+          "expect": "attach: AttachConfig canned_messages: Tuple[CannedSet, ...] = ()"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:339",
+          "expect": "state_dir=m[\"state_dir\"]"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/history.py:25-26",
+          "expect": "art.scratch, *art.planning_prefixes, cfg.todo.snapshots.dir"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/default_exclusions.py:33",
+          "expect": "\"pr-review run scratch\""
+        },
+        {
+          "at": "README.md:492",
+          "expect": "| `state_dir`"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/lib/test_config_scratch_folder.py::test_scratch_folder_defaults_to_docs_scratch",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_config_scratch_folder.py::test_the_inbox_is_a_history_path",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_scratch_folder.py::test_the_inbox_is_a_seeded_exclusion",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_scratch_folder.py::test_the_readme_key_table_names_the_key",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "todo_sync inbox: put one file per item, drain in one locked write",
+      "action": "Create todo_sync/inbox.py. It binds render_snapshot, check and report_path (from harness_lib.todo_sync) and write_atomic (from .report) as module names, so a test patches inbox.<name>. inbox_dir(cfg) = cfg.path(cfg.todo_inbox()). put(cfg, spec, file_issues=False, rng=None) -> PutResult(paths, filed): read_spec(spec, 'items'); load_catalog(cfg, 'add') and validate with add_items on that data (D1 full dry run; with file_issues and items lacking 'issue' use reshape._preview_add) so a refusal raises TodoSyncError and writes nothing; then, with file_issues, reshape._file_pending files the issues; then write each item as {'items': [item]} with write_atomic to <inbox>/<_stamp()>-<NN>-<secrets.token_hex(3)>.json, where _stamp() is the UTC time as %Y%m%dT%H%M%S%fZ and NN the item's zero-padded index in the spec, so names from one put sort in spec order even on a clock that repeats a stamp (about 15.6 ms on Windows); returns the paths in spec order. Once any issue is filed, an OSError or TodoSyncError from the inbox writes re-raises as TodoSyncError(reshape._with_filed(str(exc), filed)), as apply_add does, so a rerun never files them twice. drain(cfg, today: Optional[dt.date] = None, rng=None) -> DrainResult(added: ((id, issue|None), ...), rejected: ((name, reason), ...), drift: Optional[int]): day = today or dt.date.today(); list *.json not starting with '.' and not ending .rejected.json, sorted by name (oldest first); none -> empty result. load_catalog once; for each file read_spec + add_items(working, specs, day.isoformat(), rng) on the working catalog, keeping the result on success and recording (name, reason) on TodoSyncError/RankingError/ValueError. Any accepted: write_edits(cfg, dump_like(working, raw)) (D2 write first), then at once unlink the accepted files, so the D2 window covers the write alone; only then render_snapshot(cfg, day) when todo.snapshots.dir is set, report = check(cfg), write_report(report, report_path(cfg)), drift = report.drift. A render, check or report failure raises after the items have landed and their files are gone, so the next drain never adds them again. Each rejected file: rename to <stem>.rejected.json and write <stem>.reason.txt. The caller holds the lock; drain takes none. drain_lines(result) -> one line: 'inbox: empty', or 'inbox: added N item(s): <id> (#N|note), ...[; rejected M (<names>)]; check drift=<d>' (no check part when nothing landed; 'inbox: rejected M (...)' then). Functions under 50 lines. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "tests/lib/test_todo_sync_inbox.py"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:454-464",
+          "expect": "def read_spec(path: Path, key: str = \"parts\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:504-513",
+          "expect": "def _preview_add("
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:524-535",
+          "expect": "def _file_pending("
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:543-551",
+          "expect": "raw, data = load_catalog(cfg, verb)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/retire.py:197",
+          "expect": "def load_catalog(cfg: HarnessConfig, verb: str"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/retire.py:218-220",
+          "expect": "def write_edits(cfg: HarnessConfig, catalog_text: str)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/__init__.py:160",
+          "expect": "def render_snapshot(cfg: HarnessConfig, date: dt.date)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/__init__.py:122",
+          "expect": "def check(cfg: HarnessConfig, rules"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/report.py:103-105",
+          "expect": "def write_report(report: Report, path: Path)"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_put_writes_one_file_per_item_and_leaves_the_catalog",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_put_files_the_issue_first_and_stores_it",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_drain_adds_every_file_in_one_write_and_deletes_them",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_drain_keeps_a_rejected_file_with_its_reason_and_lands_the_rest",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_put_names_sort_in_spec_order_on_a_repeated_stamp",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_a_failed_inbox_write_names_the_issue_already_filed",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_inbox.py::test_a_failed_render_after_the_write_never_adds_the_items_twice",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "todo_sync.py: lock every catalog write, lease and inbox subcommands",
+      "action": "Create todo_sync/locking.py: lock_path(cfg) = cfg.path(state_dir)/'locks'/<posix catalog rel with '/' replaced by '__'>.lock; guard(cfg, owner, lease=None) wraps catalog_lock.hold and re-raises LockError as TodoSyncError; acquire(cfg, owner) -> token; release(cfg, token): verify the token (catalog_lock.read_holder; a wrong token or no lease refuses and frees nothing), then in a try: the recount alone (Decided 6; no rescore or rerank): raw, data = load_catalog(cfg, 'lease release'), data['counts'] = retire.recount(data.get('counts'), data, ()), write_edits(cfg, dump_like(data, raw)) only when the text changed; render the snapshot when todo.snapshots.dir is set; run check and write the report; and in the finally catalog_lock.release_lease, so a catalog the recount cannot load still frees the lease and the command exits 2 with its problem line; returns the lines to print, the first 'lease released; <recount head>', the last 'check drift=<d>'; break_(cfg) -> body or None. In scripts/todo_sync.py: add --lease TOKEN to retire, split, refresh and add; add gets --inbox (mutually exclusive with --spec, one of the two required) ; new 'inbox put --spec PATH [--file-issue]' prints one 'queued <repo-relative path>' line per file and 'filed #N <url>' lines; new 'lease acquire --owner TEXT' (prints 'lease: <token>'), 'lease release TOKEN', 'lease break' (prints the removed holder's owner, mode and age, or 'lease: none held'). _dispatch runs every non-dry-run catalog write (add --spec, add --inbox with a file queued (D3), retire, split, refresh, init) inside locking.guard(cfg, '<command line>', args.lease); migrate-ids (non-dry-run) acquires its own lease and releases it in a finally without the recount (Decided 16). Dry runs, check, render, untracked, runner and inbox put take no lock. add --inbox prints inbox.drain_lines. Extend the module docstring for each new subcommand and flag. Keep functions under 50 lines (split _dispatch). Copy the planned test file first.",
+      "files": [
+        "plugins/harness/scripts/todo_sync.py",
+        "plugins/harness/lib/harness_lib/todo_sync/locking.py",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:154-158",
+          "expect": "add.add_argument(\"--spec\", type=Path, required=True"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:163-174",
+          "expect": "def _reshapers(sub: argparse._SubParsersAction"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:240-265",
+          "expect": "def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:281",
+          "expect": "except (ConfigError, TodoSyncError, OSError) as exc:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:538-540",
+          "expect": "def apply_refresh(cfg: HarnessConfig, dry_run: bool = False)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:416-433",
+          "expect": "data[\"counts\"] = recount(data.get(\"counts\"), data, ())"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/retire.py:181-188",
+          "expect": "raw, data = load_catalog(cfg, \"retire\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/retire.py:144",
+          "expect": "def recount(stored: Any, data: Dict[str, Any], retired: Sequence[Dict[str, Any]]) -> Dict[str, Any]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/retire.py:270",
+          "expect": "def dump_like(data: Dict[str, Any], raw: str) -> str:"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_a_lease_admits_its_holder_and_refuses_every_other_writer",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_recounts_a_hand_appended_close_candidate",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_frees_the_lease_when_the_catalog_cannot_load",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_init_holds_the_lock",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_migrate_ids_holds_the_lock",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_add_inbox_holds_the_lock_and_keeps_the_queued_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_catalog_lock_cli.py::test_inbox_put_queues_and_add_inbox_drains",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "todo-watch mod: drain the inbox when a todo-editor agent returns",
+      "action": "config.ts: export DEFAULT_SCRATCH_FOLDER = 'docs/_scratch/' and read scratch_folder into scratchFolder (cleanPath); inboxDirOf(c) = `${scratchFolder}/todo-inbox`. New hooks/inbox.ts: single-flight drain like checks.ts runCycle/requestCheck (one in flight, at most one owed rerun); a drain runs [runner.python, runner.script, 'add', '--inbox', '--project', runner.project] with timeoutMs DRAIN_TIMEOUT_MS = 60_000 through $.process.run and keeps the stdout line starting 'inbox: ' (not 'inbox: empty') as the pending summary; a non-zero exit or a timeout sets the pending summary to 'inbox: drain failed: <last non-empty stderr line, or timed out>' instead, so a refused drain (a lease held, a catalog that will not load) still reaches the main session; then requests a check refresh. Triggers (spec Decided 17): (a) on('tool.call', { tool: 'Agent' }) for subagent_type 'harness:todo-editor': after next(e), a result with status 'completed' drains now and appends the summary to the result's context; status 'async_launched' records its agentId; (b) checks.ts's turn.complete hook, for an e.agentId recorded in (a), starts the drain (it returns early for subagent loops today); (c) registerContext's prompt.submit adds the pending summary line (awaiting an in-flight drain up to DRAIN_TIMEOUT_MS when e.origin.kind is 'task-notification'), then clears it once attached; (d) the session.start hook in register.ts drains when the inbox folder lists a *.json that is not *.rejected.json. The engine allows one session.start and one unmatched turn.complete hook, so (b) and (d) join the existing hooks. New inbox.test.ts covers: foreground return appends context; background return drains on turn.complete and the next task-notification prompt carries the line; two returns while a drain runs give one owed rerun; empty stdout attaches nothing; a failed drain attaches 'inbox: drain failed: <stderr line>'; session start with an empty inbox spawns no process. Add DEFAULT_SCRATCH_FOLDER to the Python mirror test.",
+      "files": [
+        "plugins/todo-watch/hooks/config.ts",
+        "plugins/todo-watch/hooks/config.test.ts",
+        "plugins/todo-watch/hooks/inbox.ts",
+        "plugins/todo-watch/hooks/inbox.test.ts",
+        "plugins/todo-watch/hooks/checks.ts",
+        "plugins/todo-watch/hooks/register.ts",
+        "plugins/todo-watch/hooks/testWorld.ts",
+        "plugins/todo-watch/types/index.d.ts",
+        "tests/mods/test_todo_watch_config_mirror.py"
+      ],
+      "dependencies": [
+        "TASK-3",
+        "TASK-5"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/todo-watch/hooks/checks.ts:349-352",
+          "expect": "const argv = [r.python, r.script, 'check', '--project', r.project]"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/checks.ts:369-388",
+          "expect": "function requestCheck($: Dollar): void {"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/checks.ts:560-566",
+          "expect": "if (e.agentId !== undefined) return result"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/checks.ts:571-577",
+          "expect": "const result = await next({ ...e, context: [...(e.context ?? []), line] })"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/register.ts:10-16",
+          "expect": "One session.start hook (the engine refuses two without a matcher)"
+        },
+        {
+          "at": "plugins/todo-watch/hooks/config.ts:7",
+          "expect": "export const DEFAULT_STATE_DIR = '.claude/state/harness'"
+        },
+        {
+          "at": "plugins/agent-watcher/hooks/core/tracker.ts:396-397",
+          "expect": "if (res?.status === 'async_launched' && res.agentId !== undefined) {"
+        },
+        {
+          "at": "plugins/agent-watcher/hooks/core/tracker.ts:566-568",
+          "expect": "return lines.length === 0 ? r : { ...r, context: [...(r.context ?? []), ...lines] }"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/todo-watch",
+          "expect": "every test passes, inbox.test.ts included"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/todo-watch",
+          "expect": "no errors"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_todo_watch_config_mirror.py::test_every_mirrored_key_is_pinned",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "todo-editor, add-todo and sync-gh-todo text: queue through the inbox, lease structural runs",
+      "action": "todo-editor.md: sync step 3-5 and add step 3-5 write the spec to a path no other run shares, <state_dir>/todo-sync/add-<stamp>-<rand>.json (<stamp> the UTC time as YYYYMMDDTHHMMSS, <rand> six random lowercase letters; several todo-editor agents may draft at once, and a shared add.json lets one overwrite another's spec between its write and its put), never the old fixed add.json, and run `TS inbox put --spec <path>` (add under Issue: yes: `TS inbox put --spec <path> --file-issue`; never `TS add --spec`); inbox put validates against the catalog itself, so no dry run; on a problem: line fix the spec and rerun once; the Added line lists each item as 'queued: <title> (#N | note)', its id named later by the drain's summary line; add and sync skip the finish render and check (the drain does both). Edit-only list gains the inbox spec. retire, split and refresh start with `TS lease acquire --owner \"todo-editor <operation>\"` (keep the printed token) and pass --lease <token> to every TS retire/split/refresh; finish runs `TS check --format markdown` and fixes, then `TS lease release <token>` (recounts, renders, checks) before the reply, and on any stop condition still releases; a release that exits non-zero has already freed the lease (only a wrong token keeps it), so the agent relays its problem line under Open and never reruns it. Reply block fields unchanged. add-todo and sync-gh-todo SKILL.md: after the agent returns, run the launcher line `... todo_sync.py add --inbox` once and relay its line with the reply ('inbox: empty' means the todo-watch mod already drained; its summary line arrives as context). README TODO paragraph: one sentence on the inbox, the lock and the lease. Copy both planned test files first (the sync contract file replaces the existing one).",
+      "files": [
+        "plugins/harness/agents/todo-editor.md",
+        "plugins/harness/skills/add-todo/SKILL.md",
+        "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "README.md",
+        "tests/skills/test_sync_gh_todo_skill_contract.py",
+        "tests/skills/test_todo_inbox_prose_contract.py"
+      ],
+      "dependencies": [
+        "TASK-5"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/agents/todo-editor.md:169-172",
+          "expect": "`TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:205-210",
+          "expect": "Under `Issue: yes` both runs take `--file-issue`"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:219-223",
+          "expect": "`TS render` (writes the dated snapshot)"
+        },
+        {
+          "at": "plugins/harness/skills/sync-gh-todo/SKILL.md:60-64",
+          "expect": "## Step 3: report"
+        },
+        {
+          "at": "plugins/harness/skills/add-todo/SKILL.md:71-75",
+          "expect": "## Step 4: report"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/skills/test_sync_gh_todo_skill_contract.py::test_skill_command_lines_parse",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_sync_gh_todo_skill_contract.py::test_agent_documents_the_sync_operation",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_inbox_prose_contract.py::test_structural_runs_hold_a_lease[retire]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_inbox_prose_contract.py::test_each_run_stages_its_spec_at_a_path_of_its_own[sync]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_inbox_prose_contract.py::test_the_add_skill_drains_the_inbox_after_the_agent",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-8",
+      "title": "Version bumps and release notes",
+      "action": "harness 0.72.1 -> 0.73.0 and todo-watch 0.4.1 -> 0.5.0 (.claude-plugin/plugin.json). Extend docs/RELEASES/v1.0.0.md: harness row Now 0.73.0, add a todo-watch row 0.4.1 -> 0.5.0 and drop it from Unchanged, one change line per feature (catalog lock and lease, scratch_folder key and the TODO inbox, todo-watch inbox drain), naming issue #277.",
+      "files": [
+        "plugins/harness/.claude-plugin/plugin.json",
+        "plugins/todo-watch/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-3",
+        "TASK-4",
+        "TASK-5",
+        "TASK-6",
+        "TASK-7"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.72.1\""
+        },
+        {
+          "at": "plugins/todo-watch/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.4.1\""
+        },
+        {
+          "at": "docs/RELEASES/v1.0.0.md:28",
+          "expect": "| harness | 0.65.1 | 0.72.1 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "no errors"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/todo-watch",
+          "expect": "no errors"
+        }
+      ],
+      "tests": []
+    }
+  ],
+  "base_commit": "a845e25b2709b5017d92c76a950378201a1d8471",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "What does inbox put validate before it writes a file?",
+      "options": [
+        {
+          "id": "full-dry-run",
+          "summary": "add_items on a copy of the current catalog, as add --dry-run does (catches an issue already in the catalog)"
+        },
+        {
+          "id": "schema-only",
+          "summary": "the spec shape alone"
+        }
+      ],
+      "chosen": "full-dry-run",
+      "rationale": "Spec, Left to the builder: a full dry run catches most rejections while the agent can still fix them."
+    },
+    {
+      "id": "D2",
+      "question": "In what order does drain write the catalog and delete accepted files?",
+      "options": [
+        {
+          "id": "write-then-delete",
+          "summary": "catalog first; a crash between leaves the file, re-added (note) or rejected as a duplicate (issue) on the next drain"
+        },
+        {
+          "id": "delete-then-write",
+          "summary": "files first; a crash loses the items"
+        }
+      ],
+      "chosen": "write-then-delete",
+      "rationale": "Spec anti-goal: a failed consolidation never loses a drafted item."
+    },
+    {
+      "id": "D3",
+      "question": "Does add --inbox take the lock when the inbox holds no file?",
+      "options": [
+        {
+          "id": "no-lock-when-empty",
+          "summary": "list first; print inbox: empty and exit without the lock"
+        },
+        {
+          "id": "always-lock",
+          "summary": "take the lock on every run"
+        }
+      ],
+      "chosen": "no-lock-when-empty",
+      "rationale": "The fallback drain after a mod drain and the session-start drain must not wait on a lease when there is nothing to add."
+    }
+  ],
+  "values": [
+    {
+      "name": "WAIT_SECONDS",
+      "value": "10.0",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Decided 3, 15"
+    },
+    {
+      "name": "WRITE_STALE_SECONDS",
+      "value": "60.0",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Decided 4, 15"
+    },
+    {
+      "name": "LEASE_STALE_SECONDS",
+      "value": "1800.0",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Decided 4, 15"
+    },
+    {
+      "name": "REPLACE_ATTEMPTS",
+      "value": "5",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Decided 9 (count is the builder's)"
+    },
+    {
+      "name": "REPLACE_DELAY_SECONDS",
+      "value": "0.05",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Decided 9 (delay is the builder's)"
+    },
+    {
+      "name": "scratch_folder default",
+      "value": "docs/_scratch/",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Goals; issue #277 goal 2"
+    },
+    {
+      "name": "inbox folder",
+      "value": "<scratch_folder>/todo-inbox",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Goals"
+    },
+    {
+      "name": "DRAIN_TIMEOUT_MS (todo-watch)",
+      "value": "60_000",
+      "source": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md Decided 17",
+      "assumes": [
+        "no-lock-when-empty"
+      ]
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "write_edits\\(|write_atomic\\(cfg\\.path\\(cfg\\.todo\\.catalog\\)|write_atomic\\(path, json\\.dumps\\(catalog",
+      "hits": {
+        "plugins/harness/lib/harness_lib/todo_sync/retire.py": "write_edits definition and the retire write; locked by the driver (TASK-5)",
+        "plugins/harness/lib/harness_lib/todo_sync/reshape.py": "_apply write for add, split, refresh; locked by the driver (TASK-5)",
+        "plugins/harness/lib/harness_lib/todo_sync/migrate.py": "migrate-ids catalog write; run under the driver's own lease (TASK-5)",
+        "plugins/harness/lib/harness_lib/todo_sync/scaffold.py": "init catalog write; locked by the driver (TASK-5)"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "\\bscratch_folder\\b",
+      "hits": {
+        "docs/TODO/RepoToDo.json": "todo-udx4 text naming the key; retired after merge, not code"
+      }
+    }
+  ],
+  "ledger": "plan/1019-serialize-catalog-writes"
+}

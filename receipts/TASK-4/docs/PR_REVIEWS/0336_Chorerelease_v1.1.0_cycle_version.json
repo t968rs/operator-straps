@@ -1,0 +1,227 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 336,
+  "pr_title": "Chore(release): `v1.1.0` cycle version",
+  "branch": "0001-start-unreleased",
+  "base_branch": "main",
+  "base_sha": "c3aea14dbf85f3256d066ee2aa64c38523a55060",
+  "head_sha": "d3b5bc6f0d6fd4da99dd5ca313ff8cc67daf6371",
+  "review_date": "2026-11-23",
+  "verdict": "READY TO MERGE - 5 of 5 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 40,
+    "deletions": 2,
+    "files_changed": 4,
+    "source": {
+      "additions": 40,
+      "deletions": 2,
+      "files_changed": 4
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "docs (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0336/pr336_20261123T213142Z/findings/config.json",
+    "docs/_scratch/pr_review/0336/pr336_20261123T213142Z/findings/docs.json",
+    "docs/_scratch/pr_review/0336/pr336_20261123T213142Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "pyproject.toml version 1.1.0 matches metadata.version in .claude-plugin/marketplace.json and the docs/RELEASES/v1.1.0.md release file, as the release rule requires.",
+    "The change is a single-line version bump; the pytest, ruff and pylint sections are untouched.",
+    "Release dates in CHANGELOG.md match the GitHub release timestamps in UTC (v1.0.0 2026-11-23, v0.7.0 2026-11-10).",
+    "The 1.0.0 breaking summary matches the Breaking changes list in docs/RELEASES/v1.0.0.md (DesignEvolution catalog, ActionPlan, PR_REVIEW, matrix and TODO catalog pins).",
+    "The branch that creates docs/RELEASES/v1.1.0.md also sets marketplace.json metadata.version and pyproject.toml version to 1.1.0, as the CLAUDE.md Releases rule requires.",
+    "The superpowers-lt note in v1.1.0.md is accurate: marketplace.json sources it from its own GitHub repository.",
+    "The compare links for [Unreleased] and [1.0.0] name the right tag ranges, and the superseded v0.7.1 notes are correctly left out.",
+    "marketplace.json metadata.version and pyproject.toml version move together to the same value, as the release rule requires of the branch that creates the release file.",
+    "CHANGELOG.md dates match the published GitHub releases (v0.7.0 published 2026-11-10 UTC, v1.0.0 on 2026-11-23) and the compare links chain correctly v0.7.0 -> v1.0.0 -> HEAD.",
+    "docs/RELEASES/v1.1.0.md states its own provisional status and the per-branch append protocol instead of pretending the cycle has content.",
+    "The superpowers-lt exclusion from the plugin table is explained rather than silently omitted."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "CHANGELOG claims to list marketplace releases but starts at 0.7.0",
+        "file": "CHANGELOG.md",
+        "lines": "3-5,17-23",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The preamble (CHANGELOG.md:3) says the file lists marketplace releases (vX.Y.Z tags), yet tags v0.1.0 through v0.6.0 exist and are absent. The [0.7.0] reference at line 23 uses the releases/tag form that Keep a Changelog reserves for the first release, which reinforces the impression that 0.7.0 was the first; the GitHub release list shows v0.6.0 before it.\n\nAlso (roast): CHANGELOG.md:3 presents itself as the list of marketplace releases (vX.Y.Z tags), but the repository carries tags v0.1.0 through v0.6.0 that have no entry and no pointer. A reader will assume 0.7.0 was the first release.",
+        "fix": [
+          "Add to the preamble that the log starts at v0.7.0, the first release with a docs/RELEASES notes file, and that earlier tags are on the GitHub releases page.",
+          "Or change line 23 to `[0.7.0]: https://github.com/t968rs/operator-straps/compare/v0.6.0...v0.7.0` and note the start point.",
+          "Add a closing line after the 0.7.0 entry such as 'Earlier releases (v0.1.0 to v0.6.0): see the GitHub releases page.' with the releases URL.",
+          "Or reword CHANGELOG.md:3 to say the log starts at v0.7.0."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "'see Upgrading from 0.7' is not a link",
+        "file": "CHANGELOG.md",
+        "files": [
+          "CHANGELOG.md",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "14",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "CHANGELOG.md:14 points readers at the 'Upgrading from 0.7' section by name only; that heading lives in docs/RELEASES/v1.0.0.md:14, a different file, so the reference does not resolve from the CHANGELOG.",
+        "fix": [
+          "Replace 'see Upgrading from 0.7' with 'see [Upgrading from 0.7](docs/RELEASES/v1.0.0.md#upgrading-from-07)'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "CHANGELOG links a released v1.0.0 to notes still titled proposed",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "files": [
+          "docs/RELEASES/v1.0.0.md",
+          "CHANGELOG.md"
+        ],
+        "lines": "1",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "CHANGELOG.md:11-15 records 1.0.0 as released on 2026-11-23 (the tag and the GitHub release exist), but the linked docs/RELEASES/v1.0.0.md:1 still reads '# v1.0.0 (proposed)'. The new index now points readers straight at the stale heading.",
+        "fix": [
+          "Change docs/RELEASES/v1.0.0.md line 1 to '# v1.0.0' (and update the GitHub release body if it carries the same heading)."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "v1.1.0 picked before any plugin bump, without saying the level is provisional",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          ".claude-plugin/marketplace.json",
+          "pyproject.toml"
+        ],
+        "lines": "1-4",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "CLAUDE.md Releases derives the suggested version from the largest plugin bump since the latest tag (minor when a plugin bumped its minor or was added, patch when every bump was a patch). docs/RELEASES/v1.1.0.md:3 declares 'Minor ... no plugin has bumped yet', so no bump grounds the minor level. If the cycle's bumps are all patches, the rule yields v1.0.1, and the file name, CHANGELOG.md:9 link, marketplace.json metadata.version and pyproject.toml version all need renaming; the notes do not tell the next branch to re-derive the level.\n\nAlso (roast): The project rule derives the release level from the largest plugin bump since the last tag (minor on a minor bump or new plugin, patch when every bump is a patch) and assigns the proposal to a branch that bumps a plugin. This branch bumps none yet sets marketplace.json metadata.version and pyproject.toml to 1.1.0 and names the file v1.1.0.md. If the cycle ends with patch bumps only, the right release is v1.0.1 and three files plus the CHANGELOG get renamed, a repeat of the v0.7.1-superseded-by-v1.0.0 shuffle. docs/RELEASES/v1.1.0.md:3 does admit it, which is honest, if not compliant.",
+        "fix": [
+          "Add to docs/RELEASES/v1.1.0.md:3-4 that the level is provisional: the first bumping branch re-derives it per CLAUDE.md and, if every bump is a patch, renames the file to v1.0.1.md and resets the CHANGELOG link, marketplace.json metadata.version and pyproject.toml version.",
+          "Or amend the CLAUDE.md Releases rule to allow opening a cycle at the next minor before any bump, so the file and the contract agree.",
+          "Note in docs/RELEASES/v1.1.0.md (and the CLAUDE.md Releases rule, if this is the new convention) that a cycle opens at the next minor by default and the first branch whose bumps are all patches renames it to v1.0.1 along with marketplace.json, pyproject.toml and CHANGELOG.md.",
+          "Or hold the version fields at 1.0.0 until the first plugin bump decides the level, keeping only CHANGELOG.md in this PR."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "CHANGELOG.md has no upkeep rule in the release process",
+        "file": "CHANGELOG.md",
+        "files": [
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "docs/RELEASES/v1.1.0.md"
+        ],
+        "lines": "3-9,21-23",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The new root CHANGELOG.md carries an [Unreleased] section, per-release entries and compare-link references, but the CLAUDE.md Releases section (the contract every bumping branch follows) never mentions it: it names only docs/RELEASES/v<X.Y.Z>.md, marketplace.json metadata.version and pyproject.toml version. Nothing tells a branch to update [Unreleased], or the release cut to turn [Unreleased] into a dated [1.1.0] heading, add the [1.1.0] compare link and move the [Unreleased] link base to v1.1.0. Without the rule the file drifts out of date after the first release cut.\n\nAlso (docs): CHANGELOG.md:9 says 'No changes yet.', a copy of docs/RELEASES/v1.1.0.md:15 'None yet.'. The release-notes file is the one each bumping branch extends; nothing updates the CHANGELOG line, so it becomes false after the first plugin bump lands in the cycle.\n\nAlso (roast): CHANGELOG.md:7-9 hard-codes 'Proposed as v1.1.0 ... No changes yet.', but the CLAUDE.md Releases section (which every bumping branch follows) only names docs/RELEASES/v<X.Y.Z>.md, marketplace.json metadata.version and pyproject.toml. Nothing tells the next branch to touch CHANGELOG.md, so 'No changes yet' will sit there next to a release file full of rows, and the Unreleased compare link and version label will lag every re-proposal. A changelog nobody is told to update is a historical novel.",
+        "fix": [
+          "Add a sentence to the CLAUDE.md Releases section: the branch that creates docs/RELEASES/v<X.Y.Z>.md also points CHANGELOG.md [Unreleased] at it, and the developer's release cut renames [Unreleased] to [X.Y.Z] - <date>, adds the [X.Y.Z] compare link and rebases the [Unreleased] link on vX.Y.Z.",
+          "Alternatively, state the cut-time steps in the CHANGELOG.md preamble (lines 3-5) so the file carries its own maintenance contract.",
+          "Drop 'No changes yet.' from CHANGELOG.md:9 so the [Unreleased] entry only points at docs/RELEASES/v1.1.0.md, which holds the change list.",
+          "Add CHANGELOG.md to the CLAUDE.md Releases rule: the branch that creates docs/RELEASES/v<X.Y.Z>.md also sets the [Unreleased] line, and cutting a release moves it to a dated heading with its compare link.",
+          "Or make the [Unreleased] entry self-maintaining: drop 'No changes yet.' and keep only the pointer to the proposed release file, so later branches never need to edit it."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 336 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"97382659068d7a7dd6dba7c28e301edb4c2bb100\",\"headRefName\":\"0001-start-unreleased\",\"headRefOid\":\"d3b5bc6f0d6fd4da99dd5ca313ff8cc67daf6371\",\"last_sha\":\"d3b5bc6f0d6fd4da99dd5ca313ff8cc67daf6371\",\"mergeCommit\":null,\"number\":336,\"state\":\"OPEN\",\"title\":\"Chore(release): `v1.1.0` cycle version\",\"url\":\"https://github.com/t968rs/operator-straps/pull/336\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0001-start-unreleased",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0001-start-unreleased",
+        "head_ref_name": "0001-start-unreleased",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "97382659068d7a7dd6dba7c28e301edb4c2bb100",
+        "head_sha": "d3b5bc6f0d6fd4da99dd5ca313ff8cc67daf6371",
+        "base_ancestor_command": "git merge-base --is-ancestor 97382659068d7a7dd6dba7c28e301edb4c2bb100 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor d3b5bc6f0d6fd4da99dd5ca313ff8cc67daf6371 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "d3b5bc6 (working-tree snapshot; developer commits) - CHANGELOG.md preamble now states the log starts at v0.7.0, the first release with a docs/RELEASES notes file, and links the GitHub releases page for v0.1.0 to v0.6.0"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "d3b5bc6 (working-tree snapshot; developer commits) - CHANGELOG.md 1.0.0 entry links [Upgrading from 0.7](docs/RELEASES/v1.0.0.md#upgrading-from-07); no edit in part: the target heading '## Upgrading from 0.7' at docs/RELEASES/v1.0.0.md:14 already yields the anchor #upgrading-from-07; the CHANGELOG.md:14 link itself is the other fixer's edit"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "d3b5bc6 (working-tree snapshot; developer commits) - CHANGELOG.md: no edit needed, its link to docs/RELEASES/v1.0.0.md is correct; the stale '(proposed)' heading lives in docs/RELEASES/v1.0.0.md, owned by another fixer; docs/RELEASES/v1.0.0.md line 1 changed from '# v1.0.0 (proposed)' to '# v1.0.0'; the GitHub release body was not touched (outside the file set)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "d3b5bc6 (working-tree snapshot; developer commits) - docs/RELEASES/v1.1.0.md marks the minor level provisional: the first bumping branch re-derives it per CLAUDE.md and, on patch-only bumps, renames the file to v1.0.1.md and resets the CHANGELOG link, marketplace.json metadata.version and pyproject.toml version; CHANGELOG.md, CLAUDE.md, marketplace.json, pyproject.toml: cited targets of the rename, no edit needed"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-23",
+      "evidence": "d3b5bc6 (working-tree snapshot; developer commits) - CLAUDE.md Releases rule now has the creating branch point CHANGELOG.md [Unreleased] at the notes file and the release cut rename it to a dated heading, add the compare link and rebase the [Unreleased] link; CHANGELOG.md [Unreleased] drops 'No changes yet.' and only points at the notes file; docs/RELEASES/v1.1.0.md: holds the change list, no edit needed"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "4230488a5c653d97435c0eb415a2ee57179696e1",
+  "files": {
+    "docs/plans/2028_TODO_keyword_on_the_working_line_ActionPlan.json": "78782c2b09df205e2bb7fac7da775fba7ef377a1"
+  },
+  "ignored": {
+    "docs/plans/2028/tests/tests/lib/test_todo_sync_keyword_put.py": "1139cc174f39f8ecd58be6facd9bf80c1ba8023ba7b670338fdb8f0158d0d05b",
+    "docs/plans/2028/tests/tests/lib/test_todo_sync_keywords.py": "6b7cd3cf216e67a9912848084cc3294cc5bb59026a7dc4bd1a97481be324b2b9",
+    "docs/plans/2028/tests/tests/mods/test_working_refs_contract.py": "7c8cf36dae63516fc9976bfd37c9e338c915ec7c2097e08e564df1dc75d3e125",
+    "docs/plans/2028/tests/tests/schemas/test_todo_keyword_schema.py": "fd811cbd975cd0451bf5814efd5c334d5d2494fcad58ed2a9021a1802096ff94",
+    "docs/plans/2028/tests/tests/scripts/test_todo_sync_keywords_cli.py": "d48120a25fb82b0eef8cee688d186601134e8efdccff0fc7949933014299acf8",
+    "docs/plans/2028/tests/tests/skills/test_todo_keyword_prose.py": "b0f001aa0edcd3a5b8e294010d34ecc9b63095e70275c120cd9381cce661aa02"
+  },
+  "at": "2026-11-20T23:02:49+00:00",
+  "base": "a19e5787c61eb9283c2bc5bb4a54858d0115aee7",
+  "history": false,
+  "digest": "231222bc9e13743ecf2c340ef0d361cfe0870e68229ac3d0da90c02fa415fb01",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

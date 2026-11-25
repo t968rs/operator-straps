@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2026: Bookmark Notes</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2026: Bookmark Notes</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2026_Bookmark_Notes_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2026</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2026</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-18</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1169-bookmark-removes -&gt; main</dd><dt>Base commit</dt><dd><code>8325e21</code></dd><dt>Frozen</dt><dd>2026-11-19 at <code>ef48232</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: add_note.py: branch-scoped notes, remove N, edit N</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: add-bookmark SKILL.md: --remove, --edit, --standing and the turn-free view</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: session-bookmark: parse the branch and mark notes from another branch in the bookmark</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: session-bookmark: `/session-bookmark notes` prints the stored notes with no model turn</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: session-bookmark: deliver the bookmark when another mod kept session.compact from reaching it</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-6">TASK-6: todo-watch: re-force the TODO_SYNC line after a compaction its session.compact hook missed</a> <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-7">TASK-7: Versions and release notes</a> <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 #272: what shape do single-note changes take?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>remove-edit</code> add_note.py gains `remove N` and `edit N TEXT`; the skill gains `--remove N` and `--edit N &lt;text&gt;`; each prints the numbered list after the change</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>remove-only</code> `remove N` / `--remove N` only; an edit is remove then add</li><li><code>separate-skill</code> a new remove-bookmark skill over the same script</li></ul><p class="why">Developer&#x27;s answer, 2026-11-18.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 #279: what branch scope does a new note get by default?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>current-branch</code> add records the checked-out branch; `--standing` stores none; a note without a branch (old files, detached HEAD) is standing</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>standing</code> notes apply on every branch unless `--branch` is passed</li></ul><p class="why">Developer&#x27;s answer, 2026-11-18. The bookmark never hides a note, so a wrong default costs a marker, not a lost note; the field is optional, so NOTES_VERSION stays 1.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 #305: how is the notes view that needs no model turn invoked?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>session-bookmark-arg</code> an argument on the existing command: `/session-bookmark notes`; bare `/session-bookmark` keeps printing the saved bookmark</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>bookmark-notes-command</code> a second mod command, `/bookmark-notes`</li></ul><p class="why">Developer&#x27;s answer, 2026-11-18. The mod&#x27;s `command.run` handler answers with text and no model turn (bookmark.ts:240-243).</p></section>
+<section class="decision" id="decision-D4"><h3>D4 #279 remedy (c): where does the rule &#x27;a note from another branch is confirmed with the developer before it is applied or skipped, never dropped silently&#x27; live?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>bookmark-header</code> one hint line under `## Session Notes` in the bookmark, printed only when a note carries another branch, plus the same sentence in the add-bookmark SKILL.md</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>header-and-rules</code> the bookmark-header option plus a line in plugins/harness/rules/HARNESS_RULES.md, which every session reads at start</li><li><code>none</code> the `now on` marker alone; no rule text</li></ul><p class="why">Developer&#x27;s answer, 2026-11-18.</p></section>
+<section class="decision" id="decision-D5"><h3>D5 #204: what does a mod do when another mod ends or reroutes the session.compact chain before it?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>fallback-next-prompt</code> session-bookmark and todo-watch also observe the compaction row on `session.append` (door `compaction`, main loop); session-bookmark then attaches the bookmark as context on the next prompt.submit when its own session.compact handler did not run for that compaction; todo-watch re-forces its TODO_SYNC line</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>fallback-append-now</code> as fallback-next-prompt, but session-bookmark appends the bookmark at once through `$.session.append` (door `note`), so a mid-turn auto-compaction is covered before the next prompt</li><li><code>document-only</code> no code change; each mod&#x27;s README names the ordering limit</li></ul><p class="why">Developer&#x27;s answer, 2026-11-18.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>MAX_NOTES</td><td>20</td><td>plugins/harness/skills/add-bookmark/commands/add_note.py:23</td><td>-</td></tr>
+<tr><td>MAX_NOTE_CHARS</td><td>300</td><td>plugins/harness/skills/add-bookmark/commands/add_note.py:24</td><td>-</td></tr>
+<tr><td>NOTES_VERSION</td><td>1 (unchanged: the branch field is optional)</td><td>plugins/harness/skills/add-bookmark/commands/add_note.py:22</td><td>current-branch</td></tr>
+<tr><td>BRANCH_KEY / NOTE_BRANCH_KEY</td><td>branch</td><td>new; pinned by tests/mods/test_session_bookmark_notes_contract.py</td><td>current-branch</td></tr>
+<tr><td>OTHER_BRANCH_MARK</td><td>now on</td><td>new; pinned by tests/mods/test_session_bookmark_notes_contract.py</td><td>current-branch</td></tr>
+<tr><td>NOTES_ARG</td><td>notes</td><td>new; pinned by tests/mods/test_session_bookmark_notes_contract.py</td><td>session-bookmark-arg</td></tr>
+<tr><td>harness version</td><td>0.79.1 -&gt; 0.80.0 (minor: new subcommands)</td><td>plugins/harness/.claude-plugin/plugin.json</td><td>-</td></tr>
+<tr><td>session-bookmark version</td><td>0.2.1 -&gt; 0.3.0 (minor: notes argument, branch markers)</td><td>plugins/session-bookmark/.claude-plugin/plugin.json</td><td>-</td></tr>
+<tr><td>todo-watch version</td><td>0.5.1 -&gt; 0.5.2 (patch: compaction fallback)</td><td>plugins/todo-watch/.claude-plugin/plugin.json</td><td>fallback-next-prompt</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>notes.json entry</strong>: <code>{&quot;added&quot;: &quot;2026-11-18T04:59:36Z&quot;, &quot;branch&quot;: &quot;1169-bookmark-removes&quot;, &quot;text&quot;: &quot;...&quot;}  (no &quot;branch&quot; key: a standing note)</code>, copied from <code>plugins/harness/skills/add-bookmark/commands/add_note.py:94-95</code></li>
+<li><strong>numbered note line (add_note.py list, the bookmark&#x27;s Session Notes, /session-bookmark notes)</strong>: <code>1. [1166-todo-snapshot-table-format; now on 1169-bookmark-removes] run amend-commit-msg | 2. [1169-bookmark-removes] keep the API frozen | 3. a standing note</code>, copied from <code>plugins/session-bookmark/hooks/bookmark.ts:86-91</code></li>
+<li><strong>add / remove / edit receipts</strong>: <code>note 3/20: [main] text | removed note 2: [main] text then the numbered list | edited note 1: text then the numbered list</code>, copied from <code>plugins/harness/skills/add-bookmark/commands/add_note.py:96</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>parseNotes|b\.notes|notes: string\[\]</code>: <code>docs/TODO/RepoToDo.json</code> (catalog prose citing parseNotes; history, unchanged), <code>plugins/harness/skills/add-bookmark/commands/add_note.py</code> (docstring names the mod&#x27;s parseNotes; read_notes keeps mirroring it (TASK-1)), <code>plugins/session-bookmark/hooks/bookmark.ts</code> (consumer of parseNotes and b.notes; moves to StoredNote (TASK-3)), <code>plugins/session-bookmark/hooks/notes.test.ts</code> (tests of parseNotes; updated for StoredNote (TASK-3)), <code>plugins/session-bookmark/hooks/notes.ts</code> (definition of parseNotes; returns StoredNote[] (TASK-3)), <code>plugins/session-bookmark/types/index.d.ts</code> (Bookmark.notes type; becomes StoredNote[] (TASK-3))</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: add_note.py: branch-scoped notes, remove N, edit N <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/add-bookmark/commands/add_note.py</code>, <code>tests/skills/test_add_note_script.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:91-96</code> holds <code>def add(path: Path, words: List[str]) -&gt; str:</code></li>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:99-101</code> holds <code>def listing(path: Path) -&gt; str:</code></li>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:86-87</code> holds <code>raise NoteError(f&quot;{MAX_NOTES} notes are stored; run clear first&quot;)</code></li>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:118-121</code> holds <code>sub.add_parser(&quot;add&quot;, help=&quot;store one note&quot;).add_argument(&quot;text&quot;, nargs=&quot;+&quot;)</code></li>
+<li><code>plugins/harness/skills/add-bookmark/commands/add_note.py:125-129</code> holds <code>def run(args: argparse.Namespace) -&gt; str:</code></li>
+</ul>
+<p class="action">Copy the planned tests/skills/test_add_note_script.py over the repo file first. In add_note.py: (1) add BRANCH_KEY = &quot;branch&quot; and OTHER_BRANCH_MARK = &quot;now on&quot; beside NOTES_VERSION. (2) current_branch(repo) -&gt; Optional[str]: `git -C &lt;repo&gt; rev-parse --abbrev-ref HEAD` through subprocess; None on a failure or the literal HEAD (detached). (3) note_body(note, current) -&gt; str: the text alone for a note without a usable branch (absent, not a string, or blank after strip); `[&lt;branch&gt;] &lt;text&gt;` when the branch equals current or current is None; `[&lt;branch&gt;; now on &lt;current&gt;] &lt;text&gt;` otherwise (OTHER_BRANCH_MARK in the middle). note_line(i, note, current) = f&quot;{i}. {note_body(note, current)}&quot;. (4) add(path, words, branch): stores {added, branch, text}, leaving the key out when branch is None; returns `note N/20: &lt;note_body(note, branch)&gt;`. checked_text&#x27;s full-file message names both `remove` and `clear`. (5) remove(path, number, current) and edit(path, number, words, current): number counts the usable notes read_notes returns (1-based); out of range raises NoteError `no note N; K stored`. edit runs checked_text without the full-file check, and keeps added and branch. Each returns `removed note N: &lt;body&gt;` or `edited note N: &lt;body&gt;` then a newline and listing(path, current). (6) listing(path, current) uses note_line. (7) parse_args: `add [--standing] text...`, `remove number` (int), `edit number text...`; run() resolves current = current_branch(args.repo) and passes branch None for --standing. Update the module docstring and Usage line. read_notes keeps passing a non-string branch through; note_body treats it as standing. Keep functions under 50 lines; Optional, not X | None.</p>
+<ul>
+<li>Test <code>tests/skills/test_add_note_script.py::test_a_full_file_refuses_another_note</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_list_numbers_the_notes</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_add_records_the_current_branch</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_add_standing_stores_no_branch</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_add_on_a_detached_head_stores_a_standing_note</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_list_marks_a_note_from_another_branch</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_remove_drops_one_note_and_prints_the_list</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_removing_the_last_note_says_none_are_left</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_remove_or_edit_out_of_range_changes_nothing</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_remove_on_an_absent_file_is_refused</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_edit_replaces_the_text_and_keeps_added_and_branch</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_edit_of_a_full_file_is_allowed</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_edit_refuses_blank_and_too_long_text</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_note_script.py::test_remove_and_edit_refuse_a_malformed_file</code> fails with AssertionError, then passes</li>
+<li>Record it: <code>plan.py record 2026 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: add-bookmark SKILL.md: --remove, --edit, --standing and the turn-free view <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/add-bookmark/SKILL.md</code>, <code>tests/skills/test_add_bookmark_skill_contract.py</code>, <code>README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/add-bookmark/SKILL.md:4</code> holds <code>argument-hint: &quot;-- &lt;note text&gt; | --list | --clear&quot;</code></li>
+<li><code>plugins/harness/skills/add-bookmark/SKILL.md:38-45</code> holds <code>| `--list` | `NOTE list` |</code></li>
+<li><code>plugins/harness/skills/add-bookmark/SKILL.md:53-56</code> holds <code>Replace each such reference with the concrete facts it stands</code></li>
+<li><code>plugins/harness/skills/add-bookmark/SKILL.md:65-66</code> holds <code>for a full file,</code></li>
+<li><code>README.md:161-165</code> holds <code>| `/harness:add-bookmark --clear`          | Drop every stored note                      |</code></li>
+</ul>
+<p class="action">Copy the planned tests/skills/test_add_bookmark_skill_contract.py over the repo file first. In SKILL.md: argument-hint becomes `-- &lt;note text&gt; | --standing &lt;note text&gt; | --list | --remove N | --edit N &lt;note text&gt; | --clear` (keep the leading `-- &lt;` the guidance-tail contract reads). Arguments table and first-word table gain `--standing` (`NOTE add --standing &#x27;&lt;line&gt;&#x27;`), `--remove N` (`NOTE remove N`), `--edit N &lt;text&gt;` (write the new line by the note-writing rules, then `NOTE edit N &#x27;&lt;line&gt;&#x27;`); a missing or non-numeric N prints the usage line and stops. Update the usage line. In Writing the note: the script records the current branch, so the text need not spell out a branch scope; pass --standing for a note meant for every branch. State that a listed note marked `[&lt;branch&gt;; now on &lt;current&gt;]` was added on another branch (per D4: confirm it with the developer before applying or skipping it, never drop it silently). Name `/session-bookmark notes` (the session-bookmark mod) as the view that prints the same numbered list without a model turn. Reply section: add the `removed note N:` and `edited note N:` receipts followed by the list. Full-file exit: relay and stop, naming --remove. Also update the root README.md add-bookmark section (example block, form table, bullets) to match.</p>
+<ul>
+<li>Test <code>tests/skills/test_add_bookmark_skill_contract.py::test_skill_hints_every_form</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_bookmark_skill_contract.py::test_skill_runs_the_script_through_the_launcher_with_each_subcommand</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_add_bookmark_skill_contract.py::test_skill_names_the_turn_free_notes_view</code> fails with AssertionError, then passes</li>
+<li>Record it: <code>plan.py record 2026 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: session-bookmark: parse the branch and mark notes from another branch in the bookmark <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/session-bookmark/hooks/notes.ts</code>, <code>plugins/session-bookmark/hooks/notes.test.ts</code>, <code>plugins/session-bookmark/hooks/bookmark.ts</code>, <code>plugins/session-bookmark/hooks/bookmark.test.ts</code>, <code>plugins/session-bookmark/types/index.d.ts</code>, <code>plugins/session-bookmark/README.md</code>, <code>tests/mods/test_session_bookmark_notes_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/session-bookmark/hooks/notes.ts:59-64</code> holds <code>export const parseNotes = (text: string): string[] =&gt; {</code></li>
+<li><code>plugins/session-bookmark/hooks/notes.ts:49-53</code> holds <code>const noteText = (entry: unknown): string | null =&gt; {</code></li>
+<li><code>plugins/session-bookmark/hooks/bookmark.ts:85-91</code> holds <code>const noteLines = (notes: readonly string[]): string[] =&gt; [</code></li>
+<li><code>plugins/session-bookmark/hooks/bookmark.ts:113-114</code> holds <code>if (notes.length &gt; 0) lines.push(...noteLines(notes))</code></li>
+<li><code>plugins/session-bookmark/types/index.d.ts:16-17</code> holds <code>notes: string[]</code></li>
+<li><code>tests/mods/test_session_bookmark_notes_contract.py:67</code> holds <code>assert [sorted(n) for n in stored[&quot;notes&quot;]] == [[&quot;added&quot;, &quot;text&quot;]]</code></li>
+<li><code>plugins/session-bookmark/README.md:20-21</code> holds <code>Notes added with the `harness:add-bookmark` skill print in a `## Session Notes` section</code></li>
+</ul>
+<p class="action">Copy the planned tests/mods/test_session_bookmark_notes_contract.py over the repo file first. notes.ts: export NOTE_BRANCH_KEY = &#x27;branch&#x27; and OTHER_BRANCH_MARK = &#x27;now on&#x27; (single-quoted literals: the contract reads them with ts_string); export type StoredNote = { text: string; branch: string | null }; parseNotes returns StoredNote[] (branch null when absent, not a string or blank); export noteLine(i, note, current: string | null) producing exactly add_note.py&#x27;s note_line format (`N. text`, `N. [b] text`, `N. [b; now on c] text`). types/index.d.ts: Bookmark.notes becomes StoredNote[] (import the type from hooks/notes or declare it there). bookmark.ts: noteLines uses noteLine with b.branch; formatBookmark accepts a bookmark held in $.state by an earlier load whose notes are strings (read a string as a standing note). Per D4, when any note&#x27;s branch differs from b.branch, print one hint line under `## Session Notes` (exported constant NOTES_STALE_HINT) saying such a note was added on another branch and is confirmed with the developer before it is applied or skipped, never dropped silently. notes.test.ts and bookmark.test.ts: cover the branch parse (absent, non-string, blank), each line form, the hint shown only with a mismatch, a null current branch printing no mismatch, and an old string-notes bookmark. README: the Session Notes bullet names the branch marker and the hint.</p>
+<ul>
+<li>Test <code>tests/mods/test_session_bookmark_notes_contract.py::test_branch_key_matches</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_session_bookmark_notes_contract.py::test_other_branch_mark_matches</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_session_bookmark_notes_contract.py::test_a_stored_note_has_the_shape_the_mod_parses</code> fails with AttributeError, then passes</li>
+<li>Run <code>claude plugin test plugins/session-bookmark</code>: 0 fail</li>
+<li>Record it: <code>plan.py record 2026 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: session-bookmark: `/session-bookmark notes` prints the stored notes with no model turn <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/session-bookmark/hooks/bookmark.ts</code>, <code>plugins/session-bookmark/hooks/bookmark.test.ts</code>, <code>plugins/session-bookmark/README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/session-bookmark/hooks/bookmark.ts:240-243</code> holds <code>on(&#x27;command.run&#x27;, { command: COMMAND }, async $ =&gt; {</code></li>
+<li><code>plugins/session-bookmark/hooks/bookmark.ts:233-236</code> holds <code>.register({ name: COMMAND, description: &#x27;Show the compaction bookmark saved in this session&#x27; })</code></li>
+<li><code>plugins/session-bookmark/hooks/bookmark.ts:172-184</code> holds <code>const captureNotes = async ($: Dollar, top: string | null): Promise&lt;string[]&gt; =&gt; {</code></li>
+<li><code>plugins/session-bookmark/hooks/bookmark.test.ts:165</code> holds <code>const runCommand = async ($: Engine, command: string): Promise&lt;string&gt; =&gt; {</code></li>
+<li><code>plugins/session-bookmark/README.md:39</code> holds <code>| `/session-bookmark` | Prints the bookmark held in this session&#x27;s state</code></li>
+</ul>
+<p class="action">bookmark.ts: export NOTES_ARG = &#x27;notes&#x27;. The command.run handler reads e.args trimmed: empty prints the saved bookmark as today; NOTES_ARG reads the notes live (captureGit for the branch and git top, then captureNotes) and prints the numbered list with noteLine against the current branch, or `no notes`, plus NOTES_STALE_HINT when a note carries another branch; any other argument prints `usage: /session-bookmark [notes]`. Register the command&#x27;s description to mention notes. The handler never throws (keep the .catch). bookmark.test.ts: runCommand with args &#x27;notes&#x27; (notes present, absent, other-branch note, a malformed file), an unknown argument, and bare command unchanged; extend runCommand to take args. README Command table: a `/session-bookmark notes` row (live read, same numbering as `add-bookmark --list`, no model turn).</p>
+<ul>
+<li>Test <code>tests/mods/test_session_bookmark_notes_contract.py::test_the_notes_argument_is_the_documented_one</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin test plugins/session-bookmark</code>: 0 fail</li>
+<li>Record it: <code>plan.py record 2026 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: session-bookmark: deliver the bookmark when another mod kept session.compact from reaching it <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/session-bookmark/hooks/bookmark.ts</code>, <code>plugins/session-bookmark/hooks/bookmark.test.ts</code>, <code>plugins/session-bookmark/types/index.d.ts</code>, <code>plugins/session-bookmark/README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/session-bookmark/hooks/bookmark.ts:220-231</code> holds <code>on(&#x27;session.compact&#x27;, INSTALLING, async ($, e, next) =&gt; {</code></li>
+<li><code>plugins/session-bookmark/types/index.d.ts:5</code> holds <code>trigger: &#x27;manual&#x27; | &#x27;auto&#x27; | &#x27;plugin&#x27;</code></li>
+<li><code>plugins/session-bookmark/README.md:49</code> holds <code>## Known limitations</code></li>
+</ul>
+<p class="action">Per D5 (fallback-next-prompt). bookmark.ts: a module-level record { installed: boolean; owed: boolean }. The session.compact handler sets installed = true once it appended the bookmark. A `session.append` hook with matcher { door: &#x27;compaction&#x27; } on the main loop (e.agentId undefined) calls next first, then sets owed = !installed. A `prompt.submit` hook on the main loop: when owed, builds a bookmark (trigger &#x27;detected&#x27;, git and live notes, lastMessages [] since the compacted prompts are gone, instructions null), stores it in bookmarkState, and passes formatBookmark(b) in e.context to next; then resets installed and owed. Reset installed at each prompt.submit too, so the next compaction starts clean. Every hook passes through on any failure (.catch to next). types/index.d.ts: trigger gains &#x27;detected&#x27; with a doc line. bookmark.test.ts: a world whose compaction row arrives with no session.compact dispatch through the mod (call session.append with door &#x27;compaction&#x27;, then a prompt) shows the bookmark in the prompt&#x27;s context once; a normal compaction followed by its row and a prompt adds no context; a subagent&#x27;s compaction row owes nothing. Check the engine type docs for session.append and prompt.submit context in a `.claude-plugin/types/claude-code/index.d.ts` generated beside another mod. README: what the fallback does and its limit (a mid-turn auto-compaction gets the bookmark only at the next prompt; the fallback bookmark carries no recent prompts).</p>
+<ul>
+<li>Run <code>claude plugin test plugins/session-bookmark</code>: 0 fail</li>
+<li>Record it: <code>plan.py record 2026 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: todo-watch: re-force the TODO_SYNC line after a compaction its session.compact hook missed <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/todo-watch/hooks/checks.ts</code>, <code>plugins/todo-watch/hooks/checks.test.ts</code>, <code>plugins/todo-watch/README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/todo-watch/hooks/checks.ts:693-696</code> holds <code>on(&#x27;session.compact&#x27;, async ($, e, next) =&gt; {</code></li>
+<li><code>plugins/todo-watch/hooks/checks.ts:521-522</code> holds <code>const isMainCompaction = (e: SessionCompactInput, result: SessionCompactResult): boolean =&gt;</code></li>
+<li><code>plugins/todo-watch/README.md:133</code> holds <code>| `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the line again. |</code></li>
+</ul>
+<p class="action">Per D5. checks.ts registerContext: add a `session.append` hook with matcher { door: &#x27;compaction&#x27; } that calls next, then sets session.isContextForced = true for the main loop (e.agentId undefined); .catch passes to next. Keep the session.compact hook (it still covers the normal path). checks.test.ts: a compaction row with no session.compact dispatch makes the next prompt carry the TODO_SYNC line again; a subagent&#x27;s compaction row does not. README: the Hooks table row for session.compact names session.append too, and M2&#x27;s text says the line returns after a compaction another mod hid from session.compact.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/todo-watch</code>: 0 fail</li>
+<li>Record it: <code>plan.py record 2026 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-7" data-item="TASK-7">
+<h3>TASK-7: Versions and release notes <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-2, TASK-5, TASK-6</p>
+<p><strong>Files:</strong> <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>plugins/session-bookmark/.claude-plugin/plugin.json</code>, <code>plugins/todo-watch/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>docs/RELEASES/v1.0.0.md:30-34</code> holds <code>Unchanged: git-status, parallel2-lanes, pytest-scope and session-bookmark.</code></li>
+<li><code>plugins/session-bookmark/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.2.1&quot;,</code></li>
+</ul>
+<p class="action">Bump plugins/harness/.claude-plugin/plugin.json 0.79.1 -&gt; 0.80.0, plugins/session-bookmark/.claude-plugin/plugin.json 0.2.1 -&gt; 0.3.0, plugins/todo-watch/.claude-plugin/plugin.json 0.5.1 -&gt; 0.5.2. docs/RELEASES/v1.0.0.md: the Plugins table rows harness `0.65.1 | 0.80.0`, todo-watch `0.4.1 | 0.5.2`, a new session-bookmark row `0.2.1 | 0.3.0`; drop session-bookmark from the Unchanged line and name its minor bump in the intro paragraph; add one Changes line each for #272 (add-bookmark remove and edit), #279 (branch-scoped notes and the now-on marker), #305 (`/session-bookmark notes`) and #204 (the compaction fallback in session-bookmark and todo-watch).</p>
+<ul>
+<li>Run <code>git diff --stat 8325e212aa076ea8b39c67cc1bdebcc17d9133ac -- plugins/harness/.claude-plugin/plugin.json plugins/session-bookmark/.claude-plugin/plugin.json plugins/todo-watch/.claude-plugin/plugin.json docs/RELEASES/v1.0.0.md</code>: 4 files changed</li>
+<li>Record it: <code>plan.py record 2026 TASK-7 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2026/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

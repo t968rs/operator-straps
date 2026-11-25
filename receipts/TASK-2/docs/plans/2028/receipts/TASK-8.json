@@ -1,0 +1,19 @@
+{
+  "plan_id": "2028",
+  "item": "TASK-8",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "cb49cb0c229ca1d0649446fed87b68f73665b0b2"
+    }
+  },
+  "evidence": "staged tree cb49cb0",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-20",
+  "seal": "b667a16da302679a659f5ef1ba67912258157a482235f097fa7d8d6f4d4ae8a8"
+}

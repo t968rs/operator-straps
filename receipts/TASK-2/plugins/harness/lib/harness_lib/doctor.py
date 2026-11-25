@@ -1,0 +1,284 @@
+"""Environment checks behind ``/harness:doctor``: the interpreter, its modules, the tools and the project.
+
+Nothing here needs a third-party module at import time: the checks exist to run, and to say what is wrong,
+when ``pydantic``, ``jsonschema`` or ``referencing`` are missing.
+"""
+from __future__ import annotations
+
+import importlib
+import importlib.metadata
+import json
+import os
+import re
+import shutil
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Mapping, Optional, Tuple
+
+if TYPE_CHECKING:
+    from harness_lib.config import HarnessConfig
+
+OK, WARN, FAIL = "ok", "warn", "fail"
+
+#: Python the harness targets.
+MIN_PYTHON: Tuple[int, int] = (3, 11)
+
+#: Environment variables ``hpy`` reads for an interpreter, in the order it tries them.
+INTERPRETER_VARS: Tuple[str, ...] = ("HARNESS_PY", "CLAUDE_PLUGIN_OPTION_PYTHON")
+
+#: (module, v2-only attribute or None, pip requirement); ``pr_review.py`` carries the same literal and gates
+#: on it through ``requirement_met``, as ``plan.py`` and ``plan_api`` do through ``missing_pydantic``. A
+#: ``>=`` requirement is also a release floor: pydantic 2.0 passes the major-version probe but lacks what
+#: the plan models build on, so their import fails there.
+REQUIRED_MODULES: Tuple[Tuple[str, Optional[str], str], ...] = (
+    ("pydantic", "model_validator", "pydantic>=2.1"),
+    ("referencing", None, "referencing"),
+    ("jsonschema", None, "jsonschema"),
+)
+
+
+def _numeric(text: str) -> Optional[Tuple[int, ...]]:
+    """The leading numeric release in ``text`` (``2.4.2rc1`` -> ``(2, 4, 2)``), else None."""
+    found = re.match(r"\d+(?:\.\d+)*", text)
+    return tuple(int(part) for part in found.group(0).split(".")) if found else None
+
+
+def _floor(requirement: str) -> Optional[Tuple[int, ...]]:
+    """The release after ``>=`` in ``requirement`` (``pydantic>=2.1`` -> ``(2, 1)``), else None."""
+    _, sep, spec = requirement.partition(">=")
+    return _numeric(spec) if sep else None
+
+
+#: Release floor of each required module that has one, read from its requirement in ``REQUIRED_MODULES``.
+MIN_RELEASES: Mapping[str, Tuple[int, ...]] = {
+    module: floor for module, _, req in REQUIRED_MODULES if (floor := _floor(req)) is not None
+}
+
+
+@dataclass(frozen=True)
+class Check:
+    """One finding: ``status`` is ``ok``, ``warn`` or ``fail``; ``fix`` is a command or an instruction."""
+
+    status: str
+    name: str
+    detail: str
+    fix: Optional[str] = None
+
+
+def check_python() -> Check:
+    """The running interpreter's version against the harness floor."""
+    found = sys.version_info[:2]
+    label = f"{found[0]}.{found[1]} ({sys.executable})"
+    if found < MIN_PYTHON:
+        return Check(FAIL, "python", f"{label}; the harness targets {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+")
+    return Check(OK, "python", label)
+
+
+def _same_interpreter(configured: str) -> bool:
+    resolved = shutil.which(configured) or configured
+    return os.path.normcase(os.path.realpath(resolved)) == os.path.normcase(os.path.realpath(sys.executable))
+
+
+def configured_python(settings: Path) -> Optional[str]:
+    """The harness plugin's ``python`` option as recorded in the user settings file, if any."""
+    try:
+        data = json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    configs = data.get("pluginConfigs") if isinstance(data, dict) else None
+    for key, entry in (configs.items() if isinstance(configs, dict) else ()):
+        options = entry.get("options") if key.startswith("harness@") and isinstance(entry, dict) else None
+        value = options.get("python") if isinstance(options, dict) else None
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def user_settings_path(environ: Mapping[str, str]) -> Path:
+    """The user settings file: under ``CLAUDE_CONFIG_DIR`` when that is set, else the default directory."""
+    return Path(environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "settings.json"
+
+
+def _unexported_option(configured: str, settings: Path) -> Check:
+    """The ``python`` option is set in user settings, yet the shell ``hpy`` ran in does not carry it."""
+    return Check(WARN, "interpreter",
+                 f"the harness python option is {configured} in user settings, but this shell does not "
+                 f"export it; hpy fell back to {sys.executable}",
+                 'set HARNESS_PY to that interpreter under "env" in the project\'s '
+                 f".claude/settings.local.json (one project, kept out of git) or in {settings.as_posix()} "
+                 "(every project); the python option is not exported to the shell skill commands run in")
+
+
+def check_interpreter(environ: Mapping[str, str], configured: Optional[str] = None,
+                      settings: Optional[Path] = None) -> Check:
+    """Which override, if any, picked the running interpreter; a set override ``hpy`` skipped is a warning.
+
+    ``configured`` is the ``python`` option from the user settings at ``settings`` (default: the file
+    ``user_settings_path`` names for ``environ``): when it names another interpreter and no override variable
+    reached the shell, ``hpy`` ignored it, which is a warning too.
+    """
+    skipped: List[str] = []
+    for var in INTERPRETER_VARS:
+        value = environ.get(var)
+        if not value:
+            continue
+        if _same_interpreter(value):
+            detail = f"{sys.executable} (from {var})"
+            if skipped:
+                note = f"{', '.join(skipped)} did not start and was skipped"
+                fix = "fix or unset the override that was skipped"
+                return Check(WARN, "interpreter", f"{detail}; {note}", fix)
+            return Check(OK, "interpreter", detail)
+        skipped.append(f"{var}={value}")
+    if skipped:
+        return Check(WARN, "interpreter",
+                     f"{', '.join(skipped)} did not start; hpy fell through to {sys.executable}",
+                     "point HARNESS_PY (project settings env) at a working interpreter")
+    if configured and not _same_interpreter(configured):
+        return _unexported_option(configured, settings or user_settings_path(environ))
+    return Check(OK, "interpreter", f"{sys.executable} (PATH fallback; set HARNESS_PY to pin one)")
+
+
+def _release(dist: str) -> Optional[Tuple[int, ...]]:
+    """The numeric release of the installed distribution ``dist`` (``2.4.2`` -> ``(2, 4, 2)``), else None."""
+    try:
+        return _numeric(importlib.metadata.version(dist))
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def _dist(requirement: str) -> str:
+    return requirement.split(">=")[0]
+
+
+def requirement_met(module: str, attr: Optional[str], requirement: str) -> bool:
+    """``module`` imports, has ``attr`` and, when ``requirement`` sets a floor and the release is known,
+    meets it. Stdlib only, so a driver can call it before importing anything that needs ``module``."""
+    try:
+        loaded = importlib.import_module(module)
+    except ImportError:
+        return False
+    if attr is not None and not hasattr(loaded, attr):
+        return False
+    floor = _floor(requirement)
+    if floor is None:
+        return True
+    found = _release(_dist(requirement))
+    return found is None or found >= floor
+
+
+def missing_pydantic() -> Optional[str]:
+    """The pydantic pip requirement when the installed pydantic does not meet it, else None."""
+    entry = next(entry for entry in REQUIRED_MODULES if entry[0] == "pydantic")
+    return None if requirement_met(*entry) else entry[2]
+
+
+def _version(requirement: str) -> str:
+    dist = _dist(requirement)
+    try:
+        return f"{dist} {importlib.metadata.version(dist)}"
+    except importlib.metadata.PackageNotFoundError:
+        return dist
+
+
+def check_modules() -> Check:
+    """Every required module imports at its floor; otherwise one pip line naming each missing or old one."""
+    missing = [req for module, attr, req in REQUIRED_MODULES if not requirement_met(module, attr, req)]
+    if not missing:
+        return Check(OK, "modules", ", ".join(_version(req) for _, _, req in REQUIRED_MODULES))
+    pip = f'"{sys.executable}" -m pip install ' + " ".join(f'"{req}"' for req in missing)
+    return Check(FAIL, "modules", "missing or too old: " + ", ".join(missing), pip)
+
+
+def check_tool(name: str, severity: str, needed_by: str) -> Check:
+    """``name`` is on PATH; ``severity`` is the status reported when it is not."""
+    path = shutil.which(name)
+    if path:
+        return Check(OK, name, path)
+    return Check(severity, name, f"not on PATH; {needed_by}", f"install {name} and reopen the terminal")
+
+
+def _repository_check(root: Path) -> Check:
+    if (root / ".git").exists():
+        return Check(OK, "repository", str(root))
+    return Check(WARN, "repository", f"{root} is not a git repository; worktree and branch tooling need one",
+                 "run the command from inside the project's checkout")
+
+
+def _config_check(root: Path) -> Tuple[Check, Optional[HarnessConfig]]:
+    from harness_lib.config import CONFIG_REL, ConfigError, load_config
+    source = root / CONFIG_REL
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        fix = f"repair {source.as_posix()} (schema: config/harness.schema.json)"
+        return Check(FAIL, "config", str(exc), fix), None
+    rel = CONFIG_REL.as_posix()
+    detail = f"{source.as_posix()} loaded" if source.is_file() else f"no {rel}, defaults apply"
+    return Check(OK, "config", detail), cfg
+
+
+def _writable_ancestor(path: Path) -> Path:
+    probe = path
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    return probe
+
+
+def _worktree_root_check(cfg: HarnessConfig) -> Check:
+    target = cfg.resolve_worktree_root()
+    anchor = _writable_ancestor(target)
+    if os.access(anchor, os.W_OK):
+        return Check(OK, "worktree_root", str(target))
+    return Check(WARN, "worktree_root", f"{target} cannot be created: {anchor} is not writable",
+                 "set worktree_root in .claude/harness.json to a writable folder")
+
+
+def check_project(start: Path) -> List[Check]:
+    """Repository, config and worktree-root checks for the project holding ``start``."""
+    from harness_lib.project import project_root
+    root = project_root(start)
+    config, cfg = _config_check(root)
+    checks = [_repository_check(root), config]
+    if cfg is not None:
+        checks.append(_worktree_root_check(cfg))
+    return checks
+
+
+def run_checks(start: Path, environ: Mapping[str, str]) -> List[Check]:
+    """Every check, in the order the report lists them."""
+    settings = user_settings_path(environ)
+    return [
+        check_python(),
+        check_interpreter(environ, configured_python(settings), settings),
+        check_modules(),
+        check_tool("git", FAIL, "every harness skill needs it"),
+        check_tool("gh", WARN, "pr-review, pr-team and pr-sum need it"),
+        *check_project(start),
+    ]
+
+
+def summary(checks: List[Check]) -> str:
+    """The status line: overall state, the non-ok counts, the number of checks."""
+    fails = sum(1 for check in checks if check.status == FAIL)
+    warns = sum(1 for check in checks if check.status == WARN)
+    state = FAIL if fails else WARN if warns else OK
+    parts = [f"{n} {word}" for n, word in ((fails, "fail"), (warns, "warn")) if n]
+    counts = ", ".join(parts)
+    return f"doctor [{state}] | " + (f"{counts} | " if counts else "") + f"{len(checks)} checks"
+
+
+def render(checks: List[Check]) -> List[str]:
+    """One line per check, with the fix on a continuation line when there is one."""
+    lines: List[str] = []
+    for check in checks:
+        lines.append(f"[{check.status}] {check.name}: {check.detail}")
+        if check.fix:
+            lines.append(f"       fix: {check.fix}")
+    return lines
+
+
+def exit_code(checks: List[Check]) -> int:
+    """1 when any check failed, else 0 (warnings do not fail the run)."""
+    return 1 if any(check.status == FAIL for check in checks) else 0

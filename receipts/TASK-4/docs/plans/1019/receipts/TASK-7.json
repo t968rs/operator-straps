@@ -1,0 +1,29 @@
+{
+  "plan_id": "1019",
+  "item": "TASK-7",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "a039e02158c40c8339146770ed271026d7ed95cf"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_sync_gh_todo_skill_contract.py::test_skill_command_lines_parse",
+        "tests/skills/test_sync_gh_todo_skill_contract.py::test_agent_documents_the_sync_operation",
+        "tests/skills/test_todo_inbox_prose_contract.py::test_structural_runs_hold_a_lease[retire]",
+        "tests/skills/test_todo_inbox_prose_contract.py::test_each_run_stages_its_spec_at_a_path_of_its_own[sync]",
+        "tests/skills/test_todo_inbox_prose_contract.py::test_the_add_skill_drains_the_inbox_after_the_agent"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_sync_gh_todo_skill_contract.py::test_skill_command_lines_parse tests/skills/test_sync_gh_todo_skill_contract.py::test_agent_documents_the_sync_operation tests/skills/test_todo_inbox_prose_contract.py::test_structural_runs_hold_a_lease[retire] tests/skills/test_todo_inbox_prose_contract.py::test_each_run_stages_its_spec_at_a_path_of_its_own[sync] tests/skills/test_todo_inbox_prose_contract.py::test_the_add_skill_drains_the_inbox_after_the_agent"
+    }
+  },
+  "evidence": "staged tree a039e02: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-15",
+  "seal": "aba7bda65e9abc0718afa97ab622cdcc7c91faf421bb74d0005110371d2f0ae0"
+}

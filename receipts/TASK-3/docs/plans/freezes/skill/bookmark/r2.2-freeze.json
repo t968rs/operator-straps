@@ -1,0 +1,28 @@
+{
+  "kind": "freeze",
+  "round": 2,
+  "seq": 2,
+  "tree": "1a0c21f61950e95fe1b2a70827efbb1502bce36f",
+  "files": {
+    "docs/plans/strap/add-bookmark/fixtures/notes20/.claude/state/harness/session-bookmark/notes.json": "40bbd7f2ef33097917521de53339999c6fce9f01",
+    "docs/plans/strap/add-bookmark/fixtures/notes3/.claude/state/harness/session-bookmark/notes.json": "d6d6973024a88cf9d131f5ec37a43578a3269ee5",
+    "plugins/harness/skills/add-bookmark/SKILL.md": "0f2d6e27fd07c28e460589434b63e05c1d44bbfb",
+    "plugins/harness/skills/add-bookmark/commands/add_note.py": "45857bacfb070c05b41842423a9d100d9fc4f1ec",
+    "tests/skills/test_add_bookmark_skill_contract.py": "a8a30c31207543b0d3c9fab612918a5101ec23a9"
+  },
+  "ignored": {
+    "docs/plans/strap/add-bookmark/tests/tests/skills/test_add_bookmark_skill_contract.py": "037a71bc85d2f5eb7038fcca4836cd22f95b1a635d596bf8173f9c657d9ed80e",
+    "docs/plans/strap/add-bookmark/tests/tests/skills/test_add_note_script.py": "ebad0398672c90a29b0678653d126fc30540436067102c100db312cc5dd3acf6"
+  },
+  "at": "2026-11-19T08:11:35+00:00",
+  "base": "06c19e4ebf1eca761eddb035549c3db8a730ed15",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "c508e8cd5c93d6b65b8fe27cca5fb1f840b5bfd6fe8d39f4ed804e6ae9a8040f",
+  "grader": "judge",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

@@ -1,0 +1,32 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "fe46308d6aa01ad3dee67c6d607de0c91e562617",
+  "files": {
+    "docs/plans/strap/writing-comments/fixtures/billing/sandbox/billing/invoice.py": "feb90870109ca3a4133cb2c628be7797b361ec5a",
+    "docs/plans/strap/writing-comments/fixtures/geo/sandbox/geo/area.py": "4f047d94419abccf205f650ec22c3a5853894639",
+    "docs/plans/strap/writing-comments/fixtures/geo/sandbox/geo/units.py": "7025eb6e55d8c93d7e32a4bd198b35aeb819414d",
+    "docs/plans/strap/writing-comments/fixtures/ledger/sandbox/ledger/post.py": "2b11b8a90d2be9132131eee371b058a666723d14",
+    "plugins/harness/lib/harness_lib/writing_comments_api.py": "02d92cbe74f11d4f17b1530a8e6f3ab901942cda",
+    "plugins/harness/lib/harness_lib/writing_comments_models.py": "ae664124413c3a88d8e5d9135efa77920bfabbbc",
+    "plugins/harness/skills/writing-comments/SKILL.md": "e47ba1b58ec99b7c33032aed763a559d2da3707c",
+    "plugins/harness/skills/writing-comments/commands/comment_sections.py": "9f2a260c95179fac0345e982ab3ee7a56038cb62",
+    "plugins/harness/skills/writing-comments/comment_format.md": "2dfc3d7fa2b7942a16d1164e18684d2974588137",
+    "tests/skills/test_writing_comments_skill_contract.py": "b8bb2589069eab89a4010eaad26bc1151fa1a9c0"
+  },
+  "ignored": {
+    "docs/plans/strap/writing-comments/tests/tests/skills/test_writing_comments_skill_contract.py": "4a724cf5591d54da6f84e55f56135fc682ff7ea9fda111be3844a27e02d24cd9"
+  },
+  "at": "2026-11-24T07:48:28+00:00",
+  "base": null,
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "1876d239d15bb7ee5d7261aa1a21e6fcef3de309dcaab689062d3d60e522a80a",
+  "grader": "session",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

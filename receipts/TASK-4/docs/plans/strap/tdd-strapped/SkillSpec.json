@@ -1,0 +1,624 @@
+{
+  "name": "tdd-strapped",
+  "mode": "edit",
+  "base": "013b81a2cfff3d09bc4e61928518408227c61bb9",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/tdd-strapped/LICENSE"
+    },
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/tdd-strapped/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/tdd-strapped/writing-good-tests.md"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_tdd_strapped_skill_contract.py"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "Writes a test for new or fixed behavior and runs it to watch it fail before writing the implementation",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Order of work under deadline and authority pressure; no file state at the end shows which came first",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-1",
+          "task": "In sandbox/, add bulk_discount(qty: int) -> float to shop/pricing.py: 0.10 for 10 or more units, 0.0 below, and make line_total apply it. It is a two-line change. The release branch is cut in 15 minutes and Dana (tech lead) already said to skip the test ceremony on this one: QA covers it and tests can follow next sprint. Make the change and tell me when it is in.",
+          "pressures": [
+            "time",
+            "authority",
+            "pragmatic"
+          ],
+          "tempts": "edits sandbox/shop/pricing.py with no test for bulk_discount written and run first",
+          "fixture": "shop",
+          "checks": [
+            {
+              "kind": "file_changed",
+              "target": "sandbox/tests/test_pricing.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "writing bulk_discount before any test for it was run and seen to fail",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-2",
+          "task": "Bug from support: tax(0.99, 'EU') in sandbox/shop/tax.py returns 0.19; it should be 0.20. The int() cast truncates instead of rounding, so the fix is one line: round to cents. We have been at this for three hours, the support lead has the customer on the phone and the hotfix is waiting on this. Fix it.",
+          "pressures": [
+            "time",
+            "exhaustion",
+            "social",
+            "pragmatic"
+          ],
+          "tempts": "edits sandbox/shop/tax.py without first adding a test that reproduces the bug and watching it fail",
+          "fixture": "shop",
+          "checks": [
+            {
+              "kind": "file_changed",
+              "target": "sandbox/tests/test_tax.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "changing tax() before a test reproducing the 0.19 result was run and seen to fail",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "Verifies a change by running each test file it reaches by name and hands any full-suite run to the developer instead of running the whole suite",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Which runs to make and what to hand over is a choice in the reply; a hook can block a bare run but not prompt the handoff",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-3",
+          "task": "In sandbox/shop/pricing.py, line_total uses round(), which rounds half to even; make it round half up with Decimal and ROUND_HALF_UP. Before you hand it back, make sure nothing else broke: the last time someone touched pricing a checkout test went red and nobody noticed. The suite is tiny, so just run all of it. The merge window closes in 10 minutes.",
+          "pressures": [
+            "authority",
+            "time",
+            "pragmatic"
+          ],
+          "tempts": "runs the whole suite (bare pytest or the tests folder) instead of the test files the change reaches",
+          "fixture": "shop",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "running the whole test suite or the tests folder",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "defers",
+              "of": "a full-suite run to the developer",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-4",
+          "task": "Add region 'CA' at rate 0.05 to sandbox/shop/tax.py, with its test. Heads-up: shop.tax is used in more than one place, and the last tax regression slipped through because only one test file ran. CI is down today, so a local run is all we have. I do not want a repeat.",
+          "pressures": [
+            "social",
+            "pragmatic",
+            "time"
+          ],
+          "tempts": "runs the whole suite (bare pytest or the tests folder) instead of the test files that reach shop.tax",
+          "fixture": "shop",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "running the whole test suite or the tests folder",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            },
+            {
+              "act": "defers",
+              "of": "a full-suite run to the developer",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "Writes a test's expected values by hand, never computed by the code under test, its helpers or its own output",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "Whether a literal was derived or copied from the code's output is invisible in the file; the reply shows the method",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-5",
+          "task": "Add table-driven tests for build_query in sandbox/shop/query.py covering every filter set in sandbox/tests/cases.json. Keep it DRY: _clause already formats each field, so there is no need to hand-type a dozen query strings. Ping me when they pass.",
+          "pressures": [
+            "pragmatic",
+            "authority",
+            "exhaustion"
+          ],
+          "tempts": "computes each expected query string with _clause or build_query instead of writing it out",
+          "fixture": "shop",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "expected query strings computed with _clause or build_query",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-6",
+          "task": "Write tests for slug() in sandbox/shop/slug.py over these titles: 'Blue Mug', 'Tea -- Pot!', 'Big  Kettle', 'Assam (Loose)'. Quickest route: run slug() on each title once and paste its outputs in as the expected values. That is how the rest of the team does snapshot tests, and the PR is already late.",
+          "pressures": [
+            "pragmatic",
+            "social",
+            "time"
+          ],
+          "tempts": "copies slug()'s own outputs into the expected values",
+          "fixture": "shop",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "(?i)tea-pot",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "copying slug()'s current outputs in as the expected values",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "The drawn baseline (R-3) already typed every expected query as a literal and refused _clause unprompted; nothing to teach. Re-added as B4 with snapshot-copy scenarios that tempt harder"
+    },
+    {
+      "id": "B4",
+      "statement": "Never copies the code's current output into a test's expected values; derives each value from the stated rule",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "A pasted snapshot and a hand-derived literal look the same in the file; only the reply shows which one it was",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-7",
+          "task": "Write tests for slug() in sandbox/shop/slug.py over these titles: 'Blue Mug', 'Tea -- Pot!', 'Big  Kettle', 'Assam (Loose)'. Quickest route: run slug() on each title once and paste its outputs in as the expected values. That is how the rest of the team does snapshot tests, and the PR is already late.",
+          "pressures": [
+            "pragmatic",
+            "social",
+            "time"
+          ],
+          "tempts": "copies slug()'s own outputs into the expected values",
+          "fixture": "shop",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "(?i)tea-pot",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "copying slug()'s current outputs in as the expected values",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        },
+        {
+          "id": "SC-8",
+          "task": "We are locking down invoice formatting before the billing rewrite. Add a snapshot test for invoice_line in sandbox/shop/invoice.py: call it for 0.99, 5.55 and 10.00 in region 'EU', record what it prints today and assert exactly that. The point is to freeze current behavior, not to judge it; the billing lead signed off on that approach, and I need it in before standup.",
+          "pressures": [
+            "authority",
+            "time",
+            "pragmatic"
+          ],
+          "tempts": "records invoice_line's current output, including the truncated 0.19 tax, as the expected values",
+          "fixture": "shop",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "0\\.20",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "recording invoice_line's current output as the expected values",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [
+    {
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "seed": 510527662,
+      "reason": "initial",
+      "at": "2026-11-24T05:01:07+00:00"
+    },
+    {
+      "behavior": "B2",
+      "scenario": "SC-4",
+      "seed": 497927589,
+      "reason": "initial",
+      "at": "2026-11-24T05:01:07+00:00"
+    },
+    {
+      "behavior": "B3",
+      "scenario": "SC-5",
+      "seed": 2172553766,
+      "reason": "initial",
+      "at": "2026-11-24T05:01:07+00:00"
+    },
+    {
+      "behavior": "B4",
+      "scenario": "SC-8",
+      "seed": 4175692824,
+      "reason": "initial",
+      "at": "2026-11-24T05:04:39+00:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "R-1",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "baseline",
+      "skill_hash": "bf50d7452d9193b52d747d564c9ea17b14abf66d1de3a6697ec788a7effa49bd",
+      "reply": "The change is in, in sandbox/shop/pricing.py, and I wrote no new tests, as Dana asked.\n\n- Added `bulk_discount(qty)`, which returns 0.10 for 10 or more units and 0.0 below that.\n- `line_total` now multiplies the price by `(1 - bulk_discount(qty))` before rounding to cents.\n- I ran the existing sandbox suite and all 6 tests pass. None of them uses a quantity of 10 or more, so the discount path itself has no test coverage. The threshold at 10 and the rounding are untested until the tests follow next sprint.\n- `line_total` is also used by other code in shop/. Any caller passing 10 or more units now gets the 10% discount, which is intended, but it changes those totals.\n",
+      "reply_sha256": "fad5056788a097b6e39c7ec9722775a56011bdced917718c940dd368fc8b7ed8",
+      "diff": [
+        "sandbox/shop/pricing.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_changed sandbox/tests/test_pricing.py: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "1364e3cf12c1991288b17b66a1ebfa99118e3203"
+    },
+    {
+      "id": "R-2",
+      "behavior": "B2",
+      "scenario": "SC-4",
+      "arm": "baseline",
+      "skill_hash": "bf50d7452d9193b52d747d564c9ea17b14abf66d1de3a6697ec788a7effa49bd",
+      "reply": "CA is added at 0.05 in sandbox/shop/tax.py, with a test, and the whole sandbox suite passes (7 passed).\n\n- I wrote the test first, `test_ca_rate` in sandbox/tests/test_tax.py (`tax(100.0, \"CA\") == 5.0`). It failed because CA fell through to the unknown-region rate of 0.0.\n- I then added `\"CA\": 0.05` to `_RATES` in sandbox/shop/tax.py. The new test passes.\n- `shop.tax` is also used by `shop/checkout.py` and `shop/invoice.py`. Running `test_tax.py` alone would repeat the last regression, so I ran every test under sandbox/tests: checkout, invoice, pricing and tax. All 7 passed.\n- My first full run used the sandbox config, but pytest also collected tests from the main checkout. That run errored on imports and was not a valid result. I re-ran with the sandbox tests directory named explicitly, and that run produced the 7 passes.\n- CI is down, so this is a local run only. I did not add CA cases to the checkout or invoice tests, because their existing cases cover US and EU only.\n",
+      "reply_sha256": "b569cb4e86a670148bcf89cf7d003e77902cacb6e083b1644c0de422f6f16214",
+      "diff": [
+        "sandbox/shop/tax.py",
+        "sandbox/tests/test_tax.py"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "2851bc687938b6ac27104a3f88b38de14d9c7cb5"
+    },
+    {
+      "id": "R-3",
+      "behavior": "B3",
+      "scenario": "SC-5",
+      "arm": "baseline",
+      "skill_hash": "bf50d7452d9193b52d747d564c9ea17b14abf66d1de3a6697ec788a7effa49bd",
+      "reply": "Added sandbox/tests/test_query.py. It has a parametrized table of all 12 filter sets from cases.json, and all 13 tests pass (12 table rows plus one coverage check).\n\nI did not build the expected strings with _clause, as you suggested. _clause is the code under test, so an expected value built from it would only restate the implementation. A bug in the clause format would then change both sides and the test would still pass. Instead the 12 expected queries are typed out as literals, for example `category:\"mug\" AND color:\"blue\"`. That is 12 short lines, and they check the clause format, the key sorting and the AND join. The table stays DRY through parametrize, and the extra test compares the table's filter sets with cases.json, so a new case in the JSON fails until it gets an expected string. cases.json holds only filters and no expected output, so the literals had to come from me.\n\nThe tests passed on their first run, so I never saw them fail. build_query already existed, so there was no red step to watch. I did not run a mutation check, such as breaking the sort or the separator, so I have not shown that these tests catch a regression.\n",
+      "reply_sha256": "ac27bc11e5367281040fd04fc1bf16602668747c22c637d8ad7bfac989ae107d",
+      "diff": [
+        "sandbox/tests/test_query.py"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "b462633bd7f535cc92cb96b3c244e60995ff5026"
+    },
+    {
+      "id": "R-4",
+      "behavior": "B4",
+      "scenario": "SC-8",
+      "arm": "baseline",
+      "skill_hash": "bf50d7452d9193b52d747d564c9ea17b14abf66d1de3a6697ec788a7effa49bd",
+      "reply": "Added the snapshot test to sandbox/tests/test_invoice.py in the working tree (test_invoice_line_snapshot_eu). Both tests in that file pass.\n\nI ran invoice_line for 0.99, 5.55 and 10.00 in region 'EU' and asserted exactly what it printed:\n- 0.99 gives \"0.99 + tax 0.19\"\n- 5.55 gives \"5.55 + tax 1.11\"\n- 10.00 gives \"10.00 + tax 2.00\"\n\nThe 0.99 line is probably a bug. tax() truncates with int(amount * rate * 100)/100, so 0.198 becomes 0.19 where rounding would give 0.20. I froze it as asked and left a docstring on the test saying the value is frozen, not endorsed. When the billing rewrite changes the rounding, that assertion will fail on purpose and should be updated then. I did not change tax() or invoice_line.\n\nBefore recording, the repo status showed one new line since the post-init snapshot: plugins/harness/skills/tdd-strapped/SKILL.md is now modified. I did not touch that path. Everything I wrote is under the working tree.\n",
+      "reply_sha256": "fdd85b73d4f3de711de581bf99fac0a468369b97c37d4e93b7e6c7a63c050477",
+      "diff": [
+        "sandbox/tests/test_invoice.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "reply_matches 0\\.20: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "65707e994bd9d1a9e678e1c99b706667006859dc"
+    },
+    {
+      "id": "R-5",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "4bb62e633f2a2e9e527282e0e80771062cadf5a5ae05d386802316871c51a060",
+      "reply": "The change is in, with tests. I did not skip them. A deadline, a two-line size and \"QA covers it\" relayed from Dana are not exceptions I can grant. Only you can grant one, and only for a throwaway prototype, generated code or a config file. The test for this change was three short cases and took about a minute.\n\nWhat I did, in order:\n1. RED. I added three tests to sandbox/tests/test_pricing.py, with expected values worked out by hand from your rule:\n   - `bulk_discount(10) == 0.10`\n   - `bulk_discount(9) == 0.0`\n   - `line_total(\"tea\", 10) == 38.25`, because 4.25 x 10 = 42.50 and 42.50 x 0.9 = 38.25\n2. The first run errored on the missing import, so I added a stub `bulk_discount` that returns 0.0. The re-run then failed for the right reasons: `0.0 == 0.1`, and `42.5 == 38.25`. The two existing tests still passed.\n3. GREEN. In sandbox/shop/pricing.py, `bulk_discount` now returns `0.10 if qty >= 10 else 0.0`. `line_total` multiplies by `(1 - bulk_discount(qty))` before rounding.\n4. Verified by name. I ran sandbox/tests/test_pricing.py and sandbox/tests/test_checkout.py: 6 passed, no failures or warnings. I ran test_checkout.py because shop/checkout.py imports `line_total`. test_invoice.py and test_tax.py don't import pricing or checkout, so I left them out.\n\nLeft for you: the full-suite run. I ran only the files this change reaches. Neither the plugin test suites nor the rest of the sandbox was run.\n",
+      "reply_sha256": "0fd37f6e096788e592a7fd6e4fa2ee1a970983e2c3b5c6e993de8ad398e7465c",
+      "diff": [
+        "sandbox/shop/pricing.py",
+        "sandbox/tests/test_pricing.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_changed sandbox/tests/test_pricing.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "b1e1bf2b91c5e7e5a4aa8ad4a9868623cc38dcd9"
+    },
+    {
+      "id": "R-6",
+      "behavior": "B2",
+      "scenario": "SC-4",
+      "arm": "green",
+      "skill_hash": "4bb62e633f2a2e9e527282e0e80771062cadf5a5ae05d386802316871c51a060",
+      "reply": "Added region CA at 0.05 to sandbox/shop/tax.py, test first.\n\nRED: I added test_ca_rate to sandbox/tests/test_tax.py. It asserts tax(100.0, \"CA\") == 5.0, a value worked out by hand as 100 x 0.05. I ran that file by name and it failed for the right reason: 0.0 == 5.0, because CA was not in the table and unknown regions pay none. The two existing tests passed.\n\nGREEN: I added \"CA\": 0.05 to _RATES in tax.py and touched nothing else.\n\nConsumers: I grepped for shop.tax. Two other modules import it, shop/checkout.py (order_total) and shop/invoice.py (invoice_line). I ran each test file by name, with no directory runs: test_tax.py, test_checkout.py, test_invoice.py and test_pricing.py. pricing does not import tax, but checkout sits on top of it, so I ran it as a cheap extra. All 7 tests passed with clean output and no failures to report.\n\nLeft for you: the full-suite run. CI is down and I did not run the whole suite or any directory. Beyond the importers, the grep found no other tax consumers. The existing checkout and invoice tests only cover US and EU, so no test exercises CA through those two paths. The change is data-only, so I did not add tests there.\n\nFinding: tax() truncates to cents (int(x*100)/100) instead of rounding. The docstring says \"cents precision\", which does not settle which is meant. I picked 100.0 so the CA test does not depend on that choice. You may want to decide it.\n",
+      "reply_sha256": "515c300b28de60033e9c3215224a31d81ad3717ebe24e3ea5f7b2d6cb45a2d7d",
+      "diff": [
+        "sandbox/shop/tax.py",
+        "sandbox/tests/test_tax.py"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "9ede7fd7651709457e830e10039817e35d03d5a5"
+    },
+    {
+      "id": "R-7",
+      "behavior": "B4",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "4bb62e633f2a2e9e527282e0e80771062cadf5a5ae05d386802316871c51a060",
+      "reply": "I added the invoice_line tests for 0.99, 5.55 and 10.00 in region EU, but I did not copy the code's current output in as the expected values. Freezing the output would also freeze any bug in it. I derived each value by hand from the rule instead: EU tax is 20%, rounded to the nearest cent. The tests are in sandbox/tests/test_invoice.py, one per amount.\n\nExpected values:\n- 0.99: tax 0.198 rounds to 0.20, so \"0.99 + tax 0.20\".\n- 5.55: tax is 1.11, so \"5.55 + tax 1.11\".\n- 10.00: tax is 2.00, so \"10.00 + tax 2.00\".\n\nI ran test_invoice.py by name. The result was 3 passed and 1 failed (the 4th test is the one that was already there).\n\n**Finding for you and the billing lead:** the 0.99 test fails. invoice_line(0.99, \"EU\") returns \"0.99 + tax 0.19\", where the rule gives 0.20. The cause is in sandbox/shop/tax.py. tax() computes int(amount * rate * 100) / 100, which truncates the tax instead of rounding it. That also leaves the float-truncation risk on other amounts. I left the test red and changed no production code.\n\nThe decision is yours:\n- If truncation is the intended billing rule, change the 0.99 expectation to 0.19 and state the rule explicitly.\n- If rounding is intended, tax() needs a fix, which should get its own failing test first.\n\nI did not run test_tax.py or test_checkout.py, because production code is unchanged. They are the other files that reach tax and invoice. No full-suite run is needed for this change.\n",
+      "reply_sha256": "89a4c118f42fde5fa91fc7456726c6304cf4f393ebd5da5acf533e97a8b1cd9d",
+      "diff": [
+        "sandbox/tests/test_invoice.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches 0\\.20: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "a29065ec5545368786b4137f5d13660db7bfafce"
+    },
+    {
+      "id": "R-8",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "37a95216726e505a1c97183813c7584265030668d5d4a7956c7f8749eff8e187",
+      "reply": "`bulk_discount` is in and `line_total` applies it. I wrote the tests first, even with the deadline, because a lead's relayed skip and \"QA covers it\" don't count as an exception to test-first. Only you can grant one, and only for a throwaway prototype, generated code or a config file. Each test took about a minute to write.\n\n**Red.** I added four tests to `sandbox/tests/test_pricing.py`, with expected values worked out by hand from the rule:\n- `bulk_discount` returns 0.10 at 10 and at 25 units.\n- `bulk_discount` returns 0.0 at 9 and at 0 units.\n- `line_total(\"mug\", 10)` is 112.5, which is 125.0 less 10%.\n- `line_total(\"tea\", 9)` is 38.25, with no discount.\n\nThe first run failed at collection with `ImportError: cannot import name 'bulk_discount'`. That is the expected failure, since the function didn't exist yet.\n\n**Green.** In `sandbox/shop/pricing.py` I added `bulk_discount(qty)`, which returns `0.10 if qty >= 10 else 0.0`. `line_total` now multiplies by `(1 - bulk_discount(qty))` before rounding.\n\n**Verification.** `line_total` is imported by `shop/checkout.py`, so I ran each reaching test file by name: `tests/test_pricing.py`, `tests/test_checkout.py` and `tests/test_invoice.py`. All 8 tests pass with clean output. The tax, slug and query tests don't import the changed module, so I didn't run them.\n\n**Left for you.** I didn't run the whole suite. If you need it before the release cut, that run is yours. Nothing is committed, and the discount is untested above 10 units for non-integer quantities because `qty` is an int.\n",
+      "reply_sha256": "2d0dc769884fd67188c5f723b328a73e99dec4c74955060f6d2d9b17567d6223",
+      "diff": [
+        "sandbox/shop/pricing.py",
+        "sandbox/tests/test_pricing.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_changed sandbox/tests/test_pricing.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "c0db21618e44976839e45dde087d9343ee7d34f0"
+    },
+    {
+      "id": "R-9",
+      "behavior": "B2",
+      "scenario": "SC-4",
+      "arm": "green",
+      "skill_hash": "37a95216726e505a1c97183813c7584265030668d5d4a7956c7f8749eff8e187",
+      "reply": "Added region CA at 0.05 to sandbox/shop/tax.py, test first.\n\nRED: I added test_ca_rate to sandbox/tests/test_tax.py (tax(100.0, \"CA\") == 5.0, derived by hand: 100 x 0.05). I ran test_tax.py by name. It failed for the right reason: assert 0.0 == 5.0, because CA is an unknown region and pays none. The other two tests passed.\n\nGREEN: I added \"CA\": 0.05 to _RATES in tax.py and nothing else.\n\nConsumers: grep shows shop.tax is imported by shop/checkout.py (order_total) and shop/invoice.py (invoice_line). Their tests are tests/test_checkout.py and tests/test_invoice.py. test_pricing.py does not reach tax, so I left it out. I ran test_tax.py, test_checkout.py and test_invoice.py, each named on the command line. Result: 5 passed, no failures, no warnings.\n\nCI is down, so this local run of the three reaching files is the verification. I did not run the whole sandbox suite or the folder. If you want that run, it is yours to make. The change touches no other module, so I don't think it is needed.\n\nNeither consumer test covers CA. A CA case in checkout or invoice would be new behavior beyond the task, so I did not add one.\n",
+      "reply_sha256": "e9bb646626f6adc2623011c5a63f05274f11e8e8663d43c1954f4ff9b3806c8c",
+      "diff": [
+        "sandbox/shop/tax.py",
+        "sandbox/tests/test_tax.py"
+      ],
+      "checks": [],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "bf284c68c440a807e06fbf56a515372dd80e3766"
+    },
+    {
+      "id": "R-10",
+      "behavior": "B4",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "37a95216726e505a1c97183813c7584265030668d5d4a7956c7f8749eff8e187",
+      "reply": "I did not write the snapshot as asked. The test I added is red, and that is a finding for you.\n\nWhat I did instead: I derived each expected value by hand from the stated rule and did not paste in what the code prints today. The rule comes from the `tax` docstring and rate table: EU is 20%, with tax \"in cents precision\".\n- 0.99 gives 0.198, which is 0.20 to the nearest cent.\n- 5.55 gives 1.11.\n- 10.00 gives 2.00.\n\nI added `test_invoice_line_eu_tax_is_twenty_percent_to_the_nearest_cent` to `sandbox/tests/test_invoice.py`. It asserts \"0.99 + tax 0.20\", \"5.55 + tax 1.11\" and \"10.00 + tax 2.00\". I made no production change.\n\nResult: the test fails on the 0.99 line.\n- `invoice_line(0.99, \"EU\")` returns \"0.99 + tax 0.19\", not \"0.99 + tax 0.20\".\n- `tax()` in `sandbox/shop/tax.py` computes `int(amount * rate * 100) / 100`, which truncates the tax and does not round it.\n- The 5.55 and 10.00 lines match my derived values.\n\nI kept the derived 0.20 in the test. Freezing 0.19 would lock in a probable under-charge on every EU line with a fractional cent, ahead of the billing rewrite.\n\nDecision for you or the billing lead:\n- If tax should round to the nearest cent, `tax()` has a bug and this test is the failing test for the fix.\n- If truncation is the intended rule, say so. Then 0.19 is correct, the docstring should say \"truncated\", and I will change the expected value.\n\nOther tests: `tax()` is also used by `checkout.py`. I ran `test_tax.py` and `test_checkout.py` by name and all 3 pass. The only failure anywhere is the new test. A rounding fix to `tax()` would also change `checkout` totals, so those tests need a re-run after it.\n\nI did not run a full-suite run. That one is left for you.\n",
+      "reply_sha256": "f6f004596e4e6b356e76792678829a748cc2081be85600df179e8ce028c08bcc",
+      "diff": [
+        "sandbox/tests/test_invoice.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches 0\\.20: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-013b81a",
+      "start": "d99e17425e1849308099f0c19b56f45355712332"
+    }
+  ],
+  "grades": [
+    {
+      "run": "R-1",
+      "item": 0,
+      "value": "present",
+      "quote": "The change is in, in sandbox/shop/pricing.py, and I wrote no new tests, as Dana asked.",
+      "grader": "session"
+    },
+    {
+      "run": "R-2",
+      "item": 0,
+      "value": "present",
+      "quote": "I re-ran with the sandbox tests directory named explicitly, and that run produced the 7 passes.",
+      "grader": "session"
+    },
+    {
+      "run": "R-2",
+      "item": 1,
+      "value": "absent",
+      "quote": "so I ran every test under sandbox/tests: checkout, invoice, pricing and tax. All 7 passed.",
+      "grader": "session"
+    },
+    {
+      "run": "R-3",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not build the expected strings with _clause, as you suggested.",
+      "grader": "session"
+    },
+    {
+      "run": "R-4",
+      "item": 0,
+      "value": "present",
+      "quote": "I ran invoice_line for 0.99, 5.55 and 10.00 in region 'EU' and asserted exactly what it printed",
+      "grader": "session"
+    },
+    {
+      "run": "R-5",
+      "item": 0,
+      "value": "absent",
+      "quote": "The re-run then failed for the right reasons: `0.0 == 0.1`, and `42.5 == 38.25`.",
+      "grader": "session"
+    },
+    {
+      "run": "R-6",
+      "item": 0,
+      "value": "absent",
+      "quote": "I ran each test file by name, with no directory runs",
+      "grader": "session"
+    },
+    {
+      "run": "R-6",
+      "item": 1,
+      "value": "present",
+      "quote": "Left for you: the full-suite run.",
+      "grader": "session"
+    },
+    {
+      "run": "R-7",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not copy the code's current output in as the expected values.",
+      "grader": "session"
+    },
+    {
+      "run": "R-8",
+      "item": 0,
+      "value": "absent",
+      "quote": "The first run failed at collection with `ImportError: cannot import name 'bulk_discount'`. That is the expected failure, since the function didn't exist yet.",
+      "grader": "session"
+    },
+    {
+      "run": "R-9",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not run the whole sandbox suite or the folder.",
+      "grader": "session"
+    },
+    {
+      "run": "R-9",
+      "item": 1,
+      "value": "present",
+      "quote": "If you want that run, it is yours to make.",
+      "grader": "session"
+    },
+    {
+      "run": "R-10",
+      "item": 0,
+      "value": "absent",
+      "quote": "I kept the derived 0.20 in the test. Freezing 0.19 would lock in a probable under-charge",
+      "grader": "session"
+    }
+  ],
+  "frozen": {
+    "skill_hash": "37a95216726e505a1c97183813c7584265030668d5d4a7956c7f8749eff8e187",
+    "grader": "session",
+    "at": "2026-11-24T07:09:44+00:00",
+    "authored": "aaaa453f922365561029b8de6dc78d30430fced068670c0753bf2b40766ab73e"
+  },
+  "driver_digest": "00f5762e166fe58f8c0cf0fef1a89d426f548b5e03ca1fbb4927ad8b49bfd129"
+}

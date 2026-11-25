@@ -1,0 +1,28 @@
+{
+  "plan_id": "0001",
+  "plan_created": "2026-10-13",
+  "execution_model": "serial",
+  "markdown_sync_status": "in_sync",
+  "markdown_last_updated": "2026-10-13",
+  "pr_attributes": [
+    {
+      "pr": 1,
+      "branch": "feature/sample",
+      "base_branch": "main",
+      "review_doc": "docs/PR_REVIEWS/0001_sample_review.json",
+      "pip_document": "docs/PLANS/0001_sample_PIP.md",
+      "merged_at": null
+    }
+  ],
+  "items": [
+    {
+      "id": "TST-1",
+      "title": "Sample item",
+      "action": "Add the guard",
+      "status": "PENDING",
+      "evidence": "",
+      "verification_references": ["tests/test_app.py::test_guard"],
+      "markdown_section": "Task 1"
+    }
+  ]
+}

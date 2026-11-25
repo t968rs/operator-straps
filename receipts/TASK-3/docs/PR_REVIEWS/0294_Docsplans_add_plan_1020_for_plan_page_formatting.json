@@ -1,0 +1,409 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 294,
+  "pr_title": "Docs(plans): add plan 1020 for plan page formatting",
+  "branch": "1161-plan-html-improvements",
+  "base_branch": "main",
+  "base_sha": "eac1f255112c3243c4cb4d27c0cea52e6091adeb",
+  "head_sha": "f66386536e5373cfb03435f7bbc1808b81190eb1",
+  "review_date": "2026-11-16",
+  "verdict": "READY TO MERGE - 12 of 13 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 1933,
+    "deletions": 265,
+    "files_changed": 30,
+    "source": {
+      "additions": 1914,
+      "deletions": 265,
+      "files_changed": 28
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0294/pr294_20261116T215626Z/findings/tests.json",
+    "docs/_scratch/pr_review/0294/pr294_20261116T215626Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0294/pr294_20261116T215626Z/findings/docs.json",
+    "docs/_scratch/pr_review/0294/pr294_20261116T215626Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0294/pr294_20261116T215626Z/findings/overall.json",
+    "docs/_scratch/pr_review/0294/pr294_20261116T215626Z/findings/system_shape.json"
+  ],
+  "bubbles": [
+    "M5"
+  ],
+  "strengths": [
+    "Every new test is behavioral: pages are rendered from real ActionPlan models through render_pip_html and asserted on the emitted HTML and inlined assets, with no stubs of the code under test.",
+    "Escaping is exercised end to end: titles and option summaries carry `<`, `>` and `&`, and the assertions pin the escaped forms in both the Status rows and the decision bullets.",
+    "Plan-order is tested with ids deliberately out of sort order (TASK-2, TASK-1, TASK-1.1), so a sorted rendering would fail.",
+    "The badge test counts exactly two occurrences per item (summary plus heading), catching both a missing and a duplicated badge.",
+    "The open-decision case is covered separately (Open marker, all three options, no Chosen/Unchosen lists), alongside the chosen case and the absent-rationale case.",
+    "test_plan_checks_decision_ids pins the exact message, matching duplicate_problems' wording, plus the distinct-ids negative case.",
+    "Each new file declares `WALK_ROOTS = ()`, satisfying the select_tests walking-marker contract.",
+    "plan_render_html.py: moving the CSS and loader out of Python triple-quoted literals into pages/styles/*.css and pages/components/plan.js removes the double-escaping hazard; the new drawStatuses regex (/\\\\/g) in plan.js is correct as plain JS, where the same text inside the old Python string would have been reinterpreted.",
+    "plan_render_html.py:175-177: _badge escapes the raw item id once and is shared by the Status block and the item heading, so both badges carry the same data-status-for key that plan.js drawStatuses queries; _summary and _item pass item.id unescaped, so no double escaping.",
+    "plan_render_html.py:60-67: _asset reads with encoding utf-8 and default newline translation, so a CRLF checkout of plan.js or the CSS on Windows renders the same page text as the LF checkout on Ubuntu CI.",
+    "plan_render_html.py:118-127: decision blocks get a stable decision-<id> anchor, and plan_checks.py:199-212 adds the matching duplicate-decision-id lint so the anchor stays unique; the Decision model's min_length=2 options keeps the Unchosen list non-empty whenever the chosen id is valid.",
+    "plan_render_html.py:1-19: the module docstring was updated in step with the code (asset files under PAGES, CSS always inlined, loader only on a receipts plan, status drawn into both badges), and each new helper docstring matches its implementation.",
+    "plan_render_html.py:210: the asset name 'plan.js' and the folder names are plain code string literals, so tools/select_tests.py maps a change to the asset files back to this module and its tests.",
+    "write-plan README PIP bullet (lines 75-81) matches refresh_pip and write_pip exactly: plan_api.write and freeze --refreeze rewrite an existing page, render writes a frozen receipts plan's page only when missing.",
+    "Release notes harness row (0.65.1 -> 0.74.0) agrees with plugins/harness/.claude-plugin/plugin.json version 0.74.0, and the minor bump matches the header's 'harness bumped its minor version'.",
+    "Receipt trees are honest: tree 37de1ab recorded for TASK-3 and TASK-5 has no diff against the PR head under plugins/ and tests/, so the sealed evidence describes the code that merges.",
+    "DesignEvolution PR3, EX1 and EX2 record each post-freeze drift (Rejected renamed, decision-id uniqueness, a test that could not fail) with original, issue and new outcome, and the refreeze ledger r1.6 carries the new planned test hash.",
+    "The committed PIP's Status block, decision blocks and CSS match the shipped plan.css/shared.css rules and the Frozen stamp (00468c4) matches the r1.6 ledger tree.",
+    "The three refresh routes the README names (plan_api.write, freeze --refreeze, delete then render) match plan.py's render docstring (plan.py:43-44) and cmd_render's call to refresh_pip, so a developer has a working way to update an old page even on a Locked plan, where write and freeze are refused.",
+    "The 'old look until written again' claim holds: the live.js builder is unchanged in this PR, so pages rendered earlier keep their inline loader working against the current sidecar.",
+    "'Task headings and their live badges' matches _summary (plan_render_html.py:180-188): one linked `ID: title` row per item, carrying a data-status-for badge that the loader redraws.",
+    "The write-plan package stays internally consistent: SKILL.md does not describe the page layout, so the README is the only place this new layout is described and nothing else needs to change with it.",
+    "plan.js is a byte-faithful extraction of the old _LOADER literal plus only the drawStatuses change; the move from a non-raw Python string to a .js file introduced no escape-sequence drift.",
+    "Asset names are spelled as code string literals (`_asset(\"styles\", \"shared.css\")`, `_asset('components', 'plan.js')`), so tools/select_tests.py maps an asset edit back to plan_render_html.py and its importers, and the names are unique in the tree so no anchor is needed.",
+    "TASK-5 closes the element-id collision the new `id=\"decision-<id>\"` blocks would create, with the check worded and ordered like duplicate_problems; no existing plan or test fixture carries a repeated decision id.",
+    "TEXT_SUFFIXES now covers .css and .html, so the repo-literal ban scans the new asset files from day one.",
+    "Plan, DesignEvolution, receipts and r1.6 freeze agree: the plan JSON blob at head matches the r1.6 stamp, the copied tests match the frozen planned-test hashes (LF-normalized), and the committed PIP was rendered from the r1.6 plan with the new loader.",
+    "Every rendered text still goes through _e, including the new summary links, badges and decision blocks; the tests pin escaping with `<`, `&` and `;` in titles and summaries.",
+    "The plan_render_html module docstring names the three asset files under PAGES and says when each is inlined (CSS always, loader only on a receipts plan), and the code at _style/_script does exactly that.",
+    "The write-plan README's new sentence matches refresh_pip and write_pip: render writes a frozen receipts page only when it is missing, and plan_api.write and freeze --refreeze rewrite it through write_pip.",
+    "The version story agrees everywhere it appears: plugin.json 0.74.0, the v1.0.0 table row 0.65.1 -> 0.74.0, and the plan's 'harness version' value.",
+    "The plan JSON, the rendered 1020 PIP and the r1.6 freeze agree (five tasks, D1 to D5, frozen tree 00468c4), and the PIP's inline CSS and loader match the shipped asset files byte for byte.",
+    "Every plan change is cataloged in DesignEvolution (PR1 to PR3, EX1, EX2) with the items it touches, including the tightened loader test (EX2) and the decision-id check (EX1) that closes the element-id collision the new decision-<id> anchors introduced.",
+    "Spelling 'shared.css', 'plan.css' and 'plan.js' as code literals in plan_render_html keeps tools/select_tests.py mapping an asset edit to the module and its page tests, and the literal ban now scans .css and .html."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Repo README layout table omits the new plugins/harness/pages folder",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ],
+        "lines": "583-595",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR adds a new top-level plugin folder, plugins/harness/pages (styles/shared.css, styles/plan.css, components/plan.js), read at render time through PAGES = plugin_root() / \"pages\" (plan_render_html.py:36). The README's path table (README.md:583-595) lists every other harness folder (lib, scripts, hooks, bin, skills, agents, workflows, config, schemas, rules, reference) but not pages, so a reader looking for where the plan page CSS and JS live finds no entry.\n\nAlso (system_shape): The PR adds a new top-level harness folder, plugins/harness/pages/ (styles/shared.css, styles/plan.css, components/plan.js), that plan_render_html reads at render time. The README 'Develop' path table (README.md:583-595) lists the other harness code folders, including the comparable workflows/ asset folder at line 589, but has no row for pages/, so a contributor looking for the plan page CSS or loader is not pointed there.",
+        "fix": [
+          "Add a row to the README.md path table: `plugins/harness/pages/` | page assets inlined by renderers: `styles/` (shared.css theme, plan.css) and `components/` (plan.js loader); read at render time, never written.",
+          "Add a row after README.md:589: '| `plugins/harness/pages/` | page assets inlined into rendered HTML: `styles/shared.css` (theme), `styles/plan.css` and `components/plan.js` (the plan PIP rules and live.js loader) |'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Release lines cite issues without # and omit the plan id",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "171-177",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The two new v1.0.0 entries cite '(issues 278, 280, 289)' while every neighbouring entry uses the '#NNN' form ('issue #277', 'issue #246') and plan-backed entries name their plan ('issue #161, plan 1018'). The Fix(write-plan) line names no issue or plan at all, so a reader of the GitHub release body cannot link either change back to plan 1020 or its tracking issues.\n\nAlso (system_shape): The two new write-plan lines (v1.0.0.md:171-175) sit between 'Feat(harness): the scratch_folder key and the TODO inbox (issue #277)' and 'Feat(todo-watch): drain the TODO inbox ... (issue #277)', separating two entries that describe one feature. They also cite '(issues 278, 280, 289)' where every other line in the file writes '#NNN'.",
+        "fix": [
+          "Rewrite line 173 to end '(issues #278, #280, #289, plan 1020).' and append ' (plan 1020, review finding C3)' to the Fix(write-plan) entry at lines 174-175.",
+          "Move the Feat(write-plan) and Fix(write-plan) lines after the Feat(todo-watch) line at v1.0.0.md:176-177, and write the reference as '(issues #278, #280, #289)'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "todo-f8mk names the config mirror but not the file that resolves the usage-log path",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "plugins/agent-watcher/hooks/core/tracker.ts"
+        ],
+        "lines": "261-313",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new item says the cause is agent-watcher resolving the usage log from the hook payload cwd and proposes anchoring it at main_worktree. Its files and blast_radius.consumers list plugins/agent-watcher/hooks/core/config.ts (which only holds DEFAULT_AGENT_USAGE_PATH and the key mirror) and parallel2.py, but the join of root and path happens in plugins/agent-watcher/hooks/core/tracker.ts:490 ('under(io.watch.root, io.watch.cfg.agentUsagePath)'). The loe reasoning's 'with its mirror in config.ts' also implies a config-key change the fix does not need. A worker scoped by this item's file list would miss the line to change.",
+        "fix": [
+          "Add plugins/agent-watcher/hooks/core/tracker.ts to the item's files and blast_radius.consumers (through todo_sync refresh, not by hand), and reword the loe reasoning to 'anchor it at the main checkout where tracker.ts joins the root and the usage path'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "TODO items this PR implements stay OPEN in the catalog",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "973,3603,3991",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "todo-bwe5 (Status block, issue 280), todo-h4za (pages assets, issue 289) and todo-n7q5 (decision layout, issue 278) are the three items plan 1020 builds, and all five receipts are COMPLETE at a tree identical to the head's plugins/ and tests/, yet the catalog the PR rewrites (re-ranked for todo-f8mk) still lists them OPEN at ranks 16, 60 and 67. todo-n7q5's title also still promises 'Chosen and Rejected lists', a wording D5A removed. After the merge the catalog advertises shipped work as open, and the ranking that drives the next pick counts it.",
+        "fix": [
+          "Retire todo-bwe5, todo-h4za and todo-n7q5 through /harness:todo-edit --retire in this branch so the catalog lands consistent with the code.",
+          "If retirement is deliberately deferred to after the merge, say so in the PR description so the follow-up is not lost."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "PR title and body describe only the plan, not the implementation that now ships",
+        "file": "docs/plans/1020_Plan_page_formatting_ActionPlan.json",
+        "lines": "1-10",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "PR 294 is titled 'Docs(plans): add plan 1020 for plan page formatting', and its body still describes D1 to D3, 'Chosen and Rejected' options, DesignEvolution PR1 only and four freeze records. The branch now carries the implementation (pages assets, the plan_render_html rewrite, the plan_checks decision-id fix, harness 0.74.0, README and release notes), D4/D5, PR2/PR3/EX1/EX2, TASK-5 and freezes r1.5 and r1.6. That text was drafted before the code landed.",
+        "fix": [
+          "Retitle the PR (for example 'Feat(write-plan): plan page Status block, decision blocks and pages assets (plan 1020)') and regenerate the body from the current diff, naming the harness 0.74.0 bump, the decision-id check, D1 to D5 and freezes r1.1 to r1.6."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Repeated decision id is caught by check but not refused by plan_api.write",
+        "file": "plugins/harness/lib/harness_lib/plan_checks.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_checks.py",
+          "plugins/harness/lib/harness_lib/plan_api.py"
+        ],
+        "lines": "199-205",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "The decision_problems docstring says a repeated decision id 'is reported like a repeated item id'. A repeated item id is refused at authoring time by plan_api.write (plan_api.py:159 calls pc.duplicate_problems), but a repeated decision id only surfaces in check/freeze through lint_problems. plan_api.write still saves the plan and calls write_pip (plan_api.py:162-163), so it renders a page with two id=\"decision-D1\" elements, the exact collision TASK-5 and EX1 set out to prevent, until the next check. The docstring's parity claim does not hold for write.",
+        "fix": [
+          "Split the decision-id line of decision_problems into a decision_id_problems(plan) helper in plan_checks.py, call it from decision_problems and from plan_api.write next to pc.duplicate_problems (plan_api.py:159), and add a write-refusal case to tests/lib/test_plan_checks_decision_ids.py.",
+          "Reword the docstring at plan_checks.py:202 to say that check and freeze report the repeat (write does not), so it no longer claims parity with the item-id refusal."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "drawStatuses builds an escaped CSS selector that no test runs",
+        "file": "plugins/harness/pages/components/plan.js",
+        "files": [
+          "plugins/harness/pages/components/plan.js",
+          "tests/lib/test_plan_render_html_summary.py"
+        ],
+        "lines": "40-44",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "plan.js drawStatuses (lines 40-44) escapes backslashes and double quotes in the item id, then splices it into a `.status[data-status-for=\"...\"]` selector. Item ids are pinned to `^[A-Z]{2,4}-[0-9.]+$` (plan_models.py:366), so the escape path never fires, and the only coverage is test_the_loader_draws_every_badge_that_names_an_item, which greps the JS source for the selector prefix. Nothing executes the multi-badge draw, so a broken selector (a typo in the escape regex, a quote slip) would ship green while every summary badge stays PENDING.",
+        "fix": [
+          "Drop the selector splice: query `.status[data-status-for]` once and draw each node whose `getAttribute(\"data-status-for\") === id`, which needs no escaping; update the source-text assertion in tests/lib/test_plan_render_html_summary.py:68 to the new selector.",
+          "Keep the splice and use `CSS.escape(id)` instead of the hand-written replace chain, so the escaping is the browser's own."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Render qualifier drops 'receipts' and drifts from the README's own Never-edit paragraph",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "files": [
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "76-77,79",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "README.md:79 says `render writes a frozen plan's page only when it is missing`. The README's own lines 20-22 and the plan.py render docstring (plugins/harness/scripts/plan.py:42-44) limit the missing-only rule to a frozen receipts plan. A frozen sealed-scheme plan's markdown PIP is still rewritten on every render. The sentence sits inside the receipts bullet, so the meaning can be recovered, but read on its own it contradicts lines 21-22.\n\nAlso (skill_package): README.md:76-77 says the page opens with a Status list. render_pip_html (plugins/harness/lib/harness_lib/plan_render_html.py:218) emits `_header(...)` first, which holds the h1 title, the origin and live notes, and the plan metadata list, and only then `_summary(...)`. `_summary` also returns nothing for a plan with no items. So the Status list comes after the header, and only when the plan has items. The release note line docs/RELEASES/v1.0.0.md:171 uses the same wording.",
+        "fix": [
+          "In plugins/harness/skills/write-plan/README.md:79 change `render writes a frozen plan's page only when it is missing` to `render writes a frozen receipts plan's page only when it is missing`.",
+          "Reword README.md:76-77 to `Below its header the page lists every task heading with its live badge (the Status list).` and match docs/RELEASES/v1.0.0.md:171."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "write-plan SKILL.md check table omits the decision and option id uniqueness checks",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_checks.py"
+        ],
+        "lines": "70",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:70 lists what check verifies for decisions[] as only 'chosen is one of its options'. After this PR decision_problems also reports a repeated decision id (and already reported a repeated option id), and freeze refuses on it. The agent-facing contract table now trails the checker it describes.",
+        "fix": [
+          "Change the decisions[] 'Checked by check' cell at SKILL.md:70 to: 'decision ids and option ids are unique; chosen is one of its options'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "No-asset-literal test checks two attribute names only",
+        "file": "tests/lib/test_plan_page_assets.py",
+        "lines": "5,64-65",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (line 5) claims plan_render_html holds no style or loader literal, but test_the_module_holds_no_asset_literals only asserts that `_STYLE` and `_LOADER` are absent. A literal copy of the CSS or JS under any other name (or inline in a function) passes, and test_the_page_inlines_the_shared_style_then_the_plan_style would still pass too if that copy matched the asset.",
+        "fix": [
+          "Also assert the module source carries no asset text, e.g. `source = Path(prh.__file__).read_text(encoding=\"utf-8\")` then `assert \"prefers-color-scheme\" not in source and \"querySelectorAll\" not in source` (neither string appears in the module docstring)."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Literal-ban test pins the suffix constant, not that the scan reaches the page assets",
+        "file": "tests/lib/test_plan_page_assets.py",
+        "files": [
+          "tests/lib/test_plan_page_assets.py",
+          "tests/contract/test_no_repo_literals.py"
+        ],
+        "lines": "72-74",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_the_literal_ban_scans_page_assets asserts `{\".css\", \".html\"} <= TEXT_SUFFIXES`, which restates the one-line diff in test_no_repo_literals.py rather than proving the behavior its name claims: a SKIP_DIRS entry or a path filter that excluded `pages/` would leave the assets unscanned while this test passes. The import already builds `literals.FILES`, so the behavioral check costs nothing extra.",
+        "fix": [
+          "Assert the asset files are in the scanned list by repo-relative path, e.g. `scanned = {p.relative_to(literals.REPO_ROOT).as_posix() for p in literals.FILES}` then `assert {\"plugins/harness/pages/styles/shared.css\", \"plugins/harness/pages/styles/plan.css\", \"plugins/harness/pages/components/plan.js\"} <= scanned`."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Theme tests read the combined page style, not shared.css, and the dark slice never closes",
+        "file": "tests/lib/test_plan_render_html_decisions.py",
+        "lines": "7-8,87-101",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The module docstring (lines 7-8) says the shared style colors headings and <code> in both schemes, but style() (line 87-88) returns the whole inlined <style> (shared.css + plan.css). test_the_theme_defines_accent_colors_for_both_schemes slices `dark` from the media query to the end of the style, so a `--accent:` or `--code-fg:` declared anywhere later (plan.css included) satisfies the dark-scheme check even if the media block drops it; and a heading or code rule moved from shared.css to plan.css still passes test_headings_and_code_take_the_accent_colors, contrary to the docstring.\n\nAlso (tests): Both patterns in test_headings_and_code_take_the_accent_colors use `[^}]*color:\\s*var(...)`, and `[^}]*` can consume `background-`, so `h2 { background-color: var(--accent) }` or `code { background-color: var(--code-fg) }` passes a test whose name says headings and code take the accent as their text color.",
+        "fix": [
+          "Read shared.css directly (`(prh.PAGES / \"styles\" / \"shared.css\").read_text(encoding=\"utf-8\")`) for the two theme tests, and bound the dark slice to the media block, e.g. `dark = css[start:css.index(\"} }\", start)]` with `start = css.index(\"prefers-color-scheme: dark\")`.",
+          "Or keep the combined style and reword the docstring to say the page style (not the shared style) colors headings and code, while still bounding the dark slice to the media block.",
+          "Anchor the property name: replace `[^}]*color:` with `[^}]*(?:^|[{;\\s])color:` in both patterns at lines 100 and 101."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Summary test reaches ItemStatus through the renderer's imports",
+        "file": "tests/lib/test_plan_render_html_summary.py",
+        "lines": "59",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`prh.ItemStatus.PENDING.value` reads an enum plan_render_html imports from plan_enums; the test breaks if the renderer stops importing it (for example by keeping only `_PENDING`) although the page is unchanged.",
+        "fix": [
+          "Import it at the source: `from harness_lib.plan_enums import ItemStatus` and use `ItemStatus.PENDING.value` at line 59."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M5",
+      "classification": "out_of_scope",
+      "reason": "Only fix is retitling PR 294 and regenerating its body on GitHub; PR text is the developer's to change (pr-sum already saved a current summary with the proposed title)."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 294 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"d2f97efe024adb28a1152c5de60927ee0a8037a6\",\"headRefName\":\"1161-plan-html-improvements\",\"headRefOid\":\"f66386536e5373cfb03435f7bbc1808b81190eb1\",\"last_sha\":\"f66386536e5373cfb03435f7bbc1808b81190eb1\",\"mergeCommit\":null,\"number\":294,\"state\":\"OPEN\",\"title\":\"Docs(plans): add plan 1020 for plan page formatting\",\"url\":\"https://github.com/t968rs/operator-straps/pull/294\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1161-plan-html-improvements",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1161-plan-html-improvements",
+        "head_ref_name": "1161-plan-html-improvements",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "d2f97efe024adb28a1152c5de60927ee0a8037a6",
+        "head_sha": "f66386536e5373cfb03435f7bbc1808b81190eb1",
+        "base_ancestor_command": "git merge-base --is-ancestor d2f97efe024adb28a1152c5de60927ee0a8037a6 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor f66386536e5373cfb03435f7bbc1808b81190eb1 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - drawStatuses queries .status[data-status-for] once and draws nodes whose getAttribute('data-status-for') === id, dropping the hand-escaped selector splice; the loader source-text test asserts the new selector and comparison"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - test_the_module_holds_no_asset_literals also asserts the plan_render_html source holds neither 'prefers-color-scheme' nor 'querySelectorAll'"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - test_the_literal_ban_scans_page_assets asserts shared.css, plan.css and plan.js are in literals.FILES by repo-relative path; test_no_repo_literals.py: cited for FILES and REPO_ROOT, needs no edit"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - summary test imports ItemStatus from harness_lib.plan_enums and uses ItemStatus.PENDING.value instead of prh.ItemStatus"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - Added a README.md path-table row for plugins/harness/pages/ after the workflows/ row (README.md:590), naming styles/ and components/ and noting read at render time, never written."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - docs/RELEASES/v1.0.0.md: moved the Feat(write-plan) and Fix(write-plan) entries after Feat(todo-watch), wrote the reference as (issues #278, #280, #289, plan 1020), and added (plan 1020, review finding C3) to the Fix(write-plan) entry."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - write-plan/README.md: the receipts bullet now says render writes a frozen receipts plan's page only when it is missing, and the Status list sentence reads Below its header the page lists every task heading with its live badge (the Status list); docs/RELEASES/v1.0.0.md Feat(write-plan) line reworded to the same wording.; no edit in plugins/harness/scripts/plan.py (my part); the render docstring at plan.py:43-44 already limits the missing-only rule to a frozen receipts plan, so the defect sits in the other part's README lines 76-79 and is resolved by that fixer"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - Split the repeated-decision-id check into plan_checks.decision_id_problems (docstring now states write refuses it and check/freeze report it), called from decision_problems and from plan_api.write beside duplicate_problems; added a write-refusal test that also asserts the plan file is unchanged"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - SKILL.md decisions[] 'Checked by check' cell now reads 'decision ids and option ids are unique; chosen is one of its options'; plan_checks.py: cited checker, already reports both repeats, no edit needed for this issue"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - Theme tests read shared.css directly through a shared_style() helper, the dark slice is bounded to the media block ('} }'), and both color patterns anchor the property name with (?:^|[{;\\s])color: so background-color no longer matches"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - todo-f8mk files and blast_radius.consumers gain plugins/agent-watcher/hooks/core/tracker.ts; loe reasoning anchors the fix where tracker.ts:490 joins root and usage path (via todo-edit) (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-16",
+      "evidence": "f663865 (working-tree snapshot; developer commits) - todo-bwe5, todo-h4za, todo-n7q5 retired through todo-edit; close_candidates for issues 278, 280, 289 pending the PR 294 merge (outside fixer waves)"
+    }
+  ]
+}

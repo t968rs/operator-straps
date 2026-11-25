@@ -1,0 +1,580 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 299,
+  "pr_title": "skill tag archive",
+  "branch": "3162-skill-tag-archive",
+  "base_branch": "main",
+  "base_sha": "36c328ebc8c1e5eb54afaee3a6736b95b2cd3940",
+  "head_sha": "6afd7d3232ad4c9e2ecfaf289cf28b9febe7cb7f",
+  "review_date": "2026-11-17",
+  "verdict": "READY TO MERGE - 15 of 17 findings resolved, 2 bubbled",
+  "stats": {
+    "additions": 4127,
+    "deletions": 409,
+    "files_changed": 41,
+    "source": {
+      "additions": 3274,
+      "deletions": 108,
+      "files_changed": 36
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/tests.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/docs.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/overall.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0299/pr299_20261117T080729Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [
+    "M4",
+    "M5"
+  ],
+  "strengths": [
+    "Every freeze_git archive test runs against a real throwaway git repository and checks results with git plumbing (ls-tree, rev-list --parents, cat-file), not stubs of the functions under test.",
+    "test_mktree_feeds_bytes_and_keeps_names_exact spies on subprocess.run to prove the mktree feed is bytes, the actual Windows CR guard, and is marked cross_os so the Windows leg runs it.",
+    "test_mktree_refuses_bad_entry_names_before_any_git_call asserts zero git calls for each bad name, pinning the validate-before-plumbing contract.",
+    "test_archive_tips_orders_rounds_and_m_numerically uses r10/r1-10/r2 names that a lexical sort would misorder.",
+    "The fault-injection test patches fg.reaches/fg.held_trees only to force the refusal path and then asserts real outcomes (problem names, tags untouched, no archive tag), and a sibling test proves the reach check refuses an unknown-shape tag with no stubs at all.",
+    "test_plan_archive_check covers the dropped-older-archive case, so the previous-chain is proven end to end through check, plus the off-history relink cue and a tree outside every archive still warning.",
+    "test_plan_lock_tagger isolates identity properly (GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM, user.useConfigOnly) and asserts the precondition that git has no identity before testing the fallback.",
+    "The write-plan contract test checks that every PIP merge step names an actor by regex, not one sample line.",
+    "Reach and hold are verified before anything changes: archive() builds the commit, runs unreachable(), and only then preflights, tags and deletes; any miss refuses with no tag created or deleted.",
+    "commit_tree and mktree feed stdin as bytes (_run_bytes), which avoids the Windows text-mode CRLF corruption of the archive message and keeps NUL-separated mktree entries exact; mktree also validates entry names before any git call.",
+    "Archive-folded names flow into every numbering path (tag_seqs extra, _base_ms, receipt_lines), so a k, relink m or receipt .n an archive folded is never reused after its live tag is deleted.",
+    "The previous: chain is followed only when the named sha is also the commit's first parent, so a forged message line cannot make archive_tips count an unrelated commit as kept.",
+    "tagger() now computes the committer and author fallbacks separately and restores exactly the keys it set, so an identity that is already configured is never overridden.",
+    "check_lines reads the archive tips and folded names once and passes them to reconcile_lines, _base_lines and _entry_lines, so the git calls are not repeated per entry.",
+    "seen_plan_ids still counts archive/plan/<id>- tags through _PLAN_TAG, so deleting a plan's driver tags does not free its plan number.",
+    "The SKILL.md Archive paragraph matches plan_archive.py line for line: folded kinds (KINDS), reach check before any tag, status/tag/push/deleted lines, remote line skipping receipt/ tags, r1-<m> with the previous archive as first parent.",
+    "SKILL.md's drift: wording for archived lock trees (archive/<stem>/r1:freezes/r1.<k>, else 'lock r1.<k>') matches plan_lock's drift-ref docstring, and the off-history rule follows the EX1 reversal proven by B15.",
+    "Version bookkeeping is consistent: plugin.json 0.75.0, the v1.0.0 release table row, and two change lines that cite issue and plan.",
+    "The write-plan r5.2 freeze entry's blobs for SKILL.md, README.md, plan.py and plan_archive.py equal the head blobs, so the frozen spec describes the merged code.",
+    "The PIP template's Merge/Integration steps now name an actor each and state why the remote: delete line matters (tag auto-follow restoring folded tags).",
+    "The Archive paragraph matches plan_archive.py closely: fold contents (receipts/ and freezes/ subtrees, base, entry and receipt commit parents), reach-and-hold check before any tag, the status/tag/push/deleted/remote output lines, receipt/ tags excluded from the remote delete, and r1-<m> numbering with the previous archive as first parent.",
+    "The local-delete trap is documented in both SKILL.md and README.md: without the remote line, a later fetch restores the pushed folded tags. Both prescribe `--remote` for a plan whose tags were pushed.",
+    "The drift ref change (SKILL.md:174-177) mirrors plan_lock._lock_ref exactly: the tree tag, then the `archive/<stem>/r1:freezes/r1.<k>` path, then `lock r1.<k>`.",
+    "The archive-aware check rules (no re-tag of folded entries, no untagged: for archived objects, off-history: still warns) match the plan_lock.py module docstring and check_lines.",
+    "The identity fallback sentence now covers author as well as committer, matching plan_lock._fallback_identity, which checks each separately.",
+    "Cross-references outside the folder were updated in the same PR: the root README.md plan row and plugins/harness/schemas/README.md tag paragraph both name `plan.py archive`, and the Related list adds plan_archive.py.",
+    "The Common mistakes entry now puts `PLAN archive` under the explicit-ask rule alongside `PLAN lock`, consistent with the step text and the plan.py help.",
+    "The archive never moves a tag. It verifies that every folded commit is reachable and every folded tree is held before creating anything, and a failed delete after tagging reports the exact 'git tag -d' that finishes the job.",
+    "mktree and commit_tree feed git bytes through _run_bytes, so Windows text-mode stdin cannot turn LF into CRLF in a message or add \\r to an entry name; a cross_os test proves it.",
+    "The previous: chain (followed only when it names the first parent) keeps the objects of an earlier archive counted after that archive's own tag is deleted, and a dedicated test covers it.",
+    "Folded names feed tag_seqs, _base_ms and receipt_lines, so a sequence number, base m or receipt suffix an archive folded is never reused for a different object.",
+    "The off-history: relink cue is still keyed on HEAD history alone, separate from the archive's 'is it tagged' answer, and the docstrings, SKILL.md and tests agree on it.",
+    "Tests are behavioral against real throwaway git repositories through the in-process driver; the refusal test injects a fault into reaches or held_trees and checks that nothing is tagged or deleted, rather than testing call wiring.",
+    "Docs move with the code: SKILL.md tag table and Archive step, the write-plan README command table, the schemas README, the PIP template's per-step actor, the release notes and the 0.75.0 bump.",
+    "The archive change lands in lockstep across SKILL.md (Archive step, tag row, drift ref, Related), the skill README (flow, table, commit step 7, Tags), schemas/README Tags, PLANS_PIP_Template merge steps, root README, plan.py docstring and usage, plugin.json 0.75.0 and the v1.0.0 release notes.",
+    "The EX1 reversal (off-history still cues relink after an archive) is stated the same way in the plan_lock module docstring, _base_lines, check_lines, plan.py, SKILL.md and test_plan_archive_check.py, and SkillSpec drops B13 with a reason and adds B15.",
+    "plan_archive verifies every folded commit and tree against the new commit before any tag is created, and a tag of no known shape is refused by the real reach check (test_archive_refuses_a_driver_tag_of_no_known_shape).",
+    "freeze_git feeds mktree and commit-tree as bytes and documents why: Windows text-mode stdin would add CR to tree names and to the message.",
+    "Archive-folded names stay counted in _seq, _base_ms and receipt_lines, so a deleted folded tag name is never reused for a different object.",
+    "test_write_plan_archive_contract.py pins the doc claims (archive step, tag row, agent runs check, actor on each PIP merge step) so the docs cannot silently drift from the driver.",
+    "The fold refuses before creating or deleting anything when a folded commit is not reachable or a folded tree is not held, so a malformed tag can never be lost.",
+    "_receipt_key never overwrites a receipts/ entry: a name collision falls back to the tag tail and then refuses.",
+    "commit_tree and mktree feed stdin as bytes, avoiding CRLF corruption of the archive message on Windows.",
+    "archive_tips follows the previous: chain only when it names the first parent, so a dropped older archive tag still counts without trusting arbitrary message text.",
+    "tag_seqs, _base_ms and receipt_lines all treat archive-folded names as taken, so no sequence number or receipt name is reused after the live tags are deleted.",
+    "test_mktree_refuses_bad_entry_names_before_any_git_call spies subprocess.run and proves the refusal happens before any git call, for every bad-name shape.",
+    "test_archive_tips_orders_rounds_and_m_numerically uses r10, r1-10 and r2 so a lexical sort would fail.",
+    "test_archive_refuses_when_an_object_is_unreachable and test_archive_refuses_a_driver_tag_of_no_known_shape check both the problem names and that no tag was created or deleted on refusal.",
+    "test_a_dropped_older_archive_tag_keeps_its_objects_archived genuinely exercises the previous: chain: without it held_trees and archived_names would miss r1's objects.",
+    "test_plan_lock_tagger isolates every identity source (env, global, system, useConfigOnly) and proves both the fallback and the environment restore."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "DesignEvolution EX4 records a test rename that never happened",
+        "file": "docs/plans/2021/DesignEvolution.json",
+        "files": [
+          "docs/plans/2021/DesignEvolution.json",
+          "tests/scripts/test_plan_archive.py",
+          "docs/plans/2021/receipts/TASK-2.json",
+          "docs/plans/strap/write-plan/SkillSpec.json"
+        ],
+        "lines": "152-178",
+        "reviewer": "docs, system_shape, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "EX4 (docs/plans/2021/DesignEvolution.json:152-178) says the I6 fix renamed tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind to test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags, which 'runs in place of the planned node'. At head the test keeps its planned name (tests/scripts/test_plan_archive.py:129), its docstring says the name is kept because strap behavior B12 was proven with it, the TASK-2 receipt (docs/plans/2021/receipts/TASK-2.json:15) ran the old name with no substitution, and SkillSpec B12 lists the old name. The catalog is the plan's audit trail, so after the merge it permanently claims a node that does not exist.\n\nAlso (system_shape): docs/plans/2021/DesignEvolution.json:152-177 (EX4) says the planned node was renamed to tests/scripts/test_plan_archive.py::test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags and 'runs in place of the planned node'. At the PR head no such node exists. tests/scripts/test_plan_archive.py:129-131 keeps test_archive_folds_the_commit_tags_of_every_entry_kind, and its docstring says the name is kept because write-plan B12 was proven with it. The TASK-2 receipt (docs/plans/2021/receipts/TASK-2.json), the plan's TASK-2 tests (ActionPlan.json:185) and SkillSpec B12 all name the original node. The design record therefore states the opposite of what shipped and points readers to a node that pytest cannot find.\n\nAlso (overall): EX4 says test_archive_folds_the_commit_tags_of_every_entry_kind was renamed to test_archive_folds_freeze_lock_arm_unlock_and_receipt_commit_tags and 'runs in place of the planned node'. At the head the test keeps its original name (its docstring says the name is the one write-plan B12 was proven with), and the TASK-2 receipt, the plan and SkillSpec B12 all cite the original node. The design record of plan 2021 therefore describes a state that does not exist, and the name still claims every entry kind while reopen and relink are not driven.",
+        "fix": [
+          "Rewrite EX4's new_outcome.indicated (and why_new_outcome) to what landed: the node keeps its planned name, pinned by write-plan strap B12, and its docstring now states it drives only the freeze, lock, arm, unlock and receipt -commit tags (reopen and relink not driven).",
+          "Or do the rename EX4 describes: rename the node in tests/scripts/test_plan_archive.py, update SkillSpec B12's tests list (strap reopen/refreeze), and re-record TASK-2 with --sub citing EX4.",
+          "Add a later evolution entry (evolution_api.add, e.g. EX5 on TASK-2) recording that the I6 rename was reverted and the planned node name kept so it matches write-plan B12, with the docstring at tests/scripts/test_plan_archive.py:130-131 carrying the narrower claim.",
+          "If EX4 is cited by no receipt (all six receipts have empty change_digests), rewrite EX4's new_outcome to state that the node keeps its planned name and its docstring states what it drives (reopen and relink not driven).",
+          "Add a DesignEvolution entry through evolution_api.add that supersedes EX4: the rename was reverted to keep B12's proven node, and the test docstring states the coverage limit."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "archive skips reconcile, so a committed entry's commit is left out and its -commit tag reappears on the next command",
+        "file": "plugins/harness/lib/harness_lib/plan_archive.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_archive.py",
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/schemas/PLANS_PIP_Template.md"
+        ],
+        "lines": "222-229,232-248",
+        "reviewer": "adv_code_runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plan_archive.archive folds only the driver tags that exist at that moment and runs no reconcile. In the ordinary flow freeze -> git commit -> plan.py archive, the commit that added the ledger entry has no freeze/<stem>/r1.<k>-commit tag yet (reconcile only runs at the end of the next plan command), so the archive message does not list it and the commit is not a parent. The very next check/render/verify then reconciles and creates freeze/<stem>/r1.1-commit (commit_folded finds no folded name for it), so the plan has a live driver tag again right after the archive and needs an r1-2 archive for an entry that was written and committed before r1. The shipped test test_commands_after_archive_tag_nothing_and_warn_nothing hides this because its finished() helper runs check before archive.\n\nAlso (overall): archive_lines prints one 'remote: git push origin --delete <every folded tag but receipt/>'. The folded set is every local driver tag, including ones never pushed, such as a -commit or -commit.2 tag that reconcile created on main after a squash merge whose push: line the developer never ran. git push refuses to delete a ref the remote does not have ('unable to delete ...: remote ref does not exist') and exits non-zero, so the one documented remote clean-up step can fail. SKILL.md and the PIP template (step 7) tell the developer to run it as printed, and as far as the reviewer knows git checks the whole refspec list before sending, so the other deletes may not go through either.\n\nAttack: With the tests/scripts fixtures (driver, run, project): fill(run, project); commit_all(project, 'freeze plan 0001'); run('archive', '1') -> prints 'folded 2 tag(s)' and 'deleted: base/plan/0001-add-operators/r1 freeze/plan/0001-add-operators/r1.1-tree' (no -commit tag folded; the archive message lists only those two). Then run('check', '1') prints 'tag: freeze/plan/0001-add-operators/r1.1-commit -> cd3889b' plus a push: line, and the stem's tags become ['archive/plan/0001-add-operators/r1', 'freeze/plan/0001-add-operators/r1.1-commit'] instead of only the archive tag. Probe run at the PR head reproduced exactly this.",
+        "fix": [
+          "In plan_archive.archive, before driver_tags, call pk.reconcile(repo, plan_file, plan) (the scenario-tree refusal already precedes it) so every committed entry's -commit tag exists and folds; surface its tag:/warn: lines or fold the created tags silently.",
+          "Alternatively refuse the archive when a committed ledger entry has no -commit tag and no folded name, telling the developer to run plan.py check first.",
+          "State in the SKILL.md Archive step and the plan.py docstring that a folded tag the remote lacks makes the remote: line fail, and give the recovery (drop the names git reports and rerun).",
+          "Or emit the remote delete as a form that tolerates missing refs, e.g. one 'git push origin --delete <tag>' per tag, or a note to filter the names through 'git ls-remote --tags origin' first."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Bytecode filter in snapshot changes what every freeze records, with no test and outside the plan",
+        "file": "plugins/harness/lib/harness_lib/plan_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "docs/plans/2021/DesignEvolution.json",
+          "docs/RELEASES/v1.0.0.md",
+          "tests/scripts/test_plan_lock.py",
+          "plugins/harness/lib/harness_lib/strap_lock.py"
+        ],
+        "lines": "139-164,425-439,682-698",
+        "reviewer": "overall, runtime, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plan_lock.snapshot now drops ignored interpreter bytecode (__pycache__ folders, *.pyc) before ignored_digests, via the new _bytecode helper, so every plan freeze, lock and relink ledger entry records a different ignored set than before. No test covers it: no test under tests/ freezes a plan whose tests folder holds an ignored __pycache__ file, and test_freeze_git.py only tests fg.members. Plan 2021 never names the change (no item, no DesignEvolution entry), and commit 1c38559 leaves it out (it also says tag_seqs 'is replaced' when it only gained an extra argument). The orphaned 1021 r1.1 entry, which recorded a .cpython-312.pyc digest, shows the bug is real, so the fix is worth keeping. Without a test, a refactor of snapshot or members can quietly bring the digest back and get the lock gate's 'ignored file differs from the freeze' and check's drift: lines firing again. Ledgers written before this change still hold .pyc digests, and _file_problems (plan_lock.py:436-438), the drift: path and relinked_files (which copies src.ignored) still compare them.\n\nAlso (runtime): snapshot() now drops ignored __pycache__/*.pyc digests (plan_lock.py:153-164), and its docstring gives the reason: a rerun rewrites bytecode, so its digest would make check report a moved ignored file. The readers still compare every path a stored entry holds. _file_problems (plan_lock.py:436-438, the lock gate) and _drift_lines (plan_lock.py:696-697) hash sorted(last.ignored) and sorted(held.ignored) without the _bytecode filter. lock() and relinked_files() (plan_lock.py:478, 571) copy src.ignored forward unchanged. A plan frozen before this change, with bytecode in its ledger's ignored map, still gets 'ignored file differs from the freeze' and 'drift:' lines on every interpreter rerun until it is refrozen. strap_lock.snapshot has the same unfiltered shape, but that file is outside this slot.\n\nAlso (system_shape): plan_lock.py:145-164 adds _bytecode and drops __pycache__ and .pyc paths from a freeze's ignored digests. This changes what every plan freeze and lock records. No plan 2021 item, DesignEvolution entry, release note line (docs/RELEASES/v1.0.0.md:178-179) or commit message mentions it. No test exercises plan_lock.snapshot with bytecode: tests/lib/test_freeze_git.py:116-119 covers only freeze_git.ignored_digests. The sibling driver strap_lock.snapshot (strap_lock.py:140-147) still digests bytecode under a strap spec's tests folder, so the 'a rerun rewrites it, so check reports a moved ignored file' rule now holds for plans only. Existing ledger entries that already hold a .pyc digest are unaffected. For example, docs/plans/freezes/plan/1021-.../r1.1-freeze.json:11 still compares against it in _drift_lines and the refreeze check.",
+        "fix": [
+          "Add a behavioral test in tests/scripts/test_plan_lock.py: put a *.pyc under docs/plans/<id>/tests/__pycache__/ with a .gitignore that ignores it, run freeze, and check that the entry's ignored map leaves it out while a non-bytecode ignored file stays; then rewrite the .pyc and check that lock and check report nothing.",
+          "Record the change in plan 2021's DesignEvolution (evolution_api.add, citing TASK-3) and add a Fix(write-plan) line to docs/RELEASES/v1.0.0.md.",
+          "Apply _bytecode in the readers too: hash and compare only [p for p in last.ignored if not _bytecode(p)] in _file_problems and the same for held.ignored in _drift_lines, so legacy entries stop reporting bytecode churn.",
+          "Or document in the snapshot/freeze_set docstrings that only freezes written after this change skip bytecode, and that an older plan needs a refreeze to drop it.",
+          "Move the bytecode filter into freeze_git (members or ignored_digests) so plan_lock and strap_lock share it, and add a test that freezes a plan whose tests folder holds a __pycache__/*.pyc and asserts the entry's ignored map leaves it out.",
+          "Alternatively keep it plan-only, but add a test for plan_lock.snapshot, a DesignEvolution entry and a release-note line (Fix(write-plan): freeze and lock ignore interpreter bytecode under a plan's tests folder)."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Receipt name collision and the both-taken refusal of the fold are untested",
+        "file": "tests/scripts/test_plan_archive.py",
+        "files": [
+          "tests/scripts/test_plan_archive.py",
+          "tests/scripts/_plan_archive_helpers.py",
+          "plugins/harness/lib/harness_lib/plan_archive.py"
+        ],
+        "lines": "3-11,53-191",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The test module docstring (test_plan_archive.py:3-6) promises receipts/<ITEM>[.n] for every receipt tag, a commit receipt's tree included, and plan_archive._receipt_key promises the tag tail (<ITEM>-commit[.n]) when the item name is already taken and a PlanError, never an overwrite, when both are taken. Every test in scope folds at most one receipt tag per item per archive (finished() records by commit, test_archive_again_folds_later_tags_into_r1_2 archives between the two --staged records), so the yield-to-tail branch, the trees-first ordering of fold_of and the both-taken refusal never run. A regression that overwrote receipts/TASK-1 would pass every test here.\n\nAlso (tests): plan_archive.archive refuses inside a strap scenario tree (a linked worktree that shares the main checkout's tags) before any work, because a run there would create an archive tag and delete the main checkout's driver tags. No file in scope (nor any other test naming archive) drives `archive` from such a tree, so dropping or misordering the in_scenario_tree guard after driver_tags/next_archive would go unnoticed.\n\nAlso (adv_code_tests): plan_archive._receipt_key promises that a receipt entry is never overwritten: a second receipt of the same item lands under its tag tail (receipts/TASK-1-commit), and a third clash raises PlanError. No PR test folds two receipts of one item in the same archive (every test archives between records), so the fallback and the refusal are both unexercised. Replacing _receipt_key with a plain overwrite leaves all 25 tests in the three archive test files green while the archive silently drops a receipt entry.\n\nAlso (tests): test_archive_folds_every_driver_tag_into_one ends by matching ARCHIVE against pk._PLAN_TAG. The behavior that matters is that an archived plan's number stays taken in plan_lock.seen_plan_ids (the public consumer of that regex); the assertion couples the test to a private name and would keep passing if seen_plan_ids stopped reading tags.\n\nAttack: Patch plan_archive._receipt_key (plugins/harness/lib/harness_lib/plan_archive.py:87-97) to `return f\"{match['item']}.{match['n']}\" if match['n'] else match['item']` (overwrite, no fallback, no PlanError), e.g. through a pytest plugin passed with -p. Run tests/lib/test_freeze_git_archive.py, tests/scripts/test_plan_archive.py and tests/scripts/test_plan_archive_check.py: 25 passed. Then a test doing finished(run, project); run('record','1','TASK-1','--staged'); run('archive','1') shows receipts/ holding only ['TASK-1'] under the mutation, against ['TASK-1-commit', 'TASK-1'] at the PR head: the TASK-1-tree receipt's slot is overwritten and no PR test notices (probe run at the PR head).",
+        "fix": [
+          "Add a test to tests/scripts/test_plan_archive.py that runs finished(), then `record 1 TASK-1 --staged` before the first archive, archives, and asserts `<commit>:receipts/TASK-1` is the staged tree and `<commit>:receipts/TASK-1-commit` is the commit receipt's tree.",
+          "Add a unit test that calls plan_archive.fold_of with a hand-built tags dict holding `receipt/<stem>/TASK-1-tree`, `receipt/<stem>/TASK-1-commit` and a third tag whose item and tail are both taken, and asserts pd.PlanError naming both receipt paths.",
+          "Add a test to tests/scripts/test_plan_archive.py that builds a strap scenario tree (a linked worktree of the fixture project, as tests/scripts/test_strap_driver.py sets one up), runs `archive 1` there with --repo, and asserts exit 1, the `does not run inside a strap scenario tree` problem line, and driver_tags(project) unchanged with no archive/* tag.",
+          "Add a test to tests/scripts/test_plan_archive.py: finished(run, project), then run('record', '1', 'TASK-1', '--staged') before any archive, then archive and assert git ls-tree --name-only <archive>:receipts lists both TASK-1 and TASK-1-commit, with TASK-1 equal to the TASK-1-tree tag's tree and TASK-1-commit equal to the commit receipt's tree.",
+          "Add a unit test of plan_archive.fold_of with tags TASK-1-tree, TASK-1-tree.2 and TASK-1-commit that pins the receipts keys, plus one where both the key and the tail are taken that expects PlanError.",
+          "Replace lines 79-80 with an assertion that 1 is in pk.seen_plan_ids(project, <plans folder of the fixture project>) after the archive, once every folded tag is gone and the archive tag is the only tag naming plan 0001."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "todo-tq3u cites _PLAN_TAG at a stale line",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "3087-3164",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new todo-tq3u summary in docs/TODO/RepoToDo.json says the driver tags are 'matched by plugins/harness/lib/harness_lib/plan_lock.py:46'; at head _PLAN_TAG sits at plan_lock.py:48 (and _branch_ids starts at :762, inside the cited 759-767). A reader following the citation lands two lines off.",
+        "fix": [
+          "Change 'plan_lock.py:46' to 'plan_lock.py:48' in todo-tq3u's summary (through the TODO driver, not by hand)."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "EX1 omits STR-2 though it reshaped the strap round",
+        "file": "docs/plans/2021/DesignEvolution.json",
+        "files": [
+          "docs/plans/2021/DesignEvolution.json",
+          "docs/plans/strap/write-plan/SkillSpec.json",
+          "docs/plans/2021/receipts/STR-2.json"
+        ],
+        "lines": "65-92",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "EX1 (DesignEvolution.json:65-92) reversed the off-history rule and lists items TASK-3 and TASK-4 only. The same change dropped strap behavior B13, added B15 and forced write-plan round 5 (r5.1-reopen, r5.2-freeze), which is STR-2's work (STR-2 planned three behaviors and one freeze); the STR-2 receipt cites no change, so nothing links the extra round to its cause.",
+        "fix": [
+          "Add STR-2 to EX1's items (or add an entry naming the round-5 reopen, the B13 drop and B15) so the strap round's deviation from STR-2's action has a cited cause."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Plan 2021 still names the closed PR 297 branch",
+        "file": "docs/plans/2021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_ActionPlan.json",
+        "files": [
+          "docs/plans/2021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_ActionPlan.json",
+          "docs/plans/2021/DesignEvolution.json",
+          "docs/plans/2021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_PIP.html"
+        ],
+        "lines": "6",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The plan JSON (branch: 2162-skill-tag-archive, line 6), its PIP header (PIP.html:50) and the catalog's branch_lineage (DesignEvolution.json:4) name 2162-skill-tag-archive, the branch of PR 297, which is CLOSED unmerged; the work merges from 3162-skill-tag-archive (PR 299). EX2 was written to correct exactly this kind of stale branch fact, and it repeats one branch later.\n\nAlso (overall): The frozen plan's branch field, the rendered PIP header and DesignEvolution branch_lineage all name 2162-skill-tag-archive (set by EX2 for PR 297), but this PR merges 3162-skill-tag-archive. The provenance record points to a branch other than the one that lands the work.\n\nAlso (system_shape): The ActionPlan's branch field (docs/plans/2021_..._ActionPlan.json:6), the rendered PIP head (PIP.html:50), DesignEvolution branch_lineage (DesignEvolution.json:4) and EX2 (:99-118) all state that the work is on 2162-skill-tag-archive (PR 297). PR 297 is closed unmerged, and this PR (299) runs from 3162-skill-tag-archive, the branch every commit message names. EX2 was added specifically to make the plan 'name the branch ... that exist[s]', so it is stale again.",
+        "fix": [
+          "Add a DesignEvolution entry for the move to 3162-skill-tag-archive (PR 299) and set branch_lineage to main-->3162-skill-tag-archive; update the plan's branch through plan_api.write, refreeze and render so the PIP header follows.",
+          "Or, if the frozen plan is to stay untouched, add only the DesignEvolution entry recording that the branch moved to 3162-skill-tag-archive.",
+          "Add a DesignEvolution entry recording the move to 3162-skill-tag-archive (PR 299), and update the plan branch field at its next refreeze.",
+          "Append a DesignEvolution entry (evolution_api.add) recording the move to 3162-skill-tag-archive / PR 299, and update the plan's branch field at its next unlock or refreeze so the PIP renders the real branch."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "write-plan strap spec's round-4 and round-5 bases are not on the PR's history",
+        "file": "docs/plans/strap/write-plan/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/write-plan/SkillSpec.json",
+          "docs/plans/freezes/skill/write-plan/r5.1-reopen.json",
+          "docs/plans/freezes/skill/write-plan/r4.1-reopen.json"
+        ],
+        "lines": "4",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "SkillSpec.json:4 sets base 8ba820958304 (round 5), and the rounds entry for round 4 has base e533c01495f1. Neither commit is an ancestor of head 6afd7d3: 8ba8209 ('strip the off-history change for the write-plan round 5 base') sits on a side history off 01f3bb2. Only the local tag base/skill/write-plan/r5 holds 8ba8209. At the PR head, strap.py check write-plan therefore prints off-history: for the spec base (strap_lock.py:493). After a squash merge, the base commits survive only if their base tags are pushed.",
+        "fix": [
+          "Before the merge, push the base/skill/write-plan/r4 and r5 tags (the reopen push: lines) so the strip bases stay reachable on the remote, and note in the PR description that the off-history: line for the write-plan spec is expected.",
+          "Or run strap.py relink write-plan --to <a commit on HEAD's history> after the freeze, so check gives no relink cue."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Dropping B13 leaves three still-valid archive-check nodes without a strap behavior",
+        "file": "docs/plans/strap/write-plan/SkillSpec.json",
+        "lines": "685-760",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "SkillSpec B13 was dropped because one of its four nodes (test_a_rewritten_base_the_archive_reaches_is_quiet) reversed its rule, and B15 replaces only that node. The other three (test_commands_after_archive_tag_nothing_and_warn_nothing, test_an_entry_written_after_the_archive_is_tagged_and_folds_again, test_a_tree_outside_the_archive_still_warns) still hold, but no live behavior owns them, so the write-plan strap spec no longer claims the reconcile skip, the post-archive re-tag and the outside-tree warning.",
+        "fix": [
+          "At the next write-plan strap round, add the three surviving nodes to B15 or to a new mechanical behavior so the archive-aware check is proven again."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "plan_archive docstring cites freeze_git.tree_held, which only tests call",
+        "file": "plugins/harness/lib/harness_lib/plan_archive.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_archive.py",
+          "plugins/harness/lib/harness_lib/freeze_git.py"
+        ],
+        "lines": "17-19,193-199",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The plan_archive module docstring (line 18-19) says each folded tree must be 'held in its tree (freeze_git.tree_held)'. unreachable() (plan_archive.py:193-199) instead builds fg.held_trees once and tests membership. No production code calls tree_held: grep finds it only in tests/lib/test_freeze_git_archive.py and in the two docstrings. The freeze_git module docstring (line 18) also presents tree_held as part of the archive API that callers use.\n\nAlso (overall): The module docstring says each folded tree is checked through freeze_git.tree_held, but unreachable() calls fg.held_trees directly (plan_archive.py:197-198), and the refusal test monkeypatches held_trees. tree_held now has no caller under plugins/ (only tests/lib/test_freeze_git_archive.py), even though the freeze_git module docstring presents it as part of the API.\n\nAlso (system_shape): plugins/harness/lib/harness_lib/plan_archive.py:18-19 says each folded tree must be 'held in its tree (``freeze_git.tree_held``)'. unreachable() at :193-199 calls fg.held_trees once and tests membership itself; it never calls tree_held. The refusal test patches held_trees (tests/scripts/test_plan_archive.py:170), so patching the documented tree_held would change nothing. That makes the docstring a wrong guide to the seam.",
+        "fix": [
+          "Change the plan_archive docstring reference to '(membership in freeze_git.held_trees)'.",
+          "Or have unreachable() call fg.tree_held per tree; that costs one ls-tree per tree, so the docstring change is the cheaper option.",
+          "In plan_archive.py:18-19, replace '(``freeze_git.tree_held``)' with '(``freeze_git.held_trees`` of the new commit)'.",
+          "Change plan_archive.py:19 to name ``freeze_git.held_trees`` (the subtree set of the new commit, read once) instead of ``freeze_git.tree_held``."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Module docstring of plan_lock has a broken reflow",
+        "file": "plugins/harness/lib/harness_lib/plan_lock.py",
+        "lines": "14-21",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The extended plan_lock module docstring breaks mid-sentence: line 18 ends 'tagged as before. Nothing' and line 19 starts 'here reads the config: ...'. Line 20 is then a separate short line. The paragraph reads as a leftover from an unfinished line wrap.",
+        "fix": [
+          "Reflow lines 14-21 into one paragraph at line length 110, ending '...An entry written after the archive is tagged as before. Nothing here reads the config: callers pass the plan file, whose folder holds the ledger. This module never saves a plan except in write_freeze; plan.py does the rest.'"
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "plan.py check docstring still says drift cites the lock tag",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_lock.py"
+        ],
+        "lines": "40",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/plan.py:40 documents check's output as ``drift: <path> differs from <lock tag>``. After an archive deletes the lock tree tag, plan_lock._lock_ref (plan_lock.py:667-679) cites ``archive/<stem>/r1[-<m>]:freezes/r1.<k>`` or the ledger entry ``lock r1.<k>`` instead. SKILL.md:175-177 and the _drift_lines docstring were updated, but the driver's own command reference was not.",
+        "fix": [
+          "Reword plan.py:40 to ``drift: <path> differs from <ref>`` on a Locked plan (the lock tree tag, or after an archive the ``archive/<stem>/r1:freezes/r1.<k>`` path or the ``lock r1.<k>`` entry)."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Skill description has no trigger for the new archive step",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "lines": "3",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The frontmatter description (SKILL.md:3) triggers on writing a plan and on recording items ('write a plan', 'record TASK-3'). The skill now owns a post-merge step, `PLAN archive`, that runs only on the developer's explicit ask. Nothing in the description routes a request like 'archive plan 2021' to this skill, so the session may not load the procedure that tells it about `--remote` and the `remote:` line.",
+        "fix": [
+          "Extend the description at SKILL.md:3, for example `..., or when a merged plan's tags are archived. Triggers on \"write a plan\", \"plan this\", \"write-plan\", \"record TASK-3\", \"archive plan 2021\".`"
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "write-plan lists `reopen` as a plan ledger entry kind",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_archive.py"
+        ],
+        "lines": "143,157,193-199",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The new `-commit` tag row (SKILL.md:143) and the Archive paragraph (SKILL.md:194) list `reopen` among the plan's entry kinds. A plan ledger never gets a `reopen` entry: `plan.py` has no reopen command, `plan_lock.py:3-4` names only freeze, lock, arm, unlock and relink, and `reopen` is a strap-skills kind (`strap.py cmd_reopen`). The same section's own list at SKILL.md:213 (refreeze, lock, relink, arm, unlock) leaves it out, so the skill contradicts itself. `plan_archive.KINDS` folds `reopen` only because it reuses the shared `EntryKind` enum.\n\nAlso (skill_package): SKILL.md:157 says only that 'Nothing is tagged inside a strap scenario or red tree', which describes the other drivers: they still write entries and skip tagging. `plan_archive.archive` (plan_archive.py:235-237) refuses outright there with a `problem:` line, and `plan.py`'s docstring (line 19) says so. The Archive paragraph (SKILL.md:193-214) leaves this out, so the skill describes archive as if it followed the silent skip-tagging rule.",
+        "fix": [
+          "Drop `reopen` from the kind lists at SKILL.md:143 and SKILL.md:194 so they read `freeze, lock, arm, unlock, relink`, matching SKILL.md:213 and the plan_lock.py module docstring.",
+          "Add one clause to the Archive paragraph at SKILL.md:198, for example `It refuses inside a strap scenario or red tree, before any work.`"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Auto-follow rationale says entry tags peel to commits; tree tags peel to trees",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "lines": "202-203",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:202-203 explains that a fetch restores every pushed folded tag because 'base and entry tags peel to main-line commits'. The folded `freeze/` and `lock/<stem>/r1.<k>-tree` tags peel to trees, not commits. Those tags still come back, since git auto-follows a tag whose peeled object is present locally and those trees are, so the claim 'every pushed folded tag' holds. The stated reason is wrong for the tree tags, though, and a reader could conclude that tree tags never come back and that `--remote` matters less.",
+        "fix": [
+          "Reword the parenthetical at SKILL.md:203 to: `(base and entry commit tags peel to main-line commits, and entry tree tags to trees those commits hold, so tag auto-follow brings them back)`."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "archive_tips chain and its first-parent guard lack a unit test; module docstring omits them",
+        "file": "tests/lib/test_freeze_git_archive.py",
+        "files": [
+          "tests/lib/test_freeze_git_archive.py",
+          "plugins/harness/lib/harness_lib/freeze_git.py"
+        ],
+        "lines": "1-10,117-127,130-165",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_freeze_git_archive.py:5-7 describes archive_tips as listing the commits the archive tags peel to, but freeze_git.archive_tips also follows `previous:` lines, and only when the named sha is the first parent. test_archive_tips_reaches_and_tree_held builds `later` with message `archive again` (no previous line), so the chain is exercised only indirectly by test_plan_archive_check.py:110-129 and the first-parent guard (a forged previous line naming a non-parent commit is not followed) is never tested. The docstring also omits archived_names and held_trees, both of which the module tests.\n\nAlso (adv_code_tests): freeze_git._previous follows a `previous: <tag> <sha>` line only when the sha is also the commit's first parent, so archive_tips never counts a commit the archive does not keep reachable (and check never silences an untagged warning for it). Every PR test builds a genuine chain, so dropping the guard leaves the suite green.\n\nAlso (adv_code_tests): The freeze_git module docstring says commit_tree feeds its message as bytes because Windows text-mode stdin turns LF into CRLF, which git commit-tree stores unchanged. test_commit_tree_takes_each_parent_once_in_order reads the message through conftest.git (text mode, universal newlines) and only checks startswith('Archive of x'), and it is not marked cross_os, so a revert to text-mode stdin stores CRLF commit messages on Windows with no failing test. The mktree test pins bytes; the commit_tree one does not.\n\nAttack: Replace freeze_git._previous (plugins/harness/lib/harness_lib/freeze_git.py:335-350) with a version that returns match.group(1) for any previous: line regardless of the parents. tests/lib/test_freeze_git_archive.py, tests/scripts/test_plan_archive.py and tests/scripts/test_plan_archive_check.py still pass (25 passed, probe run at the PR head). A commit made with commit_tree(repo, mktree(repo, {}), [], 'x\\n\\nprevious: archive/plan/0021-archive/r1 <sha of an orphan commit>\\n') and tagged archive/plan/0021-archive/r1 then makes archive_tips return the orphan too, which the guard exists to prevent.\n\nAttack: On Windows, change commit_tree (plugins/harness/lib/harness_lib/freeze_git.py:318-323) to `_out(repo, 'commit-tree', tree, *flags, '-F', '-', stdin=message)`. Probe at the PR head: `git cat-file commit <sha>` of that commit contains b'\\r' (the bytes version does not), yet `git(repo, 'log', '-1', '--format=%B', commit).startswith('Archive of x')` (test line 127) is still True, archived_names still parses the folded line and _previous still follows the chain, so no PR test fails.",
+        "fix": [
+          "Add a test that tags only a commit whose message ends in `previous: <tag> <sha>` with sha as first parent and asserts archive_tips returns [tip, sha]; then a second commit whose previous line names a commit that is not its first parent and asserts it is not followed.",
+          "Update the module docstring (lines 5-7) to name the previous-chain behavior, archived_names and held_trees.",
+          "Add a test to tests/lib/test_freeze_git_archive.py: tag a commit_tree whose message ends in `previous: archive/<stem>/r1 <sha>` where <sha> is a commit that is not its first parent (or no parent at all), and assert archive_tips(repo, STEM) returns only the tagged tip.",
+          "In tests/lib/test_freeze_git_archive.py, mark the commit_tree test cross_os and assert b'\\r' not in subprocess.run(['git','-C',str(repo),'cat-file','commit',commit], capture_output=True).stdout, or spy subprocess.run as the mktree test does and assert the commit-tree input is bytes."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "driver_tags docstring names four kinds while KINDS filters eight",
+        "file": "tests/scripts/_plan_archive_helpers.py",
+        "lines": "16,24-27",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_plan_archive_helpers.driver_tags says it returns plan 0001's `base, freeze, lock and receipt tags`, but it filters on KINDS (line 16), which also holds unlock, arm, reopen and relink; test_archive_folds_the_commit_tags_of_every_entry_kind relies on the arm and unlock tags being returned.",
+        "fix": [
+          "Change the docstring at line 25 to: ``{name: peeled object}`` of plan 0001's driver tags (every kind in ``KINDS``; archive tags never)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M4",
+      "classification": "architectural_ambiguity",
+      "reason": "Strip bases sit off the rebuilt branch by design; pushing the base tags is the developer's act, and relinking to a HEAD commit drops the strip proof."
+    },
+    {
+      "id": "M5",
+      "classification": "architectural_ambiguity",
+      "reason": "Developer chose B13 -> one node (B15). Re-owning the 3 surviving nodes needs write-plan strap round 6 (reopen, refreeze), run only on the developer's ask."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 299 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":6,\"first_sha\":\"1c385598edae46f6eaf365f2a9cbbac35b3488ac\",\"headRefName\":\"3162-skill-tag-archive\",\"headRefOid\":\"6afd7d3232ad4c9e2ecfaf289cf28b9febe7cb7f\",\"last_sha\":\"6afd7d3232ad4c9e2ecfaf289cf28b9febe7cb7f\",\"mergeCommit\":null,\"number\":299,\"state\":\"OPEN\",\"title\":\"skill tag archive\",\"url\":\"https://github.com/t968rs/operator-straps/pull/299\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (32 checked, 0 refuted, 4 code findings)",
+        "counts": {
+          "findings_checked": 32,
+          "findings_refuted": 0,
+          "findings_upheld": 32,
+          "code_findings": 4
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "3162-skill-tag-archive",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "3162-skill-tag-archive",
+        "head_ref_name": "3162-skill-tag-archive",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "1c385598edae46f6eaf365f2a9cbbac35b3488ac",
+        "head_sha": "6afd7d3232ad4c9e2ecfaf289cf28b9febe7cb7f",
+        "base_ancestor_command": "git merge-base --is-ancestor 1c385598edae46f6eaf365f2a9cbbac35b3488ac HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 6afd7d3232ad4c9e2ecfaf289cf28b9febe7cb7f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - EX1 now lists STR-2 among its items and its new_outcome names write-plan round 5 (r5.1-reopen, B13 dropped, B15 added, r5.2-freeze) as caused by the off-history reversal; SkillSpec.json: cited only, B13 dropped_reason and B15 already state the change; no edit in this part: STR-2 receipt is sealed (receipt_models.Receipt.holds covers every field), so a hand edit breaks its seal; the cause link (round-5 reopen, B13 drop, B15) belongs in EX1 of DesignEvolution.json, owned by the other part"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - Added EX5 recording the move from 2162-skill-tag-archive (PR 297, closed) to 3162-skill-tag-archive (PR 299) and set branch_lineage to main-->3162-skill-tag-archive; ActionPlan.json and PIP.html: plan is frozen, its branch field and PIP header follow at the next refreeze as EX5 records (refreeze is a developer step)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - Rewrote EX4 new_outcome and why_new_outcome to what landed: the node keeps its planned name (pinned by write-plan B12) and its docstring states it drives only freeze, lock, arm, unlock and receipt -commit tags; no receipt cites EX4's digest; test_plan_archive.py, TASK-2.json, SkillSpec.json: cited only, already hold the planned name"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - plan_archive module docstring now names membership in freeze_git.held_trees (read once) instead of freeze_git.tree_held; unreachable() already tests held_trees, so no code changed; freeze_git module docstring now names held_trees (read once) as the set plan_archive tests membership in and tree_held as its one-tree form, instead of presenting tree_held as the archive check"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - write-plan frontmatter description extended with the merged-plan archive trigger and the archive 2021 trigger phrase"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - dropped reopen from the entry kind lists at SKILL.md -commit tag row and the Archive paragraph (now freeze, lock, arm, unlock, relink); added a clause that archive refuses inside a strap scenario or red tree before any work"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - reworded the auto-follow parenthetical at SKILL.md Archive paragraph so commit tags peel to main-line commits and entry tree tags to the trees those commits hold"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - driver_tags docstring now says every kind in KINDS (archive tags never) instead of listing four kinds"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - test module docstring names the previous-chain rule, held_trees and archived_names; new tests pin archive_tips following a previous line naming the first parent and skipping one naming a second parent or a parentless commit; commit_tree test marked cross_os and asserts the raw commit object holds no CR"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - todo-tq3u summary: plan_lock.py:46 changed to plan_lock.py:48 (_PLAN_TAG at :48); no todo_sync command edits a summary field, so the string was edited directly"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - plan_lock module docstring lines 14-21 reflowed into one paragraph at line length 110 ending with the write_freeze / plan.py sentence"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - plan.py:40 check docstring now reads drift: <path> differs from <ref>; _lock_ref (plan_lock.py:666-678) already cites the archive path or lock ledger entry, so no edit there"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - plan_archive.archive now runs pk.reconcile before driver_tags, so a committed entry's -commit tag is created and folded (its warn: lines close the output) and the tags it creates are left off the remote: line; plan.py docstring, SKILL.md Archive step and PIP template step 7 state the pre-fold reconcile and the recovery when the remote: push fails on a tag the remote lacks; regression test added in test_plan_archive.py; plan_lock.py: reconcile reused unchanged, no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - plan_lock gains kept_ignored, applied in _file_problems and _drift_lines so legacy entries holding bytecode digests stop reporting churn; behavioral test in test_plan_lock.py freezes with an ignored __pycache__/*.pyc and run.log, asserts only run.log is digested, then rewrites the .pyc and checks lock passes and check prints no drift:; Fix(write-plan) line added to docs/RELEASES/v1.0.0.md; DesignEvolution.json: release note and test cover the record, no catalog entry added; strap_lock.py: left plan-only per the keep-it-plan-only option"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "6afd7d3 (working-tree snapshot; developer commits) - test_plan_archive.py adds a staged-plus-commit receipt archive asserting receipts/TASK-1 is the staged tree and receipts/TASK-1-commit the commit receipt's tree, a fold_of unit test where both the key and the tail are taken expecting PlanError naming both paths, and a scenario-tree test asserting the refusal line with driver tags unchanged and no archive tag; _plan_archive_helpers.py and plan_archive.py: cited helpers and code under test, no edit needed for I4"
+    }
+  ]
+}

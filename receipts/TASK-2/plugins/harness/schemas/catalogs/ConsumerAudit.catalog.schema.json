@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Consumer-Contract Audit Catalog",
+  "description": "Catalog of consumers (readers / writers / walkers / mutators) of a target symbol whose contract may change. Each consumer entry records the role, the contract relied upon, and the breakage risk. Extends SymbolCatalog.base. Pairs with the consumer-contract-audit skill.",
+  "allOf": [
+    {
+      "$ref": "SymbolCatalog.base.schema.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "target_symbol",
+        "audit_reason",
+        "consumers"
+      ],
+      "properties": {
+        "target_symbol": {
+          "type": "object",
+          "description": "The symbol/structure whose contract is being audited.",
+          "required": [
+            "name",
+            "kind"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Qualified name (e.g., TaskTracker.failed, PathHistory.entries)."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "function",
+                "method",
+                "attribute",
+                "class",
+                "context_manager",
+                "constant",
+                "registry_field",
+                "module",
+                "other"
+              ]
+            },
+            "module_path": {
+              "type": "string"
+            },
+            "file_path": {
+              "type": "string"
+            },
+            "line_start": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "line_end": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "audit_reason": {
+          "type": "string",
+          "description": "Why this audit was triggered (e.g., 'considering changing pop semantics - see consumer-contract-audit skill', 'shrinking visibility window for failed entries')."
+        },
+        "proposed_change": {
+          "type": "string",
+          "description": "Optional description of the proposed contract change being evaluated."
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "total_consumers",
+            "by_role"
+          ],
+          "properties": {
+            "total_consumers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "by_role": {
+              "type": "object",
+              "description": "Counts grouped by consumer role.",
+              "properties": {
+                "read": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "write": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "walk": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "mutate": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "by_risk": {
+              "type": "object",
+              "description": "Counts grouped by risk_if_changed tier.",
+              "properties": {
+                "high": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "medium": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "low": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "consumers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/consumer_entry"
+          }
+        },
+        "contract_invariants": {
+          "type": "array",
+          "description": "Invariants that one or more consumers rely on. Useful when multiple consumers share the same expectation.",
+          "items": {
+            "type": "object",
+            "required": [
+              "invariant",
+              "relied_on_by"
+            ],
+            "properties": {
+              "invariant": {
+                "type": "string",
+                "description": "The contract clause (e.g., 'entries persist until end of session', 'iteration order is insertion order')."
+              },
+              "relied_on_by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "description": "Names of consumers (matching consumers[].name) that rely on this invariant."
+              },
+              "breaks_if": {
+                "type": "string",
+                "description": "Specific change that would break this invariant."
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "consumer_entry": {
+      "allOf": [
+        {
+          "$ref": "SymbolCatalog.base.schema.json#/$defs/cataloged_entry"
+        },
+        {
+          "type": "object",
+          "required": [
+            "file_path",
+            "role",
+            "risk_if_changed",
+            "evidence"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "function",
+                "method",
+                "attribute",
+                "class",
+                "module",
+                "test",
+                "other"
+              ]
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write",
+                "walk",
+                "mutate"
+              ],
+              "description": "How this consumer interacts with the target. read = inspects value(s); write = sets/replaces; walk = iterates; mutate = modifies in place (pop/append/del)."
+            },
+            "contract_relied_on": {
+              "type": "string",
+              "description": "What this consumer assumes about the target's behavior (e.g., 'iteration yields all failed tasks until session end')."
+            },
+            "risk_if_changed": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ],
+              "description": "Severity if the proposed change breaks this consumer's contract."
+            },
+            "evidence": {
+              "type": "string",
+              "description": "Raw evidence: line of code, search result, or test that demonstrates the contract dependency."
+            },
+            "breaks_if": {
+              "type": "string",
+              "description": "Specific change that would break THIS consumer (per-consumer; complements top-level contract_invariants)."
+            },
+            "mitigations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Possible ways to update this consumer if the contract changes."
+            }
+          }
+        }
+      ]
+    }
+  }
+}

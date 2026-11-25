@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2029: writing comments skill</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2029: writing comments skill</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2029_writing_comments_skill_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2029</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2029</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-24</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>0005-writing-comments -&gt; main</dd><dt>Base commit</dt><dd><code>e4d9108</code></dd><dt>Frozen</dt><dd>2026-11-24 at <code>affc2d7</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: comments.divider_width config key</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Section checker: models, API, comment_sections.py and its root-separation case</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: writing-comments skill through the strap gate</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: README rows, harness 0.84.0 and v1.1.0 notes</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 What is the writing-comments skill built from?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>reference-checker</code> SKILL.md and comment_format.md applied by the session, plus a comment_sections.py command that prints a module&#x27;s outline and flags dividers off the canonical form</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>reference-only</code> SKILL.md and comment_format.md only; every behavior scenario-tested</li><li><code>sibling-agent</code> a dispatch driver and a comment-writer agent per file, like writing-docstrings</li></ul><p class="why">Developer decision, 2026-11-24. The divider form is decidable by a command; comment quality is not.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Which divider forms are canonical?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>two-levels</code> major: rule / title (plus optional lines) / rule; minor: `# -- name ---` to the width; every other separator comment is a style flag</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>three-levels</code> the two plus `### ===== NAME ===== ###` as a class-group level</li><li><code>any-consistent</code> no canonical form; only mixed styles or widths in one file are flagged</li></ul><p class="why">Developer decision, 2026-11-24.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 Where does the divider width come from?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>key-88</code> new key comments.divider_width, default 88</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>reuse-docstrings</code> docstrings.line_length (110)</li></ul><p class="why">Developer decision, 2026-11-24. 88 is the width of the issue&#x27;s full-width rule.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 When does the skill act on existing code?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>new-and-touched</code> fires on writing or editing Python; dividers in modules the work creates or on an explicit ask; comments rewritten only in the code being changed; an untouched module is never restructured unasked</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>explicit-only</code> fires only on an explicit ask</li></ul><p class="why">Developer decision, 2026-11-24.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>comments.divider_width default</td><td>88</td><td>issue #317 Goal 1: `# ` plus 86 dashes is 88 characters</td><td>key-88</td></tr>
+<tr><td>rule line</td><td>`# ` plus dashes until the line, indentation included, is divider_width long</td><td>issue #317 Goal 1, first example</td><td>two-levels</td></tr>
+<tr><td>minor divider</td><td>`# -- &lt;title&gt; ` plus dashes until the line is divider_width long</td><td>issue #317 Goal 1, `# -- row helpers` example</td><td>two-levels</td></tr>
+<tr><td>separator run that makes a comment divider-like</td><td>4 or more of - = * ~ _ #</td><td>plan 2029 TASK-2 action; keeps prose `--` out</td><td>two-levels</td></tr>
+</table>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>^[[:space:]]*#+ ?[-=]{8,}</code>: <code>plugins/harness/lib/harness_lib/bubble_memo.py</code> (title after the dash run: style flag; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/hooks/test_check_phase5_sentinel_hook.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/lib/test_bubble_memo.py</code> (title after the dash run: style flag; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/schemas/test_agent_schemas.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/schemas/test_pr_review_fixture_schemas.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/schemas/test_pr_review_invocation_test_matrix_schema.py</code> (77-wide banner with lines below its title: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/schemas/test_pr_review_schema_verification_log.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/schemas/test_schema_meta_valid.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/scripts/test_phase4_branch_safety_second_run.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/skills/test_add_note_script.py</code> (rule and title with no closing rule: banner flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked), <code>tests/skills/test_terminals_fixer_schema.py</code> (77-wide banners: width flags; existing divider, left as is: the module is untouched (D4 new-and-touched); comment_sections reports its flags whenever the file is checked)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: comments.divider_width config key <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/config/defaults.json</code>, <code>plugins/harness/config/harness.schema.json</code>, <code>plugins/harness/lib/harness_lib/config.py</code>, <code>README.md</code>, <code>tests/lib/test_config.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/config.py:104-108</code> holds <code>class DocstringsConfig:</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:227</code> holds <code>docstrings: DocstringsConfig</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:340-342</code> holds <code>raise ConfigError(f&quot;{source}: unknown keys {unknown}&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:353</code> holds <code>return HarnessConfig(</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:365</code> holds <code>runlogs=_runlogs(m[&quot;runlogs&quot;]), docstrings=_docstrings(m[&quot;docstrings&quot;]),</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:530</code> holds <code>def _docstrings(d: Dict[str, Any]) -&gt; DocstringsConfig:</code></li>
+<li><code>plugins/harness/config/defaults.json:71-73</code> holds <code>&quot;docstrings&quot;: { &quot;line_length&quot;: 110 },</code></li>
+<li><code>plugins/harness/config/harness.schema.json:164</code> holds <code>&quot;docstrings&quot;: {</code></li>
+<li><code>README.md:653</code> holds <code>| `docstrings.line_length` | `110`</code></li>
+</ul>
+<p class="action">Add the `comments` section with `divider_width` (default 88, a positive integer) in the four places: `defaults.json`; `harness.schema.json` (an object, additionalProperties false, divider_width an integer with minimum 1, described as read by the writing-comments section command); `config.py` (a frozen `CommentsConfig` dataclass beside `DocstringsConfig`, a `comments: CommentsConfig` field on `HarnessConfig`, a `_comments()` builder mirroring `_docstrings()` with its own unknown-key and positive-integer checks so a load without jsonschema refuses with a message starting `comments`, wired into the one `HarnessConfig(...)` call); and a README key-table row after `docstrings.line_length`.</p>
+<ul>
+<li>Test <code>tests/lib/test_config.py::test_comments_divider_width_default_and_override</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad0]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad1]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad2]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad3]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad4]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config.py::test_invalid_comments_raise_without_jsonschema[bad5]</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/config.py tests/lib/test_config.py</code>: All checks passed!</li>
+<li>Record it: <code>plan.py record 2029 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Section checker: models, API, comment_sections.py and its root-separation case <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/writing_comments_models.py</code>, <code>plugins/harness/lib/harness_lib/writing_comments_api.py</code>, <code>plugins/harness/skills/writing-comments/commands/comment_sections.py</code>, <code>tests/lib/test_writing_comments_api.py</code>, <code>tests/skills/test_comment_sections_command.py</code>, <code>tests/contract/test_root_separation.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py:22-25</code> holds <code>sys.path.insert(0, str(Path(__file__).resolve().parents[3] / &quot;lib&quot;))</code></li>
+<li><code>plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py:44</code> holds <code>cfg = activate(load_config(project_root(start)))</code></li>
+<li><code>tests/contract/test_root_separation.py:249-250</code> holds <code>&quot;docstring-tiers&quot;: lambda r, t: ([&quot;skills/writing-docstrings/commands/docstring_tiers.py&quot;,</code></li>
+<li><code>tests/contract/test_root_separation.py:258</code> holds <code>MUST_EXIT_ZERO = frozenset({&quot;strap new&quot;, &quot;plan new&quot;, &quot;plan_api write&quot;, &quot;docstring-tiers&quot;,</code></li>
+</ul>
+<p class="action">`writing_comments_models.py`: `DividerLevel` (major, minor), `FlagKind` (width, style, banner), closed pydantic models `Divider(line, level, title)`, `CommentFlag(line, kind, text)` and `SectionReport(dividers, flags)`. `writing_comments_api.py`: `sections(source, width)` reads full-line comments through `tokenize` (so docstring underlines and trailing comments never count; a tokenize error raises ValueError); a rule is `# ` plus dashes only; a major divider is a rule, a title comment, any further comment lines, then a closing rule at the same indent, reported at its first rule; a minor divider matches `# -- &lt;title&gt; ----`; a rule outside a complete banner is a banner flag; any other full-line comment holding a run of 4 or more of `-=*~_#` is a style flag; each rule and minor line whose length (indentation included) is not the width is a width flag. `rule_line(indent, width)`, `minor_line(title, indent, width)` build the canonical lines; `report_lines(label, report)` prints `&lt;label&gt;:&lt;n&gt;: major|minor &lt;title&gt;` and `&lt;label&gt;:&lt;n&gt;: flag &lt;kind&gt;: &lt;text&gt;` in line order, or `&lt;label&gt;: no dividers`. `skills/writing-comments/commands/comment_sections.py &lt;path&gt;...`: activates the project config (width from `comments.divider_width`), labels each file relative to the project, prints the files in the order named; a missing path, a non-`.py` file, an unparsable file or no path is a `problem:` line on stderr, exit 1, nothing on stdout. Add the `comment-sections` case to `CASES` and `MUST_EXIT_ZERO` in test_root_separation.py.</p>
+<ul>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_major_banner_is_one_divider_at_its_first_rule</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_a_banner_may_carry_lines_below_its_title</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_a_rule_and_title_without_a_closing_rule_is_a_banner_flag</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_minor_divider_carries_its_title</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_a_divider_short_of_the_width_is_kept_and_flagged</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_a_banner_rule_past_the_width_is_flagged_on_its_own_line</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_hash_and_equals_banner_is_a_style_flag</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_title_after_the_dash_run_is_a_style_flag</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_a_rule_without_a_title_and_closing_rule_is_a_banner_flag</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_double_dash_inside_prose_is_not_a_divider</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_indentation_counts_toward_the_width</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_dashed_underlines_inside_a_docstring_are_not_comments</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_a_trailing_comment_after_code_is_never_a_divider</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_unparsable_source_raises_value_error</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_canonical_lines_fill_the_width_exactly</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_report_lines_list_dividers_and_flags_in_line_order</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_writing_comments_api.py::test_report_lines_name_a_file_without_dividers</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_prints_the_outline_and_flags_of_a_file</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_each_file_is_reported_in_the_order_named</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_the_width_comes_from_the_project_key</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_an_absolute_path_is_reported_relative_to_the_project</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_a_missing_file_is_a_problem_line_and_prints_nothing</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_a_non_python_file_is_a_problem_line</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_unparsable_source_is_a_problem_line</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_comment_sections_command.py::test_no_path_is_a_problem_line</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[comment-sections]</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/writing_comments_models.py plugins/harness/lib/harness_lib/writing_comments_api.py plugins/harness/skills/writing-comments/commands/comment_sections.py tests/lib/test_writing_comments_api.py tests/skills/test_comment_sections_command.py tests/contract/test_root_separation.py</code>: All checks passed!</li>
+<li>Run <code>python -m pytest tests/contract/test_no_repo_literals.py tests/contract/test_hooks_json_paths.py -q</code>: passed, 0 failed</li>
+<li>Record it: <code>plan.py record 2029 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: writing-comments skill through the strap gate <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/writing-comments/SKILL.md</code>, <code>plugins/harness/skills/writing-comments/comment_format.md</code>, <code>tests/skills/test_writing_comments_skill_contract.py</code>, <code>docs/plans/strap/writing-comments/SkillSpec.json</code></p>
+<p class="action">Run `harness:strap-skills writing-comments` end to end (new, classify, check, red, scaffold, draw, baselines, write, greens, freeze). The checker&#x27;s code is proven by TASK-2&#x27;s tests; the spec lists `comment_sections.py` and `comment_format.md` with `add_part` (scaffold keeps the existing models and API modules), and its mechanical behaviors are contract-test pins only: the SKILL.md frontmatter `Use when` trigger and the command run through hpy. Judgment behaviors to classify and strap: (1) a process comment states what the code cannot show (a constraint, an ordering, an invariant, why one branch wins) in one line where it fits, never restates the next line, carries no review, PR or plan citation, and uses third person; (2) dividers go into a module the work creates once it holds more than one group of definitions, or on an explicit ask; an untouched module, or an untouched block&#x27;s non-canonical divider, stays as it is under `while you are in there` pressure (D4); (3) a section pass runs comment_sections.py, uses major dividers for top-level groups and minor ones inside them, and clears every flag in the blocks it writes. `comment_format.md` states both canonical forms (D2), the width key (D3) and the process-comment rules with the issue&#x27;s examples.</p>
+<ul>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py new writing-comments</code>: new [done] | writing-comments</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-comments</code>: check [ok]</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze writing-comments</code>: freeze [done] | writing-comments</li>
+<li>Run <code>python -m pytest tests/skills/test_writing_comments_skill_contract.py -q</code>: passed, 0 failed</li>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: Validation passed</li>
+<li>Record it: <code>plan.py record 2029 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: README rows, harness 0.84.0 and v1.1.0 notes <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-3</p>
+<p><strong>Files:</strong> <code>README.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.1.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>README.md:28</code> holds <code>| Docstrings by tier | `writing-docstrings`</code></li>
+<li><code>README.md:59</code> holds <code>| `tdd-strapped` |</code></li>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.83.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.1.0.md:11</code> holds <code>| harness | 0.82.1 | 0.83.0 |</code></li>
+</ul>
+<p class="action">README: a goal-table row for writing-comments beside `Docstrings by tier`, and a row after `tdd-strapped` in the trigger table. Bump harness `plugin.json` 0.83.0 -&gt; 0.84.0 (new skill: minor). `docs/RELEASES/v1.1.0.md` (v1.1.0 is not cut; latest release v1.0.0): the harness row becomes `0.82.1 | 0.84.0`, plus one change line for the skill, the command and the key (#317).</p>
+<ul>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: Validation passed</li>
+<li>Run <code>claude plugin validate --strict .</code>: Validation passed</li>
+<li>Record it: <code>plan.py record 2029 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2029/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

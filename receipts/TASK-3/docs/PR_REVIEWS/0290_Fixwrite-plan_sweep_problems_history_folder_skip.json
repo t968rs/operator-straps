@@ -1,0 +1,410 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 290,
+  "pr_title": "Fix(write-plan): `sweep_problems` history folder skip",
+  "branch": "1158-BUGS-pr-review",
+  "base_branch": "main",
+  "base_sha": "1eae55fdaf458fe9539562d76df4633cc1d47562",
+  "head_sha": "f38bb613e50ef92491ca5663ad81774c38c0d16a",
+  "review_date": "2026-11-13",
+  "verdict": "READY TO MERGE - 10 of 11 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 1087,
+    "deletions": 126,
+    "files_changed": 11,
+    "source": {
+      "additions": 1086,
+      "deletions": 126,
+      "files_changed": 10
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0290/pr290_20261113T233953Z/findings/tests.json",
+    "docs/_scratch/pr_review/0290/pr290_20261113T233953Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0290/pr290_20261113T233953Z/findings/docs.json",
+    "docs/_scratch/pr_review/0290/pr290_20261113T233953Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0290/pr290_20261113T233953Z/findings/roast.json",
+    "docs/_scratch/pr_review/0290/pr290_20261113T233953Z/findings/adv_code.json"
+  ],
+  "bubbles": [
+    "M3"
+  ],
+  "strengths": [
+    "Every new test is behavioral: real git repositories through make_project and the in-process driver, no stubbed collaborators.",
+    "test_a_hit_deleted_or_added_after_the_base_passes_on_both_sides (tests/lib/test_plan_checks.py:276) genuinely exercises absent_paths on both the tree and the base side, with legacy.py present at the base.",
+    "test_a_classified_file_present_at_the_base_without_hits_is_a_problem is a sound negative control: it proves the new absence filter does not swallow a file that exists at the base without a hit.",
+    "Driver tests route through the real history_paths config, so the folder list the driver passes is covered end to end rather than only the library's tuple argument.",
+    "history_paths moved to a neutral harness_lib.history module, so plan sweeps and the TODO reference scans skip the same history folders from one definition; retire.py re-exports it, so existing imports keep working.",
+    "skip_prefixes accepts a single folder or several, keeping the old one-folder call shape (used by the existing tests) valid while plan.py passes the full history set.",
+    "absent_paths checks every path at a revision in a single git cat-file --batch-check call instead of one subprocess per path, and fails open so a git error never hides a real problem.",
+    "Tests pin both sides of the new behavior: history folders skipped in tree and at the base, a deleted or added hit passing on both sides, and a classified file present at the base without hits still failing.",
+    "The write-plan sweeps row (SKILL.md:73) lists the same history folders as `history_paths` (plugins/harness/lib/harness_lib/history.py:25-26), item for item, so the skill prose and the driver name one set.",
+    "The release table bump (harness 0.72.0 to 0.72.1, v1.0.0.md:28) matches plugins/harness/.claude-plugin/plugin.json, and the release note records the `history_paths` move, a change a downstream importer would otherwise miss.",
+    "The TODO catalog stays internally consistent after the 14 additions: counts.items equals the item list length, ranks are contiguous 1-75, ids are unique, and the by_status totals match the item statuses.",
+    "SKILL.md:73 sweeps row matches the code exactly: the listed history folders are the ones history_paths builds (harness_lib/history.py:20-30), and the absent-file exception mirrors absent_paths in sweep_problems (plan_checks.py:333-334) for both the tree and the base side.",
+    "The skill change ships with its package bookkeeping: harness bumped 0.72.0 -> 0.72.1 in plugin.json and the v1.0.0 release notes table and change line updated together.",
+    "history_paths moved to a leaf module (harness_lib.history) so plan.py gets the folder list without importing the todo_sync package, and retire keeps re-exporting it for migrate and its tests.",
+    "skip_prefixes accepts one folder or several, so existing single-folder callers and tests keep working unchanged.",
+    "absent_paths batches the base lookup into one `git cat-file --batch-check` call and fails safe (reports nothing absent) when git errors.",
+    "New tests are behavioral against real git repos on both sides (tree and base), including a negative case that a present-but-unhit classification still fails, and driver tests run the real freeze and check.",
+    "Version bump, release table and write-plan SKILL row move together with the code.",
+    "history_paths moved to harness_lib.history so plan sweeps and the TODO reference scans share one list of history folders; retire.py and migrate.py keep importing it unchanged.",
+    "skip_prefixes accepts a single folder or a sequence, so the existing str callers in tests keep working, and str.startswith with a tuple keeps the filter a single pass.",
+    "absent_paths batches every path into one git cat-file --batch-check call and fails open (reports none absent) when git errors.",
+    "Driver tests cover the deleted-after-base and added-after-base files end to end through freeze and check, plus review and commit-message records under history folders."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "Classified-history-file test cannot fail and checks only one side",
+        "file": "tests/lib/test_plan_checks.py",
+        "files": [
+          "tests/lib/test_plan_checks.py",
+          "plugins/harness/lib/harness_lib/plan_checks.py"
+        ],
+        "lines": "261-267,270-273",
+        "reviewer": "tests, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_a_classified_history_file_is_skipped_on_both_sides classifies docs/PR_REVIEWS/LOCAL_x.json but never creates that file. In sweep_problems (plugins/harness/lib/harness_lib/plan_checks.py:333-334) a classified path absent on the side checked is dropped by absent_paths, so the test passes with or without the `not p.startswith(prefixes)` filter on line 327: removing the history skip of classified files leaves this test green. The name also says 'on both sides' but the test calls sweep_problems only without a rev (tree side); the base side is never asserted. The classified-side history skip is therefore uncovered (the driver test at tests/scripts/test_plan_driver.py:272 classifies no history file either).\n\nAlso (adv_code): The test classifies docs/PR_REVIEWS/LOCAL_x.json but never creates that file, so the new absent_paths drop removes it from `unhit` whatever the classified-side history filter does. The test also checks only the tree side despite its name. The classified-side filter `not p.startswith(prefixes)` at plugins/harness/lib/harness_lib/plan_checks.py:327 is therefore untested: removing it keeps the suite green.\n\nAlso (tests): test_history_folders_are_not_sweep_hits writes docs/_commit_messages/x.txt without adding or committing it, so at `git rev-parse HEAD` (line 267) only docs/PR_REVIEWS/LOCAL_x.json exists; the second assertion never exercises the _commit_messages prefix at a revision.\n\nAttack: Change plugins/harness/lib/harness_lib/plan_checks.py:327 to `classified = {p for p in sweep.hits if p != source}` (drop the history-prefix filter) and run `python -m pytest tests/lib/test_plan_checks.py -q -k classified_history_file`: it still passes, because docs/PR_REVIEWS/LOCAL_x.json does not exist in the project, so absent_paths at plan_checks.py:334 removes it from the 'classified but has no hit' set. With the file created (any content), the same mutation makes the test fail with 'sweep S1: docs/PR_REVIEWS/LOCAL_x.json is classified but has no hit'.",
+        "fix": [
+          "Create the review in the project so it exists on both sides: `root = make_project(files={**FILES, \"docs/PR_REVIEWS/LOCAL_x.json\": '{\"pattern\": \"OLD_NAME\"}\\n'})`, then assert both `pc.sweep_problems(sweep_plan(hits), root, HISTORY) == []` and `pc.sweep_problems(sweep_plan(hits), root, HISTORY, git(root, \"rev-parse\", \"HEAD\")) == []`. With the file present and its hits skipped, dropping the classified-side filter yields 'is classified but has no hit', so the test can fail.",
+          "Create the review file in the test: root = make_project(files={**FILES, 'docs/PR_REVIEWS/LOCAL_x.json': '{\"pattern\": \"OLD_NAME\"}\\n'}), and add the base-side assertion pc.sweep_problems(sweep_plan(hits), root, HISTORY, git(root, 'rev-parse', 'HEAD')) == [].",
+          "Pass the commit message through make_project's files dict (`{**FILES, review: ..., \"docs/_commit_messages/x.txt\": \"rename OLD_NAME\\n\"}`) so it is committed, keeping the untracked-file case covered elsewhere, or `git add` and commit it before line 267."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Classified sweep path that exists on neither side is never reported",
+        "file": "plugins/harness/lib/harness_lib/plan_checks.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_checks.py",
+          "plugins/harness/scripts/plan.py",
+          "tests/lib/test_plan_checks.py"
+        ],
+        "lines": "268-284,313-337",
+        "reviewer": "runtime, roast, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "sweep_problems now drops every unhit classified path that absent_paths reports missing on the side checked (plan_checks.py:333-334). The tree check (rev None) and the base check (rev=base) each suppress a path missing on their own side, so a classification naming a path that exists nowhere (a typo such as src/old_nmae.py, or a file renamed before the base) passes both claim_problems and base_claim_problems (plan.py:342,444). In claims_rev mode only the base check runs, so the same holds there. Before this change such a path failed with 'is classified but has no hit'; the write-plan contract 'stale classifications fail' now holds only for files that exist. No test in tests/lib/test_plan_checks.py covers a classified path absent on both sides, so the gap is unguarded.\n\nAlso (roast): sweep_problems now drops every unhit classified path that absent_paths reports missing on the side checked (plan_checks.py:333-334). The excuse is meant for a file deleted after the base or added after it, but nothing requires the path to exist on the other side. A misspelled classification (`src/legasy.py`) or a stale entry for a file gone before the base is absent in the tree and at the base, so `check` (tree), the freeze's base pass (plan.py:443-444) and the mid-plan base-only check (claims_rev) all excuse it. Before this PR that case read `is classified but has no hit`; now it passes silently, and no test pins it (test_a_classified_file_present_at_the_base_without_hits_is_a_problem covers only a file that exists). The fix swapped a false positive for a false negative.\n\nAlso (adv_code): sweep_problems drops every classified path absent on the side checked (absent_paths at plugins/harness/lib/harness_lib/plan_checks.py:334). freeze runs the tree check (claim_problems) and the base check (base_claim_problems), and a mid-plan check runs only the base side, but nothing requires a dropped path to exist on the other side. A misspelled or stale key in sweep.hits (a file that exists nowhere) is therefore absent in the tree and absent at the base, gets dropped both times, and the plan freezes with a bogus classification. Before this change the same key was reported as 'classified but has no hit'. The intended case (deleted after the base, or added after it) only needs the path to exist on one of the two sides.\n\nAttack: Repo with one committed file src/old_name.py containing 'OLD_NAME = 1'; base = HEAD. Plan with sweep {'id': 'S1', 'pattern': 'OLD_NAME', 'hits': {'src/old_name.py': 'rewrite', 'src/old_nmae.py': 'typo'}}. pc.sweep_problems(plan, root, ('docs/PLANS',)) returns [] and pc.sweep_problems(plan, root, ('docs/PLANS',), base) returns [] (probe run at the PR head); at the merge base both calls returned ['sweep S1: src/old_nmae.py is classified but has no hit']. Through the driver: in tests/scripts/test_plan_driver.py, filled(sweeps=[{'id': 'S1', 'pattern': 'def add', 'hits': {**ADD_HITS, 'src/nowhere.py': 'typo'}}]) then run('freeze', '1') exits 0.",
+        "fix": [
+          "Suppress an absent path only when it exists on the other side: with rev given, keep the path in the report unless (root / p).exists(); with rev None, take the plan's base as an extra argument (plan.py has plan.base_commit) and keep the path unless absent_paths(root, {p}, base) is empty. Add a test where a classified path exists in neither the tree nor the base and expect 'is classified but has no hit' (or a distinct 'exists on neither side' line).",
+          "Keep the per-side suppression but have plan.py intersect the absent sets of the tree and base checks and report the paths absent on both as a separate problem.",
+          "Excuse an absent classified path only when it exists on the other side: give sweep_problems (or absent_paths) the counterpart (the base rev when checking the tree, the working tree when checking a rev) and keep `is classified but has no hit` for a path absent on both; add a test with a classification naming a file that exists nowhere.",
+          "Add a separate problem line, e.g. `sweep S1: <path> is classified but exists neither in the tree nor at the base`, computed in plan.py where both sides are known, and test it.",
+          "Drop an absent classified path only when it exists on the other side: give sweep_problems the plan's base_commit (or the other rev) and keep a path in `unhit` when it is absent both in the tree and at the base; report it as e.g. 'sweep S1: <p> exists neither in the tree nor at the base'.",
+          "Alternatively keep sweep_problems as is and add a separate check in plugins/harness/scripts/plan.py (claim_problems) that flags any sweep.hits key absent both in the working tree and at plan.base_commit (git cat-file --batch-check), and add a test in tests/lib/test_plan_checks.py with a key such as 'src/old_nmae.py' expecting a problem."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Driver test's 'deleted after the base' file never exists at the base",
+        "file": "tests/scripts/test_plan_driver.py",
+        "files": [
+          "tests/scripts/test_plan_driver.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "256-269",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_sweep_hit_deleted_or_added_after_the_base_freezes commits src/legacy.py on feat-x (lines 257-259), then `new` (inside filled) records base_commit as the merge base with main (plugins/harness/scripts/plan.py:277), which predates that commit. legacy.py is therefore absent at the base and absent in the tree, so its 'deleted on the branch' classification is dropped by absent_paths on both freeze (base side, plan.py:444) and check (tree side, plan.py:342) without ever having a hit. The deleted-after-base half of the scenario the name claims is not exercised at the driver level; only fresh.py does real work.",
+        "fix": [
+          "Move main onto the legacy commit before the plan is created, e.g. add `git(project, \"branch\", \"-f\", \"main\", \"HEAD\")` after line 259, so the merge base holds legacy.py with its `def add` hit and the freeze-at-base sweep sees it.",
+          "Alternatively commit legacy.py on main (`git checkout -q main`, commit, `git checkout -q -B feat-x main`) before calling filled()."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note claims `plan.py record` failed on sweep hits; record runs no sweep check",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "files": [
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "157-158",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.0.0.md:158 says a review record or drafted commit message quoting a sweep pattern 'no longer fails `plan.py check`, `freeze` or `record`'. At the head, `sweep_problems` is reached only through `claim_problems` (plugins/harness/scripts/plan.py:338-342), called from `all_problems` (cmd_check, plan.py:365) and `freeze_problems` (plan.py:485), and through `base_claim_problems` (plan.py:444, freeze only). `cmd_record` (plan.py:883-900) and its helpers never call either, so record never failed on a sweep hit and this fix changes nothing there. The TODO item for this bug (todo-dtd5, docs/TODO/RepoToDo.json blast_radius consumers) correctly lists only `plan.py check` and `plan.py freeze`. The same wording appears in the head commit message.",
+        "fix": [
+          "Change 'no longer fails `plan.py check`, `freeze` or `record`' to 'no longer fails `plan.py check` or `freeze`' at docs/RELEASES/v1.0.0.md:158, and drop `record` from the matching sentence of the squash-merge commit body."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Release note claims no classification has to satisfy both sides; a file present on both still does",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "files": [
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "290-296",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "docs/RELEASES/v1.0.0.md:295-296 says the change means `no classification set has to satisfy both sides`. The excuse covers only existence: a file present at the base without hits and in the tree with hits (a branch commit before `plan new` adds a use of the old name, the case base_claim_problems' docstring names) still deadlocks a first freeze, since claim_problems flags it unclassified in the tree and base_claim_problems flags it classified-without-hit at the base (plan.py:485). The note overstates the fix; the SKILL row (write-plan/SKILL.md:73) states it correctly.",
+        "fix": [
+          "Reword the note to the actual rule: a classified file absent on the side checked (deleted after the base or added after it) no longer reads as a stale classification.",
+          "Or extend the rule so a classified file with hits on either side passes both checks, and keep the note."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "TODO commit message says 15 items and 76 total; the catalog adds 14 and holds 75",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "59,4765",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Commit 960ed83 ('Docs(todo): add 15 items for untracked GitHub issues #258-#289') says it adds todo-2tv5 (#258) among 15 items and that 'The catalog holds 76 items'. At the head, docs/TODO/RepoToDo.json counts.items is 75 (line 59): 14 items were added to the 61 at the merge base, and todo-2tv5 appears only in `retired_ids` (line 4765), because issue #258 is closed. The catalog itself is consistent (75 items, ranks 1-75 contiguous, ids unique, by_status 43 + 32). Only the commit text is wrong.",
+        "fix": [
+          "In the squash-merge commit body, say that 14 items were added, that todo-2tv5 (#258) was minted and retired because #258 is closed, and that the catalog holds 75 items."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "todo-dtd5 stays OPEN although this PR implements its fix, and it cites history_paths at a location that moved",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "plugins/harness/lib/harness_lib/history.py"
+        ],
+        "lines": "261-279,495-501",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/TODO/RepoToDo.json:261-279 holds todo-dtd5 ('plan.py freeze cannot pass a sweep whose hits include a file deleted after the plan base'), status OPEN. Its proposed_change describes exactly what this PR implements in plan_checks.py and plan.py: suppressing 'is classified but has no hit' for an absent path, and skipping history folders through history_paths. It also cites `history_paths(cfg)` at plugins/harness/lib/harness_lib/todo_sync/retire.py:222-232, which this PR removed; the function now lives in plugins/harness/lib/harness_lib/history.py:20-30. After the merge the catalog lists a resolved bug as open work, with a reference that points nowhere.\n\nAlso (roast): todo-dtd5 (freeze cannot pass a sweep hit deleted after the base) and todo-7chd (sweeps scan the reviews folder) are exactly what this PR fixes, yet RepoToDo.json at the head keeps them OPEN and NEEDS_DECISION, only re-ranked by the same PR's TODO commit. todo-7chd's decision question (skip summaries and commit messages too?) was answered by the code, not the catalog.",
+        "fix": [
+          "Retire todo-dtd5 through the todo_sync retire flow in this PR (or in the post-merge TODO refresh), so it moves into `retired_ids` and the counts and ranks are recomputed.",
+          "If it stays open for a follow-up, update its proposed_change so the reference reads plugins/harness/lib/harness_lib/history.py:20-30 and the text says what remains to do.",
+          "Retire todo-dtd5 and todo-7chd with `todo_sync.py retire` (or mark them done per the catalog's convention) in this PR, recording the chosen answer for todo-7chd."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "history._posix duplicates todo_sync.sources.posix",
+        "file": "plugins/harness/lib/harness_lib/history.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/history.py",
+          "plugins/harness/lib/harness_lib/todo_sync/sources.py"
+        ],
+        "lines": "14-17",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "history.py:14-17 re-implements todo_sync.sources.posix (backslash to slash, drop leading ./) and adds rstrip('/'). The removed retire.history_paths called posix(rel).rstrip('/'), so the two normalizers can now drift apart for the same config values that retire.other_references compares (retire.py:261 mixes posix() for the catalog with history_paths()).",
+        "fix": [
+          "Import posix from harness_lib.todo_sync.sources in history.py and use posix(rel).rstrip('/'), deleting _posix.",
+          "Or move posix into a neutral module (for example history.py or a small paths helper) and have todo_sync.sources import it from there, so one normalizer serves both."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "ActionPlan.sweeps description still says only the plans folder is skipped",
+        "file": "plugins/harness/lib/harness_lib/plan_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "445-449",
+        "reviewer": "skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "write-plan SKILL.md:73 now says sweeps skip every history folder (plans, reviews, commit messages, summaries, scratch, planning prefixes, TODO snapshots) and exempt a classified file absent on the side checked, matching sweep_problems (plan_checks.py:313-337) fed by history_paths (plan.py:342,444). The model's field description, which the SKILL.md Related section points to as 'the one definition of a plan' and which generates schemas/ActionPlan.schema.json:1039, still reads 'fails on ... a classified file with none. The plans folder and the plan's own source_document are skipped on both sides.' A reader of the schema gets the pre-fix contract: history folders other than plans look like hits, and a classified file deleted after the base looks like a failure.\n\nAlso (roast): The `sweeps` Field description at plan_models.py:445-449 and its generated copy at ActionPlan.schema.json:1039 still say only `The plans folder and the plan's own source_document are skipped on both sides` and that any classified file without hits fails. The write-plan SKILL row now names every history folder and the absent-file exception, so the schema a plan author reads contradicts the skill shipped in the same PR.",
+        "fix": [
+          "Rewrite the Sweep list description at plugins/harness/lib/harness_lib/plan_models.py:445-449 to: 'Searches the plan relies on (old names, moved paths). `plan.py check` runs each pattern over tracked and untracked files and fails on a file with hits that `hits` does not classify, or a classified file with none, except a classified file absent on the side checked (deleted after the base, or added after it). The history folders (plans, reviews, commit messages, summaries, scratch, planning prefixes, TODO snapshots) and the plan's own `source_document` are skipped on both sides.' Then regenerate with `python tools/gen_plan_schema.py` so plugins/harness/schemas/ActionPlan.schema.json matches (tests/contract/test_plan_schema_generated.py checks the drift).",
+          "Update the description in plan_models.py to name the history folders (plans, reviews, commit messages, summaries, scratch, planning prefixes, TODO snapshots) and the absent-on-the-side-checked exception, then regenerate ActionPlan.schema.json with tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Sweeps row narrows the absent-file exemption to files deleted or added after the base; the code exempts any absent path",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_checks.py",
+          "docs/RELEASES/v1.0.0.md",
+          "tests/lib/test_plan_checks.py"
+        ],
+        "lines": "73",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "plugins/harness/skills/write-plan/SKILL.md:73 says stale classifications fail 'except a classified file absent on the side checked (deleted after the base, or added after it)', and the release note (docs/RELEASES/v1.0.0.md:159-160) describes the same two cases. `sweep_problems` (plugins/harness/lib/harness_lib/plan_checks.py:333-334) drops every classified path that `absent_paths` reports missing on the side checked, and it never checks the other side. A classified path that exists neither in the tree nor at the base (a typo, or a file removed before the plan base) is therefore exempt on both sides. Before this PR that path was reported as 'is classified but has no hit'; now no check reports it, although the row still says stale classifications fail. tests/lib/test_plan_checks.py has no case for a path missing on both sides (the only absent-path test is the deleted/added one at line 276).",
+        "fix": [
+          "In `sweep_problems`, exempt an absent classified path only when it exists on the other side (at `plan.base_commit` when checking the tree, in the tree when checking a rev), so a path missing everywhere still reports 'is classified but has no hit'; add a test in tests/lib/test_plan_checks.py for a classified path absent on both sides.",
+          "Keep the code and change the docs so they state the actual rule: SKILL.md:73 'except a classified file that does not exist on the side checked (including one that exists on neither side)', with the release note at docs/RELEASES/v1.0.0.md:159-161 changed to match."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "One blank line before the next test function",
+        "file": "tests/scripts/test_plan_driver.py",
+        "lines": "285-286",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Only one blank line separates test_review_and_commit_message_records_are_not_sweep_hits from test_check_flags_an_edit_after_freeze; the rest of the file uses two. Ruff's selected rules do not flag it, so it is style only.",
+        "fix": [
+          "Insert a second blank line before line 286 (`def test_check_flags_an_edit_after_freeze`)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M3",
+      "classification": "out_of_scope",
+      "reason": "Only fix is commit text: 960ed83 says 15 items, 76 total; catalog adds 14, holds 75 (todo-2tv5 minted then retired). Goes in the squash-merge message."
+    },
+    {
+      "id": "M4",
+      "classification": "out_of_scope",
+      "reason": "Fix is retiring todo-dtd5 and todo-7chd; only todo-edit --retire may write the catalog, never a fixer. Timing is the developer's: in this PR or after merge."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 290 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":3,\"first_sha\":\"960ed837473048cf0be7ae3a4b4989d5448fe28c\",\"headRefName\":\"1158-BUGS-pr-review\",\"headRefOid\":\"f38bb613e50ef92491ca5663ad81774c38c0d16a\",\"last_sha\":\"f38bb613e50ef92491ca5663ad81774c38c0d16a\",\"mergeCommit\":null,\"number\":290,\"state\":\"OPEN\",\"title\":\"Fix(write-plan): `sweep_problems` history folder skip\",\"url\":\"https://github.com/t968rs/operator-straps/pull/290\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (18 checked, 1 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 18,
+          "findings_refuted": 1,
+          "findings_upheld": 17,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1158-BUGS-pr-review",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1158-BUGS-pr-review",
+        "head_ref_name": "1158-BUGS-pr-review",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "960ed837473048cf0be7ae3a4b4989d5448fe28c",
+        "head_sha": "f38bb613e50ef92491ca5663ad81774c38c0d16a",
+        "base_ancestor_command": "git merge-base --is-ancestor 960ed837473048cf0be7ae3a4b4989d5448fe28c HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor f38bb613e50ef92491ca5663ad81774c38c0d16a HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - no code edit in this part; plugins/harness/scripts/plan.py: cited only to show cmd_record never calls sweep_problems, so the release-note wording (other part) is the fix; the squash-merge commit body sentence is developer commit text; Release note now says sweep hits no longer fail `plan.py check` or `freeze`, dropping `record` (docs/RELEASES/v1.0.0.md:158); the squash-merge commit body still names `record` and needs the same edit by the developer"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - sweep_problems now excuses an unhit classified path only via new moved_paths: missing on the side checked AND present on the other (plan.base_commit for the tree, the working tree for a rev); a path missing on both still reads 'is classified but has no hit'; sweep_plan takes base, the deleted/added test passes base, new test_a_classified_file_absent_on_both_sides_is_a_problem pins both sides; plan.py: no edit, both callers already pass the plan that carries base_commit"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - no code edit in this part; plugins/harness/scripts/plan.py: cited only for base_commit = merge base at new (line 277), the driver test (other part) needs the change; added git(project, \"branch\", \"-f\", \"main\", \"HEAD\") after the legacy add commit in test_a_sweep_hit_deleted_or_added_after_the_base_freezes so main carries src/legacy.py and the freeze-time sweep sees its def add hit; plugins/harness/scripts/plan.py is the other part and was not edited here"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - test_a_classified_history_file_is_skipped_on_both_sides now creates docs/PR_REVIEWS/LOCAL_x.json in the committed project and asserts both the tree and the HEAD side, so dropping the classified-side prefix filter fails it; plan_checks.py: filter at sweep_problems unchanged, now covered"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - Rewrote the ActionPlan.sweeps Field description in plan_models.py to name the history folders (plans, reviews, commit messages, summaries, scratch, planning prefixes, TODO snapshots) and the absent-on-the-side-checked exception; regenerated ActionPlan.schema.json via tools/gen_plan_schema.py (--check reports it matches the models). write-plan SKILL.md already states the fixed sweep contract at line 73, so it is cited only and not edited."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - inserted a second blank line before test_check_flags_an_edit_after_freeze (tests/scripts/test_plan_driver.py, after test_review_and_commit_message_records_are_not_sweep_hits)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - Moved posix into harness_lib.history as the single normalizer (history_paths uses posix(rel).rstrip('/')), deleted _posix, and todo_sync.sources now imports posix from harness_lib.history (keeps the sources.posix name; avoids an import cycle through todo_sync/__init__ and retire)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - Release note reworded to the actual rule: only a classified file absent on the side checked is exempt; a file present on both sides still needs matching hits on each (dropped 'no classification set has to satisfy both sides'); plan.py: cited only, base_claim_problems behavior unchanged"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - sweep_problems now exempts only moved_paths (absent on the side checked, present on the other), so SKILL.md:73's deleted-or-added wording matches the code; test_a_classified_file_absent_on_both_sides_is_a_problem pins it (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "f38bb61 (working-tree snapshot; developer commits) - todo-dtd5 and todo-7chd retired via todo-edit --retire in this PR; catalog holds 73 items, check drift=0 (outside fixer waves)"
+    }
+  ]
+}

@@ -1,0 +1,694 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 330,
+  "pr_title": "1176 banner updates",
+  "branch": "1176-banner-updates",
+  "base_branch": "main",
+  "base_sha": "0ec52d5680030a4a8354c9cfd1a46ba043edb5b8",
+  "head_sha": "f67a09818e5a47d98b26aebf3d350e0fbb8c54b9",
+  "review_date": "2026-11-20",
+  "verdict": "READY TO MERGE - 22 of 22 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2488,
+    "deletions": 130,
+    "files_changed": 40,
+    "source": {
+      "additions": 2481,
+      "deletions": 130,
+      "files_changed": 39
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/config.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/tests.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/docs.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/overall.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/roast.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0330/pr330_20261121T002027Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The keyword property sits in the item definition under additionalProperties false and stays out of required, so existing catalogs still validate and the key is genuinely optional.",
+    "The schema pattern and maxLength 32 match KEYWORD_RE and KEYWORD_MAX in plugins/harness/lib/harness_lib/todo_sync/keywords.py, and the description states that null is refused, which the string type enforces.",
+    "todoColor tests pin FNV-1a against published reference vectors and work out the modulo-8 palette index in a comment, so a hash change fails loudly.",
+    "The cap tests compare the same overrides with and without keywords, proving the cap measures the labelled plain text rather than the colored form.",
+    "strip(statusText(built)) == plainText(built) is asserted for the labelled, colored line, tying the two rendered forms together.",
+    "keywordsOf tests cover malformed input broadly: non-string ids and keywords, empty strings, bare strings and null in items, non-list items, malformed JSON.",
+    "The watch tests are behavioral end to end: a keyword added to the catalog relabels at the next prompt, and an unconfigured catalog leaves ids bare.",
+    "Python tests are behavioral against real code (inbox.put, add_items, fill_keywords, apply_keywords, the in-process todo_sync driver) on make_project projects, with no stubbed collaborators.",
+    "The contract test ties KEYWORD_KEY in mirror.ts to $defs/item properties in TodoCatalog.schema.json, so a renamed field breaks CI.",
+    "The schema tests cover absent, valid, pattern-violating and null keywords, matching the 'absent is the null' contract.",
+    "watch.ts parses the catalog once (catalogViewOf) for both retired ids and keywords, and the existing catalog-mtime probe already triggers relabelling, so no new watch path was added.",
+    "The plain line used for the max_chars fit (segmentText over s.refs) and the colored ccstatusline form are drawn from the same labels and issues by one drawRefs, so the cap measures exactly what is shown.",
+    "fill_keywords works on a deep copy, keeps existing keywords, places a new keyword right after title in schema order, and apply_keywords writes only on a real change under the GUARDED lock path with --lease support.",
+    "require_keywords runs before _validate and before any issue is filed, so a refused inbox put has no side effects, and its message carries the suggest-keyword guess.",
+    "fnv1a32 is a correct 32-bit FNV-1a (Math.imul plus >>> 0), giving each id a stable color across sessions, and the palette leaves out 240 (DARK).",
+    "The keyword pattern and cap are single-sourced in agreement: schema, keywords.KEYWORD_RE/KEYWORD_MAX, plan V1/V2 and todo-editor.md:184-186 all state the same `^[A-Za-z0-9][A-Za-z0-9_.-]*$`, 32-character rule.",
+    "todo_sync.md updates the lock contract alongside the code: `keywords` joins the locked writes and GUARDED, `suggest-keyword` joins the unlocked list, and both subcommands get option tables matching the argparse definitions.",
+    "working-refs README describes the coloring precisely as line.ts implements it: palette order, FNV-1a pick, plain-form cap (fitCount measures segmentText), uncolored issues and plan links, and the unlabelled /harness:working reply.",
+    "Plan 2028 records its decisions, values and sweeps with sources, and every task carries a sealed receipt tied to one staged tree.",
+    "The cap is measured on the labelled plain text and the colored form is drawn from structured labels and issues. Tests assert that strip(statusText(line)) equals plainText(line) and that the cap holds a labelled segment out.",
+    "band-line stays compatible without a change: OtherSegment.refs and WorkingLine.head remain plain labelled text, so band.tsx's joined-pieces check still matches `text`.",
+    "fnv1a32 is pinned to the published reference vectors ('', 'a', 'foobar'), and the palette test excludes DARK's 240, so a TODO's color stays the same across sessions, branches and segments.",
+    "require_keywords runs before _validate and before any issue is filed, so `inbox put --file-issue` never files an issue for a spec the keyword check refuses, and the refusal names the guess.",
+    "D2 is followed exactly: keyword is required only at `inbox put`. `add --spec`, the drain and updates take it as optional, and the S1 sweep updates only the two put spec builders.",
+    "test_keyword_key_is_a_catalog_item_property pins mirror.ts KEYWORD_KEY to the schema's $defs/item properties, so the mod cannot drift from the catalog field name.",
+    "The repo catalog migration is clean: all 49 keywords match V1 and V2, and each one sits right after `title`.",
+    "The keyword contract is one value in three places that agree: schema pattern/maxLength, keywords.KEYWORD_RE/KEYWORD_MAX and the reshape _TYPE_RULES message, with a contract test pinning the mod's KEYWORD_KEY to `$defs/item.properties`.",
+    "todo_sync.md, the Callers table, the Locking list and GUARDED all gain suggest-keyword (unlocked) and keywords (locked) in lockstep with the driver.",
+    "working-refs measures the cap on the plain labelled text and colors only the ccstatusline form, with a strip-equals-plain test guarding that the two forms never diverge.",
+    "One catalog parse (catalogViewOf) feeds both retired ids and keywords, so the existing catalog mtime probe relabels without a new watcher, and the watch test proves a relabel at the next prompt.",
+    "Plan 2028's decisions D1-D3 and values V1-V6 map one-to-one onto the code (palette, FNV-1a pick, inbox-put-only requirement), and the release note records the version bumps and each change.",
+    "tests/mods/test_working_refs_contract.py pins KEYWORD_KEY to a real property of $defs/item, so a schema rename breaks a test instead of silently unlabelling the line.",
+    "statusText now paints from structured labels/issues carried on WorkingLine and OtherSegment instead of re-parsing text, and the tests strip escapes to prove the colored form equals the plain text the cap measured.",
+    "watch.ts parses the catalog once for both retired ids and keywords, and the catalog mtime probe already relabels on the next prompt (covered by a watch.test.ts case).",
+    "FNV-1a is checked against published reference vectors and the palette is asserted to exclude DARK's 240.",
+    "D2 is honored exactly: only inbox.put calls require_keywords, while add --spec, the drain and old queued inbox files stay valid.",
+    "require_keywords runs before _pending and _validate in inbox.put, so a spec item without a keyword is refused before any GitHub issue is filed.",
+    "fill_keywords works on a deep copy and writes only when the catalog changed; dry runs skip the lock and real runs go through locking.guard because `keywords` is in GUARDED.",
+    "catalogViewOf reads both retired ids and keywords from one parse of the catalog, and every malformed shape (non-object item, non-string id or keyword, empty keyword) gives an empty or partial map instead of an error.",
+    "fitCount measures the same labelled plain segments that the plain line draws, so the max_chars cap stays exact once labels are added; the colored form is built from the same labels and issues.",
+    "All in-scope Python tests (164, plus 262 in neighbouring todo_sync suites) and all 137 working-refs mod tests pass at the PR head.",
+    "line.test.ts pins FNV-1a against published reference vectors, checks the palette never uses DARK's 240, and checks that the colored form, once its escapes are stripped, equals the plain form.",
+    "The cap test checks that the labelled plain text is what gets measured: a width that fits the unlabelled line folds the labelled segments to +2.",
+    "test_working_refs_contract ties the mod's KEYWORD_KEY mirror to the catalog schema's item properties, so renaming the key on one side fails the test.",
+    "The existing inbox fixtures (test_todo_sync_inbox, test_todo_sync_catalog_lock_cli) were updated to carry a keyword, so the new put refusal does not mask their original assertions."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Pinned catalog schema copies reject the keyword inbox put now requires",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+          "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "README.md",
+          "plugins/harness/scripts/todo_sync.md",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "141",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "`inbox put` now refuses any item without `keyword` (inbox.py:141 -> keywords.require_keywords) and validates against the harness schema, but rule T1 validates the catalog against the project's pinned copy (`<todo.folder>/RepoToDo.schema.json`, the `todo.catalog_schema` default, rules_todo.py:33-36), whose closed `$defs/item` predates `keyword`. In such a project every item queued by /harness:add-todo or /harness:sync-gh-todo after the upgrade drains into a catalog its own schema rejects (T1 error), and `todo_sync.py keywords` does the same to every item it fills. The only warning lives in the release note (docs/RELEASES/v1.0.0.md:330); the root README's TODO section, which carries the equivalent warning for migrate-ids (README.md:498-501), and todo_sync.md's `inbox put`/`keywords` sections say nothing, and nothing at runtime notices the stale copy.",
+        "fix": [
+          "Guard it: have `require_keywords` (or `inbox.put`) and `apply_keywords` check the project's `todo.catalog_schema` and, when its `$defs/item.properties` lacks `keyword`, refuse with a problem line telling the project to refresh its copy from catalogs/TodoCatalog.schema.json (or skip the requirement until it does).",
+          "At minimum document it where consumers look: add a sentence to README.md's TODO section next to the migrate-ids schema-copy advice and to plugins/harness/scripts/todo_sync.md's `inbox put` and `keywords` sections: update the project's pinned RepoToDo.schema.json before the first keyworded item lands."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "valid_keyword accepts a trailing newline, which then breaks the one-line status",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "plugins/working-refs/hooks/hide.ts",
+          "plugins/working-refs/hooks/line.ts",
+          "tests/schemas/test_todo_keyword_schema.py",
+          "tests/lib/test_todo_sync_keyword_put.py",
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/working-refs/hooks/hide.test.ts"
+        ],
+        "lines": "25-26,41-43",
+        "reviewer": "runtime, adv_code_runtime, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "KEYWORD_RE is anchored with `$` and applied with `.match`, and Python's `$` also matches just before a final newline. So valid_keyword('banner\\n') returns True, and so does the reshape `keyword` type rule (verified). The jsonschema item check that `_check_item` runs also accepts it, because Python's jsonschema uses `re.search` with the same `$`. An `add` or `inbox put` spec with \"keyword\": \"banner\\n\" therefore passes every gate and lands in the catalog. The contract is one word of letters, digits, '_', '.' or '-'. On the TypeScript side, `keywordsIn` (hide.ts) accepts any non-empty string, so the newline reaches the `line` atom, line.txt and line.json and splits the single status line in two.\n\nAlso (adv_code_runtime): valid_keyword checks with KEYWORD_RE.match and a pattern ending in `$`. In Python, `$` also matches just before a final newline, so 'stop_gates\\n' counts as valid. Every gate on the add, inbox put and update paths relies on this check: require_keywords (any non-blank string), the reshape `keyword` type rule (`_text(v) and keywords.valid_keyword(v)`) and the catalog schema check. Python jsonschema runs the pattern with re.search, so it has the same `$` behavior and also lets the value through. The value reaches the catalog unchanged. hide.ts keywordsIn takes any non-empty string, and line.ts labelText puts it straight into the plain line, line.json and the ccstatusline text. The single-line working line then gets a line break in the middle of a label, and fitCount measures a string that contains a newline.\n\nAttack: Probe run at the PR head: `keywords.valid_keyword('stop_gates\\n')` returns True; `reshape._TYPE_RULES['keyword'][0]('stop_gates\\n')` returns True; and `jsonschema.Draft202012Validator({'type':'string','pattern':'^[A-Za-z0-9][A-Za-z0-9_.-]*$','maxLength':32}).iter_errors('stop_gates\\n')` gives no errors. End to end: `todo_sync.py inbox put --spec s.json` with an item that is otherwise valid and has `\"keyword\": \"stop_gates\\n\"` is queued without complaint, and `add --inbox` writes it to the catalog (`inbox put --update` with `{\"fields\": {\"keyword\": \"stop_gates\\n\"}}` does the same). After that, `buildLine` with `view.keywords` = keywordsOf(catalog) gives a `text` containing 'todo-xxxx stop_gates\\n', and statusText splits the working line in two. A unit test asserting `not valid_keyword('a\\n')` fails today.\n\nAlso (adv_code_tests): The keyword tests claim a value that is not one word is refused, but none tries a trailing newline. `KEYWORD_RE` (`^[A-Za-z0-9][A-Za-z0-9_.-]*$`, used through `re.match`) lets `$` match before a final `\\n`, and the Python `jsonschema` validator applies the schema pattern with `re.search`, so it has the same hole. `\"parser\\n\"` therefore passes `valid_keyword`, `has_keyword`, the `reshape` `_TYPE_RULES[\"keyword\"]` check behind `inbox put` / `add --spec` / `update`, and the catalog schema (rule T1). The working-refs mod then reads it as-is (`hide.ts` `keywordsIn` takes any non-empty string), so the label `todo-xxxx parser\\n` puts a line break into the `line` atom, `line.txt` and `line.json`. An ECMA-262 validator would refuse the same catalog, so the Python and JS sides also disagree.\n\nAttack: Probe run at the PR head (with harness_lib on sys.path): `keywords.valid_keyword('parser\\n')` -> True; `keywords.has_keyword({'keyword': 'parser\\n'})` -> True; `reshape._TYPE_RULES['keyword'][0]('parser\\n')` -> True; `jsonschema.Draft202012Validator(schema['$defs']['item']['properties']['keyword']).iter_errors('parser\\n')` -> [] (no errors). End to end: `todo_sync.py inbox put --spec s.json` where s.json is `{\"items\":[{...valid item..., \"keyword\": \"parser\\n\"}]}` queues the item with no refusal. After the drain, the catalog passes T1. The working-refs `keywordsOf` maps the id to `'parser\\n'`, and `buildLine` returns text `todo-xxxx parser\\n` with a newline inside it. Adding `\"parser\\n\"` to the parametrize list at tests/schemas/test_todo_keyword_schema.py:41 makes `test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern` fail, because the validator set is empty.",
+        "fix": [
+          "In keywords.valid_keyword use `KEYWORD_RE.fullmatch(value)`, or anchor the pattern with `\\Z` instead of `$`. The reshape rule at reshape.py:192 and require_keywords both inherit the fix.",
+          "Also have hide.ts keywordsIn keep only keywords that match /^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$/, so a hand-edited catalog cannot put control characters into the terminal line.",
+          "In keywords.py valid_keyword, use `KEYWORD_RE.fullmatch(value)`, or end KEYWORD_RE with `\\Z` instead of `$`, so 'stop_gates\\n' is refused on every path that calls the reshape type rule (add, inbox put, inbox put --update).",
+          "Also, in hide.ts keywordsIn, keep a keyword only when it matches /^[A-Za-z0-9][A-Za-z0-9_.-]*$/ (in JS, `$` without the m flag does not match before a newline) and has at most 32 characters, so a hand-edited checked-out catalog cannot inject line breaks or escape sequences into the status line.",
+          "In `plugins/harness/lib/harness_lib/todo_sync/keywords.py:25-43`, use `KEYWORD_RE.fullmatch(value)` (or end the regex with `\\Z`). Add `\"parser\\n\"` to the refused cases in `tests/schemas/test_todo_keyword_schema.py:41` and to a put test in `tests/lib/test_todo_sync_keyword_put.py`.",
+          "Also make the mod's `keywordsIn` (`plugins/working-refs/hooks/hide.ts`) keep a keyword only when it matches `/^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$/`, and add a `keywordsOf` case in `hide.test.ts:28-36` with `keyword: 'a\\nb'` and one with an ESC byte, both skipped."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Root README TODO flows skip suggest-keyword and the keyword refusal",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "528-537,547-555",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The root README documents the agent's sync and add flows step by step (README.md:528-537, 547-555: '[todo-editor] todo_sync.py inbox put  queue each item; refuses a recorded issue') and the one-time migrate-ids switch (491-503), but this PR adds a required step (`suggest-keyword` before the put), a new refusal (`item <n> lacks keyword`) and a second one-time migration (`todo_sync.py keywords`) without touching it; the plan's sweep S2 marked README.md 'unchanged'. todo_sync.md and todo-editor.md describe the new flow, so the README now tells a shorter story than the agent runs.",
+        "fix": [
+          "Add a `[todo-editor] todo_sync.py suggest-keyword  guess each item's keyword` row before the inbox put row in both flow blocks, extend the inbox put row to 'refuses a recorded issue or an item without a keyword', and add one paragraph naming `todo_sync.py keywords [--dry-run]` as the one-time keyword fill."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "New item todo-af2e has no keyword, so its id shows bare on the working line",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "2101-2104",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/TODO/RepoToDo.json:2101-2104: todo-af2e, added by this branch after the TASK-7 migration, carries no `keyword` (its files have seven distinct stems, so guess_keyword returns none and the migration could not fill it). The catalog follows D2 (the drain keeps the key optional), but the one item this PR adds is the one item it leaves unlabelled on the line it builds.\n\nAlso (roast): todo-af2e (RepoToDo.json:2101) landed in this branch after the keyword feature and the migration, yet carries no keyword, so the working line shows it bare. Legal under D2 (add --spec keeps keyword optional), but the branch that makes the agent path refuse keyword-less items ships one itself.",
+        "fix": [
+          "Queue an update (`inbox put --update`) setting `keyword` on todo-af2e, e.g. `TodoCatalog` or `todo_item_model`, then drain.",
+          "Give todo-af2e a keyword right after its title (e.g. `catalog_model`), via `todo_sync.py inbox put --update` or a hand edit followed by `todo_sync.py check`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "sync step 3 leaves keyword out of the keys each item carries",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "docs/plans/2028_TODO_keyword_on_the_working_line_ActionPlan.json"
+        ],
+        "lines": "181-186",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "todo-editor.md sync step 3 lists the keys each item carries (lines 181-184): issue, url, title, kind, ..., why_ranked, with optional keys after them. `keyword` appears only in the shapes sentence that follows. **add** step 3 says `keyword` is included, and `inbox put` now refuses an item without one. An agent that builds the spec from the key list drafts items without `keyword` and relies on the suggest-keyword step or the one rerun to recover.\n\nAlso (system_shape): Sync step 3 says 'Each item carries issue, url, title, kind, summary, ... why_ranked, and optionally needs_decision, ..., code_snippet' and only then describes `keyword` under 'The shapes'. The one key `inbox put` now hard-requires is missing from the list of keys an item carries, though plan 2028 TASK-6 says step 3 'adds `keyword` to the item keys'; the add section (line 233) then points back at 'the **sync** item keys, `keyword` included'.",
+        "fix": [
+          "Add `keyword` to the required list in sync step 3: '... `title`, `keyword`, `kind`, `summary`, ...'.",
+          "In plugins/harness/agents/todo-editor.md:181-183 add `keyword` to the carried keys right after `title` (e.g. '`url`, `title`, `keyword`, `kind`, ...')."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Sync step 4 treats a keyword refusal as one item, but a spec can lack several",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "199-200,235",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "plugins/harness/agents/todo-editor.md:199-200 says a `lacks keyword` problem line \"is that one rerun: set the keyword from the suggestion and put again\" (add step 3 at line 235 repeats it). keywords.require_keywords (plugins/harness/lib/harness_lib/todo_sync/keywords.py:163-168) raises on the first spec item without a keyword only. A sync spec drafts one item per issue, so with two or more keywordless items the agent fixes the named one, the rerun refuses the next, and the run hits the stop condition after its single allowed rerun.",
+        "fix": [
+          "Reword the prose: on a `lacks keyword` refusal, rerun `TS suggest-keyword --spec <path>` and set `keyword` on every item that lacks one before the one rerun.",
+          "Or have require_keywords collect every keywordless item into one refusal (one `item <n> lacks keyword (...)` clause per item) so a single fix covers them all; update todo_sync.md:193-197 to match."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "The 'high confidence' guesser labels three unrelated items PROVENANCE",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+          "docs/TODO/RepoToDo.json",
+          "tests/lib/test_todo_sync_keywords.py"
+        ],
+        "lines": "29-31",
+        "reviewer": "roast, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "GENERIC_STEMS skips SKILL and README but not shared index docs, so any item whose files lean on docs/PROVENANCE.md gets that stem as its 'confident' keyword. The committed migration output shows it: todo items at RepoToDo.json:95 (post-forcepush Step 6), :3108 (port test-driven-development) and :3910 (diagnosing-superpowers decision) all read `PROVENANCE`, and :3691/:3964 share `pr_review_skill_description` for two different skill decisions. A label meant to jog memory that is identical across unrelated items jogs nothing, and `inbox put` will now suggest the same word to the agent.\n\nAlso (system_shape): The one-time `keywords` run gave three unrelated items the keyword `PROVENANCE` (RepoToDo.json:95, 3108, 3910), two `pr_review_skill_description` (3691, 3964) and two `HARNESS_RULES` (2523, 2582): the files-dominance guess picked a shared bookkeeping doc rather than the subject. The schema describes the keyword as 'the one word that jogs a reader's memory of the item', which a label shared by unrelated TODOs does not do on the working line.",
+        "fix": [
+          "Add `PROVENANCE` (and any similar shared index stem, e.g. `CHANGELOG`) to GENERIC_STEMS in keywords.py, add a `generic-only` style test case for it, then hand-fix or `inbox put --update` the five catalog items with real subject words.",
+          "Leave the guesser alone and replace the five keywords in docs/TODO/RepoToDo.json by hand with words that name each item's subject.",
+          "Hand-correct those catalog keywords (e.g. post-forcepush, test-driven-development, diagnosing-superpowers) through `inbox put --update`.",
+          "Or tighten `_files_guess`: skip `.md` stems that are ALL-CAPS shared docs, or require the dominant stem to be a code file, without naming project files in the plugin."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Keyword refusal names only the first item, but the agent gets one rerun",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "156-168",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "require_keywords raises on the first spec item lacking a keyword (keywords.py:163-168), so a multi-item sync spec with several gaps is refused one item at a time. todo-editor.md sync step 4 says a `lacks keyword` problem 'is that one rerun: set the keyword from the suggestion and put again', so an agent that fixes only the named item hits a second refusal with its rerun budget spent and leaves the spec unqueued. The doc contract and the refusal granularity do not fit together.",
+        "fix": [
+          "Make require_keywords collect every lacking item into one TodoSyncError (`item 2 lacks keyword (suggested: X); item 4 lacks keyword (...)`) and update the todo_sync.md `inbox put` paragraph to match.",
+          "Or reword todo-editor.md step 4: on a `lacks keyword` refusal run `suggest-keyword` again and set `keyword` on every item that lacks one before the rerun."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "The keyword type-rule message omits the leading-character rule",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "lines": "192-193",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The _TYPE_RULES entry for `keyword` (reshape.py:192-193) refuses a value that fails keywords.valid_keyword, which requires the first character to be a letter or digit (KEYWORD_RE). Its message says only \"one word of letters, digits, '_', '.' or '-' (at most 32 characters)\". The agent therefore sees `-x` or `_x` refused with text those values appear to satisfy.",
+        "fix": [
+          "Change the message to \"one word of letters, digits, '_', '.' or '-', starting with a letter or digit (at most {keywords.KEYWORD_MAX} characters)\"."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "An update that sets keyword appends it at the item's end, not after the title",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/updates.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/updates.py",
+          "tests/lib/test_todo_sync_keyword_put.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "76-85",
+        "reviewer": "overall, roast, docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The release note says `add --spec`, the inbox drain and `inbox put --update` keep the keyword right after the title. The add path (reshape._item_fields) and the migration (keywords._with_keyword) do. The update path does not. updates._apply_one lays fields with `item.update(...)` (updates.py:84), so an item that had no keyword gets `keyword` as its last key. The only update test, test_an_update_may_set_the_keyword (test_todo_sync_keyword_put.py:93-94), checks that 'keyword' is in UPDATE_FIELDS and never runs apply_updates. Nothing pins what an update actually writes.\n\nAlso (roast): updates._apply_one lays fields over the item with `item.update(...)`, so an update giving a keyword-less item its first keyword puts `keyword` after `related_gh_issues`/`priority`, not right after `title` as `_item_fields` and `fill_keywords` do. The release note at docs/RELEASES/v1.0.0.md:329 says `inbox put --update` keeps it right after the title. The only update test, test_an_update_may_set_the_keyword, asserts `'keyword' in UPDATE_FIELDS` - a constant lookup that cannot see placement.\n\nAlso (docs, system_shape): docs/RELEASES/v1.0.0.md:329 says `add --spec`, the inbox drain and `inbox put --update` accept a keyword \"and keep it right after the title\". That holds for the add path (reshape._item_fields inserts it after `title`), but an update goes through updates._apply_one (plugins/harness/lib/harness_lib/todo_sync/updates.py:84), which does `item.update(fields)`: an update that gives a keyword to an item that had none appends `keyword` as the item's last key. The note describes behavior the update path does not have.\n\nAlso (docs): docs/RELEASES/v1.0.0.md:327-328 describes the schema `keyword` as \"letters, digits, `_`, `.` and `-`, at most 32 characters\". The schema pattern `^[A-Za-z0-9][A-Za-z0-9_.-]*$` (TodoCatalog.schema.json `$defs/item.properties.keyword`, keywords.KEYWORD_RE) also requires a letter or digit first, so `_foo` or `-x` is refused. A project pinning its own schema copy from this note would get a looser pattern. todo-editor.md:185 states the rule correctly.\n\nAlso (system_shape): docs/RELEASES/v1.0.0.md:329 says `add --spec`, the inbox drain and `inbox put --update` 'accept it and keep it right after the title'. add_items (`_item_fields`) and fill_keywords place it after `title`, but an update that sets `keyword` on an item without one goes through `item.update(...)` (updates.py:84), which appends the key at the end of the item; only `UPDATE_FIELDS` membership is tested (test_todo_sync_keyword_put.py:93-94).",
+        "fix": [
+          "In updates._apply_one, place a newly set `keyword` right after `title` (reuse keywords._with_keyword when the item had none), and replace test_an_update_may_set_the_keyword with a behavioral test: apply_updates on MIN_CATALOG setting keyword on an item, then assert the value and that it follows `title`.",
+          "Or narrow the release note line in docs/RELEASES/v1.0.0.md to `add --spec` and the drain, and still make the update test call apply_updates and assert the stored value.",
+          "In updates._apply_one, when `keyword` is in fields and the item lacks one, rebuild the item with keywords._with_keyword before the remaining update; replace the constant check with a behavioral apply_updates test asserting the key follows `title`.",
+          "Drop `inbox put --update` from the 'keep it right after the title' clause in docs/RELEASES/v1.0.0.md:329 and make the update test call apply_updates and assert the keyword lands.",
+          "Reword the line so only `add --spec` and the inbox drain keep it right after the title, e.g. \"`add --spec` and the inbox drain accept it and keep it right after the title, and `inbox put --update` may set it (plan 2028).\"",
+          "Or make updates._apply_one place a newly set `keyword` after `title` (reuse keywords._with_keyword) so the note holds as written.",
+          "Change the parenthetical to \"letters, digits, `_`, `.` and `-`, starting with a letter or digit, at most 32 characters\".",
+          "Reword the release note: add and the drain place it after the title; an update may set it.",
+          "Or place it: in updates._apply_one, when `keyword` is new to the item, rebuild the item with keywords._with_keyword-style ordering, and test the position."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "todo_sync.md says every `add` spec item must carry a keyword, then says `add --spec` does not",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "lines": "193-197",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/scripts/todo_sync.md:193 (in the `inbox put` section) opens \"Every item of an `add` spec must carry a `keyword`\", and line 197 then says \"`add --spec` and the `add --inbox` drain do not require one\". The code requires it only in inbox.put (inbox.py:141, keywords.require_keywords); the first sentence names the spec shape, not the command, which reads as a contradiction.",
+        "fix": [
+          "Change line 193 to \"Every item of an `inbox put` spec must carry a `keyword`, ...\"."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "working-refs puts any catalog keyword string on the status line unchecked",
+        "file": "plugins/working-refs/hooks/hide.ts",
+        "files": [
+          "plugins/working-refs/hooks/hide.ts",
+          "plugins/working-refs/hooks/mirror.ts",
+          "tests/mods/test_working_refs_contract.py",
+          "plugins/working-refs/hooks/hide.test.ts",
+          "plugins/working-refs/hooks/line.ts"
+        ],
+        "lines": "57-66",
+        "reviewer": "overall, roast, tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "hide.ts keywordsIn (lines 57-66) accepts any non-empty string as a keyword. line.ts labelText and coloredLabel then write it verbatim into line.txt, line.json and the band-line atom. The schema's V1 pattern holds only for a catalog that passed `check`. A hand-edited catalog, or one on another checked-out branch, can carry a newline or an ESC sequence (OSC 8, SGR). That would split or corrupt the ccstatusline line and the fitCount length math, which assumes printable text.\n\nAlso (roast): keywordsIn accepts any non-empty string. The schema pattern only holds where a writer validated; a hand-edited or pinned-schema catalog with `keyword: \"fix the\\nthing\"` or an embedded ESC sequence goes verbatim into line.txt (ccstatusline) and the band-line atom, where a newline splits the widget and an escape restyles the rest of the bar. The Python side already has the rule (KEYWORD_RE, KEYWORD_MAX); the reader drops it.\n\nAlso (tests): keywordsOf skips only non-string and empty keywords (hide.ts:63), and the tests at hide.test.ts:37-45 pin exactly that. A hand-edited or merged catalog keyword with a space, a 300-character string or an ESC sequence is accepted and statusText paints it raw into the ccstatusline output; the schema pattern (^[A-Za-z0-9][A-Za-z0-9_.-]*$, maxLength 32) is never enforced on the hook side and no test states the intended behavior.",
+        "fix": [
+          "Mirror the V1 pattern and the 32-character cap in mirror.ts (for example KEYWORD_PATTERN and KEYWORD_MAX, pinned against TodoCatalog.schema.json by test_working_refs_contract.py), skip non-matching keywords in keywordsIn, and add a hide.test.ts case with a keyword holding '\\n' or '\\x1b'.",
+          "In hide.ts keywordsIn, skip a keyword that fails `/^[A-Za-z0-9][A-Za-z0-9_.-]*$/` or exceeds 32 characters (mirror both in mirror.ts and pin them to TodoCatalog.schema.json in tests/mods/test_working_refs_contract.py), and add a hide.test.ts case for a keyword with a space or an ESC.",
+          "Filter keywords in keywordsIn to the schema's pattern and length (mirrored like KEYWORD_KEY), and add hide.test.ts cases for 'two words', 'a'.repeat(33) and '\\x1b[2J' being skipped.",
+          "Or, if raw pass-through is intended, add a line.test.ts case that documents it (at minimum strip control characters before painting)."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Exports that only tests use after the switch to catalogViewOf and drawRefs",
+        "file": "plugins/working-refs/hooks/hide.ts",
+        "files": [
+          "plugins/working-refs/hooks/hide.ts",
+          "plugins/working-refs/hooks/line.ts",
+          "plugins/working-refs/hooks/hide.test.ts",
+          "plugins/working-refs/hooks/line.test.ts"
+        ],
+        "lines": "74-81",
+        "reviewer": "runtime, overall, roast, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "watch.ts now reads the catalog through catalogViewOf, and line.ts draws every ref through drawRefs. That leaves `retiredIdsOf` (its last production caller was readHide), the new `keywordsOf` and `formatRefs` referenced only from hide.test.ts and line.test.ts, so no production code path runs them.\n\nAlso (overall): watch.ts now reads the catalog only through catalogViewOf (watch.ts:401-402), and buildLine and statusText use drawRefs directly. That leaves three exports that no production code calls: retiredIdsOf (hide.ts:75), keywordsOf (hide.ts:81) and formatRefs (line.ts:74). They are tested as if they were the production path. A later change to catalogViewOf or drawRefs would pass these tests while the wrappers drift from what the line actually does.\n\nAlso (roast): watch.ts switched to catalogViewOf and buildLine/statusText call drawRefs directly, so `retiredIdsOf` (hide.ts:75), the new `keywordsOf` (hide.ts:81) and `formatRefs` (line.ts:74) have no production caller; only hide.test.ts and line.test.ts import them. They are dead wrappers that the tests keep green while the real path goes through other functions.\n\nAlso (system_shape): After this PR production code draws refs through `drawRefs`/`labelsOf` (line.ts buildLine, segmentOf, statusText) and reads the catalog through `catalogViewOf` (watch.ts readHide); no plugin calls `formatRefs` (line.ts:74), `retiredIdsOf` (hide.ts:75) or `keywordsOf` (hide.ts:81) any more. formatRefs' docstring still presents it as 'The refs as the line draws them', which the line no longer routes through.",
+        "fix": [
+          "Remove retiredIdsOf, keywordsOf and formatRefs, and point their tests at catalogViewOf and buildLine (or an exported drawRefs).",
+          "Or keep them, but mark each one in its doc comment as a test-facing wrapper so a later reader does not look for a production caller.",
+          "Point the hide.test.ts retiredIdsOf and keywordsOf cases at catalogViewOf(...).retired and .keywords, then delete the two wrappers; keep formatRefs only if the doc comment says it is the plain-form helper the tests pin, or test buildLine(...).refs instead and drop it.",
+          "Delete keywordsOf and retiredIdsOf and point their hide.test.ts cases at catalogViewOf; delete formatRefs and test labelling through buildLine.",
+          "Keep formatRefs but have buildLine compute its own refs text through it, so the tested function is the one the line uses.",
+          "Route buildLine's own-refs text and segmentOf through formatRefs (or drop it and test drawRefs via buildLine), and drop retiredIdsOf/keywordsOf in favour of catalogViewOf in hide.test.ts.",
+          "Or mark them in their docstrings as test seams kept for the pure helpers."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Tautological stability assertion",
+        "file": "plugins/working-refs/hooks/line.test.ts",
+        "lines": "73",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`expect(todoColor(id)).toBe(todoColor(id))` compares two calls of a pure function within one test run; the assertion on the line above (palette entry at fnv1a32 modulo 8) plus the fixed vectors already pin the color, so this line cannot catch anything they miss.",
+        "fix": [
+          "Delete line 73, or replace it with a fixed expected color per id (e.g. expect(todoColor('todo-x7ty')).toBe(<value>)) so a hash change is caught across runs."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Cap-test comment misstates why the line collapses to +2",
+        "file": "plugins/working-refs/hooks/line.test.ts",
+        "files": [
+          "plugins/working-refs/hooks/line.test.ts",
+          "plugins/working-refs/hooks/line.ts"
+        ],
+        "lines": "259-261",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The comment at line.test.ts:259 says the unlabelled length (43) is 'too short for any labelled segment', but segment b alone fits: 'todo-k69m banner · [ b todo-zz99 ] +1' is 37 characters. The expectation 'todo-k69m banner +2' holds only because fitCount stops at the first segment that overflows (line.ts:127 `break`), so the test actually pins prefix-only fitting while its comment describes a different reason.",
+        "fix": [
+          "Reword the comment to 'long enough for the whole unlabelled line, too short for the first labelled segment, and the cap never skips ahead to a later one'.",
+          "Or add a sibling assertion naming the prefix rule explicitly, so a future skip-and-continue cap fails with a clear reason."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Watch test title claims a single catalog read it never checks",
+        "file": "plugins/working-refs/hooks/watch.test.ts",
+        "lines": "617-635",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test 'one catalog read both retires and labels' asserts only the outcomes (todo-ab12 hidden, todo-x7ty labelled in the line, atom, line.txt and line.json). The world fake keeps no read count, so a watcher that read the catalog twice (retiredIdsOf plus keywordsOf) would pass too; the title promises more than the code checks.",
+        "fix": [
+          "Rename the test to 'the catalog both retires and labels: the line, the atom and line.txt'.",
+          "Or count reads of CATALOG_FILE in the world fake and assert one per refresh."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Over-long lines: the watch.ts module doc and labelText",
+        "file": "plugins/working-refs/hooks/watch.ts",
+        "files": [
+          "plugins/working-refs/hooks/watch.ts",
+          "plugins/working-refs/hooks/line.ts"
+        ],
+        "lines": "26",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The rewrap of the watch.ts module doc left line 26 at 182 characters. The new labelText at line.ts:55 is 123 characters. The surrounding new code stays within 120.",
+        "fix": [
+          "Rewrap watch.ts:26 so the sentence 'Every host failure degrades to an empty line; ...' continues on the next comment line, and break line.ts:55 after the `=>`."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Put-test docstring promises drain and update behavior the tests only check by constant",
+        "file": "tests/lib/test_todo_sync_keyword_put.py",
+        "lines": "1-6,93-94",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The module docstring says the drain keeps keyword right after the title and 'an update may set it'. No test drains a queued spec, and test_an_update_may_set_the_keyword only asserts 'keyword' in updates.UPDATE_FIELDS, a derived tuple; it never applies an update that sets a keyword and reads the result.",
+        "fix": [
+          "Replace test_an_update_may_set_the_keyword with one that applies an update spec setting keyword on MIN_CATALOG through the updates entry point and asserts the stored value; add a drain case that checks key order after the title.",
+          "Or trim the docstring to the behavior actually exercised (put refusal, put queue, add_items ordering)."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Leftover lazy import of the keywords module",
+        "file": "tests/lib/test_todo_sync_keywords.py",
+        "lines": "23-29,66,77,90,92,99-100",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_keywords() imports harness_lib.todo_sync.keywords inside a function, a plan-stage pattern for a module that did not exist yet. The module ships in this PR and the sibling test_todo_sync_keyword_put.py imports todo_sync modules at module level; the wrapper adds a call per use and hides an import error behind each test.",
+        "fix": [
+          "Import `from harness_lib.todo_sync import keywords` at module level (with the other E402 imports) and replace each `_keywords()` with `keywords`."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "Lines past 110 characters fail local E501",
+        "file": "tests/mods/test_working_refs_contract.py",
+        "files": [
+          "tests/mods/test_working_refs_contract.py",
+          "tests/lib/test_todo_sync_keywords.py",
+          "plugins/working-refs/hooks/watch.ts"
+        ],
+        "lines": "8",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_working_refs_contract.py:8 is 146 characters (the reflowed docstring line), test_todo_sync_keywords.py:20 is 113 (the `# noqa: E402` does not cover E501) and :37 is 111. CI ignores E501, but the project lint runs it locally at 110.\n\nAlso (overall): Local ruff runs with E501 on at line length 110. Three lines this PR added go past it: tests/mods/test_working_refs_contract.py:8 (146 chars, the extended module docstring), tests/lib/test_todo_sync_keywords.py:20 (113, the _todo_helpers import) and :37 (111, the 'ts-test-suffix' parameter row). CI ignores E501, but `ruff check` fails locally. The watch.ts module comment line this PR rewrote (watch.ts:26, about 180 chars) also breaks the file's wrap.",
+        "fix": [
+          "Reflow the docstring at test_working_refs_contract.py:8 across two lines; wrap the import at test_todo_sync_keywords.py:20 in parentheses and split the parametrize row at :37.",
+          "Rewrap the docstring at test_working_refs_contract.py:8, split the import at test_todo_sync_keywords.py:20 with parentheses, break the parameter tuple at :37 across two lines, and rewrap watch.ts:26."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "Prose test name claims a choice it does not check",
+        "file": "tests/skills/test_todo_keyword_prose.py",
+        "lines": "33-35",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_the_keyword_is_one_word_the_agent_may_choose asserts only 'one word' and 'lacks keyword' in the sync section; nothing checks the prose that lets the agent pick a better word than the suggestion.",
+        "fix": [
+          "Rename to test_sync_names_the_one_word_shape_and_the_refusal.",
+          "Or add an assertion on the sync prose phrase that grants the agent its own word."
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "Schema registry README omits the new item keyword",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json"
+        ],
+        "lines": "204",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "TodoCatalog.schema.json gains `keyword` in `$defs/item.properties` (closed item, additionalProperties false), but the schema registry's 'Per-item fields' paragraph still lists id, rank, title, kind, ... with no `keyword`. The schema and its README drift in the same PR, so a reader of the registry learns nothing of the field, its pattern, its 32-character cap or that null is refused.",
+        "fix": [
+          "In plugins/harness/schemas/README.md, add after `title` in the Per-item fields list: optional `keyword` (one word, `^[A-Za-z0-9][A-Za-z0-9_.-]*$`, at most 32 characters; absent means none, null is refused; shown beside the id on the working-refs line, written by `todo_sync.py keywords` and required by `inbox put`)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 330 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":6,\"first_sha\":\"1c24e45d8947b7c323a24d2d48fa7a61f5a294d3\",\"headRefName\":\"1176-banner-updates\",\"headRefOid\":\"f67a09818e5a47d98b26aebf3d350e0fbb8c54b9\",\"last_sha\":\"f67a09818e5a47d98b26aebf3d350e0fbb8c54b9\",\"mergeCommit\":null,\"number\":330,\"state\":\"OPEN\",\"title\":\"1176 banner updates\",\"url\":\"https://github.com/t968rs/operator-straps/pull/330\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (38 checked, 1 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 38,
+          "findings_refuted": 1,
+          "findings_upheld": 37,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1176-banner-updates",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1176-banner-updates",
+        "head_ref_name": "1176-banner-updates",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "1c24e45d8947b7c323a24d2d48fa7a61f5a294d3",
+        "head_sha": "f67a09818e5a47d98b26aebf3d350e0fbb8c54b9",
+        "base_ancestor_command": "git merge-base --is-ancestor 1c24e45d8947b7c323a24d2d48fa7a61f5a294d3 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor f67a09818e5a47d98b26aebf3d350e0fbb8c54b9 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - no edit in this part; todo_sync.md already documents suggest-keyword (### suggest-keyword), the inbox put keyword refusal and the one-time `keywords [--dry-run]` migration (### keywords); the README rows belong to the other part; README sync-gh-todo and add-todo flow blocks gain a todo_sync.py suggest-keyword row before inbox put, the inbox put rows name the keyword refusal, and a paragraph after the sync block names the item <n> lacks keyword refusal and todo_sync.py keywords [--dry-run] as the one-time keyword fill"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - sync step 3 key list now carries `keyword` right after `title` (todo-editor.md:181-182); plan 2028: no edit, TASK-6 action already says sync step 3 adds keyword to the item keys and its anchors quote the pre-change text; the key list fix lives in todo-editor.md (the other part)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - require_keywords collects every keywordless item into one TodoSyncError (one `item <n> lacks keyword (...)` clause per item, joined with '; '); todo_sync.md inbox put paragraph and todo-editor.md sync step 4 / add step 3 say the refusal names every such item and the one rerun sets keyword on each"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - same change as M6: require_keywords refuses all lacking items in one error; todo_sync.md and todo-editor.md describe the combined refusal and set keyword on every named item before the one rerun"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - todo_sync.md inbox put paragraph now opens 'Every item of an `inbox put` spec must carry a `keyword`', removing the contradiction with the add --spec sentence"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - valid_keyword uses KEYWORD_RE.fullmatch so a trailing newline ('parser\\n') is refused; the reshape keyword type rule inherits it; added test_put_refuses_a_keyword_ending_in_a_newline ('parser\\n' refused by inbox put), which passes once the other part's keywords.valid_keyword fullmatch fix lands; line.ts: no edit, labelText only draws what hide.ts keywordsIn lets through, and that filter is the other part's; hide.ts keywordsIn keeps a keyword only when it matches /^[A-Za-z0-9][A-Za-z0-9_.-]*$/ and is at most 32 characters; hide.test.ts case for a newline, an ESC byte, a too-long and a leading-dash keyword. reshape.py: no edit here, its keyword rule calls keywords.valid_keyword, which the keywords.py part fixes with fullmatch. TodoCatalog.schema.json: no edit, its pattern is pinned by plan 2028 V1 and the newline is refused earlier by the reshape rule and the hide.ts filter; added test_a_keyword_ending_in_a_newline_is_refused_by_the_write_gate ('parser\\n', 'a\\n' refused by valid_keyword); not added to the schema-pattern refusal list, since the schema pattern stays unchanged (pinned by plan 2028 V1) and Python jsonschema's re.search lets a trailing newline through"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - updates._apply_one now moves a set keyword right after title through keywords._with_keyword (new _keyword_after_title), so the release note holds as written; the constant check became a behavioral apply_updates test on MIN_CATALOG asserting the value and its place after title; the release note's keyword pattern now says it starts with a letter or digit"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - fitCount's doc in line.ts now states the prefix rule: the count stops at the first overflowing segment and a later, shorter one never takes its place (the line.test.ts comment is the other part's); reworded the cap-test comment at line.test.ts:259 to describe the prefix-only fitting rule"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - labelText in line.ts broken after the `=>` so the line stays within 120 characters (watch.ts is the other part's); rewrapped the watch.ts module doc so the over-long line 26 splits at the sentence boundary"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - the put-test module now backs its docstring: a drain case (put then inbox.drain) checks the keyword lands right after the title, and the update case applies an update through apply_updates and reads the stored value; docstring reworded to match"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - reshape.py _TYPE_RULES keyword message now says 'starting with a letter or digit' before the 32-character cap"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - TodoCatalog.schema.json already declares the item keyword (pattern, maxLength 32); the missing README paragraph is the other part's edit, so no schema edit; added the optional keyword field (one word, pattern, 32-character cap, null refused, working-refs line, todo_sync.py keywords, inbox put) after title in the Per-item fields paragraph; the catalog schema part is owned by another fixer"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - replaced the tautological todoColor(id) self-comparison with fixed per-id pins (todo-x7ty 203, todo-k69m 214, todo-zz99 36) in the hash-modulo test"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - replaced the lazy _keywords() wrapper with a module-level keywords import and direct keywords.* calls"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - wrapped the _todo_helpers import in parentheses, split the 'Line widget' parametrize row, rewrapped the module docstring, and rewrapped watch.ts:26 so no line exceeds 110 characters in the file; rewrapped the module docstring of test_working_refs_contract.py so no line passes 110 characters"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - todo-af2e gets \"keyword\": \"TodoCatalog\" right after its title (hand edit); todo_sync.py check reports error=0 warn=0"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - renamed the watch test to 'the catalog both retires and labels: the line, the atom and line.txt', dropping the unchecked single-read claim"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - renamed test_the_keyword_is_one_word_the_agent_may_choose to test_sync_names_the_one_word_shape_and_the_refusal so the name matches the asserted one-word shape and refusal text"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - keywords.py: _stem now skips ALL-CAPS Markdown stems (shared index docs such as PROVENANCE.md, CHANGELOG.md, HARNESS_RULES.md) via a generic _shared_doc check, docstring updated; tests add shared-doc-skipped and shared-docs-only cases; RepoToDo.json keywords hand-fixed to subject words (todo-h4c3 post-forcepush, todo-x842 end-of-branch, todo-zj3h test-driven-development, todo-mwy3 skill-tests, todo-w2y3 diagnosing-superpowers, todo-n9jj writing-skills)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - documented the pinned-schema refresh: README.md TODO section gets a paragraph after the migrate-ids advice, todo_sync.md inbox put and keywords sections say to refresh the todo.catalog_schema copy from catalogs/TodoCatalog.schema.json before the first keyworded item or T1 fires; inbox.py, keywords.py, rules_todo.py: cited, the documentation option needs no code change; docs/RELEASES/v1.0.0.md: already carries the warning at line 331"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - keyword filter in keywordsIn now reads KEYWORD_PATTERN and KEYWORD_MAX from mirror.ts, pinned to TodoCatalog.schema.json pattern and maxLength by a new contract test; hide.test.ts adds 'two words' and '\\x1b[2J' to the skip case and a catalogViewOf case for a newline and a 33-char keyword; line.ts: no edit, it paints only keywords the filtered view hands it"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-20",
+      "evidence": "f67a098 (working-tree snapshot; developer commits) - buildLine and segmentOf now compute their plain refs text through formatRefs (docstring updated to name them), so the tested function is the production path; retiredIdsOf and keywordsOf doc comments mark them as test seams over the same retiredIn/keywordsIn that catalogViewOf uses; line.test.ts: no edit, its formatRefs and buildLine cases already pin the routed path"
+    }
+  ]
+}

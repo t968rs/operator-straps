@@ -1,0 +1,30 @@
+{
+  "plan_id": "2030",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "7de0713591289742be0d8f6604c25270ac0cf1d9"
+    }
+  },
+  "evidence": "staged tree 7de0713",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/working-refs/hooks/watch.ts",
+        "change": "EX1"
+      },
+      {
+        "path": "plugins/working-refs/hooks/watch.test.ts",
+        "change": "EX1"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "d55073cfb4c4a84299a2687cae63d2595c4638f4e0176b67fd1f2c341beaa19b"
+    }
+  },
+  "date": "2026-11-24",
+  "seal": "e69c2d85f5ae173e29e98451da45e44f9dd97ef3a43a75302dd94eeda05ac8e9"
+}

@@ -1,0 +1,600 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 347,
+  "pr_title": "Feature(harness): `planned_registry` entries for write-plan",
+  "branch": "0008-write-plan-updates",
+  "base_branch": "main",
+  "base_sha": "b22ab8635ba66ca470c10efe0d549f2e15cfc148",
+  "head_sha": "dcae2a43e8c9db2845868e138c881bb6b4c5747e",
+  "review_date": "2026-11-24",
+  "verdict": "READY TO MERGE - 19 of 20 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 853,
+    "deletions": 26,
+    "files_changed": 18,
+    "source": {
+      "additions": 853,
+      "deletions": 26,
+      "files_changed": 18
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/config.json",
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/tests.json",
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/docs.json",
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/overall.json",
+    "docs/_scratch/pr_review/0347/pr347_20261125T002501Z/findings/adv_code.json"
+  ],
+  "bubbles": [
+    "M2"
+  ],
+  "strengths": [
+    "Schema type (non-empty array of non-empty strings, or null) matches config._is_argv and _planned_registry; the null default in defaults.json agrees.",
+    "The description documents the {entries} requirement and the tests.registry dependency that config.py enforces, and the property sits next to registry in the tests block with additionalProperties false preserved.",
+    "All four places for a new config key are touched: defaults.json, schema, config.py dataclass and builder, README key table.",
+    "The upsert tests run a real subprocess script against a real registry file, with no mocks, and the failure test checks the exit code and the output tail.",
+    "The red tests form a controlled pair: the only difference is the entries file, so ImportError versus MISSING shows that the conftest registry gate was satisfied only in the throwaway tree, and the live registry and tree cleanup are both asserted.",
+    "test_register_writes_the_entry_and_names_the_guards covers idempotence: a second register writes 0 entries and reports the file as already registered.",
+    "The entries-file loader is covered for each rejection (no file, empty file, duplicate, wrong plan id, unparseable JSON), and each check asserts the problem text names the file.",
+    "Both new modules declare WALK_ROOTS = (), and the tests that depend on the OS (red, freeze, record) carry cross_os markers.",
+    "The plan page test checks both the CSS rule (white-space: pre-line) and the rendered HTML that keeps the blank line.",
+    "The registry format stays the project's: plan_registry only reads the `file` of each `tests` row and delegates every write to the configured argv, so harness stays generic.",
+    "config._planned_registry rejects a command without the {entries} placeholder or without tests.registry at load time, before any driver can run a half-configured upsert.",
+    "freeze_set adds registry_entries.json only when it exists, so plans frozen before this change keep an identical freeze tree.",
+    "red applies the planned entries only inside the throwaway worktree, keeping its contract that the checkout is never written.",
+    "register refuses a file that is neither registered nor copied, so the live registry never lists a missing file; pending_entry_lines never fails a record that is already written.",
+    "upsert maps OSError, timeout and non-zero exits to PlanError with a 10-line output tail, matching the CLI's problem: reporting.",
+    "Root README tests.planned_registry row matches config._planned_registry and plan_registry exactly: {entries} required, tests.registry required, no shell, stdin closed, 600 s timeout (TIMEOUT_SECONDS).",
+    "SKILL.md step 10 lane instruction (register, then each guard: file, pending entry: from record) matches plan.py register_lines and pending_entry_lines output.",
+    "The r5.3 freeze entry records SKILL.md and README.md at the head's blobs (4f75a99, dc86066), and SkillSpec.json's frozen stamp and skill_hash agree with it.",
+    "Release table harness 0.88.0 matches plugins/harness/.claude-plugin/plugin.json, and the note's check/freeze refusal list matches plan_registry.lint_problems.",
+    "SKILL.md step 4 states the entries-file shape (`{\"plan\": ..., \"entries\": [...]}`, one entry per `file`) exactly as `PlannedEntries` validates it in plan_registry.py.",
+    "Step 6's claim that red upserts the entries into the throwaway worktree's registry only matches `apply_planned_entries` in plan.py:466-476.",
+    "The `pending entry:` and `guard:` lines that step 10 cites match `pending_entry_lines` and `register_lines` in plan.py word for word, and the copy-before-register order matches `uncopied`'s refusal.",
+    "The README Register row, the freeze-tree sentence and the commit-sequence note all agree with plan_lock.freeze_set and cmd_register, and the README.md key table entry for `tests.planned_registry` is present.",
+    "The new config key touches all four required places in lockstep (defaults.json, schema, TestsConfig plus the `_planned_registry` builder, the README key table). The builder enforces `{entries}` and a set `tests.registry` even without jsonschema, and test_config.py covers it.",
+    "`freeze_set` adds `registry_entries.json` only when the file exists, so the freeze tree and lock cover the entries, and already-frozen plans without the file see no drift.",
+    "The driver tests are fully behavioral: a real conftest registry gate makes `red` fail without the entry and pass with it, and the tests assert that the live registry stays untouched and that no worktree is left behind.",
+    "The r5.3 strap freeze pins blobs (plan.py 4957604, SKILL.md 4f75a99, README dc86066, plan_render_html 7c26b64, ...) that match the PR head exactly.",
+    "The docs agree with the code: plan.py's docstrings for check, red, freeze, record and register, the SKILL and README write-plan text, the schema description and the release notes all describe the same behavior and refusals.",
+    "red applies the planned entries only inside the throwaway worktree. test_red_applies_the_planned_entry_in_the_tree_only proves the live registry is unchanged, and the entries-less control test proves the gate would fail without them.",
+    "PlannedEntries validates the plan id, a non-empty file per entry and duplicate files, and load_entries turns JSON, decode and validation errors into PlanError lines.",
+    "upsert keeps the entries file in a TemporaryDirectory, catches OSError and SubprocessError (timeout included), and reports the output tail on a non-zero exit.",
+    "tests.planned_registry is validated without jsonschema: argv shape, a required {entries} placeholder and a required tests.registry, with a parametrized test for each refusal.",
+    "All 151 tests in the four touched test files pass at the PR head, and the tree stays clean."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "An entries file added after the last freeze escapes the lock",
+        "file": "plugins/harness/lib/harness_lib/plan_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "plugins/harness/hooks/guard_locked.py"
+        ],
+        "lines": "139-150,443-453,467-484",
+        "reviewer": "adv_code",
+        "fix_kind": "judgment",
+        "summary": "freeze_set now puts <plans>/<id>/registry_entries.json in the freeze tree \"so a lock guards them too\", but lock_problems and lock only check and copy the files the last freeze recorded (last.files). A registry_entries.json written after the freeze, for example on a plan frozen before this change, passes the lock gate. The lock entry leaves it out, so guard_locked does not deny edits to it, and check reports no drift when it changes. red and register still read it, so a Locked plan's planned registry entries stay editable without unlock.\n\nAttack: Probe docs/_scratch/pr_review/0347/<run>/probes/test_probe_lock_entries.py (run with the repo pyproject and -p conftest) passes at the PR head. The steps: fill(run, project) from tests/scripts/_plan_lock_helpers.py (new, planned test, freeze), then commit_all. Next, write docs/PLANS/0001/registry_entries.json ({\"plan\": \"0001\", \"entries\": [{\"file\": \"tests/test_calc_sub.py\"}]}) and commit_all again. run('lock', '1') exits 0, and the lock entry's files do not hold docs/PLANS/0001/registry_entries.json. Rewriting that file afterwards leaves run('check', '1') at exit 0, 'check [ok]', with no 'drift:' line. A test asserting lock refuses, or check reports drift, fails today.",
+        "fix": [
+          "In lock_problems (plugins/harness/lib/harness_lib/plan_lock.py:443-453), compare freeze_set(repo, plan_file, plan) with the held freeze's files and refuse with 'refreeze first' when the entries file (or any path under <id>/tests/) is present but not frozen.",
+          "Have check report an unfrozen registry_entries.json on a Frozen plan as a problem, so freeze --refreeze has to pick it up before lock."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Lane-side PLAN register writes a registry path outside the lane's files, so P2 stage refuses the lane",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_lanes.py",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/skills/write-plan/README.md",
+          "docs/plans/strap/write-plan/SkillSpec.json"
+        ],
+        "lines": "84-89,305-315",
+        "reviewer": "skill_package, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md step 10 (lines 306-309) now tells each lane to run `PLAN register <id> <ITEM>` after copying its planned tests. `register` (plugins/harness/scripts/plan.py:1059-1077) upserts into `repo / tests.registry`, but `plan_lanes.lane_files` (plugins/harness/lib/harness_lib/plan_lanes.py:47-50) declares only the item's `files` plus each test node's file. `tests.registry` is not in that list. parallel2's `stage` refuses a lane that changed a path outside its declared files unless `--include-undeclared` (plugins/harness/skills/parallel2/README.md:41-42), and SKILL.md step 10 (lines 312-315) reserves that flag for a cited deviation. So the main session hits a refusal that the procedure never mentions, on every lane that registers. Two lanes in one wave that both register also edit the same registry file, and the wave packing cannot see that overlap, so the three-way stage can conflict. The refrozen SkillSpec R-18 reply shows the pattern: the lane registers, yet its declared files leave out the registry.\n\nAlso (overall): SKILL.md step 10 (lines 305-309) now tells every parallel lane to run `PLAN register <id> <ITEM>` in its worktree. `cmd_register` (plan.py:1059-1077) upserts into `tests.registry`, a file that step 4 (SKILL.md:84-89) never adds to the item's `files`. The same lane prompt keeps the rule 'a file outside the files above -> stop and report' (SKILL.md:312-313, and the R-18 green reply recorded in SkillSpec.json shows both instructions in one prompt). So a lane either breaks its own scope rule or stops on every item that has an entry. `lanes` builds waves from file overlap, so it cannot see that two lanes in one wave both edit the shared registry, and their stages then collide on one JSON file. The old register-ahead commit avoided this; the new per-item path brings it back into the parallel phase.",
+        "fix": [
+          "In plan_lanes.lane_files, add `tests.registry` to the lane files of an item whose test files have planned entries. That declares the write, which stage then accepts, and the wave packing serializes lanes that share the registry. Add a test in tests/lib/test_plan_lanes.py or the registry driver test.",
+          "Alternatively, keep the registry out of lanes: SKILL.md step 10 says the lane registers only in its own worktree for its runs and reverts the registry before handing back. The main session runs `PLAN register <id> <ITEM>` in the target after `P2 stage`, then runs the guard files. Update the README 'Parallel execution' section to match.",
+          "Have the main session, not the lane, run `PLAN register <id> <ITEM>` (and the printed `guard:` files) in the checkout after `P2 stage <lane>` and before `record --staged`. Drop the register step from the lane prompt text in SKILL.md:305-309, and say in README.md step 2 that the entry joins the item's commit at that point.",
+          "Or have SKILL.md step 4 add the `tests.registry` path to the `files` of each item that has a planned entry, so the scope rule covers the write and `lanes` serializes those items on the shared registry."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "New release-note lines lack the PR number tag",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "97,108",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:3-5 says each change line is tagged with its PR number, and every earlier line starts with one (#337, #342, #344). The two lines this PR adds (97 'Feat(harness): write-plan planned registry entries' and 108 'Fix(harness): the plan page shows blank-line paragraph breaks') carry no tag.",
+        "fix": [
+          "Prefix line 97 with '#347 Feat(harness): ...' and line 108 with '#347 Fix(harness): ...'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "PR body is empty and does not mention the bundled issue 345 plan-page fix",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "plugins/harness/pages/styles/plan.css"
+        ],
+        "lines": "415-427",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "PR #347 has no description. Its title covers only `planned_registry`, but the branch also ships the issue 345 fix (`plan.css` `.action, .why { white-space: pre-line; }` and its test in tests/lib/test_plan_page_assets.py), as well as the write-plan strap round-5 refreeze. docs/RELEASES/v1.1.0.md:426-427 already records the 345 fix.",
+        "fix": [
+          "Add a PR description that lists the issue 346 feature, the issue 345 CSS fix and the write-plan strap refreeze at 7a9fc6d4bd24, reusing the two v1.1.0 release-note bullets."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Schema description claims the worktree_setup kill behavior",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/plan_registry.py"
+        ],
+        "lines": "63",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The planned_registry description says the command runs with a '600 s kill, as worktree_setup'. The worktree_setup description says each step is killed with its process tree after 600 s (new_worktree.py STEP_TIMEOUT_SECONDS plus KILL_WAIT_SECONDS handling). plan_registry._run uses subprocess.run(timeout=600), which kills only the direct child, so a grandchild holding the stdout pipe can outlast the timeout. The 'as worktree_setup' claim overstates the match.",
+        "fix": [
+          "Reword the description to '600 s timeout' without 'as worktree_setup' for the kill, keeping 'PATH lookup, stdin closed' as the shared parts",
+          "Or make plan_registry._run kill the process tree like new_worktree.py does"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "entries file validation errors drop the field location",
+        "file": "plugins/harness/lib/harness_lib/plan_registry.py",
+        "lines": "67-71",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "load_entries joins only e['msg'] from the pydantic errors, so an extra key or a wrong type reports 'registry: <id>/registry_entries.json: Extra inputs are not permitted' or 'Input should be a valid list' with no field name, leaving the author to guess which key is wrong.",
+        "fix": [
+          "Prefix each message with its location: `'; '.join(f\"{'.'.join(map(str, e['loc']))}: {e['msg']}\" for e in exc.errors())`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Upsert runner copies resolve_program but not the process-tree kill the schema says it shares",
+        "file": "plugins/harness/lib/harness_lib/plan_registry.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_registry.py",
+          "plugins/harness/skills/d-w/commands/new_worktree.py",
+          "plugins/harness/config/harness.schema.json",
+          "README.md"
+        ],
+        "lines": "108-119",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The schema description of `tests.planned_registry` says it runs with 'PATH lookup, 600 s kill, as worktree_setup'. `plan_registry._program` (lines 108-113) copies `new_worktree.resolve_program` (plugins/harness/skills/d-w/commands/new_worktree.py:119-128) line for line. `_run` (lines 116-119), however, uses `subprocess.run(..., stdout=PIPE, timeout=600)`, which kills only the direct child. On Windows, `run` then calls `communicate()`, which blocks for as long as a grandchild (for example from a `.cmd` shim or a `py` launcher) holds the pipe. So a hung upsert can stall `red`/`register` past the documented 600 s. The worktree_setup runner (`run_logged`/`kill_tree`, new_worktree.py:131-160) kills the whole tree.",
+        "fix": [
+          "Move `resolve_program` and the Popen-plus-`kill_tree` runner into a shared `harness_lib` module, then call it from both `new_worktree.py` and `plan_registry.upsert`, capturing output to a temp file instead of a pipe.",
+          "Or keep `_run` as it is and change the schema and README descriptions to drop 'as worktree_setup' and say the timeout kills only the launched process."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "freeze docstring line over the 110 limit",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "tests/scripts/test_plan_registry_driver.py"
+        ],
+        "lines": "72",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The reflowed freeze paragraph line '(gitignored files go to the entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree, its files, the date, the base' is 138 characters; the local ruff config has E501 on at 110.\n\nAlso (overall): plan.py:72, the module docstring's `freeze` paragraph ('(gitignored files go to the entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree, its files, the date, the base'), is 138 characters. tests/scripts/test_plan_registry_driver.py:22, the `from _plan_driver_helpers import ...  # noqa: E402` line, is 119 characters, and the noqa covers only E402. Local ruff has E501 on (CLAUDE.md, Lint), so `python -m ruff check plugins tests` fails on both. CI ignores E501, so the build still passes.",
+        "fix": [
+          "Reflow the freeze paragraph (plan.py lines 70-74) so every line stays within 110 characters.",
+          "Rewrap the plan.py docstring lines 71-74 to 110 columns, and split the test's import into a parenthesized multi-line import that keeps `# noqa: E402` on its first line."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "red loads the entries file before the planned_registry gate",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "466-476",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "apply_planned_entries calls preg.load_entries before checking tests.planned_registry, so on a project with the key unset a malformed registry_entries.json makes `red` (and the freeze that runs it) raise a PlanError from the upsert path. The plan.py red docstring (lines 61-63) scopes the upsert step to 'With tests.planned_registry set', and pending_entry_lines (plan.py:985-991) checks the config first; this function does not.",
+        "fix": [
+          "Move the `tests.planned_registry is None or tests.registry is None` return above the load_entries call in apply_planned_entries, so an unset key makes it a no-op; the lint in check still reports the malformed file."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "pending entry hint points at a register call that refuses",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "970-994",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "record_tags appends pending_entry_lines for every outcome, including IN_PROGRESS, BLOCKED and CLOSED_NO_ACTION. For those, the item's planned test file is often not yet copied to its repo path, and `plan.py register <id> <ITEM>` then refuses it through uncopied() ('is not in the tree yet'). The hint tells the agent to run a command that fails, and on a CLOSED_NO_ACTION item the file may never be copied.",
+        "fix": [
+          "Emit pending entry lines only for files present in the checkout: filter `found` with `(repo / e['file']).is_file()`.",
+          "Or emit them only for a pm.Completed outcome, and update the record paragraph of the plan.py docstring (lines 114-116) to say so."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "register reports entries written without confirming the upsert wrote them",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_registry.py"
+        ],
+        "lines": "1037-1043,1059-1077",
+        "reviewer": "runtime, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "cmd_register builds `written` from the pre-upsert pending list and prints 'register [done] | <ITEM> | <n> entries written' as soon as the command exits 0. Config validation requires `{entries}` but not `{registry}`, so a command that writes to a different path, or that ignores entries it rejects, still reports success and emits guard lines for rows that do not exist.\n\nAlso (adv_code): register_files keeps only the item's test files that have a planned entry. With no registry_entries.json, or no entry for the file, cmd_register prints 'register [done] | <ITEM> | 0 entries written' and exits 0, even though the live registry still lacks the file and the project's pytest will refuse it.\n\nAttack: In tests/scripts/test_plan_registry_driver.py, call filled(entries=False), then write_op(project, 'sub'), then run('register', '1', 'TASK-1'). It returns code 0 with first line 'register [done] | TASK-1 | 0 entries written', and live_files(project) is still ['tests/test_calc.py'], so tests/test_calc_sub.py stays unregistered. An assertion that register refuses, or names the missing entry, fails.",
+        "fix": [
+          "After preg.upsert, recompute `preg.pending(planned, files, registry)`; raise pd.PlanError naming each file still missing ('<file>: tests.planned_registry exited 0 but the registry does not list it').",
+          "In cmd_register (plugins/harness/scripts/plan.py:1059-1077), refuse with a problem for each item test file that has no planned entry and is not in the live registry, or at least print a 'missing entry: <file>' line and exit 1."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Freeze commit list omits registry_entries.json, which the lock gate requires committed",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "files": [
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/lib/harness_lib/plan_lock.py"
+        ],
+        "lines": "121-126",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "write-plan README.md:121 says registry_entries.json is tracked, and freeze_set adds it to the freeze tree; lock_problems -> _file_problems then refuses a lock unless every file of the last freeze is committed at HEAD with the frozen blob. The Freeze commit step at README.md:123-125 lists only the plan JSON, its HTML PIP and the ledger entry, so an entries file edited during the check/red loop after the Plan commit is left out of the freeze commit and the later PLAN lock refuses.\n\nAlso (skill_package): The freeze tree now records `registry_entries.json` (README.md:60), and `PLAN lock` refuses unless every file of the last freeze is committed at HEAD with the frozen blob (SKILL.md:177-178). README commit step 3 (README.md:123-125) lists only the plan JSON, the HTML PIP and the ledger entry for the freeze commit. If the entries file changed after the plan commit (step 2), a developer who follows step 3 leaves it uncommitted, and the later lock refuses.",
+        "fix": [
+          "README.md:123: 'commit right after freeze: the plan JSON, its HTML PIP, its registry_entries.json when the plan has one, and the new freezes/plan/... ledger entry'.",
+          "In README.md step 3, after 'the plan JSON, its HTML PIP', add 'its `registry_entries.json` when it changed since the plan commit'."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "README Parallel execution lane steps skip PLAN register",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "lines": "156-158",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:307-309 now tells each lane to run PLAN register <id> <ITEM> and each guard: file after copying its planned tests, but the developer-facing Parallel execution section (write-plan README.md:156-158) still describes a lane as copying its planned test files and building, with no register step. A developer reading the README will not expect the lane to write the live registry or run the registry guards.",
+        "fix": [
+          "README.md:156-157: 'Each lane copies its planned test files in first and, when the plan has registry_entries.json, runs PLAN register <id> <ITEM> and the guard: files it prints, then builds in its own worktree and commits there'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Lock wording still lists only the plan JSON and planned tests as guarded",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/lib/harness_lib/plan_lock.py"
+        ],
+        "lines": "30-31,181-182,195,361",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plan_lock.freeze_set now puts <id>/registry_entries.json in the freeze tree, and lock() copies the freeze entry's files, so the guard hook denies edits to registry_entries.json once a plan is locked (the release note says so: 'a lock guards it'). The prose that names the locked set was not updated: SKILL.md:30-31 ('the plan JSON and its planned tests are write-protected'), SKILL.md:181-182 ('the plan JSON and the planned test files present at lock'), SKILL.md:195 (unlock 'releases the plan JSON and its planned tests'), SKILL.md:361 (Common mistakes) and write-plan README.md:66-67 ('a hook denies hand edits to the plan JSON, its planned tests and the ledger'). An agent reading these will not expect a hook denial on the entries file of a Locked plan.\n\nAlso (skill_package): This PR adds `<id>/registry_entries.json` to `plan_lock.freeze_set` (plugins/harness/lib/harness_lib/plan_lock.py:139-150, whose docstring says 'so a lock guards them too'). guard_locked denies every path the lock entry records. The skill still names only the plan JSON and the planned tests in four places: the Locked summary (SKILL.md:30-31, 'the plan JSON and its planned tests are write-protected'), the Lock paragraph (SKILL.md:181-182, 'the plan JSON and the planned test files present at lock'), the Unlock paragraph (SKILL.md:195, 'the guard releases the plan JSON and its planned tests'), and README.md:66-67. An agent that edits the entries file on a Locked plan gets a denial that the procedure does not explain.",
+        "fix": [
+          "Add registry_entries.json to each list: SKILL.md:30-31 'the plan JSON, its planned tests and its registry_entries.json are write-protected'; SKILL.md:181-182 'the plan JSON, the planned test files and registry_entries.json present at lock'; SKILL.md:195 'releases the plan JSON, its planned tests and its registry_entries.json'; SKILL.md:361 'Writing to a Locked plan, its planned tests or entries file, or a file under freezes/'; README.md:66-67 'the plan JSON, its planned tests, its registry_entries.json and the ledger'.",
+          "Add 'and its `registry_entries.json`' after each listing of the planned tests at SKILL.md:30-31, 181-182 and 195, and at README.md:66-67."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Program resolution and launch failure of upsert are untested",
+        "file": "tests/lib/test_plan_registry.py",
+        "files": [
+          "tests/lib/test_plan_registry.py",
+          "plugins/harness/lib/harness_lib/plan_registry.py"
+        ],
+        "lines": "124-139",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "Both upsert tests pass sys.executable, an absolute path, so neither branch of _program runs: the relative program joined to cwd and the bare name resolved through shutil.which (the documented 'python ...' form in the config test). The OSError path at plan_registry.py:130-131, for a program that does not exist, is not exercised either.",
+        "fix": [
+          "Add a test with a relative program (e.g. copy a tiny script and call it as './tool' or a path with a separator) that asserts it runs from cwd.",
+          "Add a test with a nonexistent program name and assert a PlanError naming 'tests.planned_registry'."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Helper import line exceeds the 110-character limit",
+        "file": "tests/scripts/test_plan_registry_driver.py",
+        "lines": "22",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Line 22 is 119 characters. Its '# noqa: E402' suppresses only E402, so the local ruff run (E501 on) flags it; CI ignores E501.",
+        "fix": [
+          "Wrap the import in parentheses across two lines, keeping '# noqa: E402' on the first line."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "UPSERT script duplicated across two test modules",
+        "file": "tests/scripts/test_plan_registry_driver.py",
+        "files": [
+          "tests/scripts/test_plan_registry_driver.py",
+          "tests/lib/test_plan_registry.py"
+        ],
+        "lines": "28-35",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The same six-line UPSERT registry script is defined in test_plan_registry.py:21-28 and test_plan_registry_driver.py:28-35. A change to the upsert contract has to be made twice.",
+        "fix": [
+          "Move UPSERT into a shared '_'-prefixed helper module (tests/scripts/_plan_driver_helpers.py or a new tests/lib helper) and import it in both tests."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "register result discarded in the record test",
+        "file": "tests/scripts/test_plan_registry_driver.py",
+        "lines": "188",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Line 188 calls run('register', '1', 'TASK-1') and ignores its exit code and stderr. If it fails, the next assertion reports a confusing 'pending entry' mismatch instead of the register error.",
+        "fix": [
+          "Capture the result: code, _, err = run('register', '1', 'TASK-1'); assert code == 0, err."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Bad planned_registry cases match only the shared message prefix",
+        "file": "tests/lib/test_config.py",
+        "files": [
+          "tests/lib/test_config.py",
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "21-35",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Every ConfigError from _planned_registry (plugins/harness/lib/harness_lib/config.py:645-649) starts with 'tests.planned_registry:', so the cases for a bare string, an empty list and an empty argument (match 'planned_registry') pass whichever rule fires. If the non-empty-string or list-type check in _is_argv were dropped, the '{entries}' check would still raise for all three and the test would stay green. So the argv-shape rule has no test that can fail.\n\nAlso (tests): test_invalid_planned_registry_raises always sets sys.modules['jsonschema'] to None, so only the fallback type check runs. The schema branch, which runs in normal installs (harness.schema.json planned_registry oneOf array/null), is never checked against these inputs. The test name also drops the '_without_jsonschema' suffix that the sibling test above it uses for the same pattern.",
+        "fix": [
+          "Use match 'non-empty list of non-empty strings' for the first three BAD_PLANNED_REGISTRY cases, and keep the '\\{entries\\}' and 'needs tests\\.registry' matches for the last two.",
+          "Rename to test_invalid_planned_registry_raises_without_jsonschema and add a parametrized copy without the monkeypatch (skip when jsonschema is not importable), matching 'planned_registry'."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Lint key-gate test cannot tell the keyed flag from a missing registry",
+        "file": "tests/lib/test_plan_registry.py",
+        "files": [
+          "tests/lib/test_plan_registry.py",
+          "plugins/harness/lib/harness_lib/plan_registry.py"
+        ],
+        "lines": "159-162",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_lint_skips_the_missing_entry_rule_without_the_key passes registry=None and keyed=False together, so it stays green if lint_problems drops the 'keyed' condition (plan_registry.py:152 'if keyed and registry'). The driver always passes tests.registry, and the keyed=False project in the driver suite sets it. The realistic case (registry set, key unset) has no test, and no driver test runs 'check' without the key either.",
+        "fix": [
+          "Write an empty registry under repo/tests/registry.json and call lint_problems(..., repo, 'tests/registry.json', False), asserting [] so only the keyed flag suppresses the rule.",
+          "Add a driver test: build(make_project, tmp_path, keyed=False) plus a planned test with no entries file, and assert that 'check 1' exits 0."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M2",
+      "classification": "out_of_scope",
+      "reason": "Only fix is the PR #347 description text; the developer owns the PR body (harness:pr-sum --gh can write it)."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 347 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"b45331ca69416134c89181ac3b586ae99dcb8a48\",\"headRefName\":\"0008-write-plan-updates\",\"headRefOid\":\"dcae2a43e8c9db2845868e138c881bb6b4c5747e\",\"last_sha\":\"dcae2a43e8c9db2845868e138c881bb6b4c5747e\",\"mergeCommit\":null,\"number\":347,\"state\":\"OPEN\",\"title\":\"Feature(harness): `planned_registry` entries for write-plan\",\"url\":\"https://github.com/t968rs/operator-straps/pull/347\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (26 checked, 0 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 26,
+          "findings_refuted": 0,
+          "findings_upheld": 26,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0008-write-plan-updates",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0008-write-plan-updates",
+        "head_ref_name": "0008-write-plan-updates",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b45331ca69416134c89181ac3b586ae99dcb8a48",
+        "head_sha": "dcae2a43e8c9db2845868e138c881bb6b4c5747e",
+        "base_ancestor_command": "git merge-base --is-ancestor b45331ca69416134c89181ac3b586ae99dcb8a48 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor dcae2a43e8c9db2845868e138c881bb6b4c5747e HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - Reflowed the freeze paragraph of the plan.py module docstring so every line stays within 110 characters; ruff check --no-cache passes on plan.py.; tests/scripts/test_plan_registry_driver.py: the over-long helper import (the test-side line of the freeze E501 finding) is wrapped in a parenthesized import with '# noqa: E402' on its first line; the plan.py docstring line belongs to the other plan.py part and is not edited here"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - apply_planned_entries returns on an unset tests.planned_registry or tests.registry before calling preg.load_entries, so red and freeze no longer read the entries file when the key is unset."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - README commit step 3 lists registry_entries.json (when the plan has one) in the freeze commit and says lock refuses while a file of the last freeze is uncommitted.; plan_lock.py: no edit, freeze_set already adds registry_entries.json to the freeze tree and the lock gate is correct; the missing step lives in the write-plan README commit list, owned by another part"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - README Parallel execution now has each lane run PLAN register and its guard: files in its worktree, and the main session register in the target after stage (matching the I2 fix)."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - SKILL.md Locked summary, Lock paragraph, Unlock paragraph and Common mistakes now name registry_entries.json among the guarded files.; plan_lock.py: no edit, its freeze_set docstring already says a lock guards the entries file; the stale lock-set wording lives in write-plan SKILL.md and README.md, owned by another part; README.md Locked paragraph now names registry_entries.json with the plan JSON and planned tests as hook-denied; SKILL.md edits belong to the other part"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - Prose fix (option 2): SKILL.md step 10 and README Parallel execution have the lane register only in its own worktree for its runs and keep tests.registry out of its commit; the main session runs PLAN register and the guard: files in the target after P2 stage and stages the registry before record --staged. plan_lanes.py, plan.py: no code change needed for this route; SkillSpec.json: frozen spec, its R-18 reply is a recorded transcript and stays as is."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - harness.schema.json planned_registry description now says PATH lookup as worktree_setup and that the 600 s timeout kills only the launched process, not its tree; plan_registry.py: runner kept as is (its docstring note is recorded under M5)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - load_entries reports each pydantic error as '<loc>: <msg>' through a new _detail helper"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - kept _run and documented that its timeout kills only the launched process (docstring); schema and README tests.planned_registry descriptions drop the tree-kill claim and keep PATH lookup as worktree_setup; new_worktree.py: cited runner, unchanged"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - upsert now rereads the registry after an exit 0 and raises PlanError '<file>: tests.planned_registry exited 0 but the registry does not list it' for each entry still missing (new _confirm); covers red and register; cmd_register refuses each item test file with no planned entry that the live registry lacks (new unentered), and after preg.upsert recomputes pending and raises '<file>: tests.planned_registry exited 0 but the registry does not list it' (new unwritten); register docstring updated"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - harness.schema.json: cited for the schema branch; the planned_registry oneOf already rejects the bad cases, so the fix lives in tests/lib/test_config.py (other part); BAD_PLANNED_REGISTRY now matches 'non-empty list of non-empty strings' for the bare string, empty list and empty argument cases, and 'needs tests\\.registry' for the missing registry; config.py: no edit, its messages already distinguish the rules"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - plan_registry.py: lint_problems already gates the rule on 'keyed and registry'; the fix is the test in tests/lib/test_plan_registry.py (other part); tests/lib/test_plan_registry.py test_lint_skips_the_missing_entry_rule_without_the_key: an empty registry is written under repo/tests/registry.json and lint_problems is called with that path and keyed=False, asserting []; only the keyed flag can suppress the rule now"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - tests/scripts/test_plan_registry_driver.py: the 119-character helper import is split into a parenthesized multi-line import, '# noqa: E402' kept on the first line; no line in the file exceeds 110 characters"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - UPSERT moved into tests/scripts/_plan_driver_helpers.py; test_plan_registry_driver.py imports it from the helper, and tests/lib/test_plan_registry.py adds tests/scripts to sys.path and imports it from the same helper; the duplicate definitions are removed"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - tests/scripts/test_plan_registry_driver.py test_record_names_an_entry_still_pending: the register call's result is captured and asserted (code == 0, err) before the record assertions"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - Prefixed the write-plan registry entries line and the plan page paragraph-break line with the #347 PR tag"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - lock_problems adds _unfrozen_problems: each not-ignored file of freeze_set (entries file, planned tests) missing from the held freeze refuses the lock with 'run plan.py freeze <id> --refreeze first'; guard_locked.py: no edit, it guards whatever the lock entry records, which now always covers the freeze set"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - pending_entry_lines builds each line through new pending_entry_line: a file not yet in the tree gets 'after copying it from <plans>/<id>/tests/<file>' so the hint names the copy register needs before it accepts the file; record docstring paragraph updated. Chose this repair over filtering, since both listed options drop the line test_record_names_an_entry_still_pending (outside the file set) asserts for an uncopied file on --start"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "dcae2a4 (working-tree snapshot; developer commits) - Added tests for the relative-program join to cwd, a bare program name resolved through PATH end to end, and a nonexistent bare or relative program raising a PlanError naming tests.planned_registry; plan_registry.py: the code under test, cited only, no edit needed"
+    }
+  ]
+}

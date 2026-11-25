@@ -1,0 +1,26 @@
+{
+  "plan_id": "2028",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "cb49cb0c229ca1d0649446fed87b68f73665b0b2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_todo_sync_keywords_cli.py::test_suggest_keyword_prints_one_line_per_item",
+        "tests/scripts/test_todo_sync_keywords_cli.py::test_keywords_dry_run_writes_nothing_and_the_real_run_writes"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_todo_sync_keywords_cli.py::test_suggest_keyword_prints_one_line_per_item tests/scripts/test_todo_sync_keywords_cli.py::test_keywords_dry_run_writes_nothing_and_the_real_run_writes"
+    }
+  },
+  "evidence": "staged tree cb49cb0: 2 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-20",
+  "seal": "ac4171512a68562c9240ce30b0c1d01b5c59d721d3d23061cccab2d98ce71670"
+}

@@ -1,0 +1,622 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 344,
+  "pr_title": "Feature(harness): `strap.py rename` command",
+  "branch": "1007-rename-skill",
+  "base_branch": "0007-add-bookmark-hook",
+  "base_sha": "85440e8a6b29009f982de8b1e14c6532f549592b",
+  "head_sha": "94d696180b84d62bc088724fd385ef09938ec24b",
+  "review_date": "2026-11-24",
+  "verdict": "READY TO MERGE - 17 of 18 findings resolved, 0 bubbled, 1 refuted",
+  "stats": {
+    "additions": 584,
+    "deletions": 106,
+    "files_changed": 42,
+    "source": {
+      "additions": 581,
+      "deletions": 106,
+      "files_changed": 41
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/config.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/tests.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/docs.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/overall.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/roast.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0344/pr344_20261124T185510Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "FreezeLedgerEntry.schema.json matches the LedgerEntry model in freeze_ledger.py: the rename enum value, the from_name property (Optional[str], default null, same description and title) and its position after match all agree with the generated shape.",
+    "from_name is optional with a null default and not in required, so existing ledger entries still validate under additionalProperties false.",
+    "test_a_renamed_spec_checks_clean_and_refreezes_under_the_new_stem pins `freeze/skill/demo-skill/r1.1-commit` to the original freeze commit (line 117). Without the new `--follow` in both `_adder` functions, that tag would land on the rename commit, so the test checks the git-log change and not just its effects.",
+    "The same test asserts that check prints no `untagged:` line after the rename. That fails unless `owners()` maps the pre-rename entries back to the old stem, so the owner mapping is tested through real git tags and not stubs.",
+    "Refusal tests check the state was left alone, not only the error text: the spec stays at its old path, and `check` still reports ok after a refused rename (lines 127-128, 148).",
+    "The scenario-text test checks the whole-word boundary in both directions: `/harness:<name>` and `<name>` in prose are rewritten, and `<name>-extra` is left alone.",
+    "test_rename_entry_names_the_old_subject_and_keeps_the_state round-trips a rename entry through write_entry/load_entries and pins `from_name` and state passthrough. The EntryKind set assertion is updated to include `rename`.",
+    "All suites are behavioral or integration: the strap tests run the real driver against a real git project from `make_project`, and no test stubs a helper and then asserts it was called.",
+    "owners() works out each entry's tag stem from the ledger alone, walking from the newest entry and switching at each rename's from_name, and reconcile, _entry_lines and _drift_lines all use it consistently.",
+    "cmd_rename computes and preflights the pending entry and tags before moving anything, and _move_back puts the spec folder, the ledger folder and the spec bytes back on a mid-way failure.",
+    "rename_pending refuses a locked spec and an existing target ledger, and takes the next seq from the tag seqs of both stems, so seqs cannot collide across the move.",
+    "rename leaves the earlier state alone in freeze_ledger.state, so a renamed frozen spec keeps its frozen state, and the regenerated schema carries the new kind and from_name.",
+    "No stale `add-bookmark` invocation remains under plugins/ or in README.md; the only survivors are the deliberate trigger phrase in bookmark/SKILL.md:3 and the strap-skills README example row.",
+    "The strap-skills rename paragraph matches cmd_rename closely: folder-first precondition, name-made parts (contract test, models, API, driver), the four refusals, the `rename` entry with `from_name`, base tag under the new stem and the whole-word swap that leaves recorded replies untouched.",
+    "schemas/README.md section 12 is updated in all four places a new entry kind touches (Applies to, null-tree list, key fields with `from_name`, state rule), consistent with strap_lock.owners and freeze_ledger.",
+    "v1.1.0.md plugin table matches the head's plugin.json bumps (harness 0.87.0, session-bookmark 0.4.1).",
+    "The new bookmark/README.md usage table, limits and goal closings agree with SKILL.md's routing table and add_note.py's caps, and its relative links resolve.",
+    "Rename is complete across live references: SKILL.md frontmatter, title and usage line, add_note.py's require_stable label, add-todo's --hook pointer, fold-in-review's example, root README, and the session-bookmark mod (bookmark.ts, notes.ts, README) all name `bookmark`; remaining `add-bookmark` hits are historical records (reviews, plans, ledger entries, recorded replies).",
+    "The `add-bookmark` trigger phrase is kept in the bookmark description, so old invocations still route to the renamed skill.",
+    "The new bookmark README agrees with SKILL.md on every flag, limit (20 x 300, goal 500), closing table and the `--` escape; its relative links (../../../session-bookmark/README.md, ../add-todo/SKILL.md) resolve.",
+    "strap-skills rename prose matches strap.py: refusals (not frozen, Locked, folder not moved, missing part, taken spec or ledger folder), whole-word swap in statements, tasks, tempts, check targets and judged subjects with recorded replies untouched, and the base tag under the new stem.",
+    "cmd_rename rolls both folders and the spec bytes back on a failure part way (_move_back), keeping the rename atomic from the developer's view.",
+    "cmd_rename computes the pending entry and preflights tags before moving anything, and _move_back restores both folders and the spec bytes when a later step fails.",
+    "owners() keeps pre-rename entries' tags under the old stem, so history stays valid; test_a_renamed_spec_checks_clean_and_refreezes_under_the_new_stem proves the r1.1 commit tag survives and the refreeze tags under the new stem.",
+    "rename_pending counts tag seqs under both stems, so the rename entry cannot collide with a tag left under the old stem.",
+    "The name-swap regex is whole-word and the test pins that a longer name containing the old one ('<name>-extra') is left alone.",
+    "test_strap_rename.py drives the real CLI for the move and every refusal (unfrozen, locked, unmoved folder, existing ledger, bad name), with no mocks.",
+    "FreezeLedgerEntry.schema.json stays generated from the model and test_freeze_ledger pins both the new kind and the state-neutral rename entry.",
+    "The rename reaches the TS mod consistently: the unreadable-notes hint string and its test pin change together, and the notes contract test follows the moved script.",
+    "The rename entry kind and the from_name field land in freeze_ledger.py, the regenerated FreezeLedgerEntry.schema.json, schemas/README.md (Applies to, Key fields, State) and the pinned EntryKind set in test_freeze_ledger.py together, so the schema, the model and the docs do not drift.",
+    "The strap.py module docstring, strap-skills SKILL.md (Rename a skill), the strap-skills README asks row and the release note describe the same refusals, moves and follow-up refreeze that cmd_rename/_rename_problems/rename_pending implement.",
+    "owners() keeps pre-rename entries on their old-stem tags in reconcile, _entry_lines and _drift_lines, matching the freeze_ledger docstring's promise; test_a_renamed_spec_checks_clean_and_refreezes_under_the_new_stem proves it end to end against real git tags.",
+    "The add-bookmark -> bookmark sweep is complete across live surfaces: README, session-bookmark README, the mod's TS hint and comments, the type docs, add-todo SKILL.md, the add_todo_api docstring and the contract tests. The only remaining mentions are the deliberate trigger phrase, recorded scenario replies and historical plans.",
+    "The scenario text rewrite matches whole words only (the lookarounds exclude [a-z0-9-]), so `session-bookmark` and `<name>-extra` survive, and test_rename_carries_the_name_into_scenario_text pins both sides.",
+    "owners() maps each ledger entry to the name it was written under, so pre-rename tags keep their old stem and nothing is retagged; the check-clean test proves no untagged lines after the move.",
+    "rename does its refusals and tag preflight before touching the filesystem, and the spec, ledger and part moves follow one ordered path with a rollback.",
+    "The whole-word boundary keeps hyphen-extended names (demo-skill-extra, session-bookmark) intact, and a test pins it.",
+    "The schema file is regenerated from LedgerEntry, and the new kind gets a state test showing rename leaves the state as relink does.",
+    "The skill rename reaches the mod string, its TS test, both READMEs, the contract tests and the guidance-tail list in one pass, and recorded replies are deliberately left as history.",
+    "owners() attributes each ledger entry to the name it was written under by walking rename entries newest first, so reconcile, check and drift keep finding pre-rename tags under the old stem, including chained renames.",
+    "_adder's switch to --follow with lines[-1] verified at head: the moved docs/plans/freezes/skill/bookmark/r1.1-freeze.json resolves to its original adding commit, not the move.",
+    "cmd_rename preflights tags before any move and rolls the spec and ledger folders back on a failed save, move or entry write.",
+    "All 176 tests in the seven in-scope files pass at the PR head.",
+    "test_strap_rename.py covers the happy path end to end: spec and ledger moved, parts re-pointed, base tag under the new stem, check reports nothing untagged and a refreeze tags under the new stem.",
+    "The scenario-text test pins whole-word replacement, including a longer name (`<name>-extra`) that must stay unchanged.",
+    "The refusal tests cover a skill folder not yet moved, a spec never frozen, a locked spec, an occupied ledger and a bad name, and each checks that nothing moved."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "--follow in _adder attributes ledger entries to foreign commits through inexact rename and copy detection",
+        "file": "plugins/harness/lib/harness_lib/freeze_git.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/freeze_git.py",
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "tests/scripts/test_strap_rename.py"
+        ],
+        "lines": "211-217",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "Both _adder functions now run `git log --follow --diff-filter=A` and take the last line. --follow pairs the followed path with any deleted or existing file that is at least 50% similar, and entry_text dumps every null field, so small entries (reopen, relink, rename, arm) share most of their lines. Verified at this head: `git log --follow --diff-filter=A HEAD -- docs/plans/freezes/skill/bookmark/r3.5-rename.json` returns f708dd8 (a strap-skills reopen) through R056 from add-bookmark/r3.1-reopen.json, then C074 from writing-docstrings, then C074 from strap-skills. The correct answer is 94d6961. The same query for the never-renamed writing-docstrings/r3.1-reopen.json returns f708dd8 where the old query returned e1cf2a7. As a result, the next `strap.py check bookmark` or ledger writer runs fg._reconcile_one and creates the annotated tag rename/skill/bookmark/r3.5-commit on f708dd8. Any new strap or plan entry that resembles an earlier file gets its -commit tag on an unrelated commit, and `check` prints wrong `untagged:` shas. freeze_git._adder serves plan ledgers too, and plan ledgers never move. tests/scripts/test_strap_rename.py does not catch this: its fixture ledger holds only a large freeze entry and it never asserts where the rename entry's commit tag points.",
+        "fix": [
+          "Pin exact matches: add `-M100%` to both git log calls. At this head that returns 94d6961 for bookmark/r3.5-rename.json, 6b92205 for bookmark/r3.3-relink.json and e1cf2a7 for writing-docstrings/r3.1-reopen.json.",
+          "Drop --follow. Restore freeze_git._adder to `--diff-filter=A --reverse` and lines[0], since plans never rename. In strap_lock, look up an entry owned by an earlier name at `folder(owner)/entry_name(entry)` with the original query, and fall back to the current path. owners() already knows the old name.",
+          "Either way, add a rename test whose old ledger holds a reopen or relink entry, and assert that rename/<new stem>/rN.k-commit peels to the commit that added the rename entry."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Release note claims a refreeze the spec does not hold",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "docs/plans/strap/bookmark/SkillSpec.json",
+          "docs/plans/freezes/skill/bookmark/r3.5-rename.json",
+          "README.md"
+        ],
+        "lines": "63-72",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/RELEASES/v1.1.0.md:72 says the bookmark strap spec 'was refrozen on the renamed parts'. At the head the ledger ends at r3.5-rename.json (2026-11-24T18:49:01) with no later freeze entry, and SkillSpec.json's `frozen` stamp is unchanged from the merge base (skill_hash 75d50d20463036d2..., at 2026-11-24T18:04:25, before the rename); only `authored` moved. SKILL.md content changed (name, title, usage line) and its path moved, so the stamp no longer matches the parts and `check` reports the spec stale. The strap-skills SKILL.md rename paragraph (lines 349-350) itself says greens and `freeze <new-name> --refreeze` must follow, and they did not run on this head.\n\nAlso (overall): docs/RELEASES/v1.1.0.md:72 states the strap spec 'was refrozen on the renamed parts'. At the head the bookmark ledger ends at r3.5-rename.json (2026-11-24T18:49:01) with no later freeze entry, and SkillSpec.json's frozen stamp (lines 1657-1662) is still the r3.4 stamp (at 18:04:25, skill_hash 75d50d20...), which was hashed over the add-bookmark paths and the old SKILL.md, add_note.py and contract test content. The moved parts changed content (frontmatter name, usage line, require_stable label, contract test), so `strap.py check bookmark` prints `stale:` and `ledger:`, and `lock bookmark` refuses (`_ledger_problems`: last freeze does not match). The release note claims a state the ledger contradicts.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:72 says the strap spec 'moved with strap.py rename and was refrozen on the renamed parts'. At the head the bookmark ledger ends at r3.5-rename.json (at 18:49:01) with no later freeze entry, and docs/plans/strap/bookmark/SkillSpec.json:1657-1661 still carries the r3.4 stamp (skill_hash 75d50d20..., at 18:04:25, before the rename). The renamed SKILL.md and contract test no longer hash to that stamp, so `strap.py check bookmark` prints `stale:`, exactly as strap-skills/SKILL.md's new Rename paragraph predicts. The commit message of 94d6961 itself says 'its greens and refreeze come next'. This file becomes the GitHub release body, so it would publish a refreeze that never happened.\n\nAlso (docs): v1.1.0.md:4-5 requires each change line 'tagged with its PR number', and every earlier entry starts with `#337`..`#342`. The two lines this branch adds (63 `Feat(harness): strap.py rename ...` and 70 `Change(harness, session-bookmark): ...`) carry no `#344`.\n\nAlso (overall): docs/RELEASES/v1.1.0.md:3-5 asks for one line per change tagged with its PR number, and every earlier line starts with '#NNN'; the two new lines at 63 and 70 start with 'Feat(harness):' and 'Change(harness, session-bookmark):' with no '#344'.\n\nAlso (overall): The skill rename removes the `/harness:add-bookmark` slash command that README examples and earlier v1.1.0 lines (#342) advertised; only the trigger phrase survives. README.md:195 says a break is named in the release's Breaking changes section, and v1.1.0.md has none, so a user upgrading from v1.0.0 gets no migration note.\n\nAlso (system_shape): The PR drops the `/harness:add-bookmark` invocation with no alias (commit 94d6961: 'no alias keeps the old one'), and an installed session-bookmark 0.4.0 still prints `/harness:add-bookmark --clear` in its unreadable-notes hint. README.md:194-195 says a pre-1.0 minor bump 'can also carry a break, which the release's Breaking changes section names', and docs/RELEASES/v1.0.0.md:36 shows that section. docs/RELEASES/v1.1.0.md has no Breaking changes section; the rename shows up only as a 'Change(...)' bullet at line 70.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:4-5 says each change line is 'tagged with its PR number', and every earlier bullet starts with `#337`/`#338`/`#339`/`#342`. The two bullets this PR adds (lines 63 and 70) start with `Feat(harness)` and `Change(harness, session-bookmark)` with no `#344`.\n\nAlso (roast): /harness:add-bookmark no longer exists, which breaks anyone typing it, any saved note or doc that names it, and muscle memory. README.md says a bump that carries a break is named in the release's Breaking changes section. v1.1.0.md has no such section, and the Change line only says 'add-bookmark' stays a trigger phrase.\n\nAlso (roast): docs/RELEASES/v1.1.0.md says the bookmark strap spec 'moved with strap.py rename and was refrozen on the renamed parts'. At head the ledger ends at r3.5-rename.json (18:49:01), with no freeze entry after it. SkillSpec.json frozen.skill_hash is still 75d50d20... and frozen.at is 18:04:25, the same values as r3.4-freeze. SKILL.md content and the part paths changed, so the spec is stale: strap check prints stale:. The recorded greens also no longer prove the renamed checks. R-41's reply holds 'usage: /harness:add-bookmark', but its check target now reads 'usage: /harness:bookmark'. The note describes something that has not happened yet.",
+        "fix": [
+          "Run and grade the bookmark greens on the new hash, then `strap.py freeze bookmark --refreeze`, so the ledger gains an r3.6-freeze entry and the stamp matches the renamed parts; keep the release line as written.",
+          "Or reword v1.1.0.md:72 to say the spec moved with `strap.py rename` and awaits its refreeze, until the refreeze lands.",
+          "Run and grade the bookmark greens on the new hash, run `strap.py freeze bookmark --refreeze`, and commit the resulting r3.6-freeze entry and SkillSpec.json with this branch.",
+          "Or reword docs/RELEASES/v1.1.0.md:72 to say the spec moved with `strap.py rename` and awaits its greens and `freeze bookmark --refreeze`.",
+          "Run and grade the bookmark greens, then `strap.py freeze bookmark --refreeze`, and commit the resulting r3.6-freeze.json and SkillSpec.json so the sentence becomes true before merge",
+          "Reword docs/RELEASES/v1.1.0.md:72 to 'the strap spec moved with `strap.py rename` (ledger entry r3.5); its greens and refreeze follow' until the refreeze lands",
+          "Prefix lines 63 and 70 with `#344 ` (`- #344 Feat(harness): ...`, `- #344 Change(harness, session-bookmark): ...`).",
+          "Prefix lines 63 and 70 with '#344 '.",
+          "Add a 'Breaking changes' section to docs/RELEASES/v1.1.0.md naming `/harness:add-bookmark` -> `/harness:bookmark`.",
+          "Or state in the line at 70 that the old slash command is gone and natural-language 'add-bookmark' still routes to the skill.",
+          "Add a `## Breaking changes` section to docs/RELEASES/v1.1.0.md naming the removed `/harness:add-bookmark` command, its replacement `/harness:bookmark`, and the need to update session-bookmark alongside harness so the hint names a live command",
+          "Prefix docs/RELEASES/v1.1.0.md lines 63 and 70 with `#344 `",
+          "Add a Breaking changes section to docs/RELEASES/v1.1.0.md naming the /harness:add-bookmark -> /harness:bookmark rename and the session-bookmark unreadable-notes hint text change",
+          "Run and grade the greens on the renamed parts, then `strap.py freeze bookmark --refreeze`, and commit the r3.6 freeze entry and the restamped spec",
+          "Or reword the release-note line to say the spec was renamed and its refreeze is pending"
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "rename leaves planned test node ids on the old file paths",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "tests/scripts/test_strap_rename.py",
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py:937-948",
+          "plugins/harness/lib/harness_lib/strap_profile.py"
+        ],
+        "lines": "1114-1136",
+        "reviewer": "runtime, overall, roast, adv_code_runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_renamed moves the contract test, models, api and driver paths and anything under the old skill folder, and _renamed_behaviors rewrites statement and scenario text. Neither touches Behavior.tests[].node. When a mechanical behavior's planned test sits in a moved file (for example the contract test from named_paths), its node still names the old path. _planned_tests_pass (strap.py:937-941) then runs pytest on a file that no longer exists, the gate reports `planned tests fail`, and `freeze --refreeze` is refused. The spec is still frozen and sealed, so the node cannot be corrected without a reopen.\n\nAlso (overall): _renamed re-points the contract-test part (test_<old_snake>_skill_contract.py -> test_<new_snake>_...), but _renamed_behaviors only rewrites statement and scenario text; each mechanical behavior's tests[].node (e.g. tests/skills/test_c_msg_skill_contract.py::test_x) keeps the old file path, and the whole-word hyphen regex never matches the snake_case form anyway. freeze_problems -> _mechanical_gate -> _planned_tests_pass (strap.py:937-941) runs every node with pytest on the working tree, so after the contract test moves every such node fails with 'planned tests fail' and `freeze --refreeze` refuses. The node cannot be fixed afterwards: strap_api refuses behavior edits on a frozen spec, and after a reopen a behavior frozen in an earlier round keeps its tests (strap_api.py:215-226). Specs at the head pin 40+ nodes in contract tests (c-msg, merge-commit-msg, writing-docstrings, todo-edit, pr-sum, writing-comments), so renaming any of them strands the spec. The bookmark spec has no planned tests, which is why this PR's own run did not hit it. The planned-test mirror under the strap folder (tests/tests/skills/test_<old>_skill_contract.py) also keeps its old name.\n\nAlso (roast): _renamed_behaviors replaces every whole-word match of the old name in statements, task, tempts, check targets and judged subjects. The boundary only excludes [a-z0-9-], so a name that is also an English word gets rewritten in plain prose. This repo has skills named working, doctor and now bookmark. Renaming bookmark again would turn SC task text '... lists the bookmark goal subcommand' (SkillSpec.json line 251) into '... lists the <new> goal subcommand', and 'the working tree' would suffer the same fate under a working rename. save() then restamps the authored seal, so the edit is sealed without review. The command prints only a part count.\n\nAlso (adv_code_runtime): _renamed re-points the contract_test part from tests/skills/test_<old_snake>_skill_contract.py to the new name's path, and _rename_problems requires that new file to exist (so the old one is gone), but _renamed_behaviors rewrites only statement and scenario text; Behavior.tests[].node keeps the old file path. The next freeze --refreeze runs _mechanical_gate -> _planned_tests_pass, which runs pytest on the vanished node, so every mechanical behavior reports 'planned tests fail' and the renamed spec cannot refreeze; red/retest hit the same missing node. The word-boundary regex would not help either: node paths use the snake_case form, which the hyphenated pattern never matches.\n\nAlso (runtime): The swap pattern in _renamed_behaviors matches only spec.name with hyphens (add-bookmark). The models, api, driver and contract test paths that _renamed re-points through named_paths use the snake form (add_bookmark_api.py, test_add_bookmark_..._contract.py; strap_profile.py:35). So a statement or check target that names one of those files keeps the old module name, and the check then expects a file that has moved. The swap is also a plain whole-word replace: for a skill named with a common word, it rewrites prose and check regexes nobody asked to change, and prints no count.\n\nAlso (adv_code_runtime): _renamed re-points the models, api and driver parts (plugins/harness/lib/harness_lib/<old_snake>_api.py and so on), but the swap regex in _renamed_behaviors matches only the hyphenated name as a whole word. A file_changed/file_unchanged/path_present check whose target is one of those module paths keeps the old path, so after the rename the check watches a file that no longer exists (file_unchanged holds vacuously, file_changed/path_present can never hold).\n\nAttack: Probe (run at PR head, output reproduced): build SkillSpec(name='old-one', mode='new', plugin_dir='plugins/harness', parts=[skill_md plugins/harness/skills/old-one/SKILL.md, contract_test tests/skills/test_old_one_skill_contract.py], behaviors=[Behavior(id='B1', kind='mechanical', tests=[PlannedTest(node='tests/skills/test_old_one_skill_contract.py::test_b1', red='AssertionError')])]) and call strap.py's _renamed(spec, 'new-one'). Result: parts == ['plugins/harness/skills/new-one/SKILL.md', 'tests/skills/test_new_one_skill_contract.py'] but behaviors[0].tests[0].node == 'tests/skills/test_old_one_skill_contract.py::test_b1'. End to end: freeze such a spec, git mv the skill folder and the contract test to the new name, run `strap.py rename old-one new-one` (succeeds), then `strap.py freeze new-one --refreeze` refuses with 'B1: planned tests fail' because pytest cannot find tests/skills/test_old_one_skill_contract.py.\n\nAttack: Spec 'old-one' with a judgment behavior whose scenario has Check(kind='file_unchanged', target='plugins/harness/lib/harness_lib/old_one_api.py') and an api part at that path. _renamed(spec, 'new-one') re-points the part to plugins/harness/lib/harness_lib/new_one_api.py but leaves the check target at old_one_api.py: the pattern (?<![a-z0-9-])old\\-one(?![a-z0-9-]) never matches 'old_one'.",
+        "fix": [
+          "In _renamed_behaviors (or _renamed), rewrite each test as `test.model_copy(update={\"node\": _renamed_path(file, named, old, new) + \"::\" + rest})`, where file and rest come from `node.split(\"::\", 1)`. Pass named, old and new through from _renamed. Add a rename test with a mechanical behavior whose node is in the contract test.",
+          "In _renamed_behaviors (or _renamed), re-point each behavior.tests[].node: split at '::', map the file part through the same `named`/_renamed_path mapping used for parts, and rejoin; rename the matching mirror files under the strap folder's tests/ in cmd_rename (inside the try, undone by _move_back).",
+          "Add a test in tests/scripts/test_strap_rename.py with a mechanical behavior whose planned node sits in the contract test, asserting the node is re-pointed and `freeze <new> --refreeze` passes the mechanical gate.",
+          "Limit the swap to name-bearing contexts (`harness:<name>`, `/<plugin>:<name>`, `skills/<name>/`, `strap/<name>/`, the profile's name-made paths) instead of every whole-word match",
+          "Or print each changed field (behavior id, scenario id, before -> after) in the rename output so the developer reviews the rewrite before refreezing, and cover a dictionary-word name in test_strap_rename.py",
+          "In _renamed_behaviors, rewrite each PlannedTest.node: split on the first '::', pass the file half through _renamed_path(path, named, old, new) and rejoin; extend _renamed to pass named/old/new through.",
+          "Add to _rename_problems a check that each renamed node's file exists, and a test in tests/scripts/test_strap_rename.py with a mechanical behavior whose node sits in the contract test.",
+          "Run a second swap for the snake form with the same boundaries, `(?<![A-Za-z0-9_])old_snake(?![A-Za-z0-9_])`. Print the number of replacements per behavior in the rename summary so the developer can review them before the greens.",
+          "Apply _renamed_path (the named-path table) to each check target before the text swap, or add the snake_case old/new pair to the swap."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Rename rollback path (_move_back) has no test",
+        "file": "tests/scripts/test_strap_rename.py",
+        "files": [
+          "tests/scripts/test_strap_rename.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "124-152",
+        "reviewer": "tests, roast, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`cmd_rename` moves the spec folder, saves the renamed spec and moves the ledger, then calls `sl.commit` inside a try. On failure, `_move_back` is supposed to put both folders back under the old name and restore the spec bytes. No test in test_strap_rename.py makes that block fail, so this undo of a half-done filesystem move is never run. Also, `sl.commit(root, pending)` gets no `restore`. Entries written before a failing write (the history entries of a legacy spec) stay in the folder that moves back, and no assertion checks for that.\n\nAlso (tests): `_rename_problems` refuses a part that is missing at its re-pointed path (strap.py:1148) and a new name whose spec folder already exists (strap.py:1151). The refusal tests cover an unmoved folder, an unfrozen spec, a locked spec, an existing ledger and a bad name, but not these two branches.\n\nAlso (roast): _move_back undoes a half-done rename with three conditional moves and a byte restore. No test in test_strap_rename.py drives a failure after the spec folder moved, so a regression here leaves a split tree: spec under the new name, ledger under the old name. The refusal tests all fail before anything moves. The refusal for a part missing at its new path is untested too.\n\nAlso (adv_code_tests): cmd_rename moves the spec folder and then, if save/move_ledger/commit fails, calls _move_back to restore both folders and the spec bytes. _rename_problems also refuses when the new name already has a spec folder. No test in tests/scripts/test_strap_rename.py reaches either path: the ledger-exists refusal test is refused in sl.rename_pending (plugins/harness/lib/harness_lib/strap_lock.py:312), before anything moves, so the rollback never runs under test.\n\nAttack: Mutation: delete the `_move_back(spec.name, renamed.name, before)` call at plugins/harness/scripts/strap.py:1182, or delete the `_strap_dir(renamed.name).exists()` check at plugins/harness/scripts/strap.py:1150-1151, then run `python -m pytest tests/scripts/test_strap_rename.py -q`: all ten tests still pass (no other test in tests/ invokes `strap rename`).",
+        "fix": [
+          "Add a test that monkeypatches `harness_lib.strap_lock._write_entries`, or `freeze_ledger.write_entry` for the rename kind, to raise `LedgerError`. Run `strap(\"rename\", NAME, NEW)` and assert it is refused, `docs/PLANS/strap/demo-skill/SkillSpec.json` is byte-identical to before, the old ledger folder holds only its earlier files, and neither new-name folder exists.",
+          "Add `test_rename_refuses_a_part_not_yet_moved`: add a contract_test part as in the re-point test, move only the skill folder, and assert `part tests/skills/test_renamed_skill_skill_contract.py does not exist` in the refusal.",
+          "Add `test_rename_refuses_a_name_that_already_has_a_spec`: write `docs/PLANS/strap/renamed-skill/SkillSpec.json`, then assert `already has a spec` and that the old spec is still in place.",
+          "Add a test that makes the entry write fail after the move, for example by pre-creating the rename entry's file in the new ledger folder through a monkeypatched fl.write_entry raising LedgerError. Assert that the spec folder, the ledger folder and SkillSpec.json bytes are back under the old name",
+          "Add a refusal test for a name-made part (contract test) left at its old path",
+          "Add a test that makes sl.commit raise sl.LockRefused after the move (monkeypatch it on the driver module), then assert plans/strap/<old>/SkillSpec.json holds its original bytes and the ledger sits under the old stem",
+          "Add a test that creates plans/strap/renamed-skill/ before rename and asserts the refusal names `already has a spec` and leaves the old spec in place"
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "No-other-agent guard now lets through any harness:bookmark* name",
+        "file": "tests/skills/test_bookmark_skill_contract.py",
+        "files": [
+          "tests/skills/test_bookmark_skill_contract.py",
+          "plugins/harness/skills/bookmark/SKILL.md"
+        ],
+        "lines": "53-56",
+        "reviewer": "tests, overall, roast, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The renamed lookahead `harness:(?!bookmark)[a-z-]+` exempts every name that starts with `bookmark`, not just the skill itself. The old `(?!add-bookmark)` still caught `harness:bookmark-noter`, which is the deleted agent this file guards against (`_AGENT` at line 19). Since the rename, a SKILL.md body that dispatches `harness:bookmark-noter` again, or any `harness:bookmark-*` agent, passes `test_skill_body_names_no_agent_to_dispatch`. The only body mention today is `harness:bookmark` at SKILL.md:80, so a tighter pattern still passes.\n\nAlso (overall): test_skill_body_names_no_agent_to_dispatch asserts `re.search(r\"harness:(?!bookmark)[a-z-]+\", body) is None`. The negative lookahead now excludes every name that starts with 'bookmark', so a SKILL.md that dispatches `harness:bookmark-noter` (the very agent _AGENT at line 19 names and test_no_agent_runs_the_note_writer guards against) passes. Before the rename, `(?!add-bookmark)` let that reference fail the test; the rename silently weakened the guard for its most likely regression.\n\nAlso (roast): test_skill_body_names_no_agent_to_dispatch changed its lookahead from (?!add-bookmark) to (?!bookmark). The lookahead only checks the prefix, so any harness:bookmark<suffix> passes, including harness:bookmark-noter: the retired note-writer agent the same file pins as absent (_AGENT, line 19). Before the rename the old pattern caught it. The guard can no longer fail for the one agent it was written about.\n\nAlso (adv_code_tests): test_skill_body_names_no_agent_to_dispatch changed its exemption from (?!add-bookmark) to (?!bookmark). The lookahead is a prefix match, so any `harness:bookmark...` name passes, including `harness:bookmark-noter`, the agent the same file pins as removed (_AGENT, test_no_agent_runs_the_note_writer). Before the rename the old pattern caught `harness:bookmark-noter`; after it the guard misses the one agent name it most needs to catch.\n\nAttack: Add the line `Dispatch harness:bookmark-noter to write the note.` to the body of plugins/harness/skills/bookmark/SKILL.md, then run `python -m pytest tests/skills/test_bookmark_skill_contract.py -q`: test_skill_body_names_no_agent_to_dispatch still passes. Directly: re.search(r'harness:(?!bookmark)[a-z-]+', 'dispatch harness:bookmark-noter') returns None, while the pre-PR pattern r'harness:(?!add-bookmark)[a-z-]+' matches it (a probe confirmed both results).",
+        "fix": [
+          "Anchor the exemption to the whole name: `re.search(r\"harness:(?!bookmark(?![a-z-]))[a-z-]+\", body)`.",
+          "Alternatively, collect `re.findall(r\"harness:([a-z-]+)\", body)` and assert the set is a subset of `{\"bookmark\"}`.",
+          "Anchor the exclusion to the whole name: `re.search(r\"harness:(?!bookmark(?![a-z0-9-]))[a-z0-9-]+\", body) is None`.",
+          "Anchor the exception to the whole skill name: re.search(r\"harness:(?!bookmark(?![a-z0-9-]))[a-z0-9-]+\", body)",
+          "Or add an explicit assert \"harness:bookmark-noter\" not in body next to the regex",
+          "Anchor the exemption at the end of the name: re.search(r\"harness:(?!bookmark(?![a-z-]))[a-z-]+\", body)",
+          "Or collect every `harness:[a-z-]+` match and assert the set is a subset of {\"harness:bookmark\"}"
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note still gives round 3's superseded freeze hash",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "files": [
+          "docs/RELEASES/v1.1.0.md",
+          "docs/plans/freezes/skill/bookmark/r3.4-freeze.json"
+        ],
+        "lines": "62",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:62 says strap round 3 is 'frozen at `abf003a20d2a`', which is r3.2-freeze. The ledger this PR moves holds r3.4-freeze.json with skill_hash 75d50d20463036, the review-fix refreeze, and SkillSpec.json's current stamp matches that. The text predates this PR, but the PR edits this file and adds a sentence about the same spec's freeze state, so the two claims now disagree within a few lines.",
+        "fix": [
+          "Update docs/RELEASES/v1.1.0.md:62 to the hash of the latest freeze (`75d50d204630` now, or the r3.6 hash once the refreeze in the first finding lands)"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "from_name accepts any string but feeds tag names",
+        "file": "plugins/harness/lib/harness_lib/freeze_ledger.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/freeze_ledger.py",
+          "plugins/harness/schemas/FreezeLedgerEntry.schema.json"
+        ],
+        "lines": "92-93",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "LedgerEntry.from_name is an unconstrained Optional[str]. owners() passes it to stem(), which builds the tag names that reconcile, _entry_lines and _drift_lines query or create. A malformed value (spaces, `..`, a slash) passes ledger validation and only fails later, as git tag warnings or wrong lookups.",
+        "fix": [
+          "Constrain the field with the skill-name pattern, e.g. `Field(default=None, pattern=<strap NAME_PATTERN>)`, then regenerate schemas/FreezeLedgerEntry.schema.json."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "strap_lock module docstring does not list the rename entry",
+        "file": "plugins/harness/lib/harness_lib/strap_lock.py",
+        "lines": "3-6",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Lines 3-6 say the ledger records each freeze tree, lock, reopen and relink. This change adds rename_pending, move_ledger and owners(), so the ledger now also holds rename entries and moves between stems. freeze_ledger's docstring was updated for this; strap_lock's was not.\n\nAlso (overall): The module docstring says the ledger 'records each freeze tree, lock, reopen and relink', while the module now builds rename entries (rename_pending), moves ledger folders (move_ledger) and maps pre-rename entries to the old stem (owners).",
+        "fix": [
+          "Change it to `records each freeze tree, lock, reopen, relink and rename` and add one sentence: a rename moves the folder to the new stem, and owners() maps each entry to the name its tags were made under.",
+          "Change line 4 to '...records each freeze tree, lock, reopen, relink and rename (a rename moves the folder to the new name; owners() keeps earlier entries' tags under the old stem).'"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Three copies of _adder, now with two algorithms",
+        "file": "plugins/harness/lib/harness_lib/strap_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "plugins/harness/lib/harness_lib/freeze_git.py",
+          "plugins/harness/lib/harness_lib/plan_lock.py"
+        ],
+        "lines": "545-550",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "strap_lock._adder (545-550) is now a line-for-line copy of freeze_git._adder (--follow, newest-first, last line). plan_lock._adder (655) keeps the old --reverse form without --follow. Plan entries are tagged through fg.reconcile using the --follow version, but plan check looks them up with the non-follow version. One concept, three implementations, two behaviors.",
+        "fix": [
+          "Make freeze_git._adder public (`adder`) and have strap_lock and plan_lock call it, deleting both local copies"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "_rename_problems gives one misleading message for two separate conditions",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "1146-1147",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The condition at line 1146 is `old skill folder exists OR new SKILL.md missing`, and both cases print `<new>/SKILL.md does not exist; move ... first`. After a `git mv`, the old folder often survives holding only untracked or ignored leftovers such as commands/__pycache__ from running add_note.py. The rename is then refused with a message that says the new SKILL.md is missing when it exists.\n\nAlso (overall): _rename_problems joins two conditions into one message: when the old skill folder still exists (for example an untracked commands/__pycache__ that `git mv` leaves behind) and the new SKILL.md is present, the refusal still says '<new>/SKILL.md does not exist; move <old> to <new> first', pointing the developer at a file that is there.\n\nAlso (system_shape): plugins/harness/scripts/strap.py:1146-1147 ORs two conditions, `(root / old.skill_folder).exists() or not (root / new.skill_md).is_file()`, into one message: '<new skill_md> does not exist; move <old> to <new> first'. When the developer copies the folder instead of moving it (the new SKILL.md exists and the old folder is still there), the refusal says a file that exists does not exist. strap-skills/SKILL.md describes this refusal as 'a skill folder not yet moved', which only fits the second condition.",
+        "fix": [
+          "Split the check into two problems: `<old folder> still exists; remove what remains there` when the old folder exists, and the current message only when the new SKILL.md is missing. Alternatively, test for tracked files under the old folder (`git ls-files`) instead of whether the folder exists.",
+          "Split the check: `if (root / old.skill_folder).exists(): problems.append(f\"{old.skill_folder} still exists; move it to {new.skill_folder} (remove leftover untracked files)\")` and `if not (root / new.skill_md).is_file(): problems.append(f\"{new.skill_md} does not exist; move {old.skill_folder} to {new.skill_folder} first\")`.",
+          "Split the check into two messages: '<old.skill_folder> still exists; move it to <new.skill_folder>' for the first condition and '<new.skill_md> does not exist; ...' for the second"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "fold-in-review example table misaligned after the path shortened",
+        "file": "plugins/harness/skills/fold-in-review/README.md",
+        "lines": "86",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "fold-in-review README.md:86 shortened `add-bookmark` to `bookmark` in the I6 row but kept the old padding, so the row's closing `|` sits four columns left of the header and the M9 row.\n\nAlso (skill_package): The path in the I6 row shrank by four characters (add-bookmark -> bookmark) but the trailing padding was not widened, so README.md:86 ends four columns short of the header and separator rows (84-85) and the M9 row (87) inside the fixed-width example block.",
+        "fix": [
+          "Pad the I6 cell to the column width: `| I6 | important | plugins/harness/skills/bookmark/commands/add_note.py      |`.",
+          "Pad the I6 row to the column width: '| I6 | important | plugins/harness/skills/bookmark/commands/add_note.py      |'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Refreeze paragraph still says a frozen spec refuses every change but three",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "lines": "233-235",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "strap-skills SKILL.md:233-235 states that, short of reopen, a frozen spec refuses every change except add_part/remove_part, a green run and the refreeze. The new rename command (SKILL.md:334-352, strap.py:1164-1188) is a further change accepted on a frozen, non-Locked spec: it rewrites name, parts and behavior text. The enumeration now contradicts the skill's own rename paragraph, and an agent reading step 12 top-down can conclude a rename is refused.",
+        "fix": [
+          "Reword SKILL.md:233-235 to 'Short of `reopen` and `rename` (below), a frozen spec refuses every change but three: ...', or add rename as a fourth exception."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Legacy history-entry trigger list omits rename",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "plugins/harness/skills/strap-skills/README.md"
+        ],
+        "lines": "257-260,420",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "strap-skills SKILL.md:256-258 says a pre-ledger spec gets its history entries 'at its first ledger write (`freeze --refreeze`, `reopen` or `relink`)'. `rename_pending` (plugins/harness/lib/harness_lib/strap_lock.py:314,323) also calls `history(...)` and writes those entries ahead of the rename entry, so rename is a first ledger write too; the list at line 269-270 was updated to include `rename`, this one was not.\n\nAlso (skill_package): The rename steps were added to the ledger-writing list at SKILL.md:269-270 and to README.md:88-89, but three sibling enumerations were not updated: SKILL.md:257-258 lists the first ledger write that adds legacy history entries as `freeze --refreeze`, `reopen` or `relink`, although rename_pending also writes history first (strap_lock.py:314); SKILL.md:260 lists the base-tag writers as `new --edit`, `freeze` and `reopen`, although rename tags `base/<new stem>/r<N>` (strap_lock.py:321-322); SKILL.md:420 (Related) still reads 'the lock, reopen and relink steps' while README.md:89 now says 'lock, reopen, relink and rename steps'.",
+        "fix": [
+          "Change '(`freeze --refreeze`, `reopen` or `relink`)' to '(`freeze --refreeze`, `reopen`, `relink` or `rename`)'.",
+          "SKILL.md:258: '(`freeze --refreeze`, `reopen`, `relink` or `rename`)'; SKILL.md:260: '(`new --edit`, `freeze`, `reopen` and `rename` tag it'; SKILL.md:420: 'the lock, reopen, relink and rename steps'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Rename refusal described as 'never frozen' but any unfrozen spec is refused",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "335-344",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "strap-skills SKILL.md:344 says rename 'refuses a spec never frozen or Locked'. `_rename_problems` (plugins/harness/scripts/strap.py:1141) refuses whenever `spec.frozen is None`, and `reopen` clears the stamp (strap.py:1027), so a spec frozen in an earlier round but reopened and not yet refrozen is refused too, with '<name> is not frozen'. The prose understates the precondition.\n\nAlso (skill_package): SKILL.md:335-343 says 'Move the skill folder first ..., then run' the rename command, and only after the code fence 'Move every part whose path is made from the name too'. The command refuses a part missing at its new path (strap.py:1148-1149, `part ... does not exist`), so the contract test and the models/API/driver modules must move before the run. Read in order, the prose invites running the command first and hitting the refusal.",
+        "fix": [
+          "Change 'refuses a spec never frozen or Locked' to 'refuses a spec that is not frozen (never frozen, or reopened and not yet refrozen) or is Locked'.",
+          "Move the sentence 'Move every part whose path is made from the name too: the contract test (...) and, for a harness skill, its models, API and driver modules.' ahead of the command, e.g. 'Move the skill folder first (`git mv`, then set the frontmatter `name`) and every part whose path is made from the name (...), on a frozen spec that is not Locked, then run'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Rename state test cannot tell 'keeps the state' from 'sets frozen'",
+        "file": "tests/lib/test_freeze_ledger.py",
+        "files": [
+          "tests/lib/test_freeze_ledger.py",
+          "plugins/harness/lib/harness_lib/freeze_ledger.py"
+        ],
+        "lines": "183-194",
+        "reviewer": "adv_code_tests",
+        "fix_kind": "mechanical",
+        "summary": "test_rename_entry_names_the_old_subject_and_keeps_the_state checks that a rename entry leaves the state as it was, but only after a freeze entry. The state before is frozen, so the assertion state == frozen also passes if rename were mapped to frozen in _STATE_OF_KIND, which would wrongly re-freeze an armed or unlocked ledger.\n\nAttack: Mutation: add `EntryKind.rename: LedgerState.frozen` to _STATE_OF_KIND in plugins/harness/lib/harness_lib/freeze_ledger.py, then run `python -m pytest tests/lib/test_freeze_ledger.py -q`: test_rename_entry_names_the_old_subject_and_keeps_the_state still passes, because the only entry before the rename is a freeze.",
+        "fix": [
+          "Precede the rename with an entry that leaves a state other than frozen (for example freeze, lock, unlock, or freeze, arm) and assert the state after the rename equals the state before it"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Shared strap helper docstring does not list its new consumer",
+        "file": "tests/scripts/_strap_lock_helpers.py",
+        "files": [
+          "tests/scripts/_strap_lock_helpers.py",
+          "tests/scripts/test_strap_rename.py"
+        ],
+        "lines": "1",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The `_strap_lock_helpers.py` module docstring says it is shared by `test_strap_lock.py` and `test_strap_relink_lock.py`. `test_strap_rename.py` now imports its fixtures as well.",
+        "fix": [
+          "Change the first docstring line to: \"Fixtures and helpers shared by ``test_strap_lock.py``, ``test_strap_relink_lock.py`` and ``test_strap_rename.py``.\""
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Test uses json through the helpers module",
+        "file": "tests/scripts/test_strap_rename.py",
+        "lines": "49,69",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Lines 49 and 69 call `helpers.json.loads`, which relies on the helper module having imported `json`. Importing `json` directly, or calling a helper like `read_spec` parameterised by the spec path, makes the dependency explicit.",
+        "fix": [
+          "Add `import json` to the module imports and replace `helpers.json.loads` with `json.loads` at lines 49 and 69."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Scenario-text test depends on a check run to activate the config",
+        "file": "tests/scripts/test_strap_rename.py",
+        "lines": "73-94",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "`test_rename_carries_the_name_into_scenario_text` calls the private `driver._renamed` directly. That call reaches `named_paths` -> `_contract_path`, which reads `active()`. The only thing that activates the config is the unexplained `ok(strap(\"check\", NAME))` at line 77. If that line is removed or reordered, the test fails for a reason unrelated to rename, and nothing tells a reader why the line is there.",
+        "fix": [
+          "Add a comment at line 77 saying the check run activates the project config that `_renamed` reads through `named_paths`.",
+          "Or drive the rename end to end: add the behavior through `piped(..., \"api\", NAME)`, run `strap(\"rename\", NAME, NEW)`, and assert on the saved spec at NEW_SPEC."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 344 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"0007-add-bookmark-hook\",\"commits_count\":3,\"first_sha\":\"e7d80816774ddd3a7a335c28e8dd0129be807198\",\"headRefName\":\"1007-rename-skill\",\"headRefOid\":\"94d696180b84d62bc088724fd385ef09938ec24b\",\"last_sha\":\"94d696180b84d62bc088724fd385ef09938ec24b\",\"mergeCommit\":null,\"number\":344,\"state\":\"OPEN\",\"title\":\"Feature(harness): `strap.py rename` command\",\"url\":\"https://github.com/t968rs/operator-straps/pull/344\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (44 checked, 1 refuted, 5 code findings)",
+        "counts": {
+          "findings_checked": 44,
+          "findings_refuted": 1,
+          "findings_upheld": 43,
+          "code_findings": 5
+        },
+        "refuted_ids": [
+          "M13"
+        ],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1007-rename-skill",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1007-rename-skill",
+        "head_ref_name": "1007-rename-skill",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e7d80816774ddd3a7a335c28e8dd0129be807198",
+        "head_sha": "94d696180b84d62bc088724fd385ef09938ec24b",
+        "base_ancestor_command": "git merge-base --is-ancestor e7d80816774ddd3a7a335c28e8dd0129be807198 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 94d696180b84d62bc088724fd385ef09938ec24b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "0007-add-bookmark-hook",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M13",
+      "status": "REFUTED",
+      "date": "2026-11-24",
+      "evidence": "the check at tests/scripts/test_strap_rename.py:77 is not the only activation: the frozen fixture (tests/scripts/_strap_lock_helpers.py:151) runs driver.main, which calls activate at plugins/harness/scripts/strap.py:1276 and never deactivates; the autouse deactivate in tests/conftest.py:32-38 runs only before fixtures and at teardown, so the config stays active for driver._renamed with line 77 removed"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - _rename_problems splits the OR into two refusals: '<old folder> still exists; move it to <new folder> (remove leftover untracked files)' and '<new SKILL.md> does not exist; move ... first'; test_strap_rename.py gains test_rename_names_an_old_folder_left_behind; strap-skills SKILL.md refusal text now names both conditions: an old skill folder still on disk (remove leftover untracked files) and a new SKILL.md that is missing; the strap.py half is owned by the other part's fixer"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - fold-in-review README.md:86 I6 row padded by four spaces so its closing | aligns with rows 84, 85 and 87 (all 78 columns)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - strap.py: no edit, its '<name> is not frozen' refusal already covers a reopened spec; the fix is the SKILL.md prose owned by the other part; rename paragraph now says it refuses a spec that is not frozen (never frozen, or reopened and not yet refrozen) or is Locked, and moves the folder and every name-derived part before the command; the strap.py half is owned by the other part's fixer"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - test_strap_rename.py: no edit, it is the consumer the helper docstring must name; the docstring line is in _strap_lock_helpers.py owned by the other part; module docstring first line now lists test_strap_lock.py, test_strap_relink_lock.py and test_strap_rename.py as consumers (wording shortened to stay under the 110-column local lint limit)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - test_strap_rename.py imports json directly; helpers.json.loads at the two spec reads replaced with json.loads"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - test_strap_rename.py adds test_rename_moves_both_folders_back_when_the_commit_fails (monkeypatched sl.commit raises LockRefused; asserts spec bytes, old ledger entries and no new-name folders), test_rename_refuses_a_part_not_yet_moved and test_rename_refuses_a_name_that_already_has_a_spec; strap.py: no edit, the rollback and refusals under test are unchanged"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - refreeze paragraph now reads 'Short of reopen and rename (below), a frozen spec refuses every change but three'"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - legacy history trigger list now includes rename (SKILL.md line 258); base-tag writers now include rename (line 260); Related line now reads 'the lock, reopen, relink and rename steps' (line 420); the strap_lock.py and README.md halves are owned by the other part's fixer; the legacy history-entry trigger list and the Related wording are edited in the strap-skills SKILL.md by the other part; strap_lock.py already writes history first in rename_pending (line 314), so no edit here; README.md: already present at plugins/harness/skills/strap-skills/README.md:88-89 ('lock, reopen, relink and rename steps'); it holds no other trigger or tag-writer list, the SKILL.md enumerations belong to the other part"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - no-agent guard regex anchored to the whole skill name: harness:(?!bookmark(?![a-z-]))[a-z-]+, so harness:bookmark-noter is caught while harness:bookmark stays exempt; bookmark SKILL.md body needed no change (its only harness: mention is harness:bookmark)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - r3.4-freeze.json already holds skill_hash 75d50d20463036 (the review-fix refreeze); the stale abf003a20d2a claim is corrected in docs/RELEASES/v1.1.0.md by the other part's fixer; v1.1.0.md round-3 line now reads 'refrozen at `75d50d204630` after review' (the r3.4-freeze skill_hash) in place of the superseded r3.2 hash `abf003a20d2a`"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - strap_lock module docstring lists rename and states that a rename moves the folder and owners() maps entries to the name their tags were made under"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - strap_lock._adder deleted; _entry_lines calls fg.adder. Depends on the other part making freeze_git._adder public as adder (plan_lock._adder to be replaced by the same call); freeze_git._adder made public as adder (--follow, oldest of newest-first; returns None on a failed log, the tolerance plan_lock's copy had) and _reconcile_one calls it; plan_lock's --reverse non-follow _adder deleted and _entry_lines calls fg.adder; strap_lock's copy is the other part"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - the state check is repaired in tests/lib/test_freeze_ledger.py by the other part; freeze_ledger.py needs no edit (rename stays out of _STATE_OF_KIND); test_rename_entry_names_the_old_subject_and_keeps_the_state now writes freeze then arm, asserts the state before the rename is armed, and asserts the state after the rename equals that armed state; a rename mapped to frozen would now fail"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - v1.1.0.md: reworded the rename line to say the spec moved with strap.py rename (ledger entry r3.5) and awaits its greens and freeze bookmark --refreeze; prefixed both new change lines with #344; added a Breaking changes section naming /harness:add-bookmark -> /harness:bookmark, the surviving trigger phrase and the session-bookmark 0.4.1 hint. SkillSpec.json and r3.5-rename.json: no edit, the refreeze needs graded greens (a strap run), so the note now matches their state; README.md: no edit, its Versions rule (pre-1.0 minor bump names a break in Breaking changes) is what the new section satisfies"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - _renamed builds one repoint (_renamed_path over the named-path table and skill folder) and _renamed_behaviors applies it to each PlannedTest.node file half (new _renamed_node) and to each check target before the text swap, so contract-test nodes and snake-form module targets follow the move; SKILL.md rename paragraph says so; new test asserts node and api check target re-pointed; strap.py:937-948 (_planned_tests_pass/_mechanical_gate) and strap_profile.py: no edit, the gate passes once nodes point at the moved file and the profile paths already feed named_paths"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - freeze_git.adder adds -M100% so --follow tracks only exact moves (verified at head: bookmark/r3.5-rename.json -> 94d6961, bookmark/r3.3-relink.json -> 6b92205, writing-docstrings/r3.1-reopen.json -> e1cf2a7); new rename test with a reopen entry in the old ledger asserts rename/<new stem>/rN.k-commit peels to the rename commit; strap_lock.py: no edit, it calls fg.adder"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "94d6961 (working-tree snapshot; developer commits) - LedgerEntry.from_name takes pattern=NAME_PATTERN from strap_models; FreezeLedgerEntry.schema.json regenerated with the pattern (outside fixer waves)"
+    }
+  ]
+}

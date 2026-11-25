@@ -1,0 +1,27 @@
+{
+  "plan_id": "2026",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "9883c1a6c30e8004288916ce1f02e42f796fd6cf"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_add_bookmark_skill_contract.py::test_skill_hints_every_form",
+        "tests/skills/test_add_bookmark_skill_contract.py::test_skill_runs_the_script_through_the_launcher_with_each_subcommand",
+        "tests/skills/test_add_bookmark_skill_contract.py::test_skill_names_the_turn_free_notes_view"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_add_bookmark_skill_contract.py::test_skill_hints_every_form tests/skills/test_add_bookmark_skill_contract.py::test_skill_runs_the_script_through_the_launcher_with_each_subcommand tests/skills/test_add_bookmark_skill_contract.py::test_skill_names_the_turn_free_notes_view"
+    }
+  },
+  "evidence": "staged tree 9883c1a: 3 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "52e1fb9d03a6d1a6abc73ce628714e596ffa625ac10a003014075cc98d26244e"
+}

@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/harness/pr-team/terminals.fixer.schema.json",
+  "title": "pr-team terminals.jsonl - fixer row",
+  "description": "Schema for terminals.jsonl rows emitted by Step 5 parallel subagent fixer fan-out AND the Step 6 closer return. Fixer agents may emit DONE / FAIL / FORK_AMBIGUITY / FORK_BLOCKER / STOP signals. The closer is technically agent_role=fixer with the literal agent_id `closer` and `edited: 1`. Common field $defs live in terminals.common.schema.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "agent_role",
+    "signal"
+  ],
+  "properties": {
+    "agent_id": {
+      "$ref": "terminals.common.schema.json#/$defs/agent_id"
+    },
+    "agent_role": {
+      "$ref": "terminals.common.schema.json#/$defs/agent_role",
+      "enum": [
+        "fixer"
+      ],
+      "description": "Always `fixer` on this row type."
+    },
+    "signal": {
+      "type": "string",
+      "enum": [
+        "DONE",
+        "FAIL",
+        "FORK_AMBIGUITY",
+        "FORK_BLOCKER",
+        "STOP"
+      ],
+      "description": "Fixer-allowable verbs. Fixers CAN emit FORK_* (design-fork authority on mid-batch ambiguity).",
+      "$comment": "`STOP` may appear in terminals.jsonl. `STOP_PROTOCOL` may not."
+    },
+    "ts": {
+      "$ref": "terminals.common.schema.json#/$defs/ts"
+    },
+    "fixed": {
+      "$ref": "terminals.common.schema.json#/$defs/issue_id_list",
+      "description": "DONE-fixer: array of issue IDs the fixer successfully resolved in its batch. Disjoint from `bubbled`. For the closer row, this is the aggregate of all fixer DONE rows' `fixed` arrays (validated RESOLVED-status entries from post_review_resolutions[])."
+    },
+    "bubbled": {
+      "$ref": "terminals.common.schema.json#/$defs/issue_id_list",
+      "description": "DONE-fixer: array of issue IDs the fixer is bubbling up within its batch (encountered mid-batch ambiguity, classified as needing user decision, OR a fixer-FAILed peer's IDs collected at closer). Disjoint from `fixed`. Individual fixers usually leave this empty; the closer enumerates the full unresolved set."
+    },
+    "edited": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "DONE-fixer: distinct file count the fixer edited. For individual fixers, MUST be >= 1 (zero-file edit = should have been FAIL or FORK_BLOCKER). For the closer (agent_id == 'closer'), MUST be exactly 1 (the single atomic Edit to the consolidated JSON)."
+    },
+    "output_path": {
+      "$ref": "terminals.common.schema.json#/$defs/output_path"
+    },
+    "evidence": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "terminals.common.schema.json#/$defs/issue_id"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "DONE-fixer: per-id evidence claims for each fixed issue ID. Keys MUST correspond to the IDs in the fixed array; qa_review_json.py enforces exact key/value correspondence. Values are one-line claims of the fixer's work (e.g., 'L88 _is_skip rewritten to defensive substring; verified via Read post-edit').",
+      "$comment": "Enforced by check C5 (check_c5_evidence_coverage) in qa_review_json.py - bidirectional check: evidence keys MUST equal fixed[] (no missing, no extras). JSON Schema cannot express the cross-field exact-correspondence constraint directly."
+    },
+    "notes": {
+      "$ref": "terminals.common.schema.json#/$defs/notes"
+    },
+    "reason": {
+      "$ref": "terminals.common.schema.json#/$defs/reason"
+    },
+    "partial_output": {
+      "$ref": "terminals.common.schema.json#/$defs/partial_output"
+    },
+    "issue_id": {
+      "$ref": "terminals.common.schema.json#/$defs/issue_id"
+    },
+    "issue_description": {
+      "$ref": "terminals.common.schema.json#/$defs/issue_description"
+    },
+    "option_a": {
+      "type": "string",
+      "description": "FORK_AMBIGUITY: one-line description of option A."
+    },
+    "option_b": {
+      "type": "string",
+      "description": "FORK_AMBIGUITY: one-line description of option B."
+    },
+    "option_c": {
+      "type": "string",
+      "description": "FORK_AMBIGUITY: optional third option."
+    },
+    "external_action_needed": {
+      "type": "string",
+      "description": "FORK_BLOCKER: one-line description of what must happen outside the skill."
+    },
+    "phase": {
+      "$ref": "terminals.common.schema.json#/$defs/phase"
+    },
+    "diagnostic": {
+      "$ref": "terminals.common.schema.json#/$defs/diagnostic"
+    },
+    "recovery": {
+      "$ref": "terminals.common.schema.json#/$defs/recovery"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "DONE"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "fixed",
+          "bubbled",
+          "edited",
+          "output_path"
+        ],
+        "description": "DONE-fixer requires `fixed` (array of resolved IDs), `bubbled` (array of bubble-up IDs, possibly empty), `edited` (file count), and `output_path`. Invariant `total_assigned == len(fixed) + len(bubbled)` is scope-specific (per-fixer batch OR closer-aggregate) and enforced by qa_review_json.py C-checks, not by schema."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "agent_id": {
+            "enum": [
+              "closer"
+            ]
+          },
+          "signal": {
+            "enum": [
+              "DONE"
+            ]
+          }
+        },
+        "required": [
+          "agent_id",
+          "signal"
+        ]
+      },
+      "then": {
+        "properties": {
+          "edited": {
+            "enum": [
+              1
+            ]
+          }
+        },
+        "description": "Closer row MUST have edited == 1 (single atomic Edit to consolidated JSON)."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "agent_id": {
+            "const": "closer"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      },
+      "then": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "DONE",
+              "FORK_AMBIGUITY",
+              "STOP"
+            ]
+          }
+        },
+        "description": "Closer row signal MUST be one of DONE / FORK_AMBIGUITY / STOP. FAIL and FORK_BLOCKER are reserved for regular Step 5 fixer subagents - the closer's atomic Edit must succeed, and on Edit failure the closer emits STOP."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "agent_id": {
+            "not": {
+              "enum": [
+                "closer"
+              ]
+            }
+          },
+          "signal": {
+            "enum": [
+              "DONE"
+            ]
+          }
+        },
+        "required": [
+          "agent_id",
+          "signal"
+        ]
+      },
+      "then": {
+        "properties": {
+          "edited": {
+            "minimum": 1
+          }
+        },
+        "description": "Non-closer fixer DONE rows MUST have edited >= 1 (zero-file edit = should have been FAIL or FORK_BLOCKER)."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "FAIL"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "reason"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "FORK_AMBIGUITY"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "issue_id",
+          "issue_description",
+          "option_a",
+          "option_b"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "FORK_BLOCKER"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "issue_id",
+          "issue_description",
+          "external_action_needed"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "STOP"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "phase",
+          "diagnostic",
+          "recovery"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "DONE"
+            ]
+          },
+          "fixed": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "signal",
+          "fixed"
+        ]
+      },
+      "then": {
+        "required": [
+          "evidence"
+        ],
+        "properties": {
+          "evidence": {
+            "minProperties": 1
+          }
+        },
+        "description": "DONE-fixer with non-empty fixed array MUST have a non-empty evidence object. Keys MUST correspond exactly to the IDs in the fixed array - C5 in qa_review_json.py enforces bidirectional equality."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "DONE"
+            ]
+          },
+          "fixed": {
+            "maxItems": 0
+          }
+        },
+        "required": [
+          "signal",
+          "fixed"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "evidence"
+          ]
+        },
+        "description": "DONE-fixer with empty fixed array MUST omit evidence."
+      }
+    }
+  ]
+}

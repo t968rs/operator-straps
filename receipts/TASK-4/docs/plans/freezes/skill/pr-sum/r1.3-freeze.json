@@ -1,0 +1,35 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 3,
+  "tree": "50084e82a700ddd30526ffe59ee803b689fd63ea",
+  "files": {
+    "plugins/harness/lib/harness_lib/pr_body.py": "46ca63ae40897db524886a93b9f03e6b7396e117",
+    "plugins/harness/lib/harness_lib/pr_summary.py": "50c11ccbc679e74e01c996c1ab9576442808fba4",
+    "plugins/harness/scripts/pr_sum.py": "d0140ccbb44f43f13f9cc3ea4b4e99f2a8792889",
+    "plugins/harness/skills/pr-sum/Examples/Level-0.md": "020176847b6eda8c204625ceffb1f96eec949314",
+    "plugins/harness/skills/pr-sum/Examples/Level-1.md": "8b8212ea8cb13d222915e78a51081fa3410db906",
+    "plugins/harness/skills/pr-sum/Examples/Level-2.md": "ad839d54cb68370fb021f1b72cc39df6027aa5c6",
+    "plugins/harness/skills/pr-sum/Examples/Level-3.md": "65c0709f0dc756132312e92b75369b436f1c34b7",
+    "plugins/harness/skills/pr-sum/README.md": "f7e7cb46768efeceb5aa0c43bbdc396d9d9bd86f",
+    "plugins/harness/skills/pr-sum/SKILL.md": "10405e7200bc69054466a57c8754754240242c4f",
+    "tests/skills/test_pr_sum_skill_contract.py": "7e1fcd631ec147f6f7925134c764af8f22a93d58"
+  },
+  "ignored": {
+    "docs/plans/strap/pr-sum/tests/tests/lib/test_pr_body.py": "9416f58858d54868ee3edf9a94427fdeb058c70f6784c3de0ae4bbb786f1a29d",
+    "docs/plans/strap/pr-sum/tests/tests/lib/test_pr_summary.py": "6d161e50ba3f1ee7b255d6f5783772e8ced91de9ceb5a048696fc6050b87dce4",
+    "docs/plans/strap/pr-sum/tests/tests/scripts/test_pr_sum.py": "954621d6afca761493076303d6cc81ff2a3c3de1bc1ddc3beb37d60be812c8c4",
+    "docs/plans/strap/pr-sum/tests/tests/skills/test_pr_sum_skill_contract.py": "7045293d90ae2910cbff85812c9f6b9194631cba76e4011a072a24b74fcd7032"
+  },
+  "at": "2026-11-24T15:03:46+00:00",
+  "base": "d837d2cdde8b770ac2d2696796730ed09a17d4c4",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "e31d4bf1f98248bfae04c33bfbd7a28d7cd1dc0260377b2b1d3d048b41c5ec4b",
+  "grader": "session",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

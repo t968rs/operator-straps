@@ -1,0 +1,502 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 339,
+  "pr_title": "Feature(harness): `pr-sum` level 0 and `--gh` publishing",
+  "branch": "0006-pr-sum-updates",
+  "base_branch": "main",
+  "base_sha": "d837d2cdde8b770ac2d2696796730ed09a17d4c4",
+  "head_sha": "51737676c29a8b65b5a45425b571974a7fb28748",
+  "review_date": "2026-11-24",
+  "verdict": "READY TO MERGE - 16 of 16 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 837,
+    "deletions": 64,
+    "files_changed": 16,
+    "source": {
+      "additions": 816,
+      "deletions": 64,
+      "files_changed": 15
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0339/pr339_20261124T090805Z/findings/tests.json",
+    "docs/_scratch/pr_review/0339/pr339_20261124T090805Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0339/pr339_20261124T090805Z/findings/docs.json",
+    "docs/_scratch/pr_review/0339/pr339_20261124T090805Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0339/pr339_20261124T090805Z/findings/roast.json",
+    "docs/_scratch/pr_review/0339/pr339_20261124T090805Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_pr_body.py fakes only subprocess.run, so the gh view read, merge_block and the edit through stdin run for real. The tests pin the exact argv, the body written and the receipt text, and cover the no-write path when the block is unchanged.",
+    "The marker tests cover CRLF bodies, reversed markers, duplicate pairs and a lone start or end, and pin the markers as literals, not by importing the module's constants.",
+    "test_level_zero_is_the_header_and_summary_alone compares the full rendered text, so any table or section leaking into level 0 fails it.",
+    "test_build_publishes_the_saved_markdown checks that the published text is byte-identical to the saved .md, and test_a_failed_publish_keeps_the_markdown pins both the error naming the saved path and the file staying on disk.",
+    "test_bad_flag_values_are_rejected moved its bad value from 0 to -1 now that 0 is a valid level, and test_prose_level_skeleton_is_not_rewritten now runs for level 0 as well as level 1.",
+    "publish reads, merges and writes only when the body changed, and sends the body through stdin (--body-file -) so no temporary file lands in the project.",
+    "merge_block refuses unpaired or out-of-order markers and over-limit bodies instead of guessing, with an actionable message.",
+    "A failed publish names the saved .md path, and the sentinel clear happens before the publish, matching the run_build docstring.",
+    "skeleton_flag generalizes the bool skeleton check while skeleton_auto_title keeps its name and behavior for existing callers.",
+    "Level 0 is threaded consistently: LEVELS, align_draft and _section_problems use level <= 1, and render_summary returns before any table.",
+    "The `--gh` prose in SKILL.md and README matches pr_body.py exactly: marker strings, append-after-blank-line vs replace, the unpaired-marker refusal, the 65536 limit on the merged body, and all three receipt lines.",
+    "The failed-publish contract (`problem:` line ending `the summary is saved at <path>`, exit 1, .md kept) is documented word for word as publish_saved raises it.",
+    "Level 0 is threaded through every level-dependent statement (min-viz range, delta table, sections, descriptions, Common Mistakes), and argument-hint, invocation line, capture command and README table all name `--gh` the same way.",
+    "The freeze record's SKILL.md and README blob hashes match the PR head blobs, and the SkillSpec ties each behavior to concrete red-first test nodes, with baseline/green runs and graded quotes for the B4 consent rule.",
+    "The release-note table bump to harness 0.85.0 matches plugin.json (0.84.0 at the merge base).",
+    "The --gh prose in SKILL.md and README.md matches pr_body.py exactly: marker strings, append-at-end vs replace, refusal of unpaired markers, the 65536 limit, and all three receipt lines ('block added', 'block replaced', 'already holds this summary').",
+    "The publish-after-save order the SKILL describes (failure line ending 'the summary is saved at <path>', exit 1) matches run_build/publish_saved in pr_sum.py, and the README flow diagram shows the same order.",
+    "The level 0 docs, argument-hint, README usage line, Examples/Level-0.md and the pr_sum.py docstrings/argparse agree: 0|1|2|3 everywhere in the package, --min-viz ignored below 3, no sections and no delta table at level 0.",
+    "The new Examples/Level-0.md follows the SKILL's level 0 rule (one paragraph of 1-3 sentences, no tables or sections) and matches render_summary's level 0 early return.",
+    "The consent model carries over consistently: --gh joins every 'never choose ... yourself' list and gets its own Common Mistakes row, and guidance explicitly cannot add the flag.",
+    "Publish runs strictly after the .md is written and the sentinel cleared, and a failure names the saved file. The ordering is pinned by test_a_failed_publish_keeps_the_markdown with a real file on disk.",
+    "test_pr_body fakes only subprocess.run, so the read, merge and edit path runs for real, including the no-write-when-unchanged branch and the CRLF-outside-the-block case.",
+    "Unpaired or out-of-order markers are refused instead of guessed at, and the 65536-character limit is checked before any gh edit.",
+    "Level 0 is threaded consistently through LEVELS, align_draft, _section_problems, draft_problems, render_summary, the CLI help, the docstring, README, SKILL.md and the release note, with the plugin version and release table both at 0.85.0.",
+    "skeleton_flag generalises the bool-flag parse, so a malformed `gh` value gets the same 'rerun capture' problem as auto_title, and a test covers it.",
+    "A failed publish raises CaptureError naming the saved .md, and the file stays on disk; test_a_failed_publish_keeps_the_markdown pins it.",
+    "Unpaired or out-of-order markers in a hand-edited body are refused rather than guessed at, with tests for each shape.",
+    "The body goes to gh on stdin (--body-file -), so no temp file is written and no shell quoting is involved.",
+    "Level 0 is threaded consistently: align_draft, _section_problems and render_summary all switch on level <= 1 / == 0, and skeleton_level accepts 0 via LEVELS without the falsy-zero trap (_int checks type, not truthiness).",
+    "skeleton_flag generalizes the bool check so a malformed gh value asks for a recapture instead of publishing."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "pr_body markers match inline mentions, so prose quoting them is overwritten",
+        "file": "plugins/harness/lib/harness_lib/pr_body.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_body.py",
+          "tests/lib/test_pr_body.py",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "30-64",
+        "reviewer": "runtime, roast, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_span (pr_body.py:40-49) finds BLOCK_START and BLOCK_END by bare substring count/find anywhere in the body. A PR description that mentions the markers in prose, as this feature's own docs do on one line (docs/RELEASES/v1.1.0.md:41 and skills/pr-sum/SKILL.md:81: between `<!-- pr-sum:start -->` and `<!-- pr-sum:end -->`), is read as holding a block: the first publish replaces the text between the two mentions with the summary, mid-sentence, breaking the module contract that text outside the markers stays as written. A body that mentions only one marker is refused instead of gaining a block. The same holds for the summary itself: a drafted summary or description that quotes a marker is published unchecked, so the next publish finds two starts and refuses. Neither publish_saved nor merge_block checks the summary for the marker strings.\n\nAlso (roast): merge_block wraps the rendered summary in BLOCK_START/BLOCK_END without checking whether the summary already contains either marker string. The summary of any PR that touches this feature will plausibly quote them. This PR's own release note and README both do, and a level 1 description of pr_body.py would too. The first `--gh` build then posts a body holding 2 start and 2 end markers. Nothing refuses it, because only the incoming body goes through `_span`. Every later build hits `_span` with starts=2, ends=2 and raises BodyError, telling the developer to fix the body by hand, when the text it chokes on is text `build` wrote. Inside the block a bare marker outside backticks also opens an HTML comment that hides the rest of the rendered block. In short, the first publish of a self-describing PR succeeds and every rerun after it fails.\n\nAlso (adv_code): merge_block wraps the summary between BLOCK_START and BLOCK_END without checking that the summary itself is free of those strings. A summary (or a Files Changed description) that quotes `<!-- pr-sum:start -->` or `<!-- pr-sum:end -->` (natural for any PR touching pr_body or the skill docs, including this one) is published once, leaving a body with two start and two end markers; every later build with gh then fails in _span with 'holds 2 start and 2 end pr-sum markers', and the advice to fix the body by hand cannot hold because the next publish writes the markers back.\n\nAttack: summary = \"# PR #339: x\\n\\n## Summary\\n\\nThe block sits between `<!-- pr-sum:start -->` and `<!-- pr-sum:end -->`.\\n\"; first, _ = merge_block(\"Hand text.\", summary) succeeds and returns a body with first.count(BLOCK_START) == 2; merge_block(first, summary) then raises BodyError('the PR body holds 2 start and 2 end pr-sum markers, not one pair in order; ...'). Reproduced by probes/stdin_newlines.py in the run directory. End to end: capture --gh, draft a summary quoting the marker, build twice; the second build exits 1.",
+        "fix": [
+          "Match the markers only as whole lines: count and locate them with re.compile(r'^<!-- pr-sum:start -->$', re.M) (and the end twin) in _span, since _block always writes each marker on its own line; add a test with a body that quotes both markers inline in backticks.",
+          "In merge_block, raise BodyError when the summary text itself holds a full-line marker, so a published block can always be found again.",
+          "In merge_block, raise BodyError when `summary` contains BLOCK_START or BLOCK_END. In run_build, check this before the .md is written when gh is stored: add a build problem in build_problems/run_build so nothing is published half-way. Add a test_pr_body case with a summary quoting both markers.",
+          "Neutralise the markers inside the summary before `_block` wraps it, for example by swapping `<!--` for a zero-width-joined or entity-escaped form that renders the same inside code spans. Then pin with a test that publish twice in a row on such a summary returns 'already holds this summary'.",
+          "In merge_block, raise BodyError when `summary` contains BLOCK_START or BLOCK_END, before touching the body, and add a test for it.",
+          "Or add a draft_problems check (pr_summary.py) that rejects the marker strings in the draft prose when gh is stored, so build fails before writing anything."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "New --gh redirect note contradicts the receipt-only reply rule",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/agents/messenger.md"
+        ],
+        "lines": "85-88,339",
+        "reviewer": "docs, skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:85-88 (added) tells the agent, when guidance asks for the summary on the PR, to build without the flag and then end the reply by telling the developer that rerunning with `--gh` puts the summary in the PR description. Step 4 at SKILL.md:339 still says `Output the receipt verbatim — nothing else.` The two rules now conflict on exactly the path B4 targets: an agent that honors line 339 drops the redirect (the judged act SC-1/SC-2 expect present), and one that honors line 88 breaks the receipt-only contract. The R-2 green run passed only because the scenario stops before build, so the receipt rule never came into play.\n\nAlso (skill_package): SKILL.md:85-88 (new) tells the agent, when building without --gh, to end the reply by telling the developer that rerunning with --gh puts the summary in the PR description. SKILL.md:339 still says 'Output the receipt verbatim - nothing else', and the skill's forked agent harness:messenger replies with 'The skill's receipt or output contract, verbatim, and nothing else' (plugins/harness/agents/messenger.md:98). The two rules cannot both hold, so the agent either drops the new hint or breaks the receipt contract. The trigger is also unclear: the paragraph can be read as 'always add the hint without --gh' or 'only when the guidance asked for the PR description'.\n\nAlso (roast): Step 1 (SKILL.md:85-88) tells the agent to build without `--gh` and then end the reply by telling the developer that rerunning with `--gh` puts the summary in the PR description. This is frozen behavior B4, judged 'present' in R-2. Step 4 (SKILL.md:339), unchanged by this PR, still says 'Output the receipt verbatim — nothing else.' An agent that obeys the last instruction it read drops the hint the spec froze, and the scenario that proved B4 never reached Step 4: it replied with commands and stopped.",
+        "fix": [
+          "Amend SKILL.md:339 to carve out the exception, e.g. `Output the receipt verbatim, followed only by the --gh rerun note from Step 1 when the guidance asked for the summary on the PR.`",
+          "Or move the redirect into Step 4 next to the receipt rule, stated as the one line allowed after the receipt.",
+          "Amend SKILL.md:339 to 'Output the receipt verbatim, plus the one --gh line from Step 1 when it applies; nothing else', and limit the hint in SKILL.md:87-88 to runs whose guidance asked for the summary on the PR.",
+          "Or drop the reply-hint sentence at SKILL.md:87-88 and let pr_sum.py build print the hint as a receipt line (for example when the skeleton lacks gh), so the receipt-only contract stays intact.",
+          "Amend SKILL.md:339 to 'Output the receipt verbatim, followed only by the `--gh` note from Step 1 when the guidance asked for the summary on the PR.'"
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Marketplace README still lists pr-sum --level 1|2|3",
+        "file": "README.md",
+        "lines": "25",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The root README.md skill table at line 25 still says '`--level 1\\|2\\|3` sets how much it draws (1 prose only, 2 flows and Changed Symbols, the default, 3 more diagram types)'. This PR leaves the file unchanged, so the listing is missing level 0 and the new --gh publishing.",
+        "fix": [
+          "README.md:25: change to '`--level 0\\|1\\|2\\|3` sets how much it draws (0 the Summary alone, 1 prose only, 2 flows and Changed Symbols, the default, 3 more diagram types); `--gh` also writes it into the PR description'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Release-note lines lack the PR number tag the file's own convention requires",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "38-43",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:4-5 says each change line is `tagged with its PR number`, and the #337 and #338 entries are. The two new pr-sum lines (38-43) start with `Feat(harness):` and have no `#339` prefix.",
+        "fix": [
+          "Prefix both lines with `#339 `: `- #339 Feat(harness): pr-sum --level 0 ...` and `- #339 Feat(harness): pr-sum --gh ...`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "On Windows the unchanged-block check never fires, so every build rewrites the PR body",
+        "file": "plugins/harness/lib/harness_lib/pr_body.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_body.py",
+          "tests/lib/test_pr_body.py"
+        ],
+        "lines": "72-82,99-104",
+        "reviewer": "adv_code",
+        "fix_kind": "mechanical",
+        "summary": "_gh passes the merged body through subprocess.run(text=True, input=...), which on Windows translates every LF to CRLF on stdin, so gh stores a CRLF body. merge_block always rebuilds the block with LF, so on the next build `merged == body` is False and publish issues another `gh pr edit` (an edit event on the PR) and reports 'block replaced' instead of 'already holds this summary', contradicting the module docstring's 'only when it changed'. The tests fake subprocess.run and never see the translation.\n\nAttack: On win32: subprocess.run([sys.executable, '-c', 'import sys; print(repr(sys.stdin.buffer.read()))'], input='a\\nb\\n', capture_output=True, text=True, encoding='utf-8') shows the child received b'a\\r\\nb\\r\\n' (the same call shape as pr_body._gh). Then body1, _ = merge_block('Hand text.', '# PR #7: x\\n\\n## Summary\\n\\nAdds a.\\n'); stored = body1.replace('\\n', '\\r\\n'); merge_block(stored, same summary)[0] == stored is False, so publish edits again on every build. Reproduced by probes/stdin_newlines.py in the run directory.",
+        "fix": [
+          "Send bytes: pass input=merged.encode('utf-8') without text=True for the edit call (decode stdout separately), so no newline translation happens.",
+          "Or compare after normalizing line endings: treat merged.replace('\\r\\n', '\\n') == body.replace('\\r\\n', '\\n') as unchanged."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Level 0 still checks the unrendered file descriptions for vendor names, glyphs and control characters",
+        "file": "plugins/harness/lib/harness_lib/pr_summary.py",
+        "lines": "457-474,489-502",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "draft_problems skips _description_problems at level 0 because no Files Changed table renders (pr_summary.py:498), but the vendor-name, glyph and control checks still run over _prose/_draft_fields, which include every description (pr_summary.py:457-474, 500-502). Descriptions carried forward from an earlier level 1-3 capture (carry_draft keeps them) can then fail a level-0 build over text that never appears in the output.",
+        "fix": [
+          "Pass the level into _prose/_draft_fields (or build a level-aware field list) and leave descriptions out at level 0, so the content checks cover only what render_summary emits."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "A failed --gh publish drops the auto-title receipt line",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "lines": "349-355,358-366",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "run_build retitles the PR (apply_auto_title) and writes the .md before publish_saved; when publish then raises CaptureError, the collected note list (including 'Retitled PR #N: ...') is discarded and main prints only the publish problem. The PR was changed on GitHub but the run reports no retitle.",
+        "fix": [
+          "In run_build, catch the publish CaptureError and re-raise it with the already collected note lines appended (or prefixed) to its problems, so the retitle outcome is still reported."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "README says exit 1 means nothing was written, which a failed --gh publish breaks",
+        "file": "plugins/harness/skills/pr-sum/README.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/README.md",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "75-81,89-90",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The README Build bullet (README.md:89-90) says `build` `writes the markdown, or exits 1 with one problem: line per defect`, and the flow diagram (README.md:75-81) shows no failure path after the publish. With `--gh`, `publish_saved` (plugins/harness/scripts/pr_sum.py:358-366) exits 1 after the `.md` has already been written, and the problem line names the saved path. A README reader would assume an exit 1 left no file.",
+        "fix": [
+          "Extend the Build bullet: `With --gh, a failed publish (gh failure, unpaired markers, a body over 65536 characters) exits 1 after the .md is written; the problem: line names the saved file.`",
+          "Or add a `──fails──► problem: line naming the saved .md` arm to the publish step in the flow diagram."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Build checks list still requires descriptions at every level",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/lib/harness_lib/pr_summary.py",
+          "plugins/harness/skills/pr-sum/README.md"
+        ],
+        "lines": "14-15,315-316",
+        "reviewer": "docs, skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:315-316 lists `a description for every listed non-artifact path and none for paths outside the PR` as an unconditional `build` check. That is no longer true: `draft_problems` (plugins/harness/lib/harness_lib/pr_summary.py:498) skips `_description_problems` when `level == 0`, and SKILL.md:191-192 says so. The checks paragraph is now the only spot that disagrees with the code.\n\nAlso (skill_package): Level 0 skips the description check (pr_summary.py:498 'if level > 0') and SKILL.md:191-192 says so, but other passages still state descriptions unconditionally: SKILL.md:14-15 'The agent writes the prose (title, Summary, one description per file)', SKILL.md:315-316 lists 'a description for every listed non-artifact path' among the build checks with no level qualifier, and README.md:69 shows 'agent writes draft: title, summary, descriptions, sections (levels 2 and 3)' in the flow.\n\nAlso (roast): SKILL.md:315 lists 'a description for every listed non-artifact path and none for paths outside the PR' among the `build` checks with no level qualifier. draft_problems now skips `_description_problems` entirely at level 0 (pr_summary.py:72). Line 191-192 states the exemption, and the summary of what `build` checks contradicts it 120 lines later.",
+        "fix": [
+          "Qualify the check in SKILL.md:315-316: `a description for every listed non-artifact path and none for paths outside the PR (levels 1 to 3)`.",
+          "SKILL.md:315-316: change to 'at levels 1 to 3, a description for every listed non-artifact path and none for paths outside the PR'; SKILL.md:15: 'one description per file at levels 1 to 3'; README.md:69: 'descriptions (levels 1 to 3)'.",
+          "Add '(levels 1 to 3)' after 'none for paths outside the PR' in SKILL.md:315-316."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Level 0 'no Files Changed' wording clashes with the rendered header line",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "docs/RELEASES/v1.1.0.md",
+          "plugins/harness/skills/pr-sum/Examples/Level-0.md",
+          "plugins/harness/skills/pr-sum/README.md"
+        ],
+        "lines": "25",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The SKILL.md level table (SKILL.md:25) and the release note (docs/RELEASES/v1.1.0.md:38-39) say level 0 renders no `Files Changed`, but `render_summary` at level 0 still emits the header's `**Files Changed:** N (+A / -D lines)` line (pr_summary.py:599, 608-610), as Examples/Level-0.md:7 shows. The intent is the collapsed Files Changed table. The README row (README.md:49) avoids the problem by saying `no table`.\n\nAlso (skill_package): SKILL.md:25 describes level 0 as 'no file descriptions, Files Changed, Relocated, delta table or sections', and README.md:49 as 'title and a few sentences; no table'. render_summary still emits the full header at level 0 (pr_summary.py:592-610), including the '**Files Changed:** N (+A / -D lines)' line, which Examples/Level-0.md:3-7 shows along with Branch, Base, Date and Source. A reader can take 'no Files Changed' to mean the count line is gone too.",
+        "fix": [
+          "Write `Files Changed table` in SKILL.md:25 and docs/RELEASES/v1.1.0.md:38-39 (e.g. `no file descriptions, Files Changed or Relocated table, delta table or sections`).",
+          "SKILL.md:25: 'The header and the Summary alone: no Files Changed table, file descriptions, Relocated, delta table or sections.'; README.md:49: 'The header and the Summary alone; no table, no file descriptions, no sections.'"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Common Mistakes row breaks the table's column alignment",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "lines": "368",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The new last row of the Common Mistakes table (SKILL.md:368) has a first cell one character wider than the column (59 vs 57), which pushes its pipes out of line with every other row. The skill itself asks for aligned tables.",
+        "fix": [
+          "Shorten the first cell to fit 57 characters, for example 'Adding `--gh`, or pasting the summary into a PR, unasked', and pad the second cell to the column width."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "The fake gh drops cwd, so publish could ignore its repo argument and the tests would still pass",
+        "file": "tests/lib/test_pr_body.py",
+        "files": [
+          "tests/lib/test_pr_body.py",
+          "plugins/harness/lib/harness_lib/pr_body.py"
+        ],
+        "lines": "47-49,52-68,81-90",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "pr_body._gh runs `subprocess.run([...], cwd=repo, ...)`, and that cwd is the only thing that picks the repository gh edits. `_Gh.__call__` records argv and `kwargs['input']` but never reads `kwargs['cwd']`, and every TestPublish test passes `tmp_path` without checking it. A regression that dropped `cwd=repo` would run gh in the process working directory and could edit a PR in another repository, and no test would fail.\n\nAlso (tests): test_a_body_over_the_github_limit_is_refused passes a 65536-character summary. The markers and newlines push the merged body about 40 characters past BODY_LIMIT, so changing `len(merged) > BODY_LIMIT` to `>=` (rejecting a body of exactly 65536 characters, which GitHub accepts) or to `> BODY_LIMIT + 1` would still pass.",
+        "fix": [
+          "Record `kwargs.get('cwd')` in `_Gh.__call__` (for example `self.cwds.append(kwargs.get('cwd'))`) and assert `gh.cwds == [tmp_path, tmp_path]` in test_adds_the_block_with_one_read_and_one_edit.",
+          "Add a boundary case: let `room = 65_536 - len(START) - len(END) - 2`; assert `merge_block('', 'x' * room)` returns a 65536-character body, and assert `merge_block('', 'x' * (room + 1))` raises BodyError matching '65536'."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "The test module docstring still says gh is bypassed only through PrMeta",
+        "file": "tests/scripts/test_pr_sum.py",
+        "lines": "6",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Line 6 says '``gh`` is bypassed by constructing ``PrMeta`` directly.' TestGhPublish now also replaces `script.publish` with a recording fake, and the real gh boundary for publishing is covered in tests/lib/test_pr_body.py. The docstring no longer describes how this module isolates gh.",
+        "fix": [
+          "Extend line 6: '``gh`` is bypassed by constructing ``PrMeta`` directly and, for ``--gh`` builds, by replacing ``publish`` with a recorder (the gh calls of ``harness_lib.pr_body`` are tested in tests/lib/test_pr_body.py).'"
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "The --min-viz-ignored test does not include the new level 0",
+        "file": "tests/scripts/test_pr_sum.py",
+        "lines": "1129",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "This PR added level 0 to test_level_is_stored (line 1109), but test_min_viz_below_level_three_is_ignored still runs only for levels '1' and '2' (line 1129). A capture with `--level 0 --min-viz` arming the sentinel or storing min_viz would go untested.",
+        "fix": [
+          "Change the parametrize on line 1129 to `[\"0\", \"1\", \"2\"]`."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "No test checks that a failed publish happens after the sentinel is cleared",
+        "file": "tests/scripts/test_pr_sum.py",
+        "files": [
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "1350-1365",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "run_build's docstring (pr_sum.py:337-338) says 'A successful build clears the PR's sentinel, before any publish', and the SKILL.md text at line 329 relies on a failed publish leaving a finished build. test_a_failed_publish_keeps_the_markdown checks the saved .md and the error text but never arms a --min-viz sentinel, so moving `min_viz_sentinel.clear` after `publish_saved` would leave a stale sentinel blocking Stop and still pass. No test covers auto_title together with gh either, so the order of the two receipt lines (retitle, then publish) is also untested.",
+        "fix": [
+          "In test_a_failed_publish_keeps_the_markdown, arm the sentinel first (run a level-3 capture with --min-viz, or write it through min_viz_sentinel), then assert `not min_viz_sentinel.sentinel_path(active(), 1234).exists()` after the CaptureError.",
+          "Add a test that stubs both change_pr_title and publish, builds with auto_title=True and gh=True, and asserts the last two receipt lines are the retitle line followed by the publish line."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "The --gh consent rule has no contract test, unlike the --auto-title consent rule it mirrors",
+        "file": "tests/skills/test_pr_sum_skill_contract.py",
+        "files": [
+          "tests/skills/test_pr_sum_skill_contract.py",
+          "plugins/harness/skills/pr-sum/SKILL.md"
+        ],
+        "lines": "1-5,31-43",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The file pins the --auto-title consent gate (line 41, the 'Never choose' line 42, the Common Mistakes row line 43) because it guards an outward write to the PR. This PR adds a second outward write, --gh, whose only guard against unasked use is skill prose: SKILL.md:79 ('`--gh` is the developer's consent to write the PR description'), SKILL.md:85-88 (guidance never adds the flag; build without it and tell the developer) and the Common Mistakes row at SKILL.md:368. The new tests at lines 31-36 check only that the argument hint names the flag, so an edit that drops or softens the consent text still passes. The module docstring (lines 1-5) also still scopes the contract to --auto-title alone.",
+        "fix": [
+          "Add a test asserting `\"`--gh` is the developer's consent to write the PR description\" in _text()`, `\"guidance never adds a flag\" in _text()` and `\"Adding `--gh`, or pasting the summary into the PR, unasked\" in _section(_text(), \"## Common Mistakes\")`. Extend the 'Never choose' assertion on line 42 to include `, `--gh``, and widen the module docstring to cover the --gh consent and the level hint."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 339 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":7,\"first_sha\":\"befb479489b1e51eb122462e7bbe9eedc7883a63\",\"headRefName\":\"0006-pr-sum-updates\",\"headRefOid\":\"51737676c29a8b65b5a45425b571974a7fb28748\",\"last_sha\":\"51737676c29a8b65b5a45425b571974a7fb28748\",\"mergeCommit\":null,\"number\":339,\"state\":\"OPEN\",\"title\":\"Feature(harness): `pr-sum` level 0 and `--gh` publishing\",\"url\":\"https://github.com/t968rs/operator-straps/pull/339\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (24 checked, 0 refuted, 2 code findings)",
+        "counts": {
+          "findings_checked": 24,
+          "findings_refuted": 0,
+          "findings_upheld": 24,
+          "code_findings": 2
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0006-pr-sum-updates",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0006-pr-sum-updates",
+        "head_ref_name": "0006-pr-sum-updates",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl\n M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "befb479489b1e51eb122462e7bbe9eedc7883a63",
+        "head_sha": "51737676c29a8b65b5a45425b571974a7fb28748",
+        "base_ancestor_command": "git merge-base --is-ancestor befb479489b1e51eb122462e7bbe9eedc7883a63 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 51737676c29a8b65b5a45425b571974a7fb28748 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - publish compares merged and stored bodies with CRLF normalized to LF, so a body gh stored with CRLF (Windows text-mode stdin) reads as unchanged; docstring notes why; test_a_block_stored_with_crlf_is_not_written_again pins it"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - publish_saved takes the already collected receipt lines (done=note from run_build) and appends each, marked 'done before the publish failed', to the CaptureError problems, so a retitle is still reported when the publish fails"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - pr_sum.py: no edit needed, the defect is README prose (owned by the README part); publish_saved already names the saved .md in its problem line; plugins/harness/skills/pr-sum/README.md Build bullet: added that with --gh a failed publish exits 1 after the .md is written and the problem: line names the saved file; flow diagram left as is"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - pr_body.py: no edit needed, _gh already passes cwd=repo and the limit check is len(merged) > BODY_LIMIT; the fix is the fake gh cwd record and the boundary test in tests/lib/test_pr_body.py (owned by the tests part); _Gh records kwargs cwd and test_adds_the_block_with_one_read_and_one_edit asserts gh.cwds == [tmp_path, tmp_path]; new test_a_body_of_exactly_the_github_limit_is_accepted pins the BODY_LIMIT boundary (65536 accepted, 65537 refused)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - _span matches markers only as whole lines (re ^marker\\r?$, re.M) via _marker_lines, so inline quotes in prose are text; merge_block refuses a summary holding a marker on a line of its own (_check_summary); tests cover inline quotes in a body, a summary quoting markers inline republished as unchanged, and a marker-line summary refused; pr_sum.py: no edit, publish_saved already turns the BodyError into a problem line"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - SKILL.md: the build checks now say 'at levels 1 to 3 a description for every listed non-artifact path and none for paths outside the PR', and the intro says 'one description per file at levels 1 to 3'; plugins/harness/skills/pr-sum/README.md flow step: 'descriptions' qualified to '(levels 1 to 3)'; SKILL.md:15 and SKILL.md:315-316 and pr_summary.py are owned by the other part; Part edit not needed in pr_summary.py: draft_problems (pr_summary.py:498, level > 0 gate) is the reference the stale wording must match; the SKILL.md:14-15 and 315-316 and README.md:69 qualifiers are in the other part's files"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - SKILL.md level table row 0 now reads 'no file descriptions, Files Changed or Relocated table, delta table or sections', so the header's Files Changed count line is not ruled out; docs/RELEASES/v1.1.0.md level 0 line: 'Files Changed' changed to 'Files Changed table'; README.md:49 already says 'no table' and is unchanged; Examples/Level-0.md shows the header count line the SKILL/release wording now distinguishes, so it needs no edit"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - Common Mistakes table: widened the first column by one character on every row (separator included) and padded the last row's second cell, so all pipes line up; the row text stays as is, since M14's contract test pins 'Adding `--gh`, or pasting the summary into the PR, unasked'"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - already present: SKILL.md holds every string the new contract test pins (the --gh consent sentence in Step 1, 'guidance never adds a flag', `--gh` in the 'Never choose' list, and the Common Mistakes --gh row kept verbatim by M9); the test file belongs to the other part; contract test: module docstring widened to cover --gh consent and the level hint; the Never-choose assertion extended with `--gh`; new test_skill_gates_gh_on_the_gh_flag pins the --gh consent sentence, the guidance-never-adds-a-flag sentence and the Common Mistakes row"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - SKILL.md Step 1 limits the --gh rerun line to runs whose guidance asked for the summary on the PR, as one line that Step 4 allows; Step 4 now says to output the receipt verbatim, followed only by that line when it applies, and nothing else. messenger.md: no edit, since its Reply defers to 'the skill's receipt or output contract', which now includes the line"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - docs/RELEASES/v1.1.0.md: prefixed the two pr-sum change lines with '#339 ' to match the file's PR-number tag convention"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - README.md:25 skill row now lists --level 0|1|2|3, names level 0 as the Summary alone, and notes that --gh also writes the summary into the PR description"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - pr_summary.py: _prose, _draft_fields and _control_problems take the level; descriptions join the drafted-field list only at level > 0, so the vendor, glyph and control checks at level 0 cover only what render_summary emits"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - test_min_viz_below_level_three_is_ignored parametrize widened from [\"1\", \"2\"] to [\"0\", \"1\", \"2\"]"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - module docstring now says --gh builds replace publish with a recorder and the pr_body gh calls are tested in tests/lib/test_pr_body.py"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-24",
+      "evidence": "5173767 (working-tree snapshot; developer commits) - test_a_failed_publish_keeps_the_markdown arms the min-viz sentinel first and asserts it is gone after the CaptureError; plugins/harness/scripts/pr_sum.py: cited for its clear-before-publish order, behavior already correct, no edit"
+    }
+  ]
+}

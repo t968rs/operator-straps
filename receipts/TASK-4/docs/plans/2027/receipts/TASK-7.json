@@ -1,0 +1,34 @@
+{
+  "plan_id": "2027",
+  "item": "TASK-7",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "562179c06fa76d1bef85d73e32beacb49e50c0f9"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_on_the_stamped_branch",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_prints_another_branch_dark_before_the_text",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_reads_a_detached_head_as_detached",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[absolute]",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[relative]",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_when_head_does_not_read",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[null]",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[empty]",
+        "tests/skills/test_setup_statusline_contract.py::test_widget_prints_nothing_for_an_empty_line"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_on_the_stamped_branch tests/skills/test_setup_statusline_contract.py::test_widget_prints_another_branch_dark_before_the_text tests/skills/test_setup_statusline_contract.py::test_widget_reads_a_detached_head_as_detached tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[absolute] tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[relative] tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_when_head_does_not_read tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[null] tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[empty] tests/skills/test_setup_statusline_contract.py::test_widget_prints_nothing_for_an_empty_line"
+    }
+  },
+  "evidence": "staged tree 562179c: 10 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-19",
+  "seal": "f5352af2eb0131002cddc172c06770ff3f8ac29adc51119b3153228621ca9e50"
+}

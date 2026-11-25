@@ -1,0 +1,326 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 327,
+  "pr_title": "Feature(hooks): `stop_gates.py` Stop dispatcher",
+  "branch": "1175-stop-hooks",
+  "base_branch": "main",
+  "base_sha": "5ab10a285527f959ca737650ce88b60db18fc1f5",
+  "head_sha": "e42140f26aa755c73d62d3cfb0e2bd129ed85a77",
+  "review_date": "2026-11-19",
+  "verdict": "READY TO MERGE - 8 of 8 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 355,
+    "deletions": 92,
+    "files_changed": 16,
+    "source": {
+      "additions": 354,
+      "deletions": 92,
+      "files_changed": 15
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0327/pr327_20261120T054910Z/findings/tests.json",
+    "docs/_scratch/pr_review/0327/pr327_20261120T054910Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0327/pr327_20261120T054910Z/findings/docs.json",
+    "docs/_scratch/pr_review/0327/pr327_20261120T054910Z/findings/roast.json",
+    "docs/_scratch/pr_review/0327/pr327_20261120T054910Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_stop_gates.py is behavioral throughout. It arms real sentinels through the production path helpers (phase5_sentinel_dir, min_viz sentinel_dir_under) and runs both gates' real decide functions. Only the gate tuple is swapped in the fault-isolation test.",
+    "test_both_armed_block_once_with_both_reasons checks that stdout has exactly one non-blank line, which pins the single-decision contract, not just that both reasons appear.",
+    "test_stop_hook_active_allows_the_stop_for_both_gates counts two loop-break notices, which proves each gate saw the flag independently.",
+    "test_a_raising_gate_leaves_the_other_to_decide drives _guarded with a real exception and asserts both the surviving block and the stderr note.",
+    "The contract test moves Stop to stop_gates.py in EXPECTED and adds a COMPOSED entry, so the import-parity test now also guards stop_gates.py against drift.",
+    "Both per-hook test files now separate schema-invalid configs (silent, raw state_dir kept) from unparseable ones (notice, default state_dir), matching _raw_state_dir exactly.",
+    "stop_gates.py isolates each gate behind _guarded, so one gate that raises cannot disarm the other. That matches what the old separate launches did on failure.",
+    "When both gates block, their reasons are joined into the single JSON decision, so neither block reason is dropped and stdout still holds one decision object.",
+    "Splitting each gate into decide(payload, state_root) plus emit_block keeps both scripts runnable on their own. SubagentStop still registers check_min_viz_sentinel.py alone, and decide is testable without stdin.",
+    "_raw_state_dir now treats an absent harness.json as a silent default and prints a stderr notice only for a file that cannot be read or parsed. The fail-closed fallback to the plugin default is kept.",
+    "review_local_names.py moves REVIEW_PREFIX and LABEL_PATTERN out of the pydantic module, so the Stop and schema hook import chain through artifact_names stays stdlib-only. The package __init__ files add no imports of their own.",
+    "SENTINEL_SUBDIR constants replace the literal 'pr-review' in artifact_names.py and pair with the existing pr-sum constant in min_viz_sentinel.py.",
+    "CLAUDE.md:51-56 adds `stop_gates.py` to the dispatcher list exactly as `COMPOSED` in tests/contract/test_hooks_json_paths.py now declares it (`check_phase5_sentinel.py`, `check_min_viz_sentinel.py`), and hooks.json registers only `stop_gates.py` on Stop.",
+    "docs/RELEASES/v1.0.0.md:32 bumps the harness row to 0.81.1, matching plugins/harness/.claude-plugin/plugin.json; the patch bump keeps the intro's 'harness bumped its minor version' true.",
+    "The v1.0.0 Perf(harness) entry matches the code: raw `state_dir` read with no schema validation, a stderr notice on an unparseable harness.json (`_raw_state_dir`), no pydantic on the Stop import path (`review_local_names` is stdlib-only and `harness_lib.config` imports neither pydantic nor jsonschema at module level), and the todo-jrz2/#191 reference resolves in RepoToDo.json.",
+    "stop_gates.py isolates each gate behind _guarded, so one gate raising no longer takes the other down, and test_a_raising_gate_leaves_the_other_to_decide proves it with a real second gate.",
+    "When both gates block, the single JSON decision carries both reasons instead of the second hook's output fighting the first; test_both_armed_block_once_with_both_reasons pins one stdout line.",
+    "Gate logic split into pure-ish decide(payload, state_root) plus a shared emit_block keeps each script runnable alone (SubagentStop still runs check_min_viz_sentinel.py) while the dispatcher reuses it.",
+    "review_local_names.py is a tidy stdlib-only leaf that removes pydantic from the hook import graph without changing any public name (review_local_models re-exports both constants).",
+    "_raw_state_dir now distinguishes an absent harness.json (silent) from an unreadable one (stderr notice), and the tests were rewritten to pin the new silent schema-invalid behavior rather than deleted.",
+    "Contract tests moved in lockstep: hooks.json EXPECTED/COMPOSED, root-separation case for stop_gates.py, and the CLAUDE.md dispatcher list all name the new command.",
+    "decide() split keeps each gate's stderr notices and stop_hook_active loop-break intact, and stop_gates joins both block reasons into one JSON decision instead of emitting two lines.",
+    "Per-gate fault isolation in _guarded matches the old separate-launch behavior: a raising gate leaves the other free to block, and a test pins it.",
+    "state_root_for resolves the same <main checkout>/<state_dir> as the old sentinel_dir_under/phase5_sentinel_dir path for valid configs, and the raw-config fallback still never disarms the gate; the linked-worktree and missing-git tests pass unchanged.",
+    "review_local_names breaks the pydantic import chain from validation.artifact_names cleanly while review_local_models keeps re-exporting both names.",
+    "tools/select_tests.py selects test_stop_gates.py for a change to either composed hook or harness_lib/min_viz_sentinel.py (probe: docs/_scratch/pr_review/0327/pr327_20261120T054910Z/probes/select_probe.py); all 118 tests across the five touched test files pass and ruff is clean."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Import-cost guard never runs main(), so a lazy jsonschema import passes",
+        "file": "tests/hooks/test_stop_gates.py",
+        "files": [
+          "tests/hooks/test_stop_gates.py",
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/hooks/check_phase5_sentinel.py"
+        ],
+        "lines": "140-151",
+        "reviewer": "tests, roast, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_the_launch_imports_neither_pydantic_nor_jsonschema runs the hook with runpy.run_path(..., run_name='not_main'), so main() never executes and only module-level imports are measured. The stdin '{}' it sets up is never read. jsonschema is imported lazily inside harness_lib/config.py:_validate (line 328), which load_config calls. If state_root_for went back to load_config, which is the cost this change removes, the probe would still print [] and the test would pass. The docstring claims the guard covers 'the Stop launch', but it cannot fail for the most likely regression.\n\nAlso (roast): test_the_launch_imports_neither_pydantic_nor_jsonschema runs stop_gates.py through runpy with run_name='not_main', so main() never runs: only module-level imports are measured. Every jsonschema import in harness_lib is lazy (config._validate imports it inside the function), so the regression this PR removes (state_root_for calling load_config again) would pass this test untouched. Only the pydantic half can fail today; the jsonschema half is decoration. The probe even sets sys.stdin to '{}', which only matters if main runs. A Stop launch that silently gets its 90 ms back would sail through green.\n\nAlso (adv_code): test_the_launch_imports_neither_pydantic_nor_jsonschema runs stop_gates.py through runpy with run_name='not_main', so only module-level imports execute; main(), state_root_for and both decide() calls never run. harness_lib.config imports jsonschema lazily inside _validate, so the regression this PR removes (a schema-validated load_config on every Stop launch, the ~90 ms the check_phase5_sentinel docstring cites) can come back inside state_root_for or a gate and the test still reports []. The stdin it sets is also never read.\n\nAttack: Reintroduce the old load: in plugins/harness/hooks/check_phase5_sentinel.py state_root_for (line 193 area) add `load_config(project)` before the return (import load_config from harness_lib.config at module top; that import itself stays stdlib-only). Run `python -m pytest tests/hooks/test_stop_gates.py -k imports_neither -q`: it passes, because run_name='not_main' skips main(). Reproduced in-process by docs/_scratch/pr_review/0327/pr327_20261120T054910Z/probes/lazy_import_probe.py, which wraps state_root_for with a load_config call: after import the heavy list is [] (what the test asserts), after stop_gates.main() it is ['jsonschema'].",
+        "fix": [
+          "In the probe, keep run_name='not_main' and then call ns = runpy.run_path(...); ns['main'](). Before that, set sys.stdin to a JSON payload whose cwd is a make_project project that carries .claude/harness.json, so state_root_for's config-read path runs. Then assert sys.modules holds neither library.",
+          "Or run the hook as a real subprocess ([sys.executable, '-X', 'importtime', hook] or a wrapper that runs main and then prints the sys.modules check) with a Stop payload pointing at a make_project project.",
+          "Run the real entry point in the probe: build a project with make_project, set sys.stdin to a payload naming its cwd, call runpy.run_path(..., run_name='__main__') inside try/except SystemExit, then print the pydantic/jsonschema membership of sys.modules.",
+          "Alternatively run the probe as a subprocess of stop_gates.py itself with a sitecustomize-free wrapper that, after main returns, reports sys.modules (e.g. import the module, call module.main() with a patched stdin payload, then print).",
+          "Run the hook as __main__ in the probe (runpy.run_path(..., run_name='__main__') inside try/except SystemExit), feed stdin a payload whose cwd is a make_project directory (ideally with a valid harness.json and an armed sentinel so both gates walk their full path), then print the heavy-module list.",
+          "Alternatively call the loaded module's main() inside the probe after setting sys.stdin, before reading sys.modules."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "CLAUDE.md per-repository sentinel rule still names sentinel_dir_under as the Stop hook's anchor",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          "plugins/harness/hooks/check_phase5_sentinel.py",
+          "plugins/harness/lib/harness_lib/validation/artifact_names.py",
+          "plugins/harness/hooks/stop_gates.py"
+        ],
+        "lines": "41-45",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "CLAUDE.md:43-45 says `sentinel_dir_under` anchors Phase 5 sentinels at the main checkout and that the Stop hook, `phase4_branch_safety.py`, the schema hook and `agent-watcher` use that rule ('change it in all four or none'). After this PR the Stop path no longer calls `sentinel_dir_under`: `check_phase5_sentinel.state_root_for` (plugins/harness/hooks/check_phase5_sentinel.py:255-263) builds `main_worktree(project) / state_dir` itself and `decide` appends `SENTINEL_SUBDIR` (:290). The result is the same today, but the anchoring rule now has a second copy the CLAUDE.md checklist does not name, so a later change made only in `sentinel_dir_under` (the function the rule points to) would silently miss the Stop and SubagentStop gates. The PR edited CLAUDE.md for the dispatcher but left this rule as written.\n\nAlso (roast): CLAUDE.md:43-45 says sentinel_dir_under anchors the sentinels and that the Stop hook uses that rule, 'change it in all four or none'. After this PR the Stop gates compute the location as main_worktree(project) / state_dir (state_root_for) plus SENTINEL_SUBDIR in each decide, a second spelling of the same anchor rule that the doc does not list. The behavior matches today; the next person changing the anchor in sentinel_dir_under will follow the doc and miss state_root_for.\n\nAlso (roast): CLAUDE.md:41-42 states that scripts, hooks and skill commands call activate(load_config(project_root(...))) once. The Stop gates (check_phase5_sentinel.py, check_min_viz_sentinel.py, stop_gates.py) deliberately stopped doing so for launch cost and read state_dir raw instead. Nothing on the gate path reads active() today, so it works, but the rule in the project doc is now contradicted by the same PR with no stated exception; a later gate that calls active() would load and validate the config lazily and quietly undo the speedup.",
+        "fix": [
+          "Update CLAUDE.md:43-45 to name the Stop hook's copy, e.g. '`sentinel_dir_under` (and, for the Stop and SubagentStop gates, `check_phase5_sentinel.state_root_for` plus `SENTINEL_SUBDIR`) anchors them at the main checkout'.",
+          "Or keep a single anchor in code: have `check_phase5_sentinel.decide` take the project and call `sentinel_dir_under(project, raw_state_dir)` (stdlib-only, already in `artifact_names`), leaving CLAUDE.md as written.",
+          "Add a stdlib helper (e.g. state_root_under(project, state_dir) returning main_worktree(project) / state_dir) to validation/artifact_names.py, have both sentinel_dir_under functions and state_root_for call it, and name it in CLAUDE.md:43.",
+          "Or update CLAUDE.md:43-45 to name check_phase5_sentinel.state_root_for as the Stop hook's copy of the anchor rule that must change with sentinel_dir_under.",
+          "Add an exception to the 'Drivers activate, library code reads' rule in CLAUDE.md: the Stop gates read state_dir raw through check_phase5_sentinel.state_root_for, never activate, and their decide path must not call active()."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "stop_gates paragraph orphans the sentinel line list",
+        "file": "plugins/harness/hooks/check_phase5_sentinel.py",
+        "lines": "11-15",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new module docstring paragraph at check_phase5_sentinel.py:11-12 (the registered Stop command is stop_gates.py) sits between the 'Sentinel location' paragraph and the '- Line 1 / Line 2 / Line 3' list at lines 13-15. With no blank line or lead-in, the list now reads as a continuation of the stop_gates paragraph rather than as the sentinel file layout it describes.\n\nAlso (roast): In the check_phase5_sentinel.py module docstring the new 'The registered Stop command is stop_gates.py ...' paragraph lands between the sentinel location paragraph and the '- Line 1 / Line 2 / Line 3' list, so the file-format bullets now read as if they describe stop_gates.py's launch.",
+        "fix": [
+          "Move the 'The registered Stop command is stop_gates.py ...' paragraph below the line list (for example after the Enforcement paragraph ending at line 40), so the location paragraph flows straight into '- Line 1: PR identifier'.",
+          "Keep the paragraph where it is and start the list with a lead-in line such as 'Sentinel file lines:' after a blank line.",
+          "Move the stop_gates.py paragraph (lines 11-12) below the line list, e.g. just before the 'Enforcement uses the Claude Code Stop-hook decision contract' paragraph."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "state_root_for re-implements the sentinel_dir_under anchor",
+        "file": "plugins/harness/hooks/check_phase5_sentinel.py",
+        "files": [
+          "plugins/harness/hooks/check_phase5_sentinel.py",
+          "plugins/harness/lib/harness_lib/validation/artifact_names.py",
+          "plugins/harness/lib/harness_lib/min_viz_sentinel.py"
+        ],
+        "lines": "255-263",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "state_root_for (check_phase5_sentinel.py:263) builds main_worktree(project) / state_dir inline. Both gates previously reached their folder through sentinel_dir_under (artifact_names.py:46-53 and min_viz_sentinel.py:24-27), which the writers (phase4_branch_safety.py:270, min_viz_sentinel.arm) still use. The project rule names sentinel_dir_under as the per-repository anchor shared by the Stop hook, phase4_branch_safety.py, the schema hook and agent-watcher. The Stop side now has a second copy of that anchor, so a change to sentinel_dir_under would move the writers' folder while the Stop gates keep scanning the old one. The result is the same today, but the shared-rule guarantee no longer holds by construction.",
+        "fix": [
+          "Return sentinel_dir_under(project, state_dir).parent from state_root_for (both gate subdirs are single leaf names), so the Stop hook keeps going through the shared anchor.",
+          "Add a state_root_under(project, state_dir) helper in validation/artifact_names.py that returns main_worktree(project) / state_dir. Have both sentinel_dir_under functions and state_root_for call it."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Dispatcher import-parity docstring points only to the bash_pretool tests",
+        "file": "tests/contract/test_hooks_json_paths.py",
+        "files": [
+          "tests/contract/test_hooks_json_paths.py",
+          "tests/hooks/test_stop_gates.py"
+        ],
+        "lines": "93-95",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_dispatcher_imports_exactly_its_composed_hooks is now parametrized over stop_gates.py as well. Its docstring still says 'tests/hooks/test_bash_pretool.py covers that each composed decide runs'. For stop_gates.py that coverage is in tests/hooks/test_stop_gates.py.",
+        "fix": [
+          "Reword the docstring to say that each dispatcher's own test covers the calls, and name tests/hooks/test_bash_pretool.py and tests/hooks/test_stop_gates.py."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "New 'stop gates hook' root-separation case can pass without running",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "245,258-260",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The comment above MUST_EXIT_ZERO says a missing script would otherwise pass the snapshot check vacuously. stop_gates.py always returns 0, yet the new case is not in MUST_EXIT_ZERO. If the script cannot be opened, Python exits 2 with no Traceback and nothing is written under plugins/, so the case passes. The 'stop hook' and 'min-viz stop hook' siblings share the gap.",
+        "fix": [
+          "Add \"stop gates hook\" (and optionally the two sibling stop-hook cases) to MUST_EXIT_ZERO."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Remaining 'unusable config' tests keep the vocabulary this change retired",
+        "file": "tests/hooks/test_check_phase5_sentinel_hook.py",
+        "lines": "535-552",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The PR renamed the sibling test to test_main_schema_invalid_config_is_not_reported, because the hook no longer treats an unknown key as an unusable config. Two neighbors keep the old wording. test_main_unusable_config_still_blocks_on_default_dir says 'A config typo does not disarm the gate: the default state_dir is scanned instead', but with {\"not_a_harness_key\": true} _raw_state_dir just finds no state_dir and uses the default; nothing is unusable and nothing falls back. test_main_unusable_config_keeps_its_readable_state_dir has the same naming problem.",
+        "fix": [
+          "Rename them to test_main_schema_invalid_config_without_state_dir_scans_the_default and test_main_schema_invalid_config_keeps_its_state_dir, and reword the first docstring to: 'An unknown key with no state_dir scans the default state_dir; no schema check runs.'"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "test_stop_gates module docstring misdescribes its tests",
+        "file": "tests/hooks/test_stop_gates.py",
+        "lines": "1-8",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says 'One assertion per test' and lists five behaviors. The launch-import test (150-151) and the subprocess test (163-164) each make two asserts. The list leaves out the stop_hook_active loop break (102-108), the two config cases (123-137) and the end-to-end subprocess test (154-164).",
+        "fix": [
+          "Drop 'One assertion per test' and add to the list: stop_hook_active allows the stop with one notice per gate; an unknown config key is silent and keeps its state_dir; an unparseable config scans the default with a notice; the dispatcher run as a child process blocks."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 327 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":3,\"first_sha\":\"212bf39d64a7cf337dcdfccb45a4877291c37cf3\",\"headRefName\":\"1175-stop-hooks\",\"headRefOid\":\"e42140f26aa755c73d62d3cfb0e2bd129ed85a77\",\"last_sha\":\"e42140f26aa755c73d62d3cfb0e2bd129ed85a77\",\"mergeCommit\":null,\"number\":327,\"state\":\"OPEN\",\"title\":\"Feature(hooks): `stop_gates.py` Stop dispatcher\",\"url\":\"https://github.com/t968rs/operator-straps/pull/327\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (13 checked, 0 refuted, 1 code findings)",
+        "counts": {
+          "findings_checked": 13,
+          "findings_refuted": 0,
+          "findings_upheld": 13,
+          "code_findings": 1
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1175-stop-hooks",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1175-stop-hooks",
+        "head_ref_name": "1175-stop-hooks",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "212bf39d64a7cf337dcdfccb45a4877291c37cf3",
+        "head_sha": "e42140f26aa755c73d62d3cfb0e2bd129ed85a77",
+        "base_ancestor_command": "git merge-base --is-ancestor 212bf39d64a7cf337dcdfccb45a4877291c37cf3 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor e42140f26aa755c73d62d3cfb0e2bd129ed85a77 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - Added stdlib state_root_under(project, state_dir) to validation/artifact_names.py as the single main-checkout anchor; sentinel_dir_under and check_phase5_sentinel.state_root_for now call it; CLAUDE.md per-repository rule names state_root_under and its callers, and a new bullet records the Stop-gate exception to 'Drivers activate' (raw state_dir, no active() on the decide path); stop_gates.py: cited only, it reaches the anchor through state_root_for and needs no edit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - Gave the sentinel line list a 'Sentinel file lines:' lead-in after the location paragraph and moved the stop_gates.py paragraph below the Enforcement paragraph in the check_phase5_sentinel.py module docstring"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - state_root_for returns state_root_under(project, state_dir) instead of building main_worktree(project) / state_dir inline (unused main_worktree import dropped); artifact_names.sentinel_dir_under and min_viz_sentinel.sentinel_dir_under both build on state_root_under, so writers and Stop gates share one anchor by construction"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - test_a_dispatcher_imports_exactly_its_composed_hooks docstring now names each dispatcher's own test: test_bash_pretool.py for the Bash dispatcher and test_stop_gates.py for stop_gates.py"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - module docstring drops 'One assertion per test' and lists all nine behaviors, including the stop_hook_active loop break, both config cases and the subprocess test"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - Added \"stop gates hook\" to MUST_EXIT_ZERO so a missing or refused stop_gates.py fails the case instead of passing vacuously; sibling stop-hook cases left unchanged"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - Renamed test_main_unusable_config_still_blocks_on_default_dir to test_main_schema_invalid_config_without_state_dir_scans_the_default, reworded its docstring to 'An unknown key with no state_dir scans the default state_dir; no schema check runs.', and renamed test_main_unusable_config_keeps_its_readable_state_dir to test_main_schema_invalid_config_keeps_its_state_dir"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-19",
+      "evidence": "e42140f (working-tree snapshot; developer commits) - test_the_launch_imports_neither_pydantic_nor_jsonschema now builds a make_project project with harness.json and both gates armed, feeds a Stop payload on stdin, calls ns['main']() after runpy.run_path, and asserts a block decision plus no pydantic/jsonschema in sys.modules; config.py and check_phase5_sentinel.py: cited only, the guard change lives in the test"
+    }
+  ]
+}

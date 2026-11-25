@@ -1,0 +1,13 @@
+{
+  "name": "band-line",
+  "version": "0.3.1",
+  "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window, and the working-refs line as a second band line when that mod is installed); clears git-status's own status line",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/band-line#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "dependencies": ["git-status"]
+}

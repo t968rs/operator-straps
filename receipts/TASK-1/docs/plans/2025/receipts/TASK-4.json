@@ -1,0 +1,30 @@
+{
+  "plan_id": "2025",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "55f126ac92bc5efe818225ed0cbf99458f21d7fe",
+      "commit": "70f630700b31f91f0ad1077b18de37b86ee8a078"
+    },
+    "tests": {
+      "nodes": [
+        "tests/mods/test_working_refs_contract.py::test_store_paths_match",
+        "tests/mods/test_working_refs_contract.py::test_store_version_and_detached_key_match",
+        "tests/mods/test_working_refs_contract.py::test_override_and_refs_field_names_match",
+        "tests/mods/test_working_refs_contract.py::test_defaults_equal_defaults_json",
+        "tests/mods/test_working_refs_contract.py::test_plan_file_suffixes_match_plan_doc"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/mods/test_working_refs_contract.py::test_store_paths_match tests/mods/test_working_refs_contract.py::test_store_version_and_detached_key_match tests/mods/test_working_refs_contract.py::test_override_and_refs_field_names_match tests/mods/test_working_refs_contract.py::test_defaults_equal_defaults_json tests/mods/test_working_refs_contract.py::test_plan_file_suffixes_match_plan_doc"
+    }
+  },
+  "evidence": "commit 70f6307: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "2bcc89ed617cf5a1fe825cc9b656f3c02a029e0d0000d15da8c879a0080d0148"
+}

@@ -1,0 +1,14 @@
+[
+  {"category": "tea"},
+  {"brand": "Kiln"},
+  {"color": "red"},
+  {"category": "mug", "color": "blue"},
+  {"brand": "Kiln", "category": "kettle"},
+  {"size": "large", "category": "mug"},
+  {"color": "green", "brand": "Oak", "size": "small"},
+  {"category": "tea", "origin": "Assam"},
+  {"origin": "Darjeeling", "brand": "Leaf"},
+  {"material": "steel", "category": "kettle", "color": "black"},
+  {"category": "mug", "material": "stoneware"},
+  {"brand": "Oak", "origin": "Kenya", "category": "tea", "size": "loose"}
+]

@@ -1,0 +1,25 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "ef48232e5e2e55d83807ff405a6b6edbb4334c7a",
+  "files": {
+    "docs/plans/2026_Bookmark_Notes_ActionPlan.json": "ccd37d973ef9da950ed134f99862fa0d41feaf06"
+  },
+  "ignored": {
+    "docs/plans/2026/tests/tests/mods/test_session_bookmark_notes_contract.py": "c43b4d580dbd24d0e6e4b888ffdfde6839117c35f506a80f208abef073deb96b",
+    "docs/plans/2026/tests/tests/skills/test_add_bookmark_skill_contract.py": "037a71bc85d2f5eb7038fcca4836cd22f95b1a635d596bf8173f9c657d9ed80e",
+    "docs/plans/2026/tests/tests/skills/test_add_note_script.py": "fadc6e0e39cfa23367b9b2d223d1975027fb733ca94bf6bbb75a2bdd38911b4e"
+  },
+  "at": "2026-11-19T05:26:43+00:00",
+  "base": "8325e212aa076ea8b39c67cc1bdebcc17d9133ac",
+  "history": false,
+  "digest": "7a5876f509b8c666372e4de71a67e696af998f8a9f8da20d812d3ee4a67c8dba",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

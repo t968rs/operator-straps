@@ -1,0 +1,37 @@
+{
+  "plan_id": "2027",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "91a5d9d6fde053691aac8147bc082e60cbfa3dce"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_config_working_refs.py::test_max_chars_defaults_to_the_defaults_json_value",
+        "tests/lib/test_config_working_refs.py::test_max_chars_reads_the_project_value",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[zero]",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[negative]",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[text]",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[float]",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[bool]",
+        "tests/lib/test_config_working_refs.py::test_an_unknown_working_refs_key_raises",
+        "tests/lib/test_config_working_refs.py::test_readme_documents_the_key",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[zero]",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[text]",
+        "tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[bool]",
+        "tests/lib/test_config_working_refs.py::test_an_unknown_key_raises_without_jsonschema"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_config_working_refs.py::test_max_chars_defaults_to_the_defaults_json_value tests/lib/test_config_working_refs.py::test_max_chars_reads_the_project_value tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[zero] tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[negative] tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[text] tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[float] tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[bool] tests/lib/test_config_working_refs.py::test_an_unknown_working_refs_key_raises tests/lib/test_config_working_refs.py::test_readme_documents_the_key tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[zero] tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[text] tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[bool] tests/lib/test_config_working_refs.py::test_an_unknown_key_raises_without_jsonschema"
+    }
+  },
+  "evidence": "staged tree 91a5d9d: 13 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-19",
+  "seal": "79745672359d402fb8c18479156eda50e375e86d218bcaa056c0f6775ff666a6"
+}

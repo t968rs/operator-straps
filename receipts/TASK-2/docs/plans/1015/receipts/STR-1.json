@@ -1,0 +1,45 @@
+{
+  "plan_id": "1015",
+  "item": "STR-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "6e3e96b792d84618b8cfa6790baec29fb8d9dc5b"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_strap_lock.py::test_freeze_writes_ledger_entry_and_tags_tree",
+        "tests/scripts/test_strap_lock.py::test_freeze_refuses_on_tag_collision",
+        "tests/scripts/test_strap_lock.py::test_lock_refuses_stale_then_locks",
+        "tests/scripts/test_strap_lock.py::test_locked_spec_refuses_green_run_and_refreeze",
+        "tests/scripts/test_strap_lock.py::test_reopen_on_locked_spec_writes_reopen_and_tags_base",
+        "tests/scripts/test_strap_lock.py::test_legacy_spec_gets_history_entries_on_refreeze",
+        "tests/scripts/test_strap_lock.py::test_relink_repoints_base_and_tags",
+        "tests/scripts/test_strap_lock.py::test_scenario_tree_creates_no_tags",
+        "tests/scripts/test_strap_lock.py::test_check_reports_ledger_spec_mismatch"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_strap_lock.py::test_freeze_writes_ledger_entry_and_tags_tree tests/scripts/test_strap_lock.py::test_freeze_refuses_on_tag_collision tests/scripts/test_strap_lock.py::test_lock_refuses_stale_then_locks tests/scripts/test_strap_lock.py::test_locked_spec_refuses_green_run_and_refreeze tests/scripts/test_strap_lock.py::test_reopen_on_locked_spec_writes_reopen_and_tags_base tests/scripts/test_strap_lock.py::test_legacy_spec_gets_history_entries_on_refreeze tests/scripts/test_strap_lock.py::test_relink_repoints_base_and_tags tests/scripts/test_strap_lock.py::test_scenario_tree_creates_no_tags tests/scripts/test_strap_lock.py::test_check_reports_ledger_spec_mismatch"
+    }
+  },
+  "evidence": "staged tree 6e3e96b: 9 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "tests/scripts/test_strap_reopen.py",
+        "change": "EX1"
+      },
+      {
+        "path": "tests/scripts/test_strap_relink_lock.py",
+        "change": "EX4"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "3d719e59d5512b6a8b44459c227b1efcd27023ff1d01e1f6f9e6d5ea192b0c76",
+      "EX4": "3c985e6b95692712bc8827ec51ab659344c33e15ac466993233feafa2bc9dd1f"
+    }
+  },
+  "date": "2026-11-11",
+  "seal": "7d7b7bd134eb08434238f7181b517fed5a74465d04d3410c469f45eb77b77000"
+}

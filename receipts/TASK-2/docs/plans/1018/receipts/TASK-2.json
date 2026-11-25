@@ -1,0 +1,47 @@
+{
+  "plan_id": "1018",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "148042c2f68bda30e7354e393a58ab49f8c823d1"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_attach_worktree_dirty.py::test_a_dirty_path_the_move_does_not_write_stays_as_it_was",
+        "tests/skills/test_attach_worktree_dirty.py::test_a_staged_dirty_edit_in_the_target_stays_staged",
+        "tests/skills/test_attach_worktree_dirty.py::test_an_overlapping_dirty_path_refuses_naming_it_and_changes_nothing",
+        "tests/skills/test_attach_worktree_dirty.py::test_an_untracked_target_file_on_a_path_the_move_adds_refuses",
+        "tests/skills/test_attach_worktree_dirty.py::test_an_unruled_conflict_with_uncommitted_worktree_changes_refuses_leaving_the_target_clean",
+        "tests/skills/test_attach_worktree_dirty.py::test_a_conflict_ruled_for_the_worktree_lands_its_copy",
+        "tests/skills/test_attach_worktree_dirty.py::test_a_conflict_ruled_for_the_branch_keeps_the_target_copy",
+        "tests/skills/test_attach_worktree_dirty.py::test_project_config_rules_apply_without_flags",
+        "tests/skills/test_attach_worktree_dirty.py::test_rules_naming_different_sides_for_one_path_refuse_as_ambiguous",
+        "tests/skills/test_attach_worktree_dirty.py::test_a_dirty_overlap_ruled_for_the_branch_skips_the_path",
+        "tests/skills/test_attach_worktree_dirty.py::test_a_dirty_overlap_ruled_for_the_worktree_is_overwritten_and_the_printed_undo_restores_it",
+        "tests/skills/test_attach_worktree_dirty.py::test_the_staged_report_names_the_backup_and_a_path_scoped_undo",
+        "tests/skills/test_attach_worktree_dirty.py::test_git_older_than_2_40_is_refused_naming_the_requirement",
+        "tests/skills/test_attach_worktree_config_source.py::test_untracked_main_checkout_rules_apply_to_a_target_in_a_linked_worktree",
+        "tests/skills/test_attach_worktree_index.py::test_a_conflict_leaves_the_target_checkout_untouched",
+        "tests/skills/test_attach_worktree_index.py::test_the_refusal_names_the_path_and_asks_for_a_commit_in_the_worktree"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_attach_worktree_dirty.py::test_a_dirty_path_the_move_does_not_write_stays_as_it_was tests/skills/test_attach_worktree_dirty.py::test_a_staged_dirty_edit_in_the_target_stays_staged tests/skills/test_attach_worktree_dirty.py::test_an_overlapping_dirty_path_refuses_naming_it_and_changes_nothing tests/skills/test_attach_worktree_dirty.py::test_an_untracked_target_file_on_a_path_the_move_adds_refuses tests/skills/test_attach_worktree_dirty.py::test_an_unruled_conflict_with_uncommitted_worktree_changes_refuses_leaving_the_target_clean tests/skills/test_attach_worktree_dirty.py::test_a_conflict_ruled_for_the_worktree_lands_its_copy tests/skills/test_attach_worktree_dirty.py::test_a_conflict_ruled_for_the_branch_keeps_the_target_copy tests/skills/test_attach_worktree_dirty.py::test_project_config_rules_apply_without_flags tests/skills/test_attach_worktree_dirty.py::test_rules_naming_different_sides_for_one_path_refuse_as_ambiguous tests/skills/test_attach_worktree_dirty.py::test_a_dirty_overlap_ruled_for_the_branch_skips_the_path tests/skills/test_attach_worktree_dirty.py::test_a_dirty_overlap_ruled_for_the_worktree_is_overwritten_and_the_printed_undo_restores_it tests/skills/test_attach_worktree_dirty.py::test_the_staged_report_names_the_backup_and_a_path_scoped_undo tests/skills/test_attach_worktree_dirty.py::test_git_older_than_2_40_is_refused_naming_the_requirement tests/skills/test_attach_worktree_config_source.py::test_untracked_main_checkout_rules_apply_to_a_target_in_a_linked_worktree tests/skills/test_attach_worktree_index.py::test_a_conflict_leaves_the_target_checkout_untouched tests/skills/test_attach_worktree_index.py::test_the_refusal_names_the_path_and_asks_for_a_commit_in_the_worktree"
+    }
+  },
+  "evidence": "staged tree 148042c: 16 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "tests/skills/test_attach_worktree_dirty_edges.py",
+        "change": "EX1"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "b5723c1286172a0f24b0076394e600d4ce537696a154d906bb65f607663619d2"
+    }
+  },
+  "date": "2026-11-13",
+  "seal": "ffad22f705137fb1cffb2f3343ae5c1d5bc21e503417aa4ad3b020e272377513"
+}

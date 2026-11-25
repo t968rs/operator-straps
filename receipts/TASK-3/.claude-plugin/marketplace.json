@@ -1,0 +1,105 @@
+{
+  "name": "operator-straps",
+  "owner": {
+    "name": "Kevin Gabelman",
+    "url": "https://github.com/t968rs"
+  },
+  "metadata": {
+    "description": "Agent harness: PR review and commit tooling, guard hooks, run-tracking and session mods",
+    "version": "1.1.0"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow",
+      "category": "development",
+      "keywords": ["pr-review", "commit-messages", "worktrees", "planning", "todo", "hooks"]
+    },
+    {
+      "name": "arc-straps",
+      "source": "./plugins/arc-straps",
+      "description": "ArcGIS Pro toolbox skills: arc-meta checks and applies tool help in a project's .atbx archive; arc-help-pages builds and checks each tool's linked help page",
+      "category": "development",
+      "keywords": ["arcgis", "arcpy", "atbx", "toolbox-help"]
+    },
+    {
+      "name": "agent-watcher",
+      "source": "./plugins/agent-watcher",
+      "description": "Logs every agent dispatch and forked skill with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard",
+      "category": "productivity",
+      "keywords": ["mod", "agents", "usage-log", "pr-review"]
+    },
+    {
+      "name": "session-bookmark",
+      "source": "./plugins/session-bookmark",
+      "description": "Compaction bookmark: git state, last prompts, session notes and /compact instructions kept in session state and appended to the compacted conversation, and an optional /goal hook switch",
+      "category": "productivity",
+      "keywords": ["mod", "compaction", "context"]
+    },
+    {
+      "name": "git-status",
+      "source": "./plugins/git-status",
+      "description": "Git snapshot, per-prompt GIT_STATE context and a fallback git status line that gives way to ccstatusline or band-line",
+      "category": "productivity",
+      "keywords": ["mod", "git", "status-line", "context"]
+    },
+    {
+      "name": "banner-status",
+      "source": "./plugins/banner-status",
+      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window, and the working-refs line as an optional third line)",
+      "category": "productivity",
+      "keywords": ["status-line", "ccstatusline"]
+    },
+    {
+      "name": "band-line",
+      "source": "./plugins/band-line",
+      "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window, and the working-refs line as a second band line when that mod is installed); clears git-status's own status line",
+      "category": "productivity",
+      "keywords": ["mod", "banner", "status-line"]
+    },
+    {
+      "name": "working-refs",
+      "source": "./plugins/working-refs",
+      "description": "The plans, TODO ids and issues the current branch works on, then every other branch's override, as one line for the ccstatusline widget and band-line",
+      "category": "productivity",
+      "keywords": ["mod", "banner", "todo", "plans"]
+    },
+    {
+      "name": "pytest-scope",
+      "source": "./plugins/pytest-scope",
+      "description": "Routes bare pytest through the project interpreter and requires a test file or node-id per pytest run",
+      "category": "development",
+      "keywords": ["mod", "pytest", "python"]
+    },
+    {
+      "name": "todo-watch",
+      "source": "./plugins/todo-watch",
+      "description": "The next TODO items and a live sync status line in a band above the prompt (kept until dismissed, or optionally one toast at session start), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks",
+      "category": "productivity",
+      "keywords": ["mod", "todo", "banner"]
+    },
+    {
+      "name": "bubble-stamp",
+      "source": "./plugins/bubble-stamp",
+      "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION, REFUTED) into the bubble memo, PR_<N>_Bubbles.md",
+      "category": "development",
+      "keywords": ["mod", "pr-review"]
+    },
+    {
+      "name": "parallel2-lanes",
+      "source": "./plugins/parallel2-lanes",
+      "description": "parallel2 lanes: a lane's Agent spawn starts with its brief inline, the plan's model and its worktree; a band lists each run's lane status",
+      "category": "development",
+      "keywords": ["mod", "parallel", "worktrees", "subagents"]
+    },
+    {
+      "name": "superpowers-lt",
+      "source": {
+        "source": "github",
+        "repo": "t968rs/superpowers-lt"
+      },
+      "description": "Trimmed fork of the superpowers skills library, renamed so its skills do not collide with the upstream plugin"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "plan_id": "1018",
+  "feature": "a w dirty",
+  "branch_lineage": "main-->1157-a-w-committed",
+  "primary_documents": {
+    "plan": "docs/plans/1018_a_w_dirty_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-12-a-w-dirty-target-design.md"
+  },
+  "changes": [
+    {
+      "id": "P1",
+      "discovered_by": "plan writing (write-plan)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided, Interface (state file paragraph)",
+        "indicated": "after a race refusal the rerun is --continue, which redoes the snapshot, overlap check and race check against the resolved worktree HEAD and lands"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "a re-snapshot makes the land diff run from the new target HEAD",
+        "why_free_form": "the resolved tree is built on the old target_head; a diff from the new target HEAD to it deletes or reverts whatever the late target commit added, so the land would undo target work"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D4: --continue with no rebase in progress sets patch_base to the target_head the finished rebase went onto and reruns the flow from the snapshot against the current target HEAD (a clean trial lands; a conflict stops again)"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "measuring from the old target_head carries only the worktree's work onto the moved target; test_a_target_that_moves_during_resolution_refuses_then_continue_lands pins it"
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "P2",
+      "discovered_by": "local review local-1157-a-w-committed (M1)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided, item 3 (overlap check)",
+        "indicated": "the overlap set drops only the paths a branch-favoring rule covers; any other changed path in the dirty set refuses"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "item 3 contradicts item 6 and the anti-goals of the same spec",
+        "why_free_form": "item 6 and the anti-goals say a worktree rule on a dirty overlap overwrites the path after the backup; under item 3 that path would refuse before item 6 could apply"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 f: in staged mode the overlap set drops every path any rule covers (a branch rule skips the path, a worktree rule overwrites it after the backup); changed paths in the dirty set that no rule covers refuse"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "follows spec item 6 and the anti-goals; test_a_dirty_overlap_ruled_for_the_worktree_is_overwritten_and_the_printed_undo_restores_it pins it"
+      },
+      "date": "2026-11-13"
+    },
+    {
+      "id": "P3",
+      "discovered_by": "local review local-1157-a-w-committed (I3)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided, item 4 (backup)",
+        "indicated": "git stash create runs once, after the overlap check and before the trial merge"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "a --continue land overwrites worktree-ruled dirty paths with no backup of their current content",
+        "why_free_form": "the state file keeps no backup, and the race check compares the dirty path set, not contents; an edit the developer makes to a worktree-ruled dirty path during a resolution stop is overwritten at --continue and the printed undo cannot bring it back, against the anti-goal that a dirty edit is overwritten only after it is backed up"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 g and i, TASK-3 d and e: every land path (first run, --continue with or without a rebase in progress, the D4 restart, the --committed fast-forward) runs git stash create right after its race check and before the apply or merge, and prints that sha in the report and the undo lines"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "keeps spec item 4's backup and item 9's undo true for every land, as the anti-goals require; test_continue_backs_up_a_ruled_dirty_path_edited_during_the_stop pins it"
+      },
+      "date": "2026-11-13"
+    },
+    {
+      "id": "EX1",
+      "discovered_by": "parallel2 lane review of TASK-2 (spec and quality reviewers)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 files, tests and action (overlap, untracked check, land diff, report)",
+        "indicated": "the overlap and untracked checks run on the worktree's changed paths; the land diff is diff --binary --full-index; the report is printed after the worktree is removed; the TASK-2 tests live in the four planned files"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "reproduced defects let a refusal or a land change target paths outside the move",
+        "why_free_form": "a target-side rename carried a worktree edit onto a staged-dirty path; an untracked file on a parent of a written path made git apply fail partway; diff.noprefix moved the patch onto another file; a failed worktree removal dropped the backup sha and undo lines; undo pathspecs and ls-tree lookups read glob and magic characters"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "checks run over the worktree's changed paths joined with the land's written paths and refuse a non-directory ancestor before any write; the land uses diff-tree with pinned a/ and b/ prefixes; every failure after the backup prints the backup and literal-pathspec undo lines; regression nodes live in tests/skills/test_attach_worktree_dirty_edges.py, outside TASK-2's files"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the spec's anti-goals forbid touching target paths the move does not write and require every refusal to change nothing; the planned test files stay verbatim, so the eight regression nodes take a new file"
+      },
+      "date": "2026-11-13"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "parallel2 lane review of TASK-3 (spec, quality and two verification reviewers)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 action (resume, D4 restart, --committed rebase) and tests",
+        "indicated": "--continue finishes a rebase in progress or, with none, restarts from the snapshot with patch_base set to the state's target_head; usage errors exit 2 by argparse; the TASK-3 tests live in the two planned files"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "reproduced routes landed a revert of target commits or excluded commits",
+        "why_free_form": "a rebase that never started, an agent rebase --abort or reset --hard during a stop, a rebase already in progress before the attach, and a worktree cut from another branch each let a land measure from target_head while HEAD was not the attach's rebase result; argparse exit 2 collided with the resolution stop; a resolution keeping every branch copy looped on --continue; --committed flattened merge commits"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the state gains a cut field (the first run's patch_base, carried unchanged through every D4 restart); every land after a resolution requires HEAD to descend from target_head and not to contain patch_base or the cut when the target lacks them; an agent's own hand rebase or merge during a stop is a documented limit; a rebase that cannot start restores original_head, clears the state and names a discarded resolution; every plain run refuses a rebase already in progress before writing anything; usage errors exit 1; an empty resolution clears the state once; --committed pins --no-rebase-merges and refuses merge commits; --abort ignores --auto-resolve; regression nodes live in tests/skills/test_attach_worktree_resolve_edges.py, outside TASK-3's files"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the spec's anti-goals forbid a land that changes target work the move does not carry and reserve exit 2 for a resolution stop; the planned test files stay verbatim, so the regression nodes take a new file"
+      },
+      "date": "2026-11-13"
+    }
+  ]
+}

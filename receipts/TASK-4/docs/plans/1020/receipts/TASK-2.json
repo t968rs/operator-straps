@@ -1,0 +1,34 @@
+{
+  "plan_id": "1020",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b2a26da59609880b9bfdec955688347c04a25ed8"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_plan_render_html_decisions.py::test_a_decision_is_a_block_headed_by_its_id_and_question",
+        "tests/lib/test_plan_render_html_decisions.py::test_a_summary_with_a_semicolon_stays_one_bullet",
+        "tests/lib/test_plan_render_html_decisions.py::test_the_rationale_follows_the_options",
+        "tests/lib/test_plan_render_html_decisions.py::test_an_open_decision_lists_every_option",
+        "tests/lib/test_plan_render_html_decisions.py::test_the_theme_defines_accent_colors_for_both_schemes",
+        "tests/lib/test_plan_render_html_decisions.py::test_headings_and_code_take_the_accent_colors",
+        "tests/lib/test_plan_render_html_decisions.py::test_chosen_and_unchosen_sit_on_lines_of_their_own_above_their_lists",
+        "tests/lib/test_plan_render_html_decisions.py::test_chosen_and_unchosen_options_are_told_apart_by_color",
+        "tests/lib/test_plan_render_html_decisions.py::test_a_marker_is_a_pill_like_the_status_badge",
+        "tests/lib/test_plan_render_html_decisions.py::test_the_chosen_marker_is_bold_green_and_the_open_marker_bold_red"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_render_html_decisions.py::test_a_decision_is_a_block_headed_by_its_id_and_question tests/lib/test_plan_render_html_decisions.py::test_a_summary_with_a_semicolon_stays_one_bullet tests/lib/test_plan_render_html_decisions.py::test_the_rationale_follows_the_options tests/lib/test_plan_render_html_decisions.py::test_an_open_decision_lists_every_option tests/lib/test_plan_render_html_decisions.py::test_the_theme_defines_accent_colors_for_both_schemes tests/lib/test_plan_render_html_decisions.py::test_headings_and_code_take_the_accent_colors tests/lib/test_plan_render_html_decisions.py::test_chosen_and_unchosen_sit_on_lines_of_their_own_above_their_lists tests/lib/test_plan_render_html_decisions.py::test_chosen_and_unchosen_options_are_told_apart_by_color tests/lib/test_plan_render_html_decisions.py::test_a_marker_is_a_pill_like_the_status_badge tests/lib/test_plan_render_html_decisions.py::test_the_chosen_marker_is_bold_green_and_the_open_marker_bold_red"
+    }
+  },
+  "evidence": "staged tree b2a26da: 10 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "cf6db786328a919bf9edb564fb4b52237b6e0ab40976d5a95b2bb14edd922aa9"
+}

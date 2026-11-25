@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 2027: working refs cross branch</title>
+<style>
+/* --heading colors headings; --chip colors a pill whose state has no color of its own (badge, marker,
+   toggle), so the text colors can change without touching the pills. */
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --heading: #0550ae;
+  --line: #d1d9e0; --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae;
+  --code-fg: #8250df; --chip: #59636e; }
+/* Dark: the neutral gray surfaces and text of VS Code Dark Modern (background, side bar, border, editor
+   text, description text, a near-white heading) with Catppuccin Macchiato (catppuccin.com/palette) green,
+   yellow, red, blue, mauve and subtext0 for the accents and pills. The media block applies unless the
+   theme toggle (theme.js) chose light; the data-theme="dark" rule repeats its values for a chosen dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #d4d4d4; --bg: #1f1f1f;
+  --muted: #9d9d9d; --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f;
+  --bad: #ed8796; --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; --fg: #d4d4d4; --bg: #1f1f1f; --muted: #9d9d9d;
+  --heading: #ececec; --line: #3c3c3c; --code: #181818; --ok: #a6da95; --run: #eed49f; --bad: #ed8796;
+  --accent: #8aadf4; --code-fg: #c6a0f6; --chip: #a5adcb; }
+.corner { position: fixed; top: .6rem; right: .8rem; z-index: 2; display: flex; flex-direction: column;
+  align-items: flex-end; gap: .35rem; }
+.brand { font: 700 14px/1 ui-monospace, monospace; letter-spacing: .06em; color: var(--accent);
+  background: var(--bg); border: 2px solid var(--accent); border-radius: 6px; padding: .3em .6em;
+  user-select: none; text-decoration: none; }
+.brand:hover { border-color: var(--code-fg); }
+.brand b { color: var(--code-fg); }
+#theme-toggle { font: 12px ui-monospace, monospace; color: var(--chip); background: var(--code);
+  border: 1px solid var(--line); border-radius: 1em; padding: .15em .7em; cursor: pointer; }
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--heading); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--chip); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--chip); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+<script>
+(function () {
+  "use strict";
+  // Viewer theme: auto follows prefers-color-scheme, light and dark set data-theme on <html>. The choice
+  // lives in localStorage so a page that reloads itself after a render keeps it.
+  var KEY = "harness-page-theme";
+  var NEXT = {auto: "light", light: "dark", dark: "auto"};
+  var root = document.documentElement;
+  var current = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (NEXT.hasOwnProperty(saved)) { current = saved; }
+  } catch (e) { /* storage unavailable: auto */ }
+  function apply() {
+    if (current === "auto") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", current); }
+  }
+  function addButton() {
+    var button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+    button.title = "Cycle the page theme: auto, light, dark";
+    button.textContent = "Theme: " + current;
+    button.onclick = function () {
+      current = NEXT[current];
+      try { window.localStorage.setItem(KEY, current); } catch (e) { /* kept for this page only */ }
+      apply();
+      button.textContent = "Theme: " + current;
+    };
+    (document.querySelector(".corner") || document.body).appendChild(button);
+  }
+  apply();
+  if (document.body) { addButton(); } else { document.addEventListener("DOMContentLoaded", addButton); }
+})();
+</script>
+</head>
+<body>
+<div class="corner"><a class="brand" href="https://github.com/t968rs/operator-straps"><b>operator</b>-straps</a></div>
+<h1>Plan 2027: working refs cross branch</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>2027_working_refs_cross_branch_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 2027</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 2027</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-19</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md</code></dd><dt>Branch</dt><dd>2171-banner-todo-fixup -&gt; main</dd><dt>Base commit</dt><dd><code>1043312</code></dd><dt>Frozen</dt><dd>2026-11-19 at <code>9f8ef9c</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: Config key working_refs.max_chars</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Harness: line.json name and the open-issue list from untracked</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Mod mirror and config: new names and keys</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: Mod: segments, hide rules and the length cap</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: Mod watch: feeds, gh recheck and line.json</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-6">TASK-6: band-line draws the other-branch segments</a> <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-7">TASK-7: ccstatusline widget reads line.json and stamps another branch</a> <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-8">TASK-8: Versions and release notes</a> <span class="status" data-status-for="TASK-8" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 Where is the cross-branch line formatted?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>atom-segments</code> The mod builds segments and both forms</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>raw-entries</code> The mod stores raw entries; each drawer formats</li></ul><p class="why">Spec Approaches: the developer agreed to A on 2026-11-19.</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Which feed decides that an issue is closed?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>both</code> Mod gh check plus the untracked open list, fresher wins</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>gh-only</code> Mod gh check only</li><li><code>sync-only</code> untracked open list only</li></ul><p class="why">Developer: the gh drop also wires into sync-gh-todo (2026-11-19).</p></section>
+<section class="decision" id="decision-D3"><h3>D3 Do the hide rules rewrite overrides.json?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>hide</code> Hide on the line; the store stays as set</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>delete</code> Prune retired ids and closed issues from the store</li></ul><p class="why">Spec Non-goals: a reopened issue returns; --list shows what was stored.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 Do the hide rules apply to plan refs?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>overrides-only</code> Only override refs hide</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>all-refs</code> Plan refs hide too</li></ul><p class="why">Developer: plan refs stay as-is (2026-11-19); a plan leaves through archive.</p></section>
+<section class="decision" id="decision-D5"><h3>D5 Default of working_refs.max_chars</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>120</code> 120 characters</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>160</code> 160 characters</li></ul><p class="why">Spec Left to the builder; one status line at a 120-column terminal.</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>working_refs.max_chars default</td><td>120</td><td>decision D5</td><td>120</td></tr>
+<tr><td>dark branch SGR</td><td>\x1b[38;5;240m ... \x1b[39m</td><td>spec Decided</td><td>-</td></tr>
+<tr><td>issue recheck age</td><td>todo.gh.max_age_hours (default 24)</td><td>plugins/harness/config/defaults.json:88</td><td>both</td></tr>
+<tr><td>gh call timeout</td><td>GIT_TIMEOUT_MS (10 000 ms)</td><td>plugins/working-refs/hooks/watch.ts:23-24</td><td>-</td></tr>
+<tr><td>open_issues.json version</td><td>1</td><td>spec Goals, Issue state from two feeds</td><td>both</td></tr>
+<tr><td>line.json version</td><td>1</td><td>spec Goals, A branch-stamped line file</td><td>-</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>override entry set_at</strong>: <code>&quot;set_at&quot;: &quot;2026-11-18T23:23:30Z&quot;</code>, copied from <code>plugins/harness/lib/harness_lib/working_refs.py:150-151</code></li>
+<li><strong>catalog retired_ids</strong>: <code>&quot;retired_ids&quot;: [&quot;todo-48q2&quot;]</code>, copied from <code>plugins/harness/schemas/catalogs/TodoCatalog.schema.json:78-84</code></li>
+<li><strong>ccstatusline widget line file</strong>: <code>todo-k69m (301)</code>, copied from <code>plugins/working-refs/hooks/watch.ts:303</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>working-refs/line\.txt|LINE_REL|LINE_PATH|lineFileOf</code>: <code>.claude/ccstatusline.json</code> (TASK-7: the project widget moves to line.json), <code>docs/RELEASES/v1.0.0.md</code> (TASK-8: release notes; the line.txt mention stays, line.json is added), <code>plugins/banner-status/README.md</code> (TASK-7: names the line file the widget reads), <code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json</code> (TASK-7: widget command), <code>plugins/harness/lib/harness_lib/working_refs.py</code> (TASK-2: LINE_REL stays; LINE_JSON_REL joins it), <code>plugins/working-refs/README.md</code> (TASK-5: documents line.txt and line.json), <code>plugins/working-refs/hooks/config.test.ts</code> (TASK-3: lineFileOf kept; lineJsonFileOf tested beside it), <code>plugins/working-refs/hooks/config.ts</code> (TASK-3: lineFileOf kept; lineJsonFileOf added), <code>plugins/working-refs/hooks/mirror.ts</code> (TASK-3: LINE_PATH kept; LINE_JSON_PATH added), <code>plugins/working-refs/hooks/watch.test.ts</code> (TASK-5: line.txt still written; line.json asserted), <code>plugins/working-refs/hooks/watch.ts</code> (TASK-5: writes line.json beside line.txt), <code>tests/mods/test_working_refs_contract.py</code> (TASK-3: pins LINE_PATH and LINE_JSON_PATH), <code>tests/skills/test_setup_statusline_contract.py</code> (TASK-7: the widget names LINE_JSON_REL)</li>
+<li><strong>S2</strong> <code>refsAtom|&#x27;working-refs&#x27;, key: &#x27;line&#x27;|WorkingLine</code>: <code>plugins/band-line/hooks/band.tsx</code> (TASK-6: draws the segments), <code>plugins/band-line/types/index.d.ts</code> (TASK-6: local WorkingLine copy gains optional segment fields), <code>plugins/working-refs/hooks/line.test.ts</code> (TASK-4: segment and cap cases), <code>plugins/working-refs/hooks/line.ts</code> (TASK-4: builds the segments), <code>plugins/working-refs/hooks/watch.test.ts</code> (TASK-5: atom contents), <code>plugins/working-refs/hooks/watch.ts</code> (TASK-5: stores the line), <code>plugins/working-refs/types/index.d.ts</code> (TASK-4: WorkingLine gains head, others, more)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: Config key working_refs.max_chars <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/config/defaults.json</code>, <code>plugins/harness/config/harness.schema.json</code>, <code>plugins/harness/lib/harness_lib/config.py</code>, <code>README.md</code>, <code>tests/lib/test_config_working_refs.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/config.py:187-191</code> holds <code>class AttachConfig:</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:361</code> holds <code>attach=_attach(m[&quot;attach&quot;]),</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:380-386</code> holds <code>def _attach(a: Any) -&gt; AttachConfig:</code></li>
+<li><code>plugins/harness/config/defaults.json:61-63</code> holds <code>&quot;attach&quot;: { &quot;auto_resolve&quot;: [] },</code></li>
+<li><code>plugins/harness/config/harness.schema.json:128-130</code> holds <code>&quot;attach&quot;: { &quot;type&quot;: &quot;object&quot;, &quot;additionalProperties&quot;: false,</code></li>
+<li><code>README.md:599</code> holds <code>| `todo.gh.max_age_hours`</code></li>
+</ul>
+<p class="action">Add the top-level `working_refs` section with `max_chars` (integer &gt; 0, default 120, D5) to plugins/harness/config/defaults.json and plugins/harness/config/harness.schema.json (object, additionalProperties false, `max_chars` integer exclusiveMinimum 0). In config.py add a frozen `WorkingRefsConfig(max_chars: int)`, a `working_refs: WorkingRefsConfig` field on HarnessConfig (beside `attach`) and a `_working_refs(w)` builder on the `_attach` pattern: refuses a non-object, unknown keys (message names `working_refs`), and a `max_chars` that is a bool, not an int or not &gt; 0 (message `working_refs/max_chars: ...`, the jsonschema path form), so the check holds without jsonschema. README.md key table: add the `working_refs.max_chars` row (working-refs mod: total length of the working line; other-branch segments past it fold into ` +N`) and extend the `todo.gh.max_age_hours` row with the working-refs issue recheck age. Copy the planned test file to its repo path first. Also update the descriptions of `todo.gh.max_age_hours` and `todo.gh.repo` in harness.schema.json to name the working-refs mod (its issue recheck age; the repository its `gh issue view` checks).</p>
+<ul>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_max_chars_defaults_to_the_defaults_json_value</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_max_chars_reads_the_project_value</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[zero]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[negative]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[text]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[float]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_naming_the_field[bool]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_an_unknown_working_refs_key_raises</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_readme_documents_the_key</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[zero]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[text]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_a_bad_max_chars_raises_without_jsonschema[bool]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_config_working_refs.py::test_an_unknown_key_raises_without_jsonschema</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_config.py tests/lib/test_config_attach.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2027 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Harness: line.json name and the open-issue list from untracked <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/working_refs.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/issues.py</code>, <code>plugins/harness/scripts/todo_sync.md</code>, <code>plugins/harness/skills/sync-gh-todo/SKILL.md</code>, <code>tests/lib/test_todo_sync_open_issues.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/working_refs.py:23-24</code> holds <code>OVERRIDES_REL = &quot;working-refs/overrides.json&quot; LINE_REL = &quot;working-refs/line.txt&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/issues.py:30-32</code> holds <code>return cfg.path(cfg.state_dir) / &quot;todo-sync&quot; / &quot;untracked.json&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/issues.py:127-128</code> holds <code>tracked = tracked_numbers(src) rows = open_issues(cfg)</code></li>
+<li><code>plugins/harness/scripts/todo_sync.py:196-197</code> holds <code>def _untracked(cfg: HarnessConfig) -&gt; int: rows = find_untracked(cfg)</code></li>
+</ul>
+<p class="action">working_refs.py: add `LINE_JSON_REL = &quot;working-refs/line.json&quot;` beside LINE_REL and name it in the module docstring (the mod writes it: version, branch, text). todo_sync/issues.py: add `OPEN_ISSUES_REL = &quot;todo-sync/open_issues.json&quot;`, `open_issues_path(cfg)` (`cfg.path(cfg.state_dir) / OPEN_ISSUES_REL`) and `write_open_issues(cfg, rows)` writing `{&quot;version&quot;: 1, &quot;fetched_at&quot;: &lt;UTC %Y-%m-%dT%H:%M:%SZ&gt;, &quot;open&quot;: &lt;sorted numbers&gt;}` through `write_atomic`; `find_untracked` calls it right after `rows = open_issues(cfg)` (so `untracked: none` still writes it; a listing at LIST_LIMIT raises before it). Document the file in plugins/harness/scripts/todo_sync.md (untracked outputs) and in sync-gh-todo SKILL.md Step 1 (the working-refs mod reads it to hide closed issues). Copy the planned test file first. Update the `find_untracked` docstring: after a complete listing it writes `&lt;state_dir&gt;/todo-sync/open_issues.json` (none when the listing reaches LIST_LIMIT). Also reword plugins/harness/scripts/todo_sync.md:160, which says `untracked: none` writes nothing.</p>
+<ul>
+<li>Test <code>tests/lib/test_todo_sync_open_issues.py::test_the_path_sits_under_state_dir</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_open_issues.py::test_find_untracked_writes_every_open_issue_number</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_open_issues.py::test_the_list_is_written_when_nothing_is_untracked</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_open_issues.py::test_a_listing_at_the_limit_writes_no_list</code> fails with AttributeError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_todo_sync_issues.py tests/lib/test_working_refs.py tests/scripts/test_todo_sync_usage_doc.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2027 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Mod mirror and config: new names and keys <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1, TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/hooks/mirror.ts</code>, <code>plugins/working-refs/hooks/config.ts</code>, <code>plugins/working-refs/hooks/config.test.ts</code>, <code>tests/mods/test_working_refs_contract.py</code>, <code>CLAUDE.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/working-refs/hooks/mirror.ts:15-16</code> holds <code>export const OVERRIDES_PATH = &#x27;working-refs/overrides.json&#x27; export const LINE_PATH = &#x27;working-refs/line.txt&#x27;</code></li>
+<li><code>plugins/working-refs/hooks/config.ts:40-45</code> holds <code>export const readConfig = (text: string | undefined): WorkingRefsConfig =&gt; {</code></li>
+<li><code>plugins/working-refs/hooks/config.ts:64</code> holds <code>export const lineFileOf = (root: string, c: WorkingRefsConfig): string =&gt;</code></li>
+</ul>
+<p class="action">mirror.ts: add LINE_JSON_PATH &#x27;working-refs/line.json&#x27;, OPEN_ISSUES_PATH &#x27;todo-sync/open_issues.json&#x27;, ISSUES_CACHE_PATH &#x27;working-refs/issues.json&#x27; (mod-only, one writer), SET_AT_KEY &#x27;set_at&#x27;, DEFAULT_TODO_CATALOG &#x27;RepoToDo.json&#x27;, DEFAULT_GH_MAX_AGE_HOURS = 24, DEFAULT_MAX_CHARS = 120, and extend its header comment. config.ts: WorkingRefsConfig gains todoFolder (string|null), todoCatalog, ghRepo (string|null), ghMaxAgeHours, maxChars, read by readConfig with the mirrored defaults (a wrong type keeps the default, as today); add lineJsonFileOf, openIssuesFileOf, issuesCacheFileOf and catalogFileOf (null when todoFolder is null). config.test.ts covers each key and fallback. Copy the planned tests/mods/test_working_refs_contract.py over the repo file. Also mirror DEFAULT_TODO_FOLDER and DEFAULT_GH_REPO (both null) in mirror.ts, pinned with ts_optional_string, and update the working-refs mirror sentence in CLAUDE.md (it mirrors the todo keys and working_refs.max_chars too).</p>
+<ul>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_line_json_and_open_issues_paths_match</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_set_at_key_matches_the_override_entry</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/mods/test_working_refs_contract.py::test_todo_and_cap_defaults_equal_defaults_json</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2027 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: Mod: segments, hide rules and the length cap <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/types/index.d.ts</code>, <code>plugins/working-refs/hooks/overrides.ts</code>, <code>plugins/working-refs/hooks/overrides.test.ts</code>, <code>plugins/working-refs/hooks/hide.ts</code>, <code>plugins/working-refs/hooks/hide.test.ts</code>, <code>plugins/working-refs/hooks/line.ts</code>, <code>plugins/working-refs/hooks/line.test.ts</code>, <code>plugins/working-refs/hooks/watch.ts</code>, <code>plugins/working-refs/hooks/watch.test.ts</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/working-refs/hooks/line.ts:40-46</code> holds <code>const override = overrides.get(branch) const refs: Refs = override ?? {</code></li>
+<li><code>plugins/working-refs/hooks/overrides.ts:37-43</code> holds <code>const entryRefs = (entry: unknown): Refs | null =&gt; {</code></li>
+<li><code>plugins/working-refs/types/index.d.ts:18</code> holds <code>export type WorkingLine = {</code></li>
+</ul>
+<p class="action">types/index.d.ts: WorkingLine gains `head: string` (plans part and the own refs, plain), `others: {branch: string; refs: string}[]` and `more: number`; `text` stays the full plain form (`head · [ b1 refs ] [ b2 refs ] +N`). overrides.ts: Overrides becomes a map of branch to `{refs, setAt}` (setAt &#x27;&#x27; when absent or not a string). New hooks/hide.ts (pure): retiredIdsOf(catalog text) from `retired_ids`; openListOf(text) -&gt; {fetchedAt ms, open Set} or null (version 1 only); issueCacheOf(text) -&gt; Map n -&gt; {state &#x27;OPEN&#x27;|&#x27;CLOSED&#x27;|&#x27;UNKNOWN&#x27;, checkedAt ms}; isClosed(n, list, cache): only a cached gh CLOSED hides; an open list fetched after that answer unhides a number it lists (OPEN); absence from the list is no answer, and UNKNOWN or no answer is open (shown); visibleRefs(refs, retired, isClosed). line.ts buildLine(branch, qualifying, overrides, view {retired, isClosed, maxChars}): own refs = own override filtered by visibleRefs, else the plan union unfiltered (D4); others = every other branch&#x27;s override, filtered, empty ones dropped, by setAt descending then branch name; add others while the plain text plus the ` +N` it would need stays within maxChars; the head is never cut. statusText wraps each other branch name in DARK &#x27;\x1b[38;5;240m&#x27; ... &#x27;\x1b[39m&#x27; and keeps the plan OSC 8 links. Tests in line.test.ts, overrides.test.ts and a new hide.test.ts: retired id hidden with its issue kept (`#301`), closed issue hidden with the id kept, an all-hidden segment dropped, order by set_at, the cap and `+N`, the dark SGR in statusText only, UNKNOWN shown, a fresher open list overriding an older CLOSED cache entry and the reverse. hide.test covers an issue missing from the list (shown, due for gh) and a PR number in an override (shown until gh answers CLOSED). The plan union applies only when the branch has no override entry; an own override whose refs are all hidden leaves the own refs part empty (line.test case). WorkingLine.todoIds and issues hold the visible own refs, which statusText and line.txt read; update their comments in types/index.d.ts. line.test also covers D4 (a qualifying plan&#x27;s retired id and closed issue still show) and a head longer than maxChars (drawn whole, every other segment folded into ` +N`). Edge forms: when no other segment fits the line is `head +N` (no ` · ` before `+N`); with an empty head the first other segment is always drawn, then the cap applies. TASK-4 also changes the watch.ts call site, passing a view that hides nothing (empty retired set, nothing closed, maxChars from the config), and the watch.test.ts expectations its new behavior changes (watch.test.ts:461-466, another branch&#x27;s override is now shown bracketed), so its command passes before TASK-5.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
+<li>Record it: <code>plan.py record 2027 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: Mod watch: feeds, gh recheck and line.json <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/working-refs/hooks/watch.ts</code>, <code>plugins/working-refs/hooks/watch.test.ts</code>, <code>plugins/working-refs/README.md</code>, <code>README.md</code>, <code>plugins/harness/skills/working/SKILL.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/working-refs/hooks/watch.ts:297-298</code> holds <code>const overrides = branch === null ? new Map() : parseOverrides(text) const line = buildLine(branch ?? &#x27;&#x27;, qualifying, overrides)</code></li>
+<li><code>plugins/working-refs/hooks/watch.ts:303</code> holds <code>await writeLineFile($, lineFileOf(w.root, w.cfg), statusText(line))</code></li>
+<li><code>plugins/working-refs/hooks/watch.ts:347</code> holds <code>async function onPrompt($: Dollar)</code></li>
+</ul>
+<p class="action">watch.ts runScan: read the catalog (catalogFileOf; absent or no folder -&gt; nothing retired), open_issues.json and working-refs/issues.json, build the view and pass it to buildLine; keep the `branch === null` guard: with no git-status snapshot there is no line and line.json is not rewritten, so the own override is never drawn as another branch&#x27;s. Write line.txt as today and line.json `{version: 1, branch, text: statusText(line)}` (written when the text is non-empty or the file exists, so an absent file stays absent for no line) through writeLineFile&#x27;s compare-then-write. After storing, `later` a recheck: every issue in any override whose freshest answer is older than ghMaxAgeHours runs `gh issue view &lt;n&gt; --json state` (plus `--repo` when ghRepo is set) with GIT_TIMEOUT_MS; a failure keeps the last known state and its checkedAt and records `triedAt`, and the next try waits max_age from triedAt (watch.test: a CLOSED issue stays hidden after a gh failure); an issue is due when neither a cache answer nor an open-list OPEN is younger than max_age; only override issues are checked; the cache is written once per pass and a changed state requests a scan. filesMoved also compares the catalog and open_issues.json mtimes, so a retire or a sync rescans at the next prompt or tool call. watch.test.ts: line.json written and stamped, others shown on a branch without its own override, a retire and a sync each rescanning, one gh call per stale issue, none inside the age, UNKNOWN on a gh failure. README: the cross-branch line, the hide rules, line.json, the keys read. A recheck pass in flight blocks another: a module-level guard like `pacing` marks the pass busy and a request during it is owed once after it, so two scans in a row make one gh call per stale issue (watch.test case). gh runs with `cwd: w.root` (`$.process.run` init `cwd`, ProcessRunInit), so with a null `todo.gh.repo` it resolves the checkout&#x27;s repository as todo_sync&#x27;s gh.py does (`cwd=project_root`); watch.test asserts the cwd and the `--repo` argument when ghRepo is set. onPrompt also starts a recheck (inside `later`) once the oldest checkedAt or triedAt held in memo is past the age, so an idle session still refreshes. memo gains catalogMtime and openIssuesMtime, set in runScan and cleared in resetMemo; a watch.test case shows an unmoved catalog causes no rescan. Existing watch.test.ts cases whose expectations change: :326-333 and :470-476 and :478-490 (the writes list gains line.json when text is non-empty), :431-441 (no snapshot still gives null). watch.test also covers `--repo` when ghRepo is set, the GIT_TIMEOUT_MS timeout on gh, one cache write per pass, a rescan when a state changes and that only override issues are checked. The checked-out catalog is the one that counts (README says so). Update the current-branch wording at README.md:36, :46 and :191 and plugins/harness/skills/working/SKILL.md:3 (an override shows on every branch, other branches bracketed). The README also states that every branch means every branch of one checkout: overrides.json and the issue caches stay under each checkout&#x27;s state_dir, so a d-w worktree session does not see the main checkout&#x27;s overrides.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/working-refs</code>: every test passes</li>
+<li>Run <code>claude plugin validate --strict plugins/working-refs</code>: passes</li>
+<li>Record it: <code>plan.py record 2027 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: band-line draws the other-branch segments <span class="status" data-status-for="TASK-6" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-4</p>
+<p><strong>Files:</strong> <code>plugins/band-line/types/index.d.ts</code>, <code>plugins/band-line/hooks/band.tsx</code>, <code>plugins/band-line/hooks/band.test.tsx</code>, <code>plugins/band-line/README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/band-line/hooks/band.tsx:29</code> holds <code>{refs ? &lt;Text color=&quot;subtle&quot;&gt;{refs}&lt;/Text&gt; : null}</code></li>
+</ul>
+<p class="action">types/index.d.ts: the local WorkingLine copy gains optional head, others and more. band.tsx: when `others` is present, draw `head`, then ` · ` when both parts exist, then each `[ ` + branch with dimColor + ` refs ]` separated by a space, then ` +N` when more &gt; 0, all inside the subtle Text; without `others` draw `text` as today (an older working-refs). band.test.tsx covers both shapes. README: the second line&#x27;s segments. Draw the edge forms TASK-4 fixes: `head +N` with no ` · ` before `+N`, and the first other segment with an empty head (band.test cases).</p>
+<ul>
+<li>Run <code>claude plugin test plugins/band-line</code>: every test passes</li>
+<li>Run <code>claude plugin validate --strict plugins/band-line</code>: passes</li>
+<li>Record it: <code>plan.py record 2027 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-7" data-item="TASK-7">
+<h3>TASK-7: ccstatusline widget reads line.json and stamps another branch <span class="status" data-status-for="TASK-7" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json</code>, <code>plugins/banner-status/skills/setup-statusline/SKILL.md</code>, <code>plugins/banner-status/README.md</code>, <code>.claude/ccstatusline.json</code>, <code>tests/skills/test_setup_statusline_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/banner-status/skills/setup-statusline/ccstatusline.defaults.json:33</code> holds <code>&#x27;.claude/state/harness/working-refs/line.txt&#x27;</code></li>
+<li><code>.claude/ccstatusline.json:33</code> holds <code>&#x27;.claude/state/harness/working-refs/line.txt&#x27;</code></li>
+<li><code>plugins/banner-status/skills/setup-statusline/SKILL.md:70-72</code> holds <code>When it already holds a `custom-command` widget naming `working-refs`</code></li>
+</ul>
+<p class="action">ccstatusline.defaults.json: the custom-command reads `&lt;state_dir&gt;/working-refs/line.json`, resolves the checkout&#x27;s HEAD file from `&lt;root&gt;/.git` (a `gitdir:` file followed), reads the branch (`ref: refs/heads/&lt;b&gt;`, a bare sha is `(detached)`), and prints `text` (nothing when `text` is empty or not a string), preceded by `\x1b[38;5;240m&lt;branch&gt;\x1b[39m \u00b7 ` when the stamped branch is a non-empty string that differs; a relative `gitdir:` resolves against the .git file&#x27;s folder; when HEAD does not read, `text` prints without a prefix; when line.json is absent the widget prints line.txt as today (an installed working-refs 0.1.0 writes only that); it starts no child process (no git call); any failure prints nothing. Apply the same command to the project&#x27;s .claude/ccstatusline.json. SKILL.md step 4 names line.json; step 5 treats an existing widget naming `working-refs/line.txt` as the old line and offers to replace its commandPath. README: the widget reads line.json. The planned tests spell `working-refs/line.json` as a literal, so they fail on the widget whether or not TASK-2 landed. Copy the planned tests/skills/test_setup_statusline_contract.py over the repo file. The one-liner holds no inner double quote, backtick, `$` or `%`, and writes ESC and the middle dot as JS escapes (`\x1b`, `\u00b7`), so cmd.exe and /bin/sh pass it unchanged; the widget tests are marked cross_os. The planned file also pins .claude/ccstatusline.json&#x27;s commandPath to the defaults&#x27; (test_project_config_widget_matches_the_defaults) and the line.txt fallback; both pass before the work, so they are guards run by the TASK-7 command, not planned reds.</p>
+<ul>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_on_the_stamped_branch</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_prints_another_branch_dark_before_the_text</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_reads_a_detached_head_as_detached</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[absolute]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_follows_a_worktree_git_file[relative]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_prints_the_text_alone_when_head_does_not_read</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[null]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_skips_the_prefix_without_a_stamped_branch[empty]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_setup_statusline_contract.py::test_widget_prints_nothing_for_an_empty_line</code> fails with AssertionError, then passes</li>
+<li>Run <code>claude plugin validate --strict plugins/banner-status</code>: passes</li>
+<li>Run <code>python -m pytest tests/skills/test_setup_statusline_contract.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2027 TASK-7 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-8" data-item="TASK-8">
+<h3>TASK-8: Versions and release notes <span class="status" data-status-for="TASK-8" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-1, TASK-2, TASK-3, TASK-4, TASK-5, TASK-6, TASK-7</p>
+<p><strong>Files:</strong> <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>plugins/working-refs/.claude-plugin/plugin.json</code>, <code>plugins/band-line/.claude-plugin/plugin.json</code>, <code>plugins/banner-status/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p class="action">Bump plugin.json versions: harness minor (a new config key and the open-issue list), working-refs 0.1.0 -&gt; 0.2.0, band-line 0.2.0 -&gt; 0.3.0, banner-status 0.3.0 -&gt; 0.4.0. Extend docs/RELEASES/v1.0.0.md (the proposed release after v0.7.0): update the Now column of the four rows and add one line per change (cross-branch refs, hide rules, open-issue list, line.json widget, band-line segments).</p>
+<ul>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: passes</li>
+<li>Run <code>python -m pytest tests/contract/test_no_repo_literals.py tests/contract/test_hooks_json_paths.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 2027 TASK-8 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "2027/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

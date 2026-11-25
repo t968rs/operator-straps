@@ -1,0 +1,19 @@
+{
+  "plan_id": "2024",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "3b3af8bffd9c0588d72f1f2a64df3b84a7999f24"
+    }
+  },
+  "evidence": "staged tree 3b3af8b",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-17",
+  "seal": "8a72678291034b8587b97abe020ef7e1c2f6035daa5c118a8eb288b542b7ce5e"
+}

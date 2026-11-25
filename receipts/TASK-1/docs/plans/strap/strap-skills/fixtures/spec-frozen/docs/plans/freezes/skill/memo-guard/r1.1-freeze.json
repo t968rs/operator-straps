@@ -1,0 +1,22 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "b7453de7e763966aa3392ca38592a98c43dccb7c",
+  "files": {
+    ".claude/skills/memo-guard/SKILL.md": "85e5f87357ef57f97d90f7c9a4b173fa741f90b1",
+    "tests/skills/test_memo_guard_skill_contract.py": "3da4495796c61b5e2b71b4464a24d8ec72a60260"
+  },
+  "ignored": {},
+  "at": "2026-11-11T22:06:09+00:00",
+  "base": null,
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": "31daeb751d82fa006a31d244ec533283864a3d715f1cb9492689906039dba0a2",
+  "grader": "session",
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

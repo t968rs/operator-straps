@@ -1,0 +1,588 @@
+{
+  "plan_id": "2028",
+  "plan_created": "2026-11-20",
+  "source_document": null,
+  "documentation": "docs/plans/2028_TODO_keyword_on_the_working_line_PIP.html",
+  "branch": "1176-banner-updates",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Schema: optional one-word keyword on a catalog item",
+      "action": "Add `keyword` to `$defs/item.properties` of TodoCatalog.schema.json, right after `title`: type string, pattern and maxLength per values V1/V2, description naming it the one word that jogs a reader's memory of the item on the working-refs line. Not in `required`; absent means no keyword (null is refused, so a catalog never carries a null key a pinned schema would reject).",
+      "files": [
+        "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "tests/schemas/test_todo_keyword_schema.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json:708-711",
+          "expect": "\"title\": { \"type\": \"string\", \"description\": \"One-line statement of the work.\" },"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/schemas/test_todo_catalog_schema.py tests/schemas/test_todo_keyword_schema.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/schemas/test_todo_keyword_schema.py::test_an_item_with_a_one_word_keyword_validates[stop_gates]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_todo_keyword_schema.py::test_an_item_with_a_one_word_keyword_validates[merge-commit-msg]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_todo_keyword_schema.py::test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern[two words]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_todo_keyword_schema.py::test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern[-leading-dash]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/schemas/test_todo_keyword_schema.py::test_a_null_keyword_is_refused_absent_is_the_null",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "keywords.py: the high-confidence guesser and the catalog fill",
+      "action": "New module harness_lib/todo_sync/keywords.py. `guess_keyword(item)` reads `title` and `files`: (1) a title prefix `<word>: ` whose word matches V1 and is not a generic prefix (V4) wins; (2) else the file stems (name up to the first dot, a leading `test_` dropped, generic stems V3 and stems starting with `_` skipped): exactly one distinct stem, or one stem counted at least twice and more often than any other, wins; (3) else None. A guess failing V1/V2 is None. `fill_keywords(catalog)` returns a dataclass (`catalog`, `set`, `left`) on a deep copy: every item without a keyword gets the guess inserted right after `title`; an item with one keeps it; no guess leaves the key absent. `apply_keywords(cfg, dry_run=False)` loads the catalog with `load_catalog(cfg, 'keywords')` and writes it through `write_edits(cfg, dump_like(...))` as `reshape._apply` does. `keyword_lines(fill, dry_run)` prints `keywords: set N, left M without one` (`would set` on a dry run) then one `set <id>: <keyword>` line each. `require_keywords(specs)` raises TodoSyncError `item <n> lacks keyword (suggested: <guess>)` or `item <n> lacks keyword (no confident guess: name the module, skill or class it is about)` for a spec item whose keyword is absent or blank.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/keywords.py",
+        "tests/lib/test_todo_sync_keywords.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:548-557",
+          "expect": "raw, data = load_catalog(cfg, verb) out = fn(data) if not dry_run and out.catalog != data: write_edits(cfg, dump_like(out.catalog, raw))"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[prefix]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[single-stem]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[ts-test-suffix]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[dominant-stem]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_a_confident_guess[generic-skipped]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[kind-prefix]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[tie]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_no_guess_without_confidence[too-long]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_fill_sets_confident_guesses_and_leaves_the_rest_without_a_keyword",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_fill_keeps_an_existing_keyword_and_places_a_new_one_after_the_title",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_apply_writes_the_catalog_and_dry_run_does_not",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keywords.py::test_keyword_lines_name_each_set_and_count_the_rest",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "inbox put requires a keyword; add and the drain keep it",
+      "action": "reshape.py: `keyword` joins ADD_OPTIONAL (so UPDATE_FIELDS takes it, updates.py:21), _TYPE_RULES checks it as a non-empty string, and _item_fields places it right after `title` when the spec sets it. inbox.put calls keywords.require_keywords(specs) right after read_spec, before _validate (D2 inbox-put): an `add --spec` run and the drain stay optional. put_updates is unchanged. The put spec builders `_item` in test_todo_sync_inbox.py and test_todo_sync_catalog_lock_cli.py gain a keyword (sweep S1).",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "tests/lib/test_todo_sync_keyword_put.py",
+        "tests/lib/test_todo_sync_inbox.py",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:110-111",
+          "expect": "ADD_OPTIONAL = (\"issue\", \"url\", \"needs_decision\", \"decision_question\", \"status\", \"files\", \"related_gh_issues\", \"code_snippet\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:176-178",
+          "expect": "_TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/reshape.py:270-271",
+          "expect": "\"id\": item_id, \"rank\": 0, \"title\": spec[\"title\"], \"kind\": spec[\"kind\"],"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/inbox.py:140-142",
+          "expect": "specs = read_spec(spec, \"items\") pending = _pending(specs, file_issues) _validate(cfg, specs, pending, rng)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/todo_sync/updates.py:21",
+          "expect": "UPDATE_FIELDS = tuple(k for k in ADD_REQUIRED + ADD_OPTIONAL if k not in ISSUE_KEYS)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_todo_sync_inbox.py tests/lib/test_todo_sync_add.py tests/lib/test_todo_sync_updates.py tests/scripts/test_todo_sync_catalog_lock_cli.py tests/scripts/test_todo_sync_update_cli.py tests/scripts/test_todo_sync_intake.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_put_refuses_an_item_without_a_keyword_naming_the_guess",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_put_says_when_there_is_no_guess",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_put_counts_a_blank_keyword_as_missing[empty]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_put_queues_the_agents_own_keyword",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_put_refuses_a_keyword_of_two_words",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_add_keeps_a_keyword_right_after_the_title",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_keyword_put.py::test_an_update_may_set_the_keyword",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "todo_sync.py suggest-keyword and keywords subcommands",
+      "action": "`suggest-keyword --spec PATH` (unlocked, reads the `items` list through read_spec) prints `item <n>: <guess>` or `item <n>: none` per item (D3). `keywords [--dry-run] [--lease TOKEN]` joins GUARDED and _write: it runs keywords.apply_keywords and prints keyword_lines. Both get a section in todo_sync.md (test_todo_sync_usage_doc requires one per command and every option named), and the `inbox put` section there names the keyword refusal.",
+      "files": [
+        "plugins/harness/scripts/todo_sync.py",
+        "plugins/harness/scripts/todo_sync.md",
+        "tests/scripts/test_todo_sync_keywords_cli.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:46",
+          "expect": "GUARDED = (\"init\", \"add\", \"retire\", \"split\", \"refresh\")"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:96-98",
+          "expect": "_adders(sub, common) _leases(sub, common) _migrator(sub, common)"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:290-297",
+          "expect": "elif args.command == \"retire\":"
+        },
+        {
+          "at": "plugins/harness/scripts/todo_sync.py:307-308",
+          "expect": "if args.command == \"inbox\": return _inbox(cfg, args)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_todo_sync_usage_doc.py tests/scripts/test_todo_sync_catalog_lock_cli.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_todo_sync_keywords_cli.py::test_suggest_keyword_prints_one_line_per_item",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_todo_sync_keywords_cli.py::test_keywords_dry_run_writes_nothing_and_the_real_run_writes",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "working-refs: label each TODO id with its keyword",
+      "action": "mirror.ts exports KEYWORD_KEY = 'keyword'. hide.ts adds `keywordsOf(text)`: the catalog's item id -> keyword map, items without a string keyword skipped, empty for an absent or malformed catalog. watch.ts readHide parses the catalog text once for both retired ids and keywords; HideState and LineView (line.ts) carry `keywords`. formatRefs takes the map and labels each id per D1 (an id without a keyword prints alone); buildLine uses it for the own refs and every other-branch segment, and the cap counts the labelled text. statusText draws the same labels: WorkingLine (types/index.d.ts) gains `refs`, the formatted own-refs text, so statusText stops re-formatting the ids. The line.ts doc comment drops the claim that formatRefs matches harness_lib.working_refs.format_refs (the Python reply stays unlabelled). Tests in hide/line/watch .test.ts; README examples show a labelled id. Colors (D1 space-color): on the ccstatusline form only, each `todo-xxxx keyword` label (the id alone when it has no keyword) is wrapped in `\u001b[38;5;<n>m` ... RESET_FG, n picked per V5/V6 by an exported `todoColor(id)`, in the own refs and in every other-branch segment; issues, plan links and the plain form stay uncolored, and the cap still measures the plain text. The structured refs the colored form needs ride on WorkingLine and OtherSegment instead of re-parsing text.",
+      "files": [
+        "plugins/working-refs/types/index.d.ts",
+        "plugins/working-refs/hooks/mirror.ts",
+        "plugins/working-refs/hooks/hide.ts",
+        "plugins/working-refs/hooks/hide.test.ts",
+        "plugins/working-refs/hooks/line.ts",
+        "plugins/working-refs/hooks/line.test.ts",
+        "plugins/working-refs/hooks/watch.ts",
+        "plugins/working-refs/hooks/watch.test.ts",
+        "plugins/working-refs/README.md",
+        "tests/mods/test_working_refs_contract.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/working-refs/hooks/line.ts:35-39",
+          "expect": "export const formatRefs = (refs: Refs): string => {"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:20-24",
+          "expect": "export type LineView = { retired: ReadonlySet<string> isClosed: (n: number) => boolean maxChars: number }"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:102",
+          "expect": "const head = joinParts(plansPart(plans, p => p.id), formatRefs(refs))"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:66",
+          "expect": "refs: formatRefs(visibleRefs(o.refs, view.retired, view.isClosed))"
+        },
+        {
+          "at": "plugins/working-refs/hooks/line.ts:138",
+          "expect": "const refs = formatRefs({ todoIds: line.todoIds, issues: line.issues })"
+        },
+        {
+          "at": "plugins/working-refs/hooks/hide.ts:48",
+          "expect": "export const retiredIdsOf = (text: string | undefined): ReadonlySet<string> => {"
+        },
+        {
+          "at": "plugins/working-refs/hooks/watch.ts:397",
+          "expect": "return { retired: retiredIdsOf(catalogText), list, cache, catalogMtime, openIssuesMtime }"
+        },
+        {
+          "at": "plugins/working-refs/hooks/watch.ts:400-402",
+          "expect": "const viewOf = (h: HideState, maxChars: number): LineView => ({ retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), maxChars, })"
+        },
+        {
+          "at": "plugins/working-refs/hooks/mirror.ts:45",
+          "expect": "export const SET_AT_KEY = 'set_at'"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/working-refs",
+          "expect": "every test passes"
+        },
+        {
+          "run": "python -m pytest tests/mods/test_working_refs_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_working_refs_contract.py::test_keyword_key_is_a_catalog_item_property",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "todo-editor drafts a keyword from the suggestion",
+      "action": "todo-editor.md: **sync** step 3 adds `keyword` to the item keys (one word naming the module, skill, class or file the item is about, the agent's own choice), runs `TS suggest-keyword --spec <path>` after writing the spec and before `inbox put`, takes the guess or a better word, and treats a `lacks keyword` refusal as the one rerun; **add** step 3 points at the same; **update** step 2 lists `keyword` among the fields an update may set (the parallel contract test requires every UPDATE_FIELDS name there).",
+      "files": [
+        "plugins/harness/agents/todo-editor.md",
+        "tests/skills/test_todo_keyword_prose.py"
+      ],
+      "dependencies": [
+        "TASK-3",
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/agents/todo-editor.md:181-183",
+          "expect": "Each item carries `issue` (the number), `url`, `title`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`, and optionally"
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:231",
+          "expect": "4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first."
+        },
+        {
+          "at": "plugins/harness/agents/todo-editor.md:251-253",
+          "expect": "2. Choose new values only for `title`, `kind`, `status`, `needs_decision`, `decision_question`, `summary`, `proposed_change`, `code_snippet`, `files`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked` and `related_gh_issues`"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_todo_edit_parallel_contract.py tests/skills/test_todo_inbox_prose_contract.py tests/skills/test_sync_gh_todo_skill_contract.py tests/skills/test_todo_edit_skill_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_todo_keyword_prose.py::test_sync_drafts_a_keyword_from_the_suggestion",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_keyword_prose.py::test_add_drafts_a_keyword_from_the_suggestion",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_keyword_prose.py::test_the_keyword_is_one_word_the_agent_may_choose",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_todo_keyword_prose.py::test_update_lists_the_keyword",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "Run the one-time keyword migration on this repo's catalog",
+      "action": "Run `todo_sync.py keywords --dry-run`, then `todo_sync.py keywords`, then `todo_sync.py check`; report the set and left counts. Items left without a keyword stay that way.",
+      "files": [
+        "docs/TODO/RepoToDo.json"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/todo_sync.py keywords",
+          "expect": "keywords: set N, left M without one",
+          "writes": [
+            "docs/TODO/RepoToDo.json"
+          ]
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/todo_sync.py check",
+          "expect": "no error findings"
+        }
+      ]
+    },
+    {
+      "id": "TASK-8",
+      "title": "Version bumps and release notes",
+      "action": "harness 0.81.1 -> 0.82.0 and working-refs 0.2.0 -> 0.3.0 in their plugin.json; in docs/RELEASES/v1.0.0.md set the table's Now column to the new versions and add one Changes line per change (schema keyword, suggest-keyword and keywords subcommands, inbox put requires a keyword, labelled ids on the working line).",
+      "files": [
+        "plugins/harness/.claude-plugin/plugin.json",
+        "plugins/working-refs/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-3",
+        "TASK-4",
+        "TASK-5",
+        "TASK-6"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "docs/RELEASES/v1.0.0.md:32",
+          "expect": "| harness | 0.65.1 | 0.81.1 |"
+        },
+        {
+          "at": "docs/RELEASES/v1.0.0.md:35",
+          "expect": "| working-refs | (new) | 0.2.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "passes"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/working-refs",
+          "expect": "passes"
+        }
+      ]
+    }
+  ],
+  "base_commit": "a19e5787c61eb9283c2bc5bb4a54858d0115aee7",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How does the working line show a TODO id's keyword?",
+      "options": [
+        {
+          "id": "space-color",
+          "summary": "todo-x7ty stop_gates, todo-k69m banner (301); each label in its TODO's stable color on the ccstatusline line"
+        },
+        {
+          "id": "colon-color",
+          "summary": "todo-x7ty:stop_gates, colored the same way"
+        },
+        {
+          "id": "keyword-only-color",
+          "summary": "stop_gates, banner (301); the color stands for the id"
+        }
+      ],
+      "chosen": "space-color",
+      "rationale": "Developer chose it on 2026-11-20 (AskUserQuestion). The developer added: a different color per TODO."
+    },
+    {
+      "id": "D2",
+      "question": "Where is a keyword required on a new item?",
+      "options": [
+        {
+          "id": "inbox-put",
+          "summary": "Only inbox put (the agent path of add-todo and sync-gh-todo); add --spec and the drain take it as optional"
+        },
+        {
+          "id": "every-add",
+          "summary": "Every new item: ADD_REQUIRED, so add --spec and every test spec builder need one too"
+        }
+      ],
+      "chosen": "inbox-put",
+      "rationale": "Developer chose it on 2026-11-20 (AskUserQuestion)."
+    },
+    {
+      "id": "D3",
+      "question": "How does the agent get the suggestion?",
+      "options": [
+        {
+          "id": "subcommand-and-refusal",
+          "summary": "todo_sync.py suggest-keyword prints the guesses before the put, and the put's refusal repeats the guess"
+        },
+        {
+          "id": "refusal-only",
+          "summary": "Only the put's refusal names the guess; the agent reruns once"
+        }
+      ],
+      "chosen": "subcommand-and-refusal",
+      "rationale": "Developer chose it on 2026-11-20 (AskUserQuestion)."
+    }
+  ],
+  "values": [
+    {
+      "name": "V1 keyword pattern",
+      "value": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+      "source": "developer, 2026-11-20: one word to jog the memory; tests/schemas/test_todo_keyword_schema.py"
+    },
+    {
+      "name": "V2 keyword maxLength",
+      "value": "32",
+      "source": "longest stem in the 2026-11-20 RepoToDo.json sample is arc_help_pages_source (21)"
+    },
+    {
+      "name": "V3 generic stems",
+      "value": "SKILL, README, CLAUDE, config, defaults, __init__, conftest, plugin, index, types, hooks (case-insensitive) and any stem starting with _",
+      "source": "RepoToDo.json sample 2026-11-20: todo-h4c3 and todo-7jb6 name only SKILL and README"
+    },
+    {
+      "name": "V4 generic title prefixes",
+      "value": "the item kinds (bug, feature, refactor, test, cicd, docs, skill) plus chore and fix, case-insensitive",
+      "source": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json:712-721 (kind enum)"
+    },
+    {
+      "name": "V5 TODO label palette",
+      "value": "ANSI 256 colors 39, 170, 36, 214, 141, 72, 203, 178; never 240 (DARK, other branch names)",
+      "source": "plugins/working-refs/hooks/line.ts:16 (DARK = 240)",
+      "assumes": [
+        "space-color"
+      ]
+    },
+    {
+      "name": "V6 color pick",
+      "value": "FNV-1a 32-bit of the canonical id, modulo the palette length, so a TODO keeps its color across sessions, branches and segments",
+      "source": "D1 space-color",
+      "assumes": [
+        "space-color"
+      ]
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "why_ranked\": \"Computed from ranking_method",
+      "hits": {
+        "tests/fixtures/todo_sync/TodoCatalog.legacy.json": "catalog fixture, not a spec; unchanged",
+        "tests/fixtures/todo_sync/TodoCatalog.min.json": "catalog fixture, not a spec; unchanged",
+        "tests/lib/test_todo_sync_add.py": "add_items spec; keyword optional (D2 inbox-put); unchanged",
+        "tests/lib/test_todo_sync_add_note.py": "add spec; keyword optional; unchanged",
+        "tests/lib/test_todo_sync_file_issue.py": "apply_add spec; keyword optional; unchanged",
+        "tests/lib/test_todo_sync_inbox.py": "inbox.put spec builder _item gains a keyword (TASK-3)",
+        "tests/lib/test_todo_sync_updates.py": "update spec; keyword not required; unchanged",
+        "tests/scripts/test_todo_sync_catalog_lock_cli.py": "inbox put spec builder _item gains a keyword (TASK-3)",
+        "tests/scripts/test_todo_sync_intake.py": "add --spec CLI spec; keyword optional; unchanged"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "inbox put|inbox\\.put\\(",
+      "hits": {
+        "README.md": "names the command; unchanged",
+        "plugins/harness/agents/todo-editor.md": "agent steps gain keyword drafting (TASK-6)",
+        "plugins/harness/config/harness.schema.json": "config key description; unchanged",
+        "plugins/harness/scripts/todo_sync.md": "usage doc names the keyword refusal (TASK-4)",
+        "plugins/harness/scripts/todo_sync.py": "put unchanged; new subcommands beside it (TASK-4)",
+        "plugins/harness/skills/add-todo/SKILL.md": "names the agent's put; unchanged",
+        "plugins/harness/skills/sync-gh-todo/SKILL.md": "names the agent's put; unchanged",
+        "plugins/todo-watch/README.md": "drains only; unchanged",
+        "tests/lib/test_todo_sync_inbox.py": "spec builder gains a keyword (TASK-3)",
+        "tests/scripts/test_todo_sync_update_cli.py": "put --update; no keyword required; unchanged",
+        "tests/scripts/test_todo_sync_usage_doc.py": "guard run by TASK-4; unchanged",
+        "tests/skills/test_sync_gh_todo_skill_contract.py": "guard run by TASK-6; unchanged",
+        "tests/skills/test_todo_edit_parallel_contract.py": "guard run by TASK-6; unchanged",
+        "tests/skills/test_todo_inbox_prose_contract.py": "guard run by TASK-6; unchanged",
+        "docs/RELEASES/v1.0.0.md": "release notes history; the new line comes from TASK-8",
+        "docs/TODO/RepoToDo.json": "catalog prose naming the command; unchanged"
+      }
+    }
+  ],
+  "ledger": "plan/2028-todo-keyword-on-the-working-line"
+}

@@ -1,0 +1,29 @@
+{
+  "plan_id": "2028",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "cb49cb0c229ca1d0649446fed87b68f73665b0b2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/schemas/test_todo_keyword_schema.py::test_an_item_with_a_one_word_keyword_validates[stop_gates]",
+        "tests/schemas/test_todo_keyword_schema.py::test_an_item_with_a_one_word_keyword_validates[merge-commit-msg]",
+        "tests/schemas/test_todo_keyword_schema.py::test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern[two words]",
+        "tests/schemas/test_todo_keyword_schema.py::test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern[-leading-dash]",
+        "tests/schemas/test_todo_keyword_schema.py::test_a_null_keyword_is_refused_absent_is_the_null"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/schemas/test_todo_keyword_schema.py::test_an_item_with_a_one_word_keyword_validates[stop_gates] tests/schemas/test_todo_keyword_schema.py::test_an_item_with_a_one_word_keyword_validates[merge-commit-msg] tests/schemas/test_todo_keyword_schema.py::test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern[two words] tests/schemas/test_todo_keyword_schema.py::test_a_keyword_that_is_not_one_word_is_refused_by_its_pattern[-leading-dash] tests/schemas/test_todo_keyword_schema.py::test_a_null_keyword_is_refused_absent_is_the_null"
+    }
+  },
+  "evidence": "staged tree cb49cb0: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-20",
+  "seal": "5794cfd9b7dbaff48661f4d8eb298ddc2cdcd3b3c5b12f58c3f21040e1cb8ba4"
+}

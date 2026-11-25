@@ -1,0 +1,615 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 312,
+  "pr_title": "Feature(todo_sync): `inbox put --update` and `lease acquire --wait`",
+  "branch": "4166-todo-sync-parallel-followup",
+  "base_branch": "1166-todo-snapshot-table-format",
+  "base_sha": "c072dfc56a717190dae26e34f817e2f88f8da454",
+  "head_sha": "ebd83a2fd8612748bed9de9da40f60cc63d92b29",
+  "review_date": "2026-11-17",
+  "verdict": "READY TO MERGE - 20 of 20 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2588,
+    "deletions": 137,
+    "files_changed": 28,
+    "source": {
+      "additions": 2587,
+      "deletions": 137,
+      "files_changed": 27
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "adv_code_runtime (opus)",
+    "adv_code_tests (opus)",
+    "developer_notes_1 (developer)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/tests.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/docs.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/overall.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/roast.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/adv_code_runtime.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/adv_code_tests.json",
+    "docs/_scratch/pr_review/0312/pr312_20261117T203034Z/findings/developer_notes_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Lease wait tests shrink catalog_lock.WAIT_SECONDS to 0.2 s (read at call time by _acquire) and free the held lease after 0.6 s from a real thread, so a successful acquire proves --wait took effect; the refusal test also bounds elapsed time.",
+    "Update tests run the real apply_updates, put_updates and drain on make_project catalogs, including byte-identical catalog checks, an empty inbox after a refused put, and later-wins overwrite reporting.",
+    "CLI tests drive todo_sync.py main in-process end to end: inbox put --update, add --inbox, then check drift=0, plus the --file-issue and computed-field refusals with exit code 2.",
+    "Prose contract tests pin step order in todo-editor.md (spec before lease, lease right before dry run, retire and refresh acquire at step 0) and parse named commands with the driver's own parser.",
+    "No mock-chain wiring tests: every test exercises real logic or real files.",
+    "`put_updates` checks the whole update spec against the catalog with the same `apply_updates` the drain uses, so a queued update fails at put time, not later in the drain.",
+    "`_check_types` and `_check_item` take a `label` parameter, so updates reuse the add path's shape and schema checks and the refusals name `update N` correctly.",
+    "The drain refactor into `_Absorbed` / `_absorb_one` keeps the claim, release and set-aside flow unchanged. An update file that names a retired or split id is refused and set aside with its reason, and nothing else is lost.",
+    "The `overwritten` tracking adds a pair only after its file is accepted (`seen` grows only after `apply_updates` succeeds), so a refused file never shows up as an overwrite.",
+    "`_seconds` refuses NaN through `not value >= 0`, and `locking.acquire` passes `wait` straight to `catalog_lock.acquire_lease`, whose None default stays `WAIT_SECONDS` (10), as the docstrings say.",
+    "The update field list in todo-editor.md:246-248 matches updates.UPDATE_FIELDS exactly (reshape ADD_REQUIRED + ADD_OPTIONAL less ISSUE_KEYS), and the refused examples line up with the code's `an update never sets it` refusal.",
+    "The drain-line grammar `inbox: [added ...; ][updated ...; ][overwrote ...; ][rejected ...; ]check drift=D` is stated the same way in todo_sync.py, todo_sync.md, todo-edit SKILL Step 3 and the plan's formats example, and matches inbox.drain_lines and _landed_text.",
+    "The SKILL's `lock held by todo_sync.py add --inbox` cue matches the owner string todo_sync._owner builds, so the todo-watch drain case can be recognized from the refusal text.",
+    "The split lease move is carried through every place it touches: step 1 says no lease is held yet, finish runs `once they hold a lease`, and Stop conditions say a pre-lease stop runs no release, so no dangling-release instruction is left.",
+    "The plan artifacts are consistent: six sealed receipts with empty deviations, a freeze ledger pinned to the base commit, and a Who-runs-what table in todo_sync.md updated for `add --inbox` and `inbox put --update`.",
+    "The drain command in Step 3 is the launcher form the parallel contract test parses (tests/skills/test_todo_edit_parallel_contract.py:67-73), and its `todo_sync.py add --inbox` lock-owner wording matches `_owner` in todo_sync.py:341-344.",
+    "Step 2's parallel-dispatch rules match the agent: splits draft first and take the lease with `--wait` one at a time (todo-editor.md:136-139), and updates only queue through `inbox put --update` and hold no lease (todo-editor.md:258-260).",
+    "Step 1's stop conditions now cover each new arity (`--split`/`--update` without ids, `--update` without guidance), and the argument-hint, table and README (README.md:439-444) agree on the new forms.",
+    "The prompt block's six lines still match the count the agent description gives (todo-editor.md:11), and the referenced skill_arguments.md exists.",
+    "`apply_updates` works on a deep copy and checks the whole spec (field allow-list, base types, live-id resolution, one set per field, the item schema) before any write, and `put_updates` reuses it as a dry run, so a refused spec queues nothing.",
+    "The drain reuses the existing claim/apply/reject/set-aside machinery for update files. A bad update is refused per file with its reason, and later-file overwrites are reported once per (id, field) and only from accepted files.",
+    "Moving `_absorb` into an `_Absorbed` state plus `_absorb_one`/`_absorb_updates` keeps every function short while adding a second file kind.",
+    "Tests are behavioral against real catalogs and lock files: the CLI tests run the real driver in-process through put, drain and check (drift 0), and the lease-wait tests use a real thread to free a held lease past the shortened default.",
+    "The drain line, update spec shape and `--wait` semantics read the same across the code, the driver docstring, todo_sync.md, README, the agent, the skill and the release notes; the harness version is bumped and the release table updated.",
+    "Every TASK action in plan 2023 shows up in the code. The decisions D1A-D4A are implemented as chosen, and each task has a sealed receipt.",
+    "UPDATE_FIELDS is derived from ADD_REQUIRED + ADD_OPTIONAL less ISSUE_KEYS (updates.py:21) rather than restated, and the agent's 15-field list, the release note and todo_sync.md all describe exactly that set.",
+    "put_updates validates through the same apply_updates the drain runs, so a queued update and its later application cannot disagree on what is valid; the drain still re-checks against the live catalog (a retired id between put and drain is rejected, tested).",
+    "One drain for adds and updates (D2A) keeps one catalog write and leaves the todo-watch mod unchanged, since the mod passes the `inbox: ` line through unparsed; the new line format is identical across inbox.py, the todo_sync.py docstring, todo_sync.md, SKILL.md Step 3 and the plan's formats entry.",
+    "The split wait lives in the driver as `lease acquire --wait SECONDS` (default unchanged at catalog_lock.WAIT_SECONDS), per the project rule that a driver-actionable setting belongs in code, and the agent's 330000 ms Bash timeout is tied to the 300 s wait.",
+    "Docs moved in lockstep: README, release notes, todo_sync.md, the driver docstring, the agent, the skill and the prose-contract docstring all state the new split lease window (dry run to reply) the same way.",
+    "New tests are behavioral: real catalogs through make_project, real lease contention across threads, and in-process driver runs that check the printed line and the catalog afterward; no mock chains.",
+    "Update files reuse the inbox's name scheme, claim/release flow and single catalog write, so the todo-watch mod needed no change and passes the new `inbox:` line through unparsed.",
+    "`apply_updates` works on a deep copy and validates each entry (field whitelist, base types, the item schema, live id) before any rerank, so `put_updates` writes nothing on a refusal and the drain rejects a bad file without touching the others.",
+    "Overwrite detection reports cross-file conflicts (`overwrote <id> <field>`) and refuses duplicates within one spec, so 'later wins' is never silent.",
+    "`--wait` is a driver option backed by `catalog_lock`, not agent prose looping on a 10 s acquire, and the lease-wait tests shrink `WAIT_SECONDS` so a passing test proves the option took effect.",
+    "The new tests are behavioral against real temporary projects and the real driver parser; nothing is mocked.",
+    "updates.apply_updates validates every entry (object shape, allowed field set, base types, live-id resolution, schema check of the merged item, one set per field per spec) on a deep copy before re-ranking, so a refused spec never mutates the caller's catalog.",
+    "inbox.put_updates dry-runs the whole update spec against the catalog before _write_items writes any file, and reuses the hidden-then-rename write path, so a drain never reads a half-written update file.",
+    "inbox._absorb_one routes a claimed file by content (_holds_updates) and catches TodoSyncError, RankingError and ValueError per file, so a stale update (retired or split id, schema conflict with an earlier queued update) is set aside with its reason instead of aborting the drain.",
+    "Overwrite tracking in inbox._absorb_updates only counts fields from accepted update files, so a rejected file never shows up in the overwrote report.",
+    "scripts/todo_sync.py _seconds rejects NaN, negatives and non-numbers, and catalog_lock._acquire tests wait against None rather than truthiness, so --wait 0 means a single attempt instead of falling back to the 10-second default.",
+    "The PR's runtime tests (tests/lib/test_todo_sync_updates.py, tests/scripts/test_todo_sync_lease_wait.py, tests/scripts/test_todo_sync_update_cli.py) pass at the head: 45 passed.",
+    "All 69 tests in the six scoped files pass at the PR head.",
+    "The lease-wait tests shrink catalog_lock.WAIT_SECONDS to 0.2 s and free the held lease at 0.6 s, so a successful acquire proves --wait reached catalog_lock.acquire_lease (locking.acquire reads the default at call time).",
+    "test_todo_sync_updates.py pins UPDATE_FIELDS to the add fields minus issue/url and refuses every computed field by parametrize, including id, rank, priority and tracker.",
+    "Drain tests cover the merge rules: later write wins and is named in overwritten, fields from two files merge in first-set order, and a rejected file leaves the catalog bytes untouched.",
+    "The CLI tests check put --update leaves the catalog byte-identical and that a drain of parallel queued updates ends at check drift=0."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Draft-before-lease split can silently clobber a queued update drained in between",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/skills/todo-edit/SKILL.md"
+        ],
+        "lines": "123-145,288-290",
+        "reviewer": "roast, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The split now reads the item (step 1) and drafts its overrides (step 2) before it takes the lease (step 3). Step 4 claims the dry run catches whatever changed meanwhile, but it only refuses a split or retired id. The same PR adds `inbox put --update`, so a drain (todo-watch, or another session's `todo-edit --update`) can land new `files`, `summary`, `severity` or `loe` on that item in the gap; the split spec then overrides those fields with values drafted from the old copy, and the dry run passes. The update disappears with no problem line and no `overwrote` notice. Under the old lease-first order this window did not exist. Concurrency giveth, concurrency taketh away.\n\nAlso (docs): Split step 3 (todo-editor.md:136-139) tells the agent to rerun `TS lease acquire --wait 300` up to 3 times in all when the `problem:` line names a holder (decision D1A). The Stop conditions (todo-editor.md:288-290) say: report and stop, do not improvise, when a script exits 2, with the only listed exception being one spec fix for split, sync, add or update. A held-lease refusal exits 2 and is not a spec fix, so a literal reading stops on the first refusal. That drops the 3-try budget the plan settled on, and the general rule can override the step-specific one.",
+        "fix": [
+          "In todo-editor.md split step 3 or 4: after the lease is taken, re-read the item and compare it with the step 1 read; when a field the spec overrides (or inherits into a part) changed, redraft those fields before the dry run.",
+          "Have `split --dry-run` take an item digest from the draft (for example `--expect-digest`) and refuse when the live item no longer matches, so the driver catches the drift instead of agent prose.",
+          "In todo-editor.md:288-289, extend the exception: `(relay the problem: line verbatim, after one spec fix for split, sync, add or update, or after the third held-lease refusal of a split's lease acquire)`.",
+          "Or add a sentence after todo-editor.md:290: `A split's lease acquire refused for a held lease is rerun as split step 3 says; only the third refusal stops the run.`"
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Drain-after-dispatch order check cannot fail; 'once' is never checked",
+        "file": "tests/skills/test_todo_edit_parallel_contract.py",
+        "files": [
+          "tests/skills/test_todo_edit_parallel_contract.py",
+          "plugins/harness/skills/todo-edit/SKILL.md"
+        ],
+        "lines": "67-73",
+        "reviewer": "tests, adv_code_tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_the_skill_drains_the_inbox_once_after_the_update_agents asserts body.index(\"harness:todo-editor\") < drain.start(), but the first occurrence of harness:todo-editor in plugins/harness/skills/todo-edit/SKILL.md is the frontmatter description on line 3, so the assertion holds wherever the drain line sits (even inside Step 1, before the dispatch). The module docstring and test name also claim the skill drains the inbox once, yet re.search only proves at least one `add --inbox` launcher line exists; a second drain line would pass.\n\nAlso (adv_code_tests): test_the_skill_drains_the_inbox_once_after_the_update_agents asserts body.index(\"harness:todo-editor\") < drain.start(), but the first \"harness:todo-editor\" in plugins/harness/skills/todo-edit/SKILL.md is in the frontmatter description (line 3), ahead of every step. The assertion holds wherever the drain line sits, so a drain moved before the Step 2 dispatch still passes. The test name also promises the drain runs \"once\", yet nothing counts the drain lines; a second drain also passes.\n\nAttack: In plugins/harness/skills/todo-edit/SKILL.md, move the whole '## Step 3: drain the inbox' block (lines 61-81, including the 'add --inbox' launcher line) above '## Step 2: dispatch the agent' and append a second launcher 'add --inbox' line at the end of the file. tests/skills/test_todo_edit_parallel_contract.py::test_the_skill_drains_the_inbox_once_after_the_update_agents still passes: the first 'harness:todo-editor' match is at offset 388 (description, line 3), the moved drain at 3464, the real dispatch (subagent_type=\"harness:todo-editor\") at 4806, and two drain lines exist. Reproduced with probes/drain_order_probe.py, which prints 'ordering assertion passes: True' and 'drain lines: 2'.",
+        "fix": [
+          "Anchor the order to the dispatch step: assert body.index(\"## Step 2\") < drain.start(), or search for the drain line inside _skill_section(\"## Step 3\") instead of the whole body.",
+          "Count the drain lines: assert len(re.findall(rf\"^{re.escape(_LAUNCHER)} add --inbox\\s*$\", body, re.MULTILINE)) == 1.",
+          "Anchor the ordering on the dispatch: assert body.index('subagent_type=\"harness:todo-editor\"') < drain.start() (or body.index(\"## Step 2\") < drain.start()), and add assert len(re.findall(rf\"^{re.escape(_LAUNCHER)} add --inbox\\s*$\", body, re.MULTILINE)) == 1."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "New release bullets omit the plan reference their siblings carry",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "228-238",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The three new bullets in docs/RELEASES/v1.0.0.md:228-238 cite only `(issue #309)`. Neighboring plan-driven bullets name their plan beside the issue, for example `(issues #288, #278, #280, plan 2022)` at line 184 and `(issue #284, plan 2021)` at line 179. This branch's work is plan 2023 (docs/plans/2023_Parallel_TODO_Editing_Remix_ActionPlan.json), so the bullets break the file's own convention and lose the link to the receipts.",
+        "fix": [
+          "Change `(issue #309)` to `(issue #309, plan 2023)` in the bullets at docs/RELEASES/v1.0.0.md:230, 234 and 238."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Update step 1 pushes a summary rewrite the guidance may not touch",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json"
+        ],
+        "lines": "243-254",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Update step 1 (todo-editor.md:243-245) tells the agent to check the guidance's claims 'as add level 1 does: cite `path:line` in `summary`'. Step 2 (todo-editor.md:246-249) says to set only the fields the guidance touches, and each value replaces the field whole. Guidance such as `severity 4: the parser drops rows` touches `severity` and `why_ranked`. Step 1 still sends the agent to write a citation into `summary`, and a `summary` update replaces the item's existing summary text whole, which can drop content the guidance never asked to change.\n\nAlso (overall): todo-editor.md update step 1 says to check the guidance's claims 'as add level 1 does: cite `path:line` in `summary`', but step 2 limits new values to the fields the guidance touches. For guidance that only changes `severity` (the skill's own example, `-- severity 4: the parser drops rows`), the two steps conflict: either the agent rewrites `summary` the guidance did not touch, or it skips the citation step 1 requires.\n\nAlso (system_shape): todo-editor.md update step 2 (lines 246-254) lets an update set `needs_decision`, `decision_question` and `status`, says each value replaces the field whole, and points to the sync step 3 shapes and schema checks. An update has no way to delete a field, though, and the catalog schema (TodoCatalog.schema.json, needs_decision else-branch around line 962-967) requires `decision_question` to be null when `needs_decision` is false. Status `NEEDS_DECISION` also requires `needs_decision` true. So resolving a decision, a natural update, takes three coordinated fields in one update: `needs_decision: false`, `decision_question: null` and a status other than NEEDS_DECISION. Sync step 3 never mentions null (it lists `decision_question` among the string fields), so an agent setting only `needs_decision: false` gets a `problem:` line and may burn its single spec fix.",
+        "fix": [
+          "Reword todo-editor.md:244-245 to: `check its claims as **add** level 1 does; when the update sets `summary`, cite `path:line` there, carry over the existing text that still holds, and write a claim the tree neither confirms nor refutes as `unverified`.`",
+          "Scope the citation: 'cite `path:line` in `summary` when the update sets `summary` (else in `why_ranked`)', or say verified claims go into whichever text field the update sets.",
+          "Add to todo-editor.md update step 2: 'To close a decision, set `needs_decision` false, `decision_question` null and a `status` other than `NEEDS_DECISION` in the same update.'"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "`put_updates` docstring promises TodoSyncError for a failed inbox write",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "lines": "156-170",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The Raises section says `TodoSyncError: ... or a failed inbox write`, but `_write_items` cleans up and re-raises whatever failed, which is the raw `OSError` from `write_atomic` or `_replace_with_retry`. `put_updates` does not wrap it (unlike `put`, which wraps only when issues were filed). The driver catches `OSError` too, so behavior is fine; the contract text is wrong.",
+        "fix": [
+          "Reword the Raises section: `TodoSyncError: an unreadable spec or an update the catalog refuses (nothing is written). OSError: a failed inbox write (every file of the put still present is deleted).`"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "A malformed update file is refused with an add-spec reason",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/inbox.py",
+        "lines": "224-231",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "`_holds_updates` routes a file to the update path only when `updates` is a list. A queued file holding `{\"updates\": {...}}` or `{\"updates\": null}` (a hand-edited or truncated file) goes to `add_items` instead. Its `.reason.txt` then reads `add spec ...: expected an object with a 'items' list`, which sends the person to the wrong format.",
+        "fix": [
+          "Route on the key alone: `return isinstance(doc, dict) and \"updates\" in doc`. `read_spec(path, \"updates\")` then refuses the file with an `update spec ...: expected an object with a 'updates' list` reason."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "_resolve docstring promises a doubled id raises; resolve_ids dedupes it",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/updates.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/updates.py",
+          "plugins/harness/lib/harness_lib/todo_sync/ids.py"
+        ],
+        "lines": "47-55",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The `_resolve` docstring says \"a retired, split, unknown or doubled id raises\". `todo_ids.resolve_ids` drops repeats (`if text not in by_kind[kind]`), so an update whose id reads `k7qf, todo-K7QF` resolves to one id and is accepted. Only two different ids reach the `names N ids` refusal. Accepting the repeat is harmless, but the docstring states a refusal the code never makes.",
+        "fix": [
+          "Reword the docstring to \"a retired, split or unknown id, or a raw naming more than one id, raises\".",
+          "Or, if a repeated id should be refused, check `len(todo_ids._pieces([raw])) != 1` before resolving and raise the same `update n names ...` message."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "todo_sync.md intro and add section still describe the inbox as items only",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "files": [
+          "plugins/harness/scripts/todo_sync.md",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "5-6,162,168",
+        "reviewer": "docs, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The todo_sync.py module docstring (todo_sync.py:3) now says the script queues 'items and field updates in the inbox'. todo_sync.md:5-6 still says it 'queues drafted items in an inbox', and the `add` section intro (todo_sync.md:162) says 'Adds items to the catalog, either from a spec file or from the inbox'. In the `--inbox` row (todo_sync.md:168), 'When any item lands, the page is rendered and the check run' can be read as excluding a drain where only updates landed. The drain does render and check then: inbox.py `_finish(cfg, day, bool(got.accepted), ...)` counts accepted update files.\n\nAlso (overall): An update-only drain also renders and checks (`_finish(..., bool(got.accepted), ...)`), but the todo_sync.md `--inbox` row says 'When any item lands, the page is rendered and the check run', and the `_finish` docstring says 'Run the follow-up when items landed'. Both read as if a drain that only applied updates skips the render and check.\n\nAlso (roast): The `--inbox` row of the `add` table now describes queued updates, but it keeps 'When any item lands, the page is rendered and the check run'. A drain where only updates land also writes, renders and checks (the docstrings and drain() say 'when anything landed').",
+        "fix": [
+          "todo_sync.md:5-6: `queues drafted items and field updates in an inbox`; todo_sync.md:162: `Adds items to the catalog, either from a spec file or from the inbox (which also applies queued field updates)`; todo_sync.md:168: `When anything lands (an item or an update), the page is rendered and the check run.`",
+          "todo_sync.md line 168: 'When anything lands (an item or an update), the page is rendered and the check run.' inbox.py `_finish` docstring: 'when anything landed'.",
+          "In todo_sync.md line 168, change 'When any item lands' to 'When anything lands (an added item or an update)'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "todo_sync.py Locking docstring still states a flat 10-second wait",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/scripts/todo_sync.md"
+        ],
+        "lines": "125-129",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The PR updated the Locking paragraph of todo_sync.md (line 57-58) to say `lease acquire --wait SECONDS` waits that long instead of 10 seconds, but the matching paragraph of the driver's own module docstring (todo_sync.py:125-129, 'A lock another owner holds is waited on for 10 seconds, then refused naming its owner, mode and age') was left unchanged. The two descriptions of the same locking rule now disagree; the `lease acquire` entry higher in the same docstring (lines 94-99) already names --wait, so the docstring also contradicts itself.",
+        "fix": [
+          "In plugins/harness/scripts/todo_sync.py:127-128 change 'is waited on for 10 seconds, then refused' to 'is waited on for 10 seconds (``lease acquire --wait SECONDS`` waits that long instead), then refused', mirroring todo_sync.md."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "--wait accepts inf, so lease acquire can wait without a bound",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/catalog_lock.py",
+          "tests/scripts/test_todo_sync_lease_wait.py"
+        ],
+        "lines": "180-188",
+        "reviewer": "runtime, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "`_seconds` turns `inf` or `1e999` into `float('inf')`, which passes `value >= 0`. `catalog_lock._acquire` then sets `deadline = monotonic() + inf`, so `remaining` never reaches 0. `lease acquire` blocks until the holder releases or goes stale (a lease only after 30 minutes), whatever Bash timeout the caller set. The help text promises a number of seconds before the refusal.\n\nAlso (overall): `_seconds` rejects negatives and NaN (`not value >= 0`), but `float('inf')` passes, so `lease acquire --wait inf` sets a deadline of `monotonic() + inf`. It then waits until the held lease turns stale (30 minutes) or forever on a held write lock. That is far past the 600 s Bash cap the 300 s value was chosen to fit, and the help text says the value is a number of seconds.\n\nAlso (roast): `_seconds` rejects NaN and negative values, but `float('inf')` passes `value >= 0`. `catalog_lock._acquire` then gets an infinite deadline, and `lease acquire` blocks until the holder lets go, however long that takes. The help promises a number of seconds and the agent budget assumes a bounded wait.",
+        "fix": [
+          "In `_seconds`, `import math` and refuse non-finite values: `if not (math.isfinite(value) and value >= 0): raise argparse.ArgumentTypeError(...)`.",
+          "In `_seconds`, also refuse a non-finite value: `if not (math.isfinite(value) and value >= 0): raise argparse.ArgumentTypeError(...)`, and add `inf` to the parametrized cases in tests/scripts/test_todo_sync_lease_wait.py::test_the_wait_is_a_non_negative_number.",
+          "In `_seconds`, refuse a non-finite value: `if not math.isfinite(value) or value < 0: raise argparse.ArgumentTypeError(...)`, and add `\"inf\"` to the parametrized cases of `test_the_wait_is_a_non_negative_number`."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Sibling drain readers miss the new update parts of the inbox line",
+        "file": "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "plugins/harness/skills/add-todo/SKILL.md",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "73-82",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "`add --inbox` now also applies queued field updates, and todo_sync.md says any agent may queue them, so a `/harness:sync-gh-todo` or `/harness:add-todo` drain can land updates queued by another run. Those skills still read only the old shapes: sync-gh-todo pins the failure text as `problem: inbox: added <ids>, then: <reason>` and sends every other `problem:` line to 'the queued items stay in the inbox'. When only updates landed (the skill's own items refused), inbox.py `_landed_text` produces `problem: inbox: updated <ids>, then: ...`, which those skills misreport as nothing landed. The success line can also carry `updated M item(s)` and `overwrote` parts the prose does not describe. The plan's sweep S1 kept both skills unchanged.",
+        "fix": [
+          "In sync-gh-todo SKILL.md Step 4 (lines 73-82) and add-todo SKILL.md Step 4 (lines 80-88), add that the line may carry `updated M item(s): ...` and `overwrote <id> <field>` parts for updates other runs queued, and that a `problem:` line opening `inbox: added` or `inbox: updated` means those changes landed and only the follow-up failed, matching todo-edit SKILL.md Step 3."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Shared guidance across per-id update agents has no routing rule",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "files": [
+          "plugins/harness/skills/todo-edit/SKILL.md",
+          "plugins/harness/agents/todo-editor.md"
+        ],
+        "lines": "28-35,43-51,84",
+        "reviewer": "skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 2 sends every `--split`/`--update` agent 'the same guidance'. The agent's update section (todo-editor.md:241-248) reads Guidance as what to change for its one id and sets 'the ones the guidance touches'. For `--update todo-a, todo-b -- todo-a severity 4; todo-b loe M`, both agents see both instructions, and nothing in either file says to apply only the part that names the agent's own id. Either agent can then queue the other id's change on its own item, and the drain applies it.\n\nAlso (skill_package): Step 4 says 'Relay every agent's reply as it stands, one per id', but Step 2 has `--retire` and `--refresh` make one Agent call for all their ids (refresh has none). Only split and update produce one reply per id. Step 2 also says refresh makes one call 'for all their ids', although Step 1 forbids ids on `--refresh`.\n\nAlso (roast): Step 1 passes ids as typed and leaves canonicalization to the script. That was safe when one agent got the whole list, but `--split` and `--update` now dispatch one agent per id. `--split k7qf, todo-K7QF` starts two opus agents on one item: the second waits on the lease (up to 3 x 300 s) only to hit a 'was split into' problem line. `--update k7qf, todo-k7qf` queues two updates, and the later one overwrites the first.\n\nAlso (roast): Each split agent waits at most 3 x `--wait 300` for the lease, and each holder keeps it through the dry run, the real run and **finish** (check, prose fixes, release). With N ids dispatched at once, the last split waits for N-1 full applies; past roughly 15 minutes it ends on its third refusal and its drafted spec is never applied. Neither the skill nor the agent caps N or says what happens to the leftovers.",
+        "fix": [
+          "Add a sentence to SKILL.md Step 2 (or to todo-editor.md update step 2): when the guidance names several ids, each agent applies only what it says about its own id, plus what applies to all.",
+          "Have Step 2 split guidance written per id (`id: text`) and send each agent only its own part.",
+          "SKILL.md:84: 'Relay every agent's reply as it stands (one per id for split and update), then the Step 3 line for an update.' SKILL.md:46: '`--retire` makes one `Agent` call for all its ids, and `--refresh` one call.'",
+          "In SKILL.md Step 2, before dispatching per id, drop an id whose canonical form (lowercased, `todo-` prefix added) repeats an earlier one, and name the dropped duplicates in the Step 4 report.",
+          "In SKILL.md Step 2, cap `--split` at a small number of ids per message (for example 4) and dispatch the rest in a later message, or say in Step 4 that a split ending on a held-lease refusal left its spec at `<state_dir>/todo-sync/split-<id>.json` for a rerun."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Step 3 drain-line description misstates the opening and the problem form",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "files": [
+          "plugins/harness/skills/todo-edit/SKILL.md",
+          "plugins/harness/skills/add-todo/SKILL.md",
+          "plugins/harness/lib/harness_lib/todo_sync/inbox.py"
+        ],
+        "lines": "28-33,45-49,70-80",
+        "reviewer": "skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 3 says the drain 'prints one line: `inbox: updated M item(s): ...`' with an `added N item(s)` part when other items landed, but `drain_lines` (plugins/harness/lib/harness_lib/todo_sync/inbox.py:443-452) puts the `added` part first, so a mixed drain opens `inbox: added ...; updated ...`. The partial-failure case is described as a `problem:` line that 'opens with `inbox: updated` or `inbox: added`', yet the line the script prints opens `problem: inbox: ...` (inbox.py:411). A literal read compares `problem: inbox: updated ...` with `inbox: updated`, finds no match, falls to 'Otherwise the queued updates stay in the inbox' and reports landed updates as not applied. sync-gh-todo spells the form out (`problem: inbox: added <ids>, then: <reason>`); add-todo shares the ambiguous wording.\n\nAlso (system_shape): SKILL.md Step 1 (lines 28-33) passes ids as typed and leaves canonicalization to the script, which was fine when one agent got every id. Step 2 (lines 45-49) now dispatches one agent per id for --split and --update, so `--update k7qf, todo-k7qf` (or `--split` with a repeated id) starts two agents on one item. For splits, the second agent waits up to 300 s for the lease only to fail its dry run. For updates, the todo-watch mod drains after each completed todo-editor agent (plugins/todo-watch/README.md:107-108), so the two agents' queued updates can land in separate drains. The later one then silently replaces fields the earlier one set: `_absorb_updates` (inbox.py) tracks `seen` only within a single drain. Step 3 (lines 70-72) still promises 'an `overwrote <id> <field>` part when two queued updates set the same field'.",
+        "fix": [
+          "Rewrite SKILL.md:70-72 to give the line as `inbox: [added N item(s): ...; ]updated M item(s): <id> (<fields>), ...; [overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=<d>`, and SKILL.md:77-79 to read 'When the line reads `problem: inbox: updated ...` or `problem: inbox: added ...`, then: <reason>`, those changes landed ...', matching sync-gh-todo/SKILL.md:79.",
+          "In SKILL.md Step 1, canonicalize each id (lower-case, `todo-` prefix added, trailing `,`/`;` dropped, as todo-editor.md:51-54 does) and drop repeats before the per-id dispatch of Step 2; in Step 3 qualify the overwrite sentence with 'when both land in the same drain'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "todo-watch README still says the inbox holds only new items",
+        "file": "plugins/todo-watch/README.md",
+        "lines": "10,102-103",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "With D2A the todo-watch mod's `add --inbox` drain now also applies queued field updates (`inbox put --update`), and the todo-edit skill's Step 3 relies on the mod draining them ('the todo-watch mod is draining the updates'). The mod's README Inbox drains section (plugins/todo-watch/README.md:102-103) still says a todo-editor agent 'queues new TODO items ... (`todo_sync.py inbox put`)', and its intro (line 10) says the drain 'adds' items. The plan's sweep S1 marked the file 'keep', so the drift went in on purpose, but a reader of the mod's docs no longer learns that update files sit in the same inbox and are applied by the same drain.",
+        "fix": [
+          "Reword plugins/todo-watch/README.md:102-103 to 'queues new TODO items and field updates of existing items (`todo_sync.py inbox put`, `inbox put --update`)', and line 10 to say the drain applies the queued files; bump the todo-watch patch version if the release rules require it for a README change."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "'In one catalog write' is claimed but never asserted",
+        "file": "tests/lib/test_todo_sync_updates.py",
+        "lines": "1-3,157-167",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (line 3) and test_drain_applies_adds_and_updates_in_one_write claim queued adds and updates land in one catalog write, but the test asserts only the outcome (added, updated, emptied inbox, drift 0); a drain that wrote the catalog once per file would pass.",
+        "fix": [
+          "Wrap inbox.write_edits with monkeypatch in a counter that delegates to the original and assert it ran exactly once.",
+          "Or drop 'in one write' from the test name and docstring."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Kind refusal case matches any update-1 error",
+        "file": "tests/lib/test_todo_sync_updates.py",
+        "lines": "116",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The 'kind' parametrize case of test_a_bad_update_is_refused matches on \"update 1\", which every refusal of the first update carries, so it would pass on an unrelated refusal (a wrong id, a missing field) instead of proving the kind value check ran.",
+        "fix": [
+          "Match the kind-specific text of the refusal (the message reshape._check_types or the schema raises for a kind outside its list), e.g. a needle containing \"kind\"."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Update field list in the agent prose is pinned only partly; failure message is inverted",
+        "file": "tests/skills/test_todo_edit_parallel_contract.py",
+        "files": [
+          "tests/skills/test_todo_edit_parallel_contract.py",
+          "plugins/harness/agents/todo-editor.md"
+        ],
+        "lines": "84-88",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_the_agent_names_the_fields_an_update_may_set checks 6 of the 15 fields the update section lists (todo-editor.md step 2), so the prose can drift from updates.UPDATE_FIELDS (a field dropped, or a refused one such as tracker added) without failing, although the module docstring says the test pins the names both sides share. The `rank` assertion's message, \"the section names a field the script refuses\", describes the passing state, not the failure.",
+        "fix": [
+          "Parse the backticked names of the update section's 'Choose new values only for ...' sentence and assert their set equals set(updates.UPDATE_FIELDS), importing harness_lib.todo_sync.updates; reword the rank message to \"the section never names rank among the refused fields\"."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Missing section surfaces as IndexError/StopIteration",
+        "file": "tests/skills/test_todo_editor_split_lease_contract.py",
+        "lines": "17-28",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_section splits on the heading without checking it exists, and _acquire_step uses a bare next(); a renamed agent section fails with IndexError or StopIteration rather than a named assertion, unlike _agent_section in test_todo_edit_parallel_contract.py which asserts the heading first.",
+        "fix": [
+          "Add assert f\"\\n## {name}\\n\" in body, f\"todo-editor.md has no {name} section\" to _section, and give next() a default plus an assert naming the section with no lease acquire step."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "README goal table has no todo-edit row, so parallel split and update dispatch is not shown",
+        "file": "README.md",
+        "lines": "33-34",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: README should reflect that todo-edit dispatches agents in parallel. Verified: the 'Your goal' table (README.md:17-36) has rows for add-todo (line 33) and sync-gh-todo (line 34) but none for todo-edit; the parallel behavior appears only in the prose at README.md:439-444 (several split ids dispatch one agent each in one message, drafting at once and applying one at a time under the lease; --update dispatches one agent per id and the skill drains once with add --inbox).",
+        "fix": [
+          "Add a todo-edit row after the sync-gh-todo row (README.md:34) in the same column layout: Use `todo-edit`; What you get: retire, split, update or refresh catalog items, with several --split or --update ids dispatched as one todo-editor agent each in one message (splits draft at once and apply one at a time under the catalog lease; updates queue through the inbox and drain once); Ensurance: active only when todo.folder is set, the script draws ids, re-ranks and rewires links, and the main session only dispatches and drains."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "todo_sync.md never says several todo-editor agents run at once against one catalog",
+        "file": "plugins/harness/scripts/todo_sync.md",
+        "lines": "43-62",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: todo_sync.md should reflect parallel agent dispatch. Verified: the Who-runs-what rows (todo_sync.md:43, 48-49) and the Locking section (todo_sync.md:53-62) describe one todo-editor run; nothing states that /harness:todo-edit --split and --update now dispatch one agent per id at once, that parallel splits contend for the lease (each waits with lease acquire --wait 300 and applies one at a time), or that parallel update agents queue through inbox put, which takes no lock, and land in one add --inbox drain.",
+        "fix": [
+          "In todo_sync.md, extend the retire/split/refresh row (line 43) and the lease row (line 49) to say /harness:todo-edit --split dispatches one agent per id at once, and add a sentence to the Locking section: parallel split agents each take the lease with lease acquire --wait 300 from the dry run to lease release, so they apply one at a time; parallel update agents queue with inbox put (no lock) and the skill drains them once with add --inbox."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 312 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"1166-todo-snapshot-table-format\",\"commits_count\":6,\"first_sha\":\"7864862e5ac0934d34df4c72394f64bd64f8cc5f\",\"headRefName\":\"4166-todo-sync-parallel-followup\",\"headRefOid\":\"ebd83a2fd8612748bed9de9da40f60cc63d92b29\",\"last_sha\":\"ebd83a2fd8612748bed9de9da40f60cc63d92b29\",\"mergeCommit\":null,\"number\":312,\"state\":\"OPEN\",\"title\":\"Feature(todo_sync): `inbox put --update` and `lease acquire --wait`\",\"url\":\"https://github.com/t968rs/operator-straps/pull/312\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_runtime",
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_roast",
+          "adv_refute_adv_code_runtime",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (30 checked, 0 refuted, 1 code findings)",
+        "counts": {
+          "findings_checked": 30,
+          "findings_refuted": 0,
+          "findings_upheld": 30,
+          "code_findings": 1
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "4166-todo-sync-parallel-followup",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "4166-todo-sync-parallel-followup",
+        "head_ref_name": "4166-todo-sync-parallel-followup",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "7864862e5ac0934d34df4c72394f64bd64f8cc5f",
+        "head_sha": "ebd83a2fd8612748bed9de9da40f60cc63d92b29",
+        "base_ancestor_command": "git merge-base --is-ancestor 7864862e5ac0934d34df4c72394f64bd64f8cc5f HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor ebd83a2fd8612748bed9de9da40f60cc63d92b29 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "1166-todo-snapshot-table-format",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo-editor.md update step 1 cites path:line in summary only when the update sets summary (carrying over text that still holds, untouched summary stays); step 2 adds the close-a-decision rule (needs_decision false, decision_question null, status other than NEEDS_DECISION in one update); TodoCatalog.schema.json: cited for the needs_decision/decision_question constraint, which the prose now matches, no edit needed"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - SKILL.md Step 2: retire one call for all its ids, refresh one call; drop ids whose canonical form repeats an earlier one and name them in Step 4; each agent applies only the guidance about its own id plus what applies to all; Step 4 relays one reply per id for split and update; todo-editor.md update step 2 carries the same per-id routing rule"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - test_the_agent_names_the_fields_an_update_may_set parses the backticked names of the 'Choose new values only for ...' sentence and asserts the set equals updates.UPDATE_FIELDS; rank message reworded; todo-editor.md: cited field list already matches UPDATE_FIELDS, no edit needed for this issue"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo-editor.md split step 3: with the lease held, re-read the item, compare with the step 1 read and redraft changed overridden or inherited fields before the dry run; Stop conditions exempt a split's lease acquire until its third held-lease refusal; SKILL.md: cited, its Step 2 split description needs no edit"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - test_the_skill_drains_the_inbox_once_after_the_update_agents anchors the order on subagent_type=\"harness:todo-editor\" and the Step 2 heading, and counts the launcher add --inbox lines (exactly one); SKILL.md: cited, its single drain in Step 3 already satisfies the test, no edit needed for this issue"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - put_updates Raises section reworded: TodoSyncError for an unreadable spec or a refused update (nothing written); OSError for a failed inbox write (present files deleted), matching _write_items behavior"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - _holds_updates routes on the presence of the updates key (isinstance dict and 'updates' in doc), so a malformed updates value reaches read_spec(path, 'updates') and is refused with an update spec reason; docstring updated"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo_sync.md intro says queues drafted items and field updates; add intro notes the inbox applies queued field updates; --inbox row reads 'When anything lands (an added item or an update)'; inbox.py _finish docstring reads 'when anything landed'"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Part of todo_sync.md already correct: the Locking paragraph (lines 57-58) names lease acquire --wait SECONDS. The todo_sync.py docstring edit belongs to the other fixer; no edit in this part; Locking docstring (todo_sync.py ~lines 127-129) now notes that lease acquire --wait SECONDS replaces the 10-second wait; todo_sync.md is the other part"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Part inbox.py holds no edit for this issue; the drain-reader prose lives in the sync-gh-todo and add-todo SKILL.md files owned by another fixer; Step 3 of sync-gh-todo and Step 4 of add-todo now name the updated M item(s) and overwrote <id> <field> parts of drained updates other runs queued, and read a problem: line opening inbox: added or inbox: updated as changes landed, matching todo-edit Step 3."
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - added plan 2023 beside issue #309 in the three new bullets (v1.0.0.md lines 230, 234, 238)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - reworded the _resolve docstring to name a retired, split or unknown id, or a raw naming more than one id; the repeated-id case is accepted by resolve_ids, so the code is unchanged"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - _seconds refuses non-finite values (math.isfinite added, import math), so inf and 1e999 are refused like negatives and NaN; catalog_lock.py needed no edit; Added \"inf\" and \"1e999\" to the parametrized refusals of test_the_wait_is_a_non_negative_number; the _seconds isfinite check is the other part's fixer."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Intro and Inbox drains now say the drain applies queued new items and field updates (inbox put, inbox put --update); plugin.json version bump left out, outside the file set."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - test_drain_applies_adds_and_updates_in_one_write wraps inbox.write_edits in a delegating counter and asserts exactly one catalog write."
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - The kind case of test_a_bad_update_is_refused now matches the schema enum refusal text \"update 1: kind: 'chore' is not one of\"."
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - _section asserts the heading exists before splitting; _acquire_step returns None-checked next() with an assert naming the section and the missing TS lease acquire step"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo-edit Step 3 gives the drain line in drain_lines order (added part first, then updated, overwrote, rejected, check drift) and the partial-failure form as `problem: inbox: added <ids>; updated <ids>, then: <reason>`, with the overwrite part limited to updates landing in the same drain (Step 2 already drops repeated canonical ids before per-id dispatch); add-todo gets the same problem form and same-drain qualifier; inbox.py: cited source of the line formats, no edit needed"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - Added a todo-edit row after sync-gh-todo in the README goal table: retire/split/update/refresh, parallel per-id todo-editor dispatch (splits draft at once, apply one at a time under the catalog lease; updates queue through the inbox and drain once), active only with todo.folder"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-17",
+      "evidence": "d5c386f (working-tree snapshot; developer commits) - todo_sync.md: retire/split/refresh row and lease row now say /harness:todo-edit --split dispatches one agent per id at once; Locking section adds that parallel split agents each hold the lease via lease acquire --wait 300 from dry run to lease release (one at a time) and parallel update agents queue with inbox put (no lock), drained once by add --inbox"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "plan_id": "2025",
+  "item": "TASK-7",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "09ee2686deab55d25469f84bf8c7d2704b1127f4",
+      "commit": "36f818b94fe6cc0aa9e8692cfcd635a5ddb005ab"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own",
+        "tests/skills/test_setup_statusline_contract.py::test_skill_resolves_state_dir_and_offers_the_widget_for_an_existing_config"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_setup_statusline_contract.py::test_defaults_print_the_working_refs_line_on_a_line_of_its_own tests/skills/test_setup_statusline_contract.py::test_skill_resolves_state_dir_and_offers_the_widget_for_an_existing_config"
+    }
+  },
+  "evidence": "commit 36f818b: 2 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-18",
+  "seal": "c7d5d771d09804e3a7e9e887b3938398db1208b410cf86bc37687663626db8e4"
+}
