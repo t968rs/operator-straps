@@ -4,6 +4,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { LapRow } from '../types'
 import { eastOffsetMin, isoLocal, parseRows } from './row'
+import { STAMP_COLOR } from './render'
 import { clockOf } from './stamp'
 
 /**
@@ -138,9 +139,9 @@ const mountDuration = ($: Engine, durationMs: number) =>
 
 type Drawing = { findAll: (q: { type?: string; key?: string }) => Promise<FoundElement[]> }
 
-/** The texts of the dim rows the mod drew, in document order. */
+/** The texts of the stamp-colored rows the mod drew, in document order. */
 const stampTexts = async (ui: Drawing): Promise<string[]> =>
-  (await ui.findAll({ type: 'Text' })).filter(n => n.props.dimColor === true).map(n => n.text)
+  (await ui.findAll({ type: 'Text' })).filter(n => n.props.color === STAMP_COLOR).map(n => n.text)
 
 // ---------------------------------------------------------------------------
 
@@ -232,12 +233,12 @@ describe('an empty-answer turn end to end', () => {
     const ui = await mountDuration($, 4000)
     const stamp = `${clockAt(5000)} · lap 5s`
     expect(await stampTexts(ui)).toEqual([stamp])
-    // one row: the engine's line, then the dim stamp, and nothing else
+    // one row: the engine's line, then the colored stamp, and nothing else
     const drawn = await ui.drawn()
     expect(drawn).toMatchObject({
       type: 'Box',
       props: { flexDirection: 'row' },
-      children: [{ props: { key: 'engine' } }, { type: 'Text', props: { dimColor: true }, children: [stamp] }],
+      children: [{ props: { key: 'engine' } }, { type: 'Text', props: { color: STAMP_COLOR }, children: [stamp] }],
     })
     expect('children' in drawn ? drawn.children : undefined).toHaveLength(2)
     await ui.unmount()

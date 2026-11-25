@@ -5,7 +5,7 @@ import type { Engine, FoundElement } from 'claude-code/testing'
 
 import type { LapRow } from '../types'
 import { fingerprintOf } from './fingerprint'
-import { registerRender } from './render'
+import { registerRender, STAMP_COLOR } from './render'
 import { blockStamp, stampText, wrapRight } from './stamp'
 
 /** Local wall clock as an ISO string, so a stamp's HH:MM:SS holds in any time zone. */
@@ -95,9 +95,9 @@ const mountDuration = ($: Engine, durationMs: number) =>
 
 type Drawing = { findAll: (q: { type?: string; key?: string; text?: string | RegExp }) => Promise<FoundElement[]> }
 
-/** The dim Text rows the mod drew, in document order. */
+/** The stamp-colored Text rows the mod drew, in document order. */
 const stampRows = async (ui: Drawing): Promise<FoundElement[]> =>
-  (await ui.findAll({ type: 'Text' })).filter(n => n.props.dimColor === true)
+  (await ui.findAll({ type: 'Text' })).filter(n => n.props.color === STAMP_COLOR)
 
 const textsOf = (nodes: readonly FoundElement[]): string[] => nodes.map(n => n.text)
 

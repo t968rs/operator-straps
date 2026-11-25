@@ -9,7 +9,7 @@ blocks nothing. Malformed lines of the laps file are skipped, never rewritten.
 
 ## What the stamp shows
 
-Faint (dim) text, right-aligned to the transcript width. A reply block's stamp sits on its own row under the
+Rust-colored text (`#B7410E`, `STAMP_COLOR` in `hooks/render.tsx`), right-aligned to the transcript width. A reply block's stamp sits on its own row under the
 block; a `TurnDuration` stamp sits on the same row as that line. The time is the local stop time, `HH:MM:SS`.
 
 | Turn | Stamp |

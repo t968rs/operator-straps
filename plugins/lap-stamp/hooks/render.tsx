@@ -5,8 +5,8 @@ import type { LapRow } from '../types'
 import { blockStamp, durationRow, rowsForBlock, stampText, wrapRight } from './stamp'
 
 /**
- * The stamps drawn in the transcript. A reply block whose text matches rows of the current session gains dim,
- * right-aligned stamp rows under the engine's own drawing (D6, D7); a `TurnDuration` line whose duration matches
+ * The stamps drawn in the transcript. A reply block whose text matches rows of the current session gains
+ * rust-colored (STAMP_COLOR), right-aligned stamp rows under the engine's own drawing (D6, D7); a `TurnDuration` line whose duration matches
  * one empty-answer row gains its stamp right-aligned on the same row (D8). The rows come from `$.state` alone,
  * never the disk (D9); reading them subscribes the drawing, so a new row redraws the reply it belongs to. A
  * summary block, a miss, an uncertain match or any failure draws the engine's tree untouched (D10).
@@ -15,6 +15,9 @@ import { blockStamp, durationRow, rowsForBlock, stampText, wrapRight } from './s
 // declared here: the engine lists a module's state reads from atoms of its own file
 const rowsAtom = atom({ plugin: 'lap-stamp', key: 'rows' } as const, [])
 const sessionAtom = atom({ plugin: 'lap-stamp', key: 'session' } as const, null)
+
+/** The stamp's text color: rust, between oxblood and dark orange, legible on dark and light themes. */
+export const STAMP_COLOR = '#B7410E'
 
 /** The mod's memory as render reads it: the rows held and the current session id. */
 export type Memory = { rows: readonly LapRow[]; session: string | null }
@@ -81,7 +84,7 @@ function registerReplyStamp(on: On, source: MemorySource | undefined): void {
       <Box flexDirection="column">
         {original}
         <Box flexDirection="column" alignItems="flex-end">
-          {stampLines(stamp, e.viewport?.columns).map(line => <Text dimColor>{line}</Text>)}
+          {stampLines(stamp, e.viewport?.columns).map(line => <Text color={STAMP_COLOR}>{line}</Text>)}
         </Box>
       </Box>
     )
@@ -98,7 +101,7 @@ function registerDurationStamp(on: On, source: MemorySource | undefined): void {
     return (
       <Box flexDirection="row" justifyContent="space-between" gap={1}>
         {original}
-        <Text dimColor>{stamp}</Text>
+        <Text color={STAMP_COLOR}>{stamp}</Text>
       </Box>
     )
   }).catch((_$, e, next) => next(e))
