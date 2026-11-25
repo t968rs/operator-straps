@@ -28,6 +28,7 @@
     "file_pattern": "(^|/)test_[^/]*\\.py$|(^|/)conftest\\.py$|\\.test\\.(ts|tsx|js)$",
     "registry": null,
     "registry_names": [],
+    "planned_registry": null,
     "timings": null,
     "fixer_test_seconds": null,
     "defer_flags": [],

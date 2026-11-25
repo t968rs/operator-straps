@@ -14,6 +14,7 @@ in `harness_lib/plan_models.py`, never by hand. Each item carries what the drive
 | **Anchors** (`path:12-18` plus the text expected there) | opens the range and compares the text, so a plan built on a stale picture of the code fails |
 | **Sweeps** (a search plus every hit classified) | reruns the search; a new hit or a stale classification fails |
 | **Planned tests** (real files under `<plans>/<id>/tests/`) | runs them before the work (`red`: each must fail the planned way) and after it (`record`: each must pass) |
+| **Planned registry entries** (`<plans>/<id>/registry_entries.json`, with `tests.planned_registry` set) | upserts them into the throwaway tree's registry for `red`, and into the live registry per item (`register`), so the live registry never lists a test file that does not exist yet |
 | **Decisions** (`D1`, `D2`, ... with options) | an open decision blocks the freeze; the developer picks, not the agent |
 | **Files, dependencies, model** | the item's file set, its order, and the model that implements it; `lanes` turns them into parallel waves |
 
@@ -49,20 +50,21 @@ new --> write (models) --> check --> red --> decisions settled --> freeze
 | Render | `PLAN render <id>` | `live.js` (and the page if it is missing) |
 | Verify | `PLAN verify <id> [--staged]` | nothing (reruns COMPLETE items' tests at HEAD or the index) |
 | Lanes | `PLAN lanes <id>` | nothing (prints a `parallel2` plan of the open items) |
+| Register | `PLAN register <id> <ITEM>` (after the item copied its planned tests) | the item's planned entries in the live `tests.registry`, through `tests.planned_registry` |
 
 ## Freezing
 
 A freeze says "this is the plan we build". It refuses while `check` or `red` has a problem, while a decision is
 open, or while an open item has neither a test nor a command. It writes a write-once ledger entry,
 `<plans>/freezes/plan/<id>-<slug>/r1.<k>-freeze.json`, holding the digest, the record scheme, the base and the
-tree of the plan JSON and its planned tests (no commit), and tags that tree `freeze/<stem>/r1.<k>-tree`. The
+tree of the plan JSON, its planned tests and its `registry_entries.json` (no commit), and tags that tree `freeze/<stem>/r1.<k>-tree`. The
 plan JSON drops its `frozen` block and carries the static `ledger` field (the stem `plan/<id>-<slug>`); the
 stamp is read from the ledger's last `freeze` entry. A plan frozen before the ledger keeps its in-file stamp
 until its next refreeze moves it into the ledger.
 
 **Locked** is the state after `PLAN lock <id>`, which runs only on the developer's ask once the freeze is
 committed. A Locked plan refuses `plan_api.write` and `freeze`, and a hook denies hand edits to the plan JSON,
-its planned tests and the ledger; `record`, `verify`, `lanes` and `render` run as before. A design change
+its planned tests, its `registry_entries.json` and the ledger; `record`, `verify`, `lanes` and `render` run as before. A design change
 takes `PLAN unlock <id> --arm "<reason>"` (on the developer's OK), then `PLAN unlock <id>`, then
 `plan_api.write`, `freeze --refreeze` and, once that is committed, `lock` again. After a rebase or squash moves
 the base off HEAD's history (`check` prints `off-history:`), `PLAN relink <id>` re-points `base_commit` on the
@@ -116,9 +118,11 @@ A commit sequence that keeps the history readable:
 1. **Spec**: `Docs(plans): specify <feature>`.
 2. **Plan**: the plan JSON and its PIP: `Docs(plans): plan <feature>`. The planned test files under
    `<plans>/<id>/tests/` are local references and stay out of git; each lands at its repo path, committed,
-   with the item that copies it there.
-3. **Freeze**: commit right after `freeze`: the plan JSON, its HTML PIP and the new `freezes/plan/...` ledger
-   entry (on a plan started before receipts, also the markdown PIP the freeze deleted):
+   with the item that copies it there. `registry_entries.json` is tracked with the plan, and each entry
+   reaches the live registry in that same item's commit (`PLAN register`), never in a commit of its own.
+3. **Freeze**: commit right after `freeze`: the plan JSON, its HTML PIP, its `registry_entries.json` when the
+   plan has one, and the new `freezes/plan/...` ledger entry (on a plan started before receipts, also the
+   markdown PIP the freeze deleted), since `lock` refuses while a file of the last freeze is uncommitted:
    `Docs(plans): freeze plan <id>`. When the developer asks for a lock, `PLAN lock <id>` runs after this
    commit, and its `lock` entry is committed next. The committed copy is
    also what a later refreeze reads to keep the plan's scheme. Committing the plan folder's `.gitignore` is
@@ -151,8 +155,12 @@ next to the full SHA. Driver tags sit on main-line commits, so a release version
 ## Parallel execution
 
 `PLAN lanes <id> | parallel2.py plan -` waves the open items by dependency and file overlap. Each lane copies
-its planned test files in first, builds in its own worktree and commits there; `parallel2.py stage` lands the
-lane in the target's index uncommitted, and `PLAN record <id> <ITEM> --staged` records it from there.
+its planned test files in first and, when the plan has `registry_entries.json`, runs `PLAN register <id> <ITEM>`
+and the `guard:` files it prints so its own test runs pass, but leaves the registry out of its commit: the
+registry is not one of the lane's files, and lanes of one wave would collide on it. The lane builds in its
+own worktree and commits there; `parallel2.py stage` lands the lane in the target's index uncommitted. The
+main session then runs `PLAN register <id> <ITEM>` and its `guard:` files in the target and stages the
+registry, so the entry joins the item's commit, and `PLAN record <id> <ITEM> --staged` records it from there.
 
 A lane that finds it needs a deviation (a file outside its item, a different test node) stops and reports it
 instead of building past the plan. The main session records the design change, stages the lane with

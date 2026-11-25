@@ -12,6 +12,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 .options.chosen { color: var(--ok); }
 .options.unchosen { color: var(--muted); }
 .why { margin: .25rem 0 0; }
+.action, .why { white-space: pre-line; }
 .status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
   border-radius: 1em; color: var(--chip); vertical-align: middle; }
 .mark.chosen { font-weight: 700; color: var(--ok); }

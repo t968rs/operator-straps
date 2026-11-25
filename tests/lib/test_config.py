@@ -425,6 +425,35 @@ def test_invalid_worktree_steps_raise_without_jsonschema(make_project, monkeypat
         load_config(make_project(bad))
 
 
+def test_planned_registry_defaults_to_none(make_project) -> None:
+    assert load_config(make_project({})).tests.planned_registry is None
+
+
+def test_planned_registry_loads_as_an_argv_tuple(make_project) -> None:
+    command = ["python", "scripts/reg.py", "upsert", "--registry", "{registry}", "--entries", "{entries}"]
+    tests = {"registry": "tests/registry.json", "planned_registry": command}
+    cfg = load_config(make_project({"tests": tests}))
+    assert cfg.tests.planned_registry == tuple(command)
+
+
+ARGV_SHAPE = "non-empty list of non-empty strings"
+BAD_PLANNED_REGISTRY = [
+    ({"registry": "tests/registry.json", "planned_registry": "python reg.py {entries}"}, ARGV_SHAPE),
+    ({"registry": "tests/registry.json", "planned_registry": []}, ARGV_SHAPE),
+    ({"registry": "tests/registry.json", "planned_registry": ["python", ""]}, ARGV_SHAPE),
+    ({"registry": "tests/registry.json", "planned_registry": ["python", "reg.py"]}, r"\{entries\}"),
+    ({"planned_registry": ["python", "reg.py", "{entries}"]}, r"needs tests\.registry"),
+]
+
+
+@pytest.mark.parametrize("bad, message", BAD_PLANNED_REGISTRY)
+def test_invalid_planned_registry_raises(make_project, monkeypatch: pytest.MonkeyPatch, bad: dict,
+                                         message: str) -> None:
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    with pytest.raises(ConfigError, match=message):
+        load_config(make_project({"tests": bad}))
+
+
 def test_activate_and_active(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
     configured = load_config(make_project({"base_branch": "dev"}))
     assert activate(configured) is configured

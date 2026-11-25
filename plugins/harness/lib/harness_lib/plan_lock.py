@@ -38,6 +38,7 @@ from harness_lib import plan_models as pm
 from harness_lib.branch_capture import git
 from harness_lib.freeze_ledger import EntryKind, LedgerEntry, LedgerState
 from harness_lib.plan_enums import RecordScheme, RecordSource
+from harness_lib.plan_registry import ENTRIES_NAME
 
 ROUND = 1
 LEGACY = "legacy: plan {id} keeps an in-file stamp; migrates at its next refreeze"
@@ -136,14 +137,17 @@ def _require_ledger(plan: pm.ActionPlan, then: str) -> None:
 # --- trees and tags ---------------------------------------------------------------------------------------
 
 def freeze_set(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
-    """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/``.
+    """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/`` and the planned
+    registry entries (``<plan folder>/<id>/registry_entries.json``), so a lock guards them too.
 
     ``snapshot`` leaves interpreter bytecode under the tests folder out of the ignored set, and the lock gate
     and ``check``'s drift lines skip the bytecode digests an older entry still holds
     (``freeze_ledger.kept_ignored``).
     """
-    tests = plan_file.parent / plan.plan_id / "tests"
-    return [rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
+    folder = plan_file.parent / plan.plan_id
+    tests, entries = folder / "tests", folder / ENTRIES_NAME
+    return ([rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
+            + ([rel(repo, entries)] if entries.is_file() else []))
 
 
 def snapshot(repo: Path, paths: Sequence[str]) -> Tuple[str, Dict[str, str], Dict[str, str]]:
@@ -436,8 +440,20 @@ def _file_problems(repo: Path, last: LedgerEntry) -> List[str]:
     return problems
 
 
+def _unfrozen_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, held: LedgerEntry) -> List[str]:
+    """Each not-ignored file of the freeze set (a planned test, the entries file) that the held freeze
+    does not record, so a file added after the freeze cannot escape the lock."""
+    try:
+        present, _ = fg.members(repo, freeze_set(repo, plan_file, plan))
+    except fg.FreezeGitError as exc:
+        return [str(exc)]
+    return [f"{path}: not in the last freeze; run plan.py freeze {plan.plan_id} --refreeze first"
+            for path in present if path not in held.files]
+
+
 def lock_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
-    """The ledger part of the lock gate: Frozen with a ledger, the last freeze committed and clean."""
+    """The ledger part of the lock gate: Frozen with a ledger, the last freeze committed and clean, and
+    no file of the freeze set left out of it."""
     _require_ledger(plan, "lock")
     found = entries_of(plan_file, plan)
     if fl.state(found) in _LOCKED:
@@ -446,7 +462,8 @@ def lock_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]
     if last is None or last.history or last.tree is None:
         return [f"plan {plan.plan_id} has no ledger freeze with a tree; run plan.py freeze "
                 f"{plan.plan_id} --refreeze first"]
-    return _file_problems(repo, fl.held(found, EntryKind.freeze) or last)
+    held = fl.held(found, EntryKind.freeze) or last
+    return _file_problems(repo, held) + _unfrozen_problems(repo, plan_file, plan, held)
 
 
 def _held_tree(repo: Path, last: LedgerEntry, src: LedgerEntry) -> str:
