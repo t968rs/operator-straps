@@ -1,0 +1,20 @@
+{
+  "plan_id": "2033",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "10b65a36d2cd03fa8f51492affb26cebedd90983",
+      "commit": "90c1a32f2f38a8966d7f1fb8f2d6fcbf84754e60"
+    }
+  },
+  "evidence": "commit 90c1a32",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-25",
+  "seal": "8796ed2ba9c5c2602ebd3f0d5d974681d9ef112a16dd9f703d7b582312ab2d92"
+}
