@@ -1,0 +1,12 @@
+{
+  "name": "lap-stamp",
+  "version": "0.1.0",
+  "description": "Times each turn from the developer's prompt (the lap button) to the turn's stop and stamps the clock time, lap and time since the last prompt under the reply; laps are kept in a JSONL file",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "homepage": "https://github.com/t968rs/operator-straps/tree/main/plugins/lap-stamp#readme",
+  "repository": "https://github.com/t968rs/operator-straps",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
