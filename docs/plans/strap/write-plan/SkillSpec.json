@@ -1,7 +1,7 @@
 {
   "name": "write-plan",
   "mode": "edit",
-  "base": "8ba820958304e03a915fb52ceceea02b526eee79",
+  "base": "b22ab8635ba66ca470c10efe0d549f2e15cfc148",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -1398,7 +1398,7 @@
     "skill_hash": "dd34866230d418b8ba201f94089a228d978f3286ba00e30bc28cf14cf5d72639",
     "grader": "session",
     "at": "2026-11-25T00:40:08+00:00",
-    "authored": "8935ab0223a0d94700d92dd013e0dbbbd1406c0ff94c616fb12d21f91bfeb0eb"
+    "authored": "be313b8613cb7820eca436a18c8e9f747a3988960ed8efafdddc6b82137c2106"
   },
-  "driver_digest": "7868b653e7f944c5933578bdd175455eb05d06536578a386b375f8ea546a48a2"
+  "driver_digest": "9232beb2c62c0a9bdc2f3c1436c737ec25be371c3f3efe5dfd3a09d768a35711"
 }
