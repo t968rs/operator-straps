@@ -1,5 +1,5 @@
 {
-  "name": "specsheet-lite",
+  "name": "spec-it",
   "mode": "edit",
   "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
   "judge": false,
@@ -7,23 +7,23 @@
   "parts": [
     {
       "kind": "skill_md",
-      "path": "plugins/harness/skills/specsheet-lite/SKILL.md"
+      "path": "plugins/harness/skills/spec-it/SKILL.md"
     },
     {
       "kind": "models",
-      "path": "plugins/harness/lib/harness_lib/specsheet_lite_models.py"
+      "path": "plugins/harness/lib/harness_lib/spec_it_models.py"
     },
     {
       "kind": "api",
-      "path": "plugins/harness/lib/harness_lib/specsheet_lite_api.py"
+      "path": "plugins/harness/lib/harness_lib/spec_it_api.py"
     },
     {
       "kind": "contract_test",
-      "path": "tests/skills/test_specsheet_lite_skill_contract.py"
+      "path": "tests/skills/test_spec_it_skill_contract.py"
     },
     {
       "kind": "driver",
-      "path": "plugins/harness/scripts/specsheet_lite.py"
+      "path": "plugins/harness/scripts/spec_it.py"
     }
   ],
   "behaviors": [
@@ -177,7 +177,7 @@
     },
     {
       "id": "B5",
-      "statement": "The harness rules name harness:specsheet-lite, then harness:write-plan, as the design step ahead of Creating plans, and write-plan's start step names the spec sheet as its spec",
+      "statement": "The harness rules name harness:spec-it, then harness:write-plan, as the design step ahead of Creating plans, and write-plan's start step names the spec sheet as its spec",
       "kind": "mechanical",
       "type": null,
       "rationale": "The routing text is a file fact a contract test reads",
@@ -800,7 +800,7 @@
     "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
     "grader": "session",
     "at": "2026-11-25T19:01:22+00:00",
-    "authored": "a33197dc3af8e5f84d8b10f011a2e5ae1e628a41cd60164c553c0b86787c1831"
+    "authored": "734e8caa7b27819cf5c2edbe56df61e74c10e778e52396716b46eb4f91a2f265"
   },
-  "driver_digest": "3430a4d53bd91ebc8a72ef0123738c0224f6c350e24c046f6b12076ad4bb5ccf"
+  "driver_digest": "c1f16b97b20f178567b68c8db3ebd48beea03f41ffa3d453ab053f401f7b943d"
 }
