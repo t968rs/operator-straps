@@ -107,7 +107,7 @@ Skills outside this plugin apply when installed.
 - **Creating plans:** `harness:write-plan` for multi-task work.
 - **Parallel subagent dispatch:** `harness:parallel2` first (vets the dispatch plan, prevents overlapping
   file sets), then dispatch.
-- **Making claims:** verification before completion; non-negotiable.
+- **Making claims:** `harness:baseless`; non-negotiable.
 - **Reviewing code:** `harness:pr-review` (single session) or `harness:pr-team` (parallel fan-out for PRs
   spanning several path buckets). Execute every phase of the chosen skill before stopping.
 

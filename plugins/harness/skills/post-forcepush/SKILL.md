@@ -183,9 +183,9 @@ schema errors appears, STOP and report).
 
 If validation passes, capture the literal `SCHEMA OK` line as evidence.
 
-## Step 6 — verification-before-completion skill
+## Step 6 — baseless skill
 
-Invoke the `superpowers-lt:verification-before-completion` skill via the
+Invoke the `harness:baseless` skill via the
 Skill tool. Pass it your work summary:
 - Files modified (one: the review JSON).
 - Schema validation result.
@@ -203,7 +203,7 @@ Output, exactly in this order:
 2. List of fields updated (Steps 3 + 4).
 3. List of `[NEEDS USER VERIFICATION]` markers (if any).
 4. Schema validation result (Step 5): `SCHEMA OK` or the verbatim error.
-5. verification-before-completion skill result (Step 6): `VERIFIED`
+5. `harness:baseless` result (Step 6): `VERIFIED`
    or the verbatim flagged issue.
 6. One-sentence verdict: "Ready for user review" OR "BLOCKED: <reason>".
 
@@ -230,7 +230,7 @@ The most reliable identity signal across a rebase is the files-touched signature
 | Agent overwrites JSON's old SHAs before reading them | Step 2 explicitly captures OLD before Step 3 mutates |
 | Trusting bootstrap-hint mapping blindly | Agent verifies every hint via `git show --stat` |
 | Treating squashed commits as MAPPED 1:1 | Three-mode resolution (`MAPPED` / `SQUASHED` / `NEEDS USER VERIFICATION`) is mandatory |
-| Skipping `superpowers-lt:verification-before-completion` | Step 6 is non-negotiable |
+| Skipping `harness:baseless` | Step 6 is non-negotiable |
 
 ## Worked Example
 
