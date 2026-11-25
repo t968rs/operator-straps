@@ -1,0 +1,66 @@
+{
+  "plan_id": "2031",
+  "feature": "lap stamp turn timer",
+  "branch_lineage": "main-->0010-timestamps-timestamps",
+  "primary_documents": {
+    "plan": "docs/plans/2031_lap_stamp_turn_timer_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-25-lap-stamp-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "task-6 spec review",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-6"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-6 files",
+        "indicated": "the marketplace entry, ci.yml, README.md, CLAUDE.md, the release notes and the mod README change; no icon file"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "a repo contract the plan's file set did not cover",
+        "why_free_form": "tests/contract/test_plugin_icons.py requires .claude-plugin/icon.png (square PNG, 512-2048 px) for every local marketplace plugin; adding the lap-stamp marketplace entry without one fails it"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-6 also adds plugins/lap-stamp/.claude-plugin/icon.png, a 512x512 stopwatch drawn with the standard library"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the icon the marketplace entry breaks an existing contract test"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "task-7 lane",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7",
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 action and files",
+        "indicated": "session.append with door delivery or queue during a main turn calls delivered; register.ts is wired only in TASK-9"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "the plan misread the host door set, and a host load rule the plan did not know blocks the item's own tests",
+        "why_free_form": "The host typings (SessionAppendDoor) define door queue as the message-queue record raised when a prompt is queued at Enter, not a delivery into the running turn; treating it as one restarts the running turn's lap on every mid-turn press, against D2. Separately, the host refuses every $ call a hook makes unless the plugin's scanned hooks module (register.ts) calls it, so lap.test.ts cannot pass while register.ts is the TASK-1 stub."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Only door delivery (main loop, lap-press origin) calls delivered; a queue row leaves the press pending for the next turn. TASK-7 also wires register.ts to registerLap; TASK-9 adds registerRender to it."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "D2 anchors a mid-turn press to the running turn only on a reported delivery; the register.ts wiring is an execution blocker for the item's planned tests"
+      },
+      "date": "2026-11-25"
+    }
+  ]
+}
