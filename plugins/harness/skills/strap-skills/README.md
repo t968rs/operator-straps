@@ -34,7 +34,7 @@ measure the skill as it would run in real use.
 | "refreeze c-msg after the driver change" | Greens rerun and graded on the new content hash, then `freeze --refreeze`; the `freeze [done]` line ends with `was <old hash>`. `check` printing `stale:` is the usual cue. |
 | "reopen write-plan for the new retry rules" | A new round on a frozen or locked spec: the earlier freeze stays in `rounds`, `base` moves, and the new behaviors start again at classification. Commit the frozen round first. |
 | "relink strap-skills" after a rebase or squash | `base` re-pointed at its rewritten commit when `check` shows it `off-history:`. |
-| "rename add-bookmark to bookmark" | After the skill folder moves (`git mv`, frontmatter `name` set), `strap.py rename` moves the frozen spec and its ledger to the new name and re-points the parts; greens and a refreeze follow. |
+| "rename add-bookmark to bookmark" | `strap.py rename` moves the skill folder, its name-made parts and the test files its planned nodes cite (`--dry-run` lists them first), swaps the old name inside them, reports it in other tracked files, and moves the frozen spec and its ledger to the new name; `--from <old-name>` finishes an earlier rename; greens and a refreeze follow. |
 | "lock strap-skills" | The spec becomes final: no draws, runs, grades or refreeze until a reopen. |
 
 What stays the developer's:
