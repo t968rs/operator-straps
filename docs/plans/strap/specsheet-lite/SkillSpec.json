@@ -484,7 +484,7 @@
           "role": "session"
         }
       ],
-      "state": "drawn",
+      "state": "green",
       "dropped_reason": null
     }
   ],
@@ -648,13 +648,44 @@
       "scenario": "SC-9",
       "arm": "baseline",
       "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
-      "reply": "",
-      "reply_sha256": "",
-      "diff": [],
-      "checks": [],
-      "recorded": false,
+      "reply": "Plan 2032 (\"a-w refuses a dirty target\") is written and passes `check` and `red`. I did not freeze it. I took the brief as decided and asked no questions. I went straight to the plan with no design sheet first.\n\nWhere it lives: `docs/plans/2032_a_w_refuses_a_dirty_target_ActionPlan.json`, with a PIP page and planned tests under `docs/plans/2032/tests/`. `check` reports 3 items, 11 anchors and 0 open decisions. `red` shows all 6 planned tests failing with AssertionError, as planned.\n\n**What the plan does**\n- **TASK-1 (the feature):**\n  - `merge.snapshot` already reads the dirty set. The plan splits that out into `dirty_paths(target)`, which runs `git --no-optional-locks status ... --untracked-files=no`.\n  - The `--no-optional-locks` flag matters. A plain `git status` can rewrite `.git/index`, and the brief says the refusal must not change the target's index. A planned test compares the index file byte for byte.\n  - `refuse_dirty_target` lists every dirty path, suggests `git -C <target> stash` and names `--force`.\n  - `start()` calls it right after `target_checkout`, before any other git write.\n  - `--force` is a new `store_true` flag.\n  - Untracked files never count as dirty and are never touched. A test covers that.\n- **TASK-2:** existing a-w tests that leave the target dirty and expect success now pass `--force`. The first two are `test_a_dirty_path_the_move_does_not_write_stays_as_it_was` and `test_a_staged_dirty_edit_in_the_target_stays_staged`. Tests that assert an overlap refusal keep working.\n- **TASK-3:** docs. It updates `SKILL.md`, the module docstring, the README row, the docs test, the plugin version and the CHANGELOG.\n\n**Reversal:** this undoes the rule from plan 1018, which let unrelated dirty edits in the target ride along. The `SKILL.md` text and `test_the_readme_a_w_row_drops_the_clean_target_requirement` say the opposite today, and TASK-3 rewrites them.\n\n**Gaps I filled (decisions D2 to D4, please confirm):**\n- **D2:** `--force` skips only the new refusal. A move that writes onto a path the target holds dirty still refuses, unless an `--auto-resolve` rule covers it. I read \"the refusal\" in the brief that way. If you meant `--force` to overwrite dirty paths too, D2 flips and a backup becomes necessary.\n- **D3:** the refusal applies to both staged and `--committed` mode, on a plain run only. `--continue` and `--abort` keep the existing race check.\n- **D4:** the `--no-optional-locks` choice above.\n\nI did not freeze because those assumptions should have your OK first. The next step is `plan.py freeze 2032`. I haven't implemented any of it. The Friday deadline is not recorded in the plan's context.\n\nBefore this record, `git status` on the main repository showed no changes. All writes went to the working tree.\n",
+      "reply_sha256": "663298bfea3cd3ceca7bb128e98298b0e86efddb695ef1f303c886cc09926050",
+      "diff": [
+        "docs/plans/2032_a_w_refuses_a_dirty_target_ActionPlan.json",
+        "docs/plans/2032_a_w_refuses_a_dirty_target_PIP.html"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches next: /harness:write-plan: observed False"
+        }
+      ],
+      "recorded": true,
       "tree": "plan-red-a0cbf8c",
       "start": "a0cbf8c00cdf059d869a1a232a0bb9bcbdade35e"
+    },
+    {
+      "id": "R-10",
+      "behavior": "B10",
+      "scenario": "SC-9",
+      "arm": "green",
+      "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
+      "reply": "Status: sheet written and checked [ok] | 21 lines | 4 goals | 2 avoid | no questions asked.\n\nThe brief had no open fork, so I skipped the clarification round. The Friday deadline is a reason for a shorter round, not a longer one. I did not read the a-w code, and I did not add design, options or file lists. Those belong to the plan.\n\nSheet: docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md\n\nGoals, one outcome per line:\n- a-w refuses a target branch that has uncommitted changes.\n- The refusal prints the dirty paths.\n- The refusal suggests git stash.\n- With --force, a-w skips the refusal.\n\nAvoid, one line per \"never\":\n- A refusal never changes the target branch's index.\n- Untracked files are never touched.\n\nI split the stash suggestion and the dirty-path listing into separate goals, since a plan item could half-pass a combined line. The \"never\" clauses became their own Avoid lines.\n\nThe brief carried no implementation notes, so the next command has no `-- <guidance>` tail.\n\nnext: /harness:write-plan \"a-w refuses a dirty target branch\" --spec docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md\n",
+      "reply_sha256": "d876c98393312d35b065bbefe9ba7cfe6fd748254834a63a136a96660db5cb6e",
+      "diff": [
+        "docs/SPECS/2026-11-25-a-w-refuses-a-dirty-target-branch.md"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches next: /harness:write-plan: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-2d7b5b9",
+      "start": "2d7b5b912634e285f5568882b412045db1dc5c14"
     }
   ],
   "grades": [
@@ -727,6 +758,20 @@
       "value": "present",
       "quote": "1. Format: what should the export be (CSV, JSON, markdown file, other)?",
       "grader": "session"
+    },
+    {
+      "run": "R-9",
+      "item": 0,
+      "value": "absent",
+      "quote": "I went straight to the plan with no design sheet first.",
+      "grader": "session"
+    },
+    {
+      "run": "R-10",
+      "item": 0,
+      "value": "absent",
+      "quote": "I split the stash suggestion and the dirty-path listing into separate goals, since a plan item could half-pass a combined line.",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -751,6 +796,11 @@
       ]
     }
   ],
-  "frozen": null,
-  "driver_digest": "a9a893b493a7e78a72a8924894f1e17373b1671eb15bac5fc8a0acc2b829f397"
+  "frozen": {
+    "skill_hash": "26a25f3ee48a600d64e1f0056fa415694894993d210f812fd8fa11c9de45a912",
+    "grader": "session",
+    "at": "2026-11-25T19:01:22+00:00",
+    "authored": "a33197dc3af8e5f84d8b10f011a2e5ae1e628a41cd60164c553c0b86787c1831"
+  },
+  "driver_digest": "3430a4d53bd91ebc8a72ef0123738c0224f6c350e24c046f6b12076ad4bb5ccf"
 }
