@@ -94,6 +94,13 @@
       "keywords": ["mod", "parallel", "worktrees", "subagents"]
     },
     {
+      "name": "lap-stamp",
+      "source": "./plugins/lap-stamp",
+      "description": "Times each turn from the developer's prompt to the turn's stop and stamps the clock time, lap and time since the last prompt under the reply; laps are kept in a git-ignored JSONL file",
+      "category": "productivity",
+      "keywords": ["mod", "timer"]
+    },
+    {
       "name": "superpowers-lt",
       "source": {
         "source": "github",
