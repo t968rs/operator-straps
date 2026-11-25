@@ -43,7 +43,8 @@ class Artifacts:
 class TestsConfig:
     """Where the project's tests live, how a path is recognized as one, and which registered tests
     pr-review fixers defer (measured slower than ``fixer_test_seconds`` in ``timings``, or flagged) or never
-    run side by side (``serial_flags``)."""
+    run side by side (``serial_flags``), and the argv that upserts a plan's planned registry entries
+    (``planned_registry``, None when unset)."""
 
     roots: Tuple[str, ...]
     file_pattern: str
@@ -53,6 +54,7 @@ class TestsConfig:
     fixer_test_seconds: Optional[float]
     defer_flags: Tuple[str, ...]
     serial_flags: Tuple[str, ...]
+    planned_registry: Optional[Tuple[str, ...]] = None
 
     def is_test_path(self, path: str) -> bool:
         """Return True for a repo-relative POSIX path under a test root or matching ``file_pattern``."""
@@ -628,7 +630,24 @@ def _tests(t: Dict[str, Any]) -> TestsConfig:
     ceiling = t["fixer_test_seconds"]
     return TestsConfig(tuple(t["roots"]), t["file_pattern"], t["registry"], tuple(t["registry_names"]),
                        t["timings"], None if ceiling is None else float(ceiling), tuple(t["defer_flags"]),
-                       tuple(t["serial_flags"]))
+                       tuple(t["serial_flags"]), _planned_registry(t["planned_registry"], t["registry"]))
+
+
+def _planned_registry(command: Any, registry: Optional[str]) -> Optional[Tuple[str, ...]]:
+    """``tests.planned_registry`` as an argv tuple, or None when unset.
+
+    ConfigError unless it is a non-empty list of non-empty strings holding ``{entries}``, with
+    ``tests.registry`` set: the command writes into that registry.
+    """
+    if command is None:
+        return None
+    if not _is_argv(command):
+        raise ConfigError("tests.planned_registry: must be a non-empty list of non-empty strings")
+    if not any("{entries}" in arg for arg in command):
+        raise ConfigError("tests.planned_registry: no {entries} placeholder for the entries file")
+    if not registry:
+        raise ConfigError("tests.planned_registry: needs tests.registry, the registry it writes into")
+    return tuple(command)
 
 
 def _review(r: Dict[str, Any]) -> ReviewConfig:

@@ -38,6 +38,7 @@ from harness_lib import plan_models as pm
 from harness_lib.branch_capture import git
 from harness_lib.freeze_ledger import EntryKind, LedgerEntry, LedgerState
 from harness_lib.plan_enums import RecordScheme, RecordSource
+from harness_lib.plan_registry import ENTRIES_NAME
 
 ROUND = 1
 LEGACY = "legacy: plan {id} keeps an in-file stamp; migrates at its next refreeze"
@@ -136,14 +137,17 @@ def _require_ledger(plan: pm.ActionPlan, then: str) -> None:
 # --- trees and tags ---------------------------------------------------------------------------------------
 
 def freeze_set(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> List[str]:
-    """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/``.
+    """The plan JSON and, when present, everything under ``<plan folder>/<id>/tests/`` and the planned
+    registry entries (``<plan folder>/<id>/registry_entries.json``), so a lock guards them too.
 
     ``snapshot`` leaves interpreter bytecode under the tests folder out of the ignored set, and the lock gate
     and ``check``'s drift lines skip the bytecode digests an older entry still holds
     (``freeze_ledger.kept_ignored``).
     """
-    tests = plan_file.parent / plan.plan_id / "tests"
-    return [rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
+    folder = plan_file.parent / plan.plan_id
+    tests, entries = folder / "tests", folder / ENTRIES_NAME
+    return ([rel(repo, plan_file)] + ([rel(repo, tests)] if tests.is_dir() else [])
+            + ([rel(repo, entries)] if entries.is_file() else []))
 
 
 def snapshot(repo: Path, paths: Sequence[str]) -> Tuple[str, Dict[str, str], Dict[str, str]]:

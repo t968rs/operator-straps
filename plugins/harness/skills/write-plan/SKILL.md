@@ -82,13 +82,18 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    | `items[].id`, `files`, `dependencies`, `model` | the item id (2-4 uppercase letters, a dash, digits and dots: `TASK-3`), its file set, order and implementing model | dependencies known ids, no cycle; model `haiku`, `sonnet` or `opus` |
 
 4. **Write the planned tests** as real files under `<plans dir>/<plan_id>/tests/<repo-relative path>`, the full
-   content each test file will have. No test code goes in the JSON or the PIP.
+   content each test file will have. No test code goes in the JSON or the PIP. When the project sets
+   `tests.planned_registry` (its pytest refuses an unregistered test file), write each new test file's
+   registry entry, as the registry stores it, to `<plans dir>/<plan_id>/registry_entries.json`
+   (`{"plan": "<plan_id>", "entries": [...]}`, one entry per `file`), never into the live registry: an entry
+   for a file that does not exist yet breaks every consumer of the registry until the item lands it.
 5. **`PLAN check <id>`** until it passes. A stale anchor means the plan's picture of the code is wrong: reread
    the code and fix the plan, not the anchor's text alone. `open:` lines are decisions still to settle. The
    warning lines that follow a passing check (`untagged:`, `off-history:`, `drift:`, `legacy:`; see step 8) do
    not fail it.
 6. **`PLAN red <id>`** until it passes. It lays the planned test files over a throwaway worktree at HEAD and
-   runs each open item's nodes: each must fail with its planned exception. A test that passes proves nothing
+   runs each open item's nodes: each must fail with its planned exception; the planned registry entries go
+   into that worktree's registry only. A test that passes proves nothing
    about the item; one that fails for another reason (a typo, a wrong import path) tests the wrong thing.
    Fix the test file or the planned `red`, never the check.
 7. **Settle open decisions with the developer.** No decision defaults to an answer; an open one blocks freeze.
@@ -131,7 +136,8 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    holds the tree, the blob of each tree member, the sha256 of each gitignored file, the digest, the record
    scheme and the base. The plan JSON drops its `frozen` field and carries the static `ledger` field (the
    stem, `plan/<id>-<slug>`); the plan's state is read from the highest entry. The tree is built from the
-   not-gitignored files of the plan JSON and everything under `<plan_id>/tests/`; planned tests are usually
+   not-gitignored files of the plan JSON, everything under `<plan_id>/tests/` and
+   `<plan_id>/registry_entries.json`; planned tests are usually
    gitignored, so the entry records them by sha256 only, and `receipts/`, `live.js` and `DesignEvolution.json`
    are never in a tree. Entry files are never rewritten and never edited. A plan frozen before the ledger
    keeps its in-file stamp: `check` prints `legacy: plan <id> keeps an in-file stamp; migrates at its next
@@ -298,7 +304,9 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
     problem, and `record` on the item it names repairs the record problem. A lane id is the item id in lower
     case with dots as hyphens (`TASK-3.2` is `task-3-2`), and its task is the item title alone: append the
     item's action, anchors, tests and commands to each lane prompt, with the instruction to copy each planned
-    test file from `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first. On a receipts
+    test file from `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first, then, when the
+    plan has `registry_entries.json`, to run `PLAN register <id> <ITEM>` and each `guard:` file it prints
+    (a `pending entry:` line from `record` names an entry still to register). On a receipts
     plan take that text from `plan_api.load(<id>).items` (the page is HTML, drawn for a browser, not for a
     prompt); on a plan frozen before receipts the markdown PIP carries the same fields under the item's
     heading. Each prompt also says that a lane that needs a deviation (a file outside its `files`, a test

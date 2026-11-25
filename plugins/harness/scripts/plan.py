@@ -36,7 +36,11 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     ``harness_lib.plan_record``: every item ``record`` moved carries a sealed record that matches the item
     (on a plan frozen without a record scheme, the legacy reference shape still passes). On a receipts plan
     the item states come from its record book (``plan_receipts.book_for``): its receipt problems replace
-    the record rules, and the DesignEvolution catalog's ``schema:`` lines and plan problems are added. No
+    the record rules, and the DesignEvolution catalog's ``schema:`` lines and plan problems are added. The
+    planned registry entries (``<plans>/<id>/registry_entries.json``, ``harness_lib.plan_registry``) are
+    linted: a file that does not hold ``{"plan": <id>, "entries": [...]}`` with one ``file`` per entry, an
+    entry whose file is neither planned nor present, and, when ``tests.planned_registry`` is set, a planned
+    test file with no entry that the live registry does not list either. No
     git command judges an item: the recorded tree and commit are never compared with HEAD, so an amend, a
     squash, a rebase or a staged attach leaves the plan valid. Open decisions are listed as ``open:``
     lines, not problems. Then it reconciles and warns, never failing on a warning: ``tag:``/``push:``,
@@ -54,15 +58,18 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     Copy the planned test files onto a throwaway detached worktree at HEAD, run every open item's test
     nodes there (one pytest process per node) and require each to fail with its planned exception. The
     runs import the worktree's code: it is the working directory, and a src-layout ``src/`` goes first on
-    ``PYTHONPATH``, ahead of an editable install of the checkout. The worktree is removed afterwards; the
-    checkout is never written. A receipts plan's open items are read from its receipts.
+    ``PYTHONPATH``, ahead of an editable install of the checkout. With ``tests.planned_registry`` set, the
+    planned entries of the overlaid files the worktree's registry lacks are upserted there first, through
+    that command, so a project whose pytest refuses an unregistered file needs no entry at HEAD. The worktree
+    is removed afterwards; the checkout is never written. A receipts plan's open items are read from its
+    receipts.
 
 ``freeze PLAN [--refreeze]``
     Refuse on a Locked or armed plan (unlock first), while ``check`` has a problem, a decision is open, an
     open item has neither a test nor a command, an item is not PENDING on a first freeze, or ``red`` has a
     problem; otherwise set ``ledger`` (before the digest, which covers it), save the plan JSON, build the
-    tree of the plan JSON and everything under ``<plan folder>/<id>/tests/`` (gitignored files go to the
-    entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree, its files, the date, the base
+    tree of the plan JSON, everything under ``<plan folder>/<id>/tests/`` and ``<id>/registry_entries.json``
+    (gitignored files go to the entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree, its files, the date, the base
     commit, the record scheme and the digest; then tag the tree ``freeze/<stem>/r1.<k>-tree`` and the base.
     A plan with an in-file stamp and no ledger migrates on ``--refreeze``: a history ``freeze`` entry (no
     tree, dated from the stamp) comes first and ``frozen`` leaves the JSON. The status line names the entry
@@ -104,7 +111,9 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     commit of that tree on HEAD, which no ref keeps. Either marks the item COMPLETE with a sealed record of
     the tree, the commit when there was one, and the passed nodes. An item without test nodes is recorded on
     the tree alone: its commands are not run. The other flags record IN_PROGRESS, BLOCKED or
-    CLOSED_NO_ACTION, sealed the same way. The PIP is rendered again.
+    CLOSED_NO_ACTION, sealed the same way. The PIP is rendered again. With ``tests.planned_registry``
+    set, a ``pending entry: <file> (plan.py register <id> <ITEM>)`` line follows for each planned entry of
+    the item's test files that the live registry lacks; it never fails the record.
 
     On a receipts plan the dependency gate reads the receipts, and the outcome goes to a sealed receipt
     (``<plans>/<id>/receipts/<ITEM>.json``) and ``live.js``; the plan JSON and its PIP are never written. A
@@ -120,6 +129,14 @@ Inside a strap scenario tree no tag is created and nothing is reconciled; ``arch
     A COMPLETE record then tags the tested code locally: ``receipt/<stem>/<ITEM>-commit`` on the ``--sha``
     commit, ``receipt/<stem>/<ITEM>-tree`` on the ``--staged`` tree; a re-record on other code adds ``.2``,
     ``.3``. Their ``tag:`` lines print, but no ``push:`` line names a receipt tag.
+
+``register PLAN ITEM``
+    Write the item's planned registry entries into the live ``tests.registry`` through
+    ``tests.planned_registry`` (refused when it is unset), once the item copied its planned tests to their
+    repo paths: a file not registered and not yet in the checkout is refused, since its entry would name a
+    missing file. A file the registry already lists is skipped. Prints ``register [done] | <ITEM> | <n>
+    entries written``, a ``registered:`` or ``skipped:`` line per file, and, when it wrote one, a
+    ``guard: <path>`` line per ``review.registry_guards`` file to run. Writes no plan file.
 
 ``lock PLAN``
     Run only on the developer's explicit ask. Refuses unless the plan is Frozen with a ledger (an in-file
@@ -220,6 +237,7 @@ from harness_lib import plan_models as pm  # noqa: E402
 from harness_lib import plan_receipts as prt  # noqa: E402
 from harness_lib import plan_record as prc  # noqa: E402
 from harness_lib import plan_red as pr  # noqa: E402
+from harness_lib import plan_registry as preg  # noqa: E402
 from harness_lib import plan_render_html as prh  # noqa: E402
 from harness_lib import working_refs as wr  # noqa: E402
 from harness_lib.branch_capture import (CaptureError, current_branch, git, git_out,  # noqa: E402
@@ -381,8 +399,15 @@ def claims_rev(plan: pm.ActionPlan) -> Optional[str]:
 def claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     """The lint, anchor and sweep checks of a plan that loaded: loading already validated its shape."""
     rev = claims_rev(plan)
-    return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo, rev)
+    return (pc.lint_problems(plan, repo, plans_dir()) + registry_problems(repo, plan)
+            + pc.anchor_problems(plan, repo, rev)
             + pc.sweep_problems(plan, repo, history_paths(active()), rev))
+
+
+def registry_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
+    """The planned registry entries' problems (``plan_registry.lint_problems``) against the live registry."""
+    tests = active().tests
+    return preg.lint_problems(plan, plans_dir(), repo, tests.registry, tests.planned_registry is not None)
 
 
 def all_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, book: prt.RecordBook) -> List[str]:
@@ -433,8 +458,22 @@ def red_results(repo: Path, plan: pm.ActionPlan) -> List[pr.RedResult]:
         return []
     head = git_out(repo, "rev-parse", "HEAD").strip()
     with pr.throwaway_tree(repo, head, active().resolve_worktree_root()) as tree:
-        pr.overlay(pr.test_sources(plan, plans_dir()), tree)
+        written = pr.overlay(pr.test_sources(plan, plans_dir()), tree)
+        apply_planned_entries(plan, written, tree)
         return pr.run_red(plan, tree, sys.executable)
+
+
+def apply_planned_entries(plan: pm.ActionPlan, files: Sequence[str], tree: Path) -> None:
+    """Upsert the planned entries of the overlaid ``files`` into the tree's registry, through
+    ``tests.planned_registry``; a file the tree's registry already lists keeps its row."""
+    tests = active().tests
+    planned = preg.load_entries(plans_dir(), plan.plan_id)
+    if tests.planned_registry is None or tests.registry is None or planned is None:
+        return
+    registry = tree / tests.registry
+    entries = preg.pending(planned, files, registry)
+    if entries:
+        preg.upsert(tests.planned_registry, registry, entries, tree)
 
 
 def red_problems(repo: Path, plan: pm.ActionPlan) -> Tuple[List[pr.RedResult], List[str]]:
@@ -934,7 +973,25 @@ def record_tags(repo: Path, plan_file: Path, plan: pm.ActionPlan, item_id: str,
     lines = []
     if isinstance(outcome, pm.Completed):
         lines = pk.receipt_lines(repo, plan_file, plan, item_id, outcome.provenance)
-    return lines + pk.reconcile_lines(repo, plan_file, plan)
+    return lines + pending_entry_lines(repo, plan, item_id) + pk.reconcile_lines(repo, plan_file, plan)
+
+
+def pending_entry_lines(repo: Path, plan: pm.ActionPlan, item_id: str) -> List[str]:
+    """One ``pending entry:`` line per planned entry of the item's test files the live registry lacks.
+
+    Empty without ``tests.planned_registry``; an entries file that does not load is ``check``'s to report,
+    since the record is already written.
+    """
+    tests = active().tests
+    if tests.planned_registry is None or tests.registry is None:
+        return []
+    try:
+        planned = preg.load_entries(plans_dir(), plan.plan_id)
+    except pd.PlanError:
+        return []
+    files = [plx.node_file(t.node) for t in pd.item_by_id(plan, item_id).tests]
+    found = preg.pending(planned, files, repo / tests.registry) if planned else []
+    return [f"pending entry: {e['file']} (plan.py register {plan.plan_id} {item_id})" for e in found]
 
 
 def cmd_record(repo: Path, args: argparse.Namespace) -> int:
@@ -971,6 +1028,52 @@ def cmd_lanes(repo: Path, args: argparse.Namespace) -> int:
     tagged = pk.reconcile_lines(repo, plan_file, plan)
     if tagged:  # stdout carries the lanes JSON alone
         sys.stderr.write("\n".join(tagged) + "\n")
+    return 0
+
+
+# --- register ---------------------------------------------------------------------------------------------
+
+def register_files(plan: pm.ActionPlan,
+                   item: pm.ActionItem) -> Tuple[Optional[preg.PlannedEntries], List[str]]:
+    """The plan's planned entries and the item's test files that have one, in node order."""
+    planned = preg.load_entries(plans_dir(), plan.plan_id)
+    entered = set(planned.files()) if planned else set()
+    files = dict.fromkeys(plx.node_file(t.node) for t in item.tests)
+    return planned, [f for f in files if f in entered]
+
+
+def uncopied(repo: Path, plan: pm.ActionPlan, files: Sequence[str], known: Sequence[str]) -> List[str]:
+    """A refusal line per unregistered file not yet copied to its repo path: its entry would orphan."""
+    folder = plans_dir() / plan.plan_id / "tests"
+    return [f"{f} is not in the tree yet; copy it from {rel(repo, folder / f)} first"
+            for f in files if f not in known and not (repo / f).is_file()]
+
+
+def register_lines(item_id: str, written: Sequence[str], skipped: Sequence[str]) -> List[str]:
+    count = f"{len(written)} entr{'y' if len(written) == 1 else 'ies'} written"
+    guards = [f"guard: {g}" for g in active().review.registry_guards] if written else []
+    return [f"register [done] | {item_id} | {count}", *(f"registered: {f}" for f in written),
+            *(f"skipped: {f} (already registered)" for f in skipped), *guards]
+
+
+def cmd_register(repo: Path, args: argparse.Namespace) -> int:
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    tests = active().tests
+    if tests.planned_registry is None or tests.registry is None:
+        raise pd.PlanError(["tests.planned_registry is not set: no command writes the planned entries"])
+    item = pd.item_by_id(plan, args.item)
+    planned, files = register_files(plan, item)
+    registry = repo / tests.registry
+    known = sorted(preg.registered(registry))
+    problems = uncopied(repo, plan, files, known)
+    if problems:
+        raise pd.PlanError(problems)
+    entries = preg.pending(planned, files, registry) if planned else []
+    if entries:
+        preg.upsert(tests.planned_registry, registry, entries, repo)
+    written = [str(e["file"]) for e in entries]
+    print("\n".join(register_lines(item.id, written, [f for f in files if f not in written])))
     return 0
 
 
@@ -1128,6 +1231,10 @@ def _parser() -> argparse.ArgumentParser:
     lanes.add_argument("plan", help="Plan id or plan file.")
     lanes.add_argument("--target", help="Target branch of the lanes (default: the checked-out branch).")
     _record_parser(sub)
+    register = sub.add_parser("register", help="Write an item's planned registry entries into the live "
+                                               "registry (tests.planned_registry).")
+    register.add_argument("plan", help="Plan id or plan file.")
+    register.add_argument("item", help="Item id, such as TASK-1.")
     verify = sub.add_parser("verify", help="Rerun the COMPLETE items' tests at HEAD; writes no file.")
     verify.add_argument("plan", help="Plan id or plan file.")
     verify.add_argument("--staged", action="store_true", help="Run them on the staged index instead.")
@@ -1156,7 +1263,8 @@ def _lock_parsers(sub: Any) -> None:
 
 COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "render": cmd_render, "red": cmd_red, "freeze": cmd_freeze,
-    "lanes": cmd_lanes, "record": cmd_record, "verify": cmd_verify, "lock": cmd_lock, "unlock": cmd_unlock,
+    "lanes": cmd_lanes, "record": cmd_record, "register": cmd_register, "verify": cmd_verify,
+    "lock": cmd_lock, "unlock": cmd_unlock,
     "relink": cmd_relink, "archive": cmd_archive,
 }
 
