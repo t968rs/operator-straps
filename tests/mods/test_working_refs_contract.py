@@ -17,8 +17,8 @@ the missing mirror whether or not ``harness_lib.working_refs`` exists yet.
 Plan 2030 (issue #343) colors each plan number by its share of done items: ``progress.ts`` reads each item's
 ``<plans>/<id>/receipts/<ITEM>.json`` (``RECEIPTS_DIR``) and counts an outcome kind whose model implies a
 status in ``plan_enums.DONE`` (``DONE_OUTCOMES``), else the item's own status (``DONE_STATUSES``). It reads
-the item and receipt fields inline as ``item.<field>``, ``receipt.<field>`` and ``outcome.<field>``; one test
-pins each against its model.
+the item and receipt fields inline as ``item.<field>``, ``receipt.<field>`` and ``outcome.<field>``, and
+``plans.ts`` reads each raw plan item inline as ``item.<field>``; one test pins each against its model.
 """
 from __future__ import annotations
 
@@ -189,3 +189,12 @@ def test_fields_read_by_progress_ts_match_the_models(repo_root: Path) -> None:
     assert item <= set(ActionItem.model_fields), sorted(item - set(ActionItem.model_fields))
     assert receipt <= set(Receipt.model_fields), sorted(receipt - set(Receipt.model_fields))
     assert outcome <= outcome_fields, sorted(outcome - outcome_fields)
+
+
+def test_item_fields_read_by_plans_ts_match_action_item(repo_root: Path) -> None:
+    path = repo_root / _PLANS_TS_REL
+    assert path.is_file(), f"missing {_PLANS_TS_REL}"
+    names = set(re.findall(r"\bitem\.(\w+)", path.read_text(encoding="utf-8")))
+    from harness_lib.plan_models import ActionItem
+    assert names, f"no ActionItem field read found in {_PLANS_TS_REL}"
+    assert names <= set(ActionItem.model_fields), sorted(names - set(ActionItem.model_fields))

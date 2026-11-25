@@ -61,10 +61,10 @@ export const refsOf = (v: unknown): Refs =>
 export const itemsOf = (v: unknown): PlanItem[] => {
   if (!Array.isArray(v)) return []
   const seen = new Set<string>()
-  return v.filter(isObject).flatMap(e => {
-    if (typeof e.id !== 'string' || e.id === '' || seen.has(e.id)) return []
-    seen.add(e.id)
-    return [{ id: e.id, status: typeof e.status === 'string' ? e.status : null }]
+  return v.filter(isObject).flatMap(item => {
+    if (typeof item.id !== 'string' || item.id === '' || seen.has(item.id)) return []
+    seen.add(item.id)
+    return [{ id: item.id, status: typeof item.status === 'string' ? item.status : null }]
   })
 }
 
