@@ -103,7 +103,8 @@ Skills outside this plugin apply when installed.
 
 - **Writing code:** `harness:tdd-strapped`; write or adapt the test, watch it fail, then fix.
 - **Troubleshooting:** `harness:strap-debugging`; finish the diagnosis before proposing a fix.
-- **Creating plans:** a written plan for any multi-task work.
+- **Designing:** `harness:specsheet-lite`, then `harness:write-plan`; no design doc.
+- **Creating plans:** `harness:write-plan` for multi-task work.
 - **Parallel subagent dispatch:** `harness:parallel2` first (vets the dispatch plan, prevents overlapping
   file sets), then dispatch.
 - **Making claims:** verification before completion; non-negotiable.

@@ -21,7 +21,8 @@
     "commit_messages": "docs/_commit_messages",
     "scratch": "docs/_scratch/pr_review",
     "research": "docs/RESEARCH",
-    "planning_prefixes": ["docs/superpowers/", "docs/PLANS/"]
+    "specs": "docs/SPECS",
+    "planning_prefixes": ["docs/superpowers/", "docs/PLANS/", "docs/SPECS/"]
   },
   "tests": {
     "roots": ["tests/"],

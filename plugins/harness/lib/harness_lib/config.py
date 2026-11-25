@@ -36,6 +36,7 @@ class Artifacts:
     commit_messages: str
     scratch: str
     research: str
+    specs: str
     planning_prefixes: Tuple[str, ...]
 
 
@@ -623,7 +624,7 @@ def _todo(t: Dict[str, Any], root: Path, explicit: Dict[str, Any]) -> TodoConfig
 
 def _artifacts(a: Dict[str, Any]) -> Artifacts:
     return Artifacts(a["reviews"], a["plans"], a["summaries"], a["commit_messages"], a["scratch"],
-                     a["research"], tuple(a["planning_prefixes"]))
+                     a["research"], a["specs"], tuple(a["planning_prefixes"]))
 
 
 def _tests(t: Dict[str, Any]) -> TestsConfig:

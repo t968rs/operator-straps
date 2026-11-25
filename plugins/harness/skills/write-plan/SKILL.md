@@ -34,7 +34,9 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
 
 ## Steps
 
-1. **Start.** `PLAN new "<title>" --spec <spec path> [--refs '<todo ids and issues>']`. `--refs` (for example
+1. **Start.** `PLAN new "<title>" --spec <spec path> [--refs '<todo ids and issues>']`. The spec is the sheet
+   `harness:specsheet-lite` wrote (its `next:` line names it) or another agreed design; a sheet carries no ids,
+   so the TODO ids and issues the work answers go in `--refs`. `--refs` (for example
    `--refs 'todo-k69m,#301'`, or `--refs 'todo-k69m' '#301'`) stores the TODO ids and issue numbers the plan
    works on as the plan's `refs`. Quote each token: a bare `#` starts a shell comment, so an unquoted `#301`
    is dropped. When no token is an issue number, the issues come from the named ids' `gh_issues` in the TODO
