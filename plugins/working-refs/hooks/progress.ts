@@ -1,7 +1,7 @@
 import { cleanPath } from './config'
 import { DONE_OUTCOMES, DONE_STATUSES, RECEIPTS_DIR } from './mirror'
 import type { PlanItem } from './plans'
-import type { Listed } from './watch'
+import type { Listed } from '../types'
 
 /**
  * A plan's done share and the color it takes on the line (plan 2030, issue #343). An item is done when its

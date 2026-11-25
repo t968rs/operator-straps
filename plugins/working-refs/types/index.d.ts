@@ -60,6 +60,9 @@ export type OtherSegment = {
   issues: number[]
 }
 
+/** What a folder listing gives of one entry. */
+export type Listed = { name: string; kind: string; size: number; mtimeMs: number }
+
 /** One TODO id as the line labels it (plan 2028 D1): `todo-x7ty stop_gates`, or the id alone. */
 export type TodoLabel = {
   /** The canonical TODO id. */

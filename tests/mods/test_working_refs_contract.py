@@ -14,11 +14,12 @@ the other. ``plans.ts`` reads the ActionPlan fields inline as ``data.<field>``; 
 ``ActionPlan.model_fields``. Each test reads the mirror before importing the harness module, so it fails on
 the missing mirror whether or not ``harness_lib.working_refs`` exists yet.
 
-Plan 2030 (issue #343) colors each plan number by its share of done items: ``progress.ts`` reads each item's
-``<plans>/<id>/receipts/<ITEM>.json`` (``RECEIPTS_DIR``) and counts an outcome kind whose model implies a
-status in ``plan_enums.DONE`` (``DONE_OUTCOMES``), else the item's own status (``DONE_STATUSES``). It reads
-the item and receipt fields inline as ``item.<field>``, ``receipt.<field>`` and ``outcome.<field>``, and
-``plans.ts`` reads each raw plan item inline as ``item.<field>``; one test pins each against its model.
+Plan 2030 (issue #343) colors each plan number by its share of done items: the scan (``watch.ts``) lists and
+reads each item's ``<plans>/<id>/receipts/<ITEM>.json`` (``RECEIPTS_DIR``), and ``progress.ts``, which stays
+pure, counts an outcome kind whose model implies a status in ``plan_enums.DONE`` (``DONE_OUTCOMES``), else the
+item's own status (``DONE_STATUSES``). ``progress.ts`` reads the item and receipt fields inline as
+``item.<field>``, ``receipt.<field>`` and ``outcome.<field>``, and ``plans.ts`` reads each raw plan item
+inline as ``item.<field>``; one test pins each against its model.
 """
 from __future__ import annotations
 
@@ -156,13 +157,17 @@ def test_receipts_dir_matches_plan_receipts(repo_root: Path) -> None:
     assert receipts == RECEIPTS_DIR
 
 
+def _outcome_models() -> tuple:
+    from harness_lib.plan_models import Outcome
+    return get_args(get_args(Outcome)[0])
+
+
 def test_done_outcome_kinds_match_the_outcome_models(repo_root: Path) -> None:
     mirror = _mirror(repo_root)
     kinds = ts_string_array(mirror, "DONE_OUTCOMES")
     from harness_lib.plan_enums import DONE
-    from harness_lib.plan_models import Blocked, Closed, Completed, Started
     done = {get_args(m.model_fields["kind"].annotation)[0].value
-            for m in (Completed, Started, Blocked, Closed) if m.status in DONE}
+            for m in _outcome_models() if m.status in DONE}
     assert len(kinds) == len(set(kinds))
     assert set(kinds) == done
 
@@ -179,12 +184,12 @@ def test_fields_read_by_progress_ts_match_the_models(repo_root: Path) -> None:
     path = repo_root / _PROGRESS_TS_REL
     assert path.is_file(), f"missing {_PROGRESS_TS_REL}"
     source = path.read_text(encoding="utf-8")
-    from harness_lib.plan_models import ActionItem, Blocked, Closed, Completed, Started
+    from harness_lib.plan_models import ActionItem
     from harness_lib.receipt_models import Receipt
     item = set(re.findall(r"\bitem\.(\w+)", source))
     receipt = set(re.findall(r"\breceipt\.(\w+)", source))
     outcome = set(re.findall(r"\boutcome\.(\w+)", source))
-    outcome_fields = set().union(*(m.model_fields for m in (Completed, Started, Blocked, Closed)))
+    outcome_fields = set().union(*(m.model_fields for m in _outcome_models()))
     assert item and receipt and outcome, "progress.ts reads no item, receipt or outcome field inline"
     assert item <= set(ActionItem.model_fields), sorted(item - set(ActionItem.model_fields))
     assert receipt <= set(Receipt.model_fields), sorted(receipt - set(Receipt.model_fields))

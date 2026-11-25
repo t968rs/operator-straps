@@ -765,7 +765,7 @@ describe('plan progress from receipts (plan 2030)', () => {
   const ITEMS = ['TASK-1', 'TASK-2', 'TASK-3', 'TASK-4'].map(id => ({ id, status: 'PENDING' }))
   const receipt = (item: string, kind = 'complete', named = item): string =>
     JSON.stringify({ plan_id: '2025', item: named, outcome: { kind } })
-  /** The plan number as line.txt draws it: inside its link, in ramp color `color`. */
+  /** The plan number as line.txt draws it in ramp color `color`, without its link wrapper. */
   const drawn = (color: number): string => `\x1b[38;5;${color}m2025\x1b[39m`
   const WRITE = { tool: 'Write', file_path: `${RECEIPTS}/TASK-2.json`, content: '{}' }
 

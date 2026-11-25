@@ -1,7 +1,9 @@
 import type { EngineInterface, On } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
-import type { WorkingLine } from '../types'
+import type { Listed, WorkingLine } from '../types'
+
+export type { Listed } from '../types'
 import {
   catalogFileOf, issuesCacheFileOf, lineFileOf, lineJsonFileOf, openIssuesFileOf, overridesFileOf, plansFolderOf,
   readConfig, type WorkingRefsConfig,
@@ -87,9 +89,6 @@ export const rootCandidates = (rawEnv: string | undefined, rawCwd: string | unde
 
 /** `<dir>/.claude/harness.json`, without a doubled slash at `/`. */
 export const configPathOf = (dir: string): string => `${dir.endsWith('/') ? dir : `${dir}/`}${HARNESS_CONFIG_REL}`
-
-/** What a folder listing gives of one entry. */
-export type Listed = { name: string; kind: string; size: number; mtimeMs: number }
 
 const isPlanFile = (name: string): boolean => name.endsWith(PLAN_SUFFIX)
 const isWatchedName = (name: string): boolean => isPlanFile(name) || name.endsWith(PIP_HTML_SUFFIX)
