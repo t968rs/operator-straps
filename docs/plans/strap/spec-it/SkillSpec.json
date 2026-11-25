@@ -35,27 +35,27 @@
       "rationale": "Field shape and banned patterns are decided by model validation; a fixture-safe sheet is a file fact",
       "tests": [
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_a_sheet_needs_a_title_a_request_and_a_goal",
+          "node": "tests/lib/test_spec_it_models.py::test_a_sheet_needs_a_title_a_request_and_a_goal",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_avoid_lines_are_optional",
+          "node": "tests/lib/test_spec_it_models.py::test_avoid_lines_are_optional",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_ids_issue_numbers_and_urls_are_refused",
+          "node": "tests/lib/test_spec_it_models.py::test_ids_issue_numbers_and_urls_are_refused",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_code_fences_are_refused",
+          "node": "tests/lib/test_spec_it_models.py::test_code_fences_are_refused",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_a_statement_is_one_line_within_the_char_cap",
+          "node": "tests/lib/test_spec_it_models.py::test_a_statement_is_one_line_within_the_char_cap",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_a_statement_appears_once",
+          "node": "tests/lib/test_spec_it_models.py::test_a_statement_appears_once",
           "red": "ImportError"
         }
       ],
@@ -71,27 +71,27 @@
       "rationale": "Layout, round trip and the line cap are computed from the rendered text",
       "tests": [
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_render_lays_out_the_sections_in_order",
+          "node": "tests/lib/test_spec_it_models.py::test_render_lays_out_the_sections_in_order",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_render_omits_an_empty_avoid_section",
+          "node": "tests/lib/test_spec_it_models.py::test_render_omits_an_empty_avoid_section",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_parse_reverses_render",
+          "node": "tests/lib/test_spec_it_models.py::test_parse_reverses_render",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_parse_refuses_a_page_out_of_shape",
+          "node": "tests/lib/test_spec_it_models.py::test_parse_refuses_a_page_out_of_shape",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_the_rendered_page_holds_at_most_max_lines",
+          "node": "tests/lib/test_spec_it_models.py::test_the_rendered_page_holds_at_most_max_lines",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_models.py::test_parse_refuses_a_page_over_max_lines",
+          "node": "tests/lib/test_spec_it_models.py::test_parse_refuses_a_page_over_max_lines",
           "red": "ImportError"
         }
       ],
@@ -107,35 +107,35 @@
       "rationale": "Config resolution and file placement are file state a pytest node proves",
       "tests": [
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_specs_defaults_to_docs_specs_and_is_a_planning_prefix",
+          "node": "tests/lib/test_spec_it_api.py::test_specs_defaults_to_docs_specs_and_is_a_planning_prefix",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_specs_takes_the_project_value",
+          "node": "tests/lib/test_spec_it_api.py::test_specs_takes_the_project_value",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_specs_refuses_an_absolute_path",
+          "node": "tests/lib/test_spec_it_api.py::test_specs_refuses_an_absolute_path",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_a_sheet_lands_under_specs_by_date_and_slug",
+          "node": "tests/lib/test_spec_it_api.py::test_a_sheet_lands_under_specs_by_date_and_slug",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_new_sheet_dates_today_by_default",
+          "node": "tests/lib/test_spec_it_api.py::test_new_sheet_dates_today_by_default",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_write_then_load_round_trips",
+          "node": "tests/lib/test_spec_it_api.py::test_write_then_load_round_trips",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_write_refuses_an_existing_sheet_unless_replacing",
+          "node": "tests/lib/test_spec_it_api.py::test_write_refuses_an_existing_sheet_unless_replacing",
           "red": "ImportError"
         },
         {
-          "node": "tests/lib/test_specsheet_lite_api.py::test_next_step_names_write_plan_with_the_sheet_as_spec",
+          "node": "tests/lib/test_spec_it_api.py::test_next_step_names_write_plan_with_the_sheet_as_spec",
           "red": "ImportError"
         }
       ],
@@ -151,23 +151,23 @@
       "rationale": "The driver's output and exit code are observable by a subprocess test",
       "tests": [
         {
-          "node": "tests/scripts/test_specsheet_lite.py::test_check_passes_a_clean_sheet_and_names_write_plan",
+          "node": "tests/scripts/test_spec_it.py::test_check_passes_a_clean_sheet_and_names_write_plan",
           "red": "ImportError"
         },
         {
-          "node": "tests/scripts/test_specsheet_lite.py::test_check_warns_past_the_target_length",
+          "node": "tests/scripts/test_spec_it.py::test_check_warns_past_the_target_length",
           "red": "ImportError"
         },
         {
-          "node": "tests/scripts/test_specsheet_lite.py::test_check_refuses_a_sheet_with_an_id",
+          "node": "tests/scripts/test_spec_it.py::test_check_refuses_a_sheet_with_an_id",
           "red": "ImportError"
         },
         {
-          "node": "tests/scripts/test_specsheet_lite.py::test_check_refuses_a_page_out_of_shape",
+          "node": "tests/scripts/test_spec_it.py::test_check_refuses_a_page_out_of_shape",
           "red": "ImportError"
         },
         {
-          "node": "tests/scripts/test_specsheet_lite.py::test_check_refuses_a_missing_sheet",
+          "node": "tests/scripts/test_spec_it.py::test_check_refuses_a_missing_sheet",
           "red": "ImportError"
         }
       ],
@@ -183,15 +183,15 @@
       "rationale": "The routing text is a file fact a contract test reads",
       "tests": [
         {
-          "node": "tests/contract/test_specsheet_lite_wiring.py::test_rules_name_the_spec_sheet_as_the_design_step",
+          "node": "tests/contract/test_spec_it_wiring.py::test_rules_name_the_spec_sheet_as_the_design_step",
           "red": "AssertionError"
         },
         {
-          "node": "tests/contract/test_specsheet_lite_wiring.py::test_the_design_step_comes_before_creating_plans",
+          "node": "tests/contract/test_spec_it_wiring.py::test_the_design_step_comes_before_creating_plans",
           "red": "AssertionError"
         },
         {
-          "node": "tests/contract/test_specsheet_lite_wiring.py::test_write_plan_start_names_the_spec_sheet",
+          "node": "tests/contract/test_spec_it_wiring.py::test_write_plan_start_names_the_spec_sheet",
           "red": "AssertionError"
         }
       ],
@@ -1651,7 +1651,7 @@
     "skill_hash": "64168e9f3c4ca2a340a8956d5e31fb673d8b4666cf556e924aff0f3ddb784fbb",
     "grader": "session",
     "at": "2026-11-25T21:38:03+00:00",
-    "authored": "25739cb99996cdaff695139127961f2330874e5481528392276f90b4f33a8746"
+    "authored": "d6fa6bd3eb1bfb601ea2784d164c25577abbf99cfd350334ab263fa85c25d71b"
   },
-  "driver_digest": "fc7fd9fd2d5c5f0111dc1302105d5b899024a4b6417f8d602aadb0d91c24bced"
+  "driver_digest": "6684eb3157e05c33f105c43388fac96d7b956a800c413586e84b3505d669d34b"
 }
