@@ -404,7 +404,8 @@ async function readHide($: Dollar, w: Watch): Promise<HideState> {
 }
 
 const viewOf = (h: HideState, maxChars: number): LineView => ({
-  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), keywords: h.keywords, maxChars,
+  retired: h.retired, isClosed: n => isClosed(n, h.list, h.cache), keywords: h.keywords, progress: new Map(),
+  maxChars,
 })
 
 const maxAgeOf = (w: Watch): number => w.cfg.ghMaxAgeHours * HOUR_MS

@@ -317,9 +317,9 @@ describe('qualifying plans', () => {
     addPlan(w, '2025_banner_refs', planJson())
     await start($, w)
     expect(w.line?.text).toBe('plan 2025 · todo-k69m (301)')
-    expect(w.line?.plans).toEqual([{ id: '2025', page: `${PLANS}/2025_banner_refs_PIP.html` }])
+    expect(w.line?.plans).toEqual([{ id: '2025', page: `${PLANS}/2025_banner_refs_PIP.html`, done: 0, total: 0 }])
     expect(lineText(w)).toBe(statusText(w.line ?? null))
-    expect(lineText(w)).toContain('\x1b]8;;file:///repo/docs/PLANS/2025_banner_refs_PIP.html\x1b\\2025')
+    expect(lineText(w)).toContain('\x1b]8;;file:///repo/docs/PLANS/2025_banner_refs_PIP.html\x1b\\\x1b[38;5;51m2025\x1b[39m')
     // rule 1 holds, so no merge base is resolved
     expect(mergeBaseRuns(w)).toEqual([])
   })
@@ -527,7 +527,9 @@ describe('line.txt', () => {
     addPlan(w, '2025_banner_refs', planJson(), NOW - 60_000, `${WT}/docs/PLANS`)
     await start($, w)
     expect(w.line?.text).toBe('plan 2025 · todo-k69m (301)')
-    expect(w.line?.plans).toEqual([{ id: '2025', page: `${WT}/docs/PLANS/2025_banner_refs_PIP.html` }])
+    expect(w.line?.plans).toEqual([
+      { id: '2025', page: `${WT}/docs/PLANS/2025_banner_refs_PIP.html`, done: 0, total: 0 },
+    ])
     expect(w.files.get(keyOf(WT_LINE_FILE))?.text).toBe(statusText(w.line ?? null))
     expect(lineText(w)).toBeUndefined()
   })

@@ -6,12 +6,16 @@ export type Refs = {
   issues: number[]
 }
 
-/** One qualifying plan's link: its number and its page. */
+/** One qualifying plan's link: its number, its page and its done share (plan 2030). */
 export type PlanLink = {
   /** The 4-digit `plan_id`. */
   id: string
   /** The absolute path of the plan's `<prefix>_PIP.html`, forward slashes. */
   page: string
+  /** How many of the plan's items are done (plan 2030). */
+  done: number
+  /** The plan's item count. */
+  total: number
 }
 
 /** The working line of one branch, as the mod renders it. */
