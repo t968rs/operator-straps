@@ -60,6 +60,34 @@
         "free_form": "the item fields the mod reads from a plan file get the same contract pin as the ActionPlan fields"
       },
       "date": "2026-11-24"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "PR 348 review (M3, M6, M8), option B chosen by the developer",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-1",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided: Done counting; plan TASK-3 action 1",
+        "indicated": "a plan with a receipts/ folder counts its items by receipt outcome kind and a plan without the folder by item status; every qualifying plan's receipts folder is listed"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the spec's per-plan done rule and TASK-3's listing scope differ from what plan V6 and the code do",
+        "why_free_form": "progress.ts falls back to an item's own status for each item without a usable receipt, where harness status_view counts a receipts-scheme plan's item with no receipt as PENDING; the scan reads receipts for any qualifying plan whatever its frozen.records scheme, where harness book_for reads them only for receipts plans; a plan id shared by two plan files is never listed, since a receipt's owner file is unknown"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "V6 stands: the receipt-else-status fallback applies per item, receipts count for any qualifying plan, and a plan id shared by two plan files counts its item statuses; progress.ts, mirror.ts and the README state the divergence from status_view and book_for. Receipts plans keep their items PENDING, so the divergence shows only on hand-made states"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "matching the harness rule would change V6 and need a refreeze for a case receipts plans do not produce; documenting the divergence keeps the plan as written"
+      },
+      "date": "2026-11-24"
     }
   ]
 }
