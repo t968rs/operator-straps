@@ -1,7 +1,7 @@
 {
   "name": "specsheet-lite",
   "mode": "edit",
-  "base": "a0cbf8c00cdf059d869a1a232a0bb9bcbdade35e",
+  "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [

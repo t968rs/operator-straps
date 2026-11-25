@@ -1,0 +1,20 @@
+{
+  "kind": "relink",
+  "round": 2,
+  "seq": 2,
+  "tree": null,
+  "files": {},
+  "ignored": {},
+  "at": "2026-11-25T18:53:12+00:00",
+  "base": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": "a0cbf8c00cdf059d869a1a232a0bb9bcbdade35e",
+  "new_base": "2d7b5b912634e285f5568882b412045db1dc5c14",
+  "match": "ref",
+  "from_name": null
+}
