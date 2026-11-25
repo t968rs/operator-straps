@@ -149,8 +149,10 @@ for an empty line.
   open list are compared by mtime alone, so a rewrite that keeps the mtime is missed.
 - Archive tags and `origin/<base>` are read from the local copies, never fetched: a plan archived on another
   clone shows until its tag is fetched, and a stale `origin/<base>` can miss the merge-base rule.
-- The harness key defaults are copied into `hooks/mirror.ts`; the contract test keeps them aligned in this
-  repository, but an installed working-refs and harness at different versions can disagree.
+- The harness key defaults, the receipts folder name (`RECEIPTS_DIR`) and the done outcome kinds and statuses
+  (`DONE_OUTCOMES`, `DONE_STATUSES`) are copied into `hooks/mirror.ts`; the contract test keeps them aligned in
+  this repository, but an installed working-refs and harness at different versions can disagree on the receipts
+  layout or on which outcomes and statuses count as done.
 
 ## Checks
 
