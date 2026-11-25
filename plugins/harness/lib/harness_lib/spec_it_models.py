@@ -1,11 +1,12 @@
 """spec-it: the spec sheet the ``spec-it`` skill writes, its rules and its markdown page.
 
 A sheet is a title, a date, the developer's request and the goal and avoid lines a plan must meet. It names
-no plan, skill-spec or TODO id, no issue number, no URL and no code, so it stands on its own in a scenario
-fixture and syncs with nothing. Each goal and avoid line is one statement on one line, so a plan item or a
-skill behavior can take it whole. The page is the only stored form: ``render_sheet`` writes it,
-``parse_sheet`` reads it back and refuses any other layout. This module imports no other ``harness_lib``
-module.
+no plan, skill-spec or TODO id, no issue number, no URL and no code fence, so it stands on its own in a
+scenario fixture and syncs with nothing. The model refuses only those patterns (``BANNED``); keeping
+function, field and module names out of the prose is the skill's rule, not the model's. Each goal and avoid
+line is one statement on one line, so a plan item or a skill behavior can take it whole. The page is the
+only stored form: ``render_sheet`` writes it, ``parse_sheet`` reads it back and refuses any other layout.
+This module imports no other ``harness_lib`` module.
 """
 from __future__ import annotations
 
@@ -51,9 +52,14 @@ def _clean(text: str, field: str) -> str:
     return text.strip()
 
 
+def _one_line(text: str) -> bool:
+    """True when ``text`` holds no break ``str.splitlines`` honors, the split ``parse_sheet`` reads with."""
+    return text.splitlines() in ([], [text])
+
+
 def _statement(text: str) -> str:
     """One goal or avoid line: a single non-blank line of at most ``MAX_STATEMENT_CHARS``."""
-    if "\n" in text or "\r" in text:
+    if not _one_line(text):
         raise ValueError("a goal or avoid line is one line")
     text = _clean(text, "a goal or avoid line")
     if not text:
@@ -77,7 +83,7 @@ class SpecSheet(BaseModel):
     @field_validator("title", mode="before")
     @classmethod
     def _title(cls, value: str) -> str:
-        if "\n" in str(value):
+        if not _one_line(str(value)):
             raise ValueError("the title is one line")
         return _clean(str(value), "the title")
 
@@ -89,6 +95,8 @@ class SpecSheet(BaseModel):
     @field_validator("goals", "avoid", mode="before")
     @classmethod
     def _statements(cls, value: List[str]) -> List[str]:
+        if isinstance(value, str):
+            raise ValueError("goals and avoid are lists of lines, not one string")
         return [_statement(str(item)) for item in value]
 
     @model_validator(mode="after")
@@ -99,16 +107,25 @@ class SpecSheet(BaseModel):
             if key in seen:
                 raise ValueError(f"the line {line!r} appears twice")
             seen[key] = line
+        headed = [line for line in _wrapped(self.request) if line.startswith("## ")]
+        if headed:
+            raise ValueError(f"the request wraps to a line opening with '## ' ({headed[0][:40]!r}), "
+                             "which reads as a section heading; reword the request")
         count = len(render_sheet(self).splitlines())
         if count > MAX_LINES:
             raise ValueError(f"the page runs {count} lines, over the {MAX_LINES}-line cap")
         return self
 
 
+def _wrapped(request: str) -> List[str]:
+    """The request's page lines, wrapped at ``WRAP`` columns."""
+    return textwrap.wrap(request, WRAP, break_long_words=False, break_on_hyphens=False)
+
+
 def render_sheet(sheet: SpecSheet) -> str:
     """The sheet's markdown page: title, date, then Request, Goals and (when any) Avoid."""
     lines = [f"# {sheet.title}", "", f"{DATE_PREFIX}{sheet.day.isoformat()}", "", f"## {REQUEST}", ""]
-    lines += textwrap.wrap(sheet.request, WRAP, break_long_words=False, break_on_hyphens=False)
+    lines += _wrapped(sheet.request)
     sections = [(GOALS, sheet.goals)] + ([(AVOID, sheet.avoid)] if sheet.avoid else [])
     for head, items in sections:
         lines += ["", f"## {head}", ""] + [f"- {item}" for item in items]
@@ -145,13 +162,12 @@ def parse_sheet(text: str) -> SpecSheet:
         raise ValueError(f"the page runs {len(lines)} lines, over the {MAX_LINES}-line cap")
     if not lines or not lines[0].startswith("# "):
         raise ValueError("the page does not open with a '# ' title")
-    dated = [line for line in lines if line.startswith(DATE_PREFIX)]
-    if len(dated) != 1:
-        raise ValueError(f"the page needs one '{DATE_PREFIX}YYYY-MM-DD' line")
+    if len(lines) < 3 or not lines[2].startswith(DATE_PREFIX):
+        raise ValueError(f"the page needs its '{DATE_PREFIX}YYYY-MM-DD' line third, under the title")
     found = _sections(lines)
     if list(found)[:2] != [REQUEST, GOALS]:
         raise ValueError(f"the page needs the sections {REQUEST} and {GOALS}, in that order")
-    sheet = SpecSheet(title=lines[0][2:], day=date.fromisoformat(dated[0][len(DATE_PREFIX):].strip()),
+    sheet = SpecSheet(title=lines[0][2:], day=date.fromisoformat(lines[2][len(DATE_PREFIX):].strip()),
                       request=" ".join(found[REQUEST]), goals=_items(GOALS, found[GOALS]),
                       avoid=_items(AVOID, found.get(AVOID, [])))
     if render_sheet(sheet) != text:

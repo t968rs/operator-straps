@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from harness_lib.config import activate, load_config
+from harness_lib.config import ConfigError, activate, load_config
 from harness_lib.spec_it_api import (
     SheetExists,
     load_sheet,
@@ -40,8 +40,9 @@ def test_specs_takes_the_project_value(make_project) -> None:
 
 
 def test_specs_refuses_an_absolute_path(make_project) -> None:
-    with pytest.raises(Exception):
-        load_config(make_project(config={"artifacts": {"specs": "/abs/specs"}}))
+    root = make_project(config={"artifacts": {"specs": "/abs/specs"}})
+    with pytest.raises(ConfigError, match="specs"):
+        load_config(root)
 
 
 def test_a_sheet_lands_under_specs_by_date_and_slug(make_project) -> None:
@@ -51,8 +52,9 @@ def test_a_sheet_lands_under_specs_by_date_and_slug(make_project) -> None:
 
 
 def test_new_sheet_dates_today_by_default() -> None:
+    before = date.today()
     sheet = new_sheet(title="T", request="R.", goals=["G holds."])
-    assert sheet.day == date.today()
+    assert before <= sheet.day <= date.today()
 
 
 def test_write_then_load_round_trips(make_project) -> None:
@@ -78,4 +80,17 @@ def test_next_step_names_write_plan_with_the_sheet_as_spec(make_project) -> None
     _activate(root)
     path = write_sheet(_sheet())
     assert next_step(_sheet(), path) == (
-        '/harness:write-plan "Spec Sheet: lite!" --spec docs/SPECS/2026-11-25-spec-sheet-lite.md')
+        '/harness:write-plan "Spec Sheet: lite!" --spec "docs/SPECS/2026-11-25-spec-sheet-lite.md"')
+
+
+def test_next_step_quotes_a_spec_path_holding_a_space(make_project) -> None:
+    _activate(make_project(config={"artifacts": {"specs": "docs/my specs"}}))
+    path = write_sheet(_sheet())
+    assert next_step(_sheet(), path).endswith(' --spec "docs/my specs/2026-11-25-spec-sheet-lite.md"')
+
+
+def test_next_step_swaps_a_double_quote_in_the_title(make_project) -> None:
+    _activate(make_project(config={}))
+    sheet = _sheet().model_copy(update={"title": 'The "lite" sheet'})
+    path = write_sheet(sheet)
+    assert next_step(sheet, path).startswith('/harness:write-plan "The \'lite\' sheet" --spec ')

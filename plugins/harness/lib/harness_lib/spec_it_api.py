@@ -1,12 +1,14 @@
 """spec-it: where a spec sheet lands, and writing it, reading it back and naming the next step.
 
-A sheet is written to ``<artifacts.specs>/<YYYY-MM-DD>-<slug>.md``, the slug drawn from its title. The page
+A sheet is written to ``<artifacts.specs>/<YYYY-MM-DD>-<slug>.md``, the slug drawn from its title (a ``-2``,
+``-3`` suffix when another title on that day already holds the slug). The page
 ``render_sheet`` produces is the whole stored form; ``load_sheet`` parses it and refuses a page out of shape.
 ``__all__`` is the surface ``skill_api.py`` binds for an api heredoc. Requires an activated config.
 """
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date
 from pathlib import Path
 from typing import Optional, Sequence
@@ -30,20 +32,40 @@ class SheetExists(ValueError):
 
 def new_sheet(title: str, request: str, goals: Sequence[str], avoid: Sequence[str] = (),
               day: Optional[date] = None) -> SpecSheet:
-    """A validated sheet, dated ``day`` (today when None)."""
-    return SpecSheet(title=title, request=request, goals=list(goals), avoid=list(avoid),
-                     day=day or date.today())
+    """A validated sheet, dated ``day`` (today when None); ``goals`` and ``avoid`` reach the model as given,
+    so a single string is refused rather than split into characters."""
+    return SpecSheet(title=title, request=request, goals=goals, avoid=avoid, day=day or date.today())
 
 
 def slug(title: str) -> str:
-    """Lower-case words of ``title`` joined by hyphens; ``sheet`` when none remain."""
-    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "sheet"
+    """Lower-case ASCII words of ``title`` (accents folded) joined by hyphens; ``sheet`` when none remain."""
+    folded = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", folded.lower()).strip("-") or "sheet"
+
+
+def _title_at(path: Path) -> Optional[str]:
+    """The ``# `` title on the first line of the page at ``path``; None when absent or unreadable."""
+    try:
+        with path.open(encoding="utf-8") as handle:
+            first = handle.readline().rstrip("\r\n")
+    except (OSError, UnicodeDecodeError):
+        return None
+    return first[2:] if first.startswith("# ") else None
 
 
 def sheet_path(sheet: SpecSheet) -> Path:
-    """``<artifacts.specs>/<YYYY-MM-DD>-<slug>.md`` for ``sheet``, under the project root."""
+    """``<artifacts.specs>/<YYYY-MM-DD>-<slug>.md`` for ``sheet``, under the project root.
+
+    When a page there holds another title (two titles sharing a slug), ``-2``, ``-3`` and on follow the slug
+    until a free path or the page with this title turns up, so distinct sheets never share a file.
+    """
     cfg = active()
-    return cfg.path(cfg.artifacts.specs) / f"{sheet.day.isoformat()}-{slug(sheet.title)}.md"
+    folder, stem = cfg.path(cfg.artifacts.specs), f"{sheet.day.isoformat()}-{slug(sheet.title)}"
+    path, n = folder / f"{stem}.md", 1
+    while path.exists() and _title_at(path) != sheet.title:
+        n += 1
+        path = folder / f"{stem}-{n}.md"
+    return path
 
 
 def write_sheet(sheet: SpecSheet, replace: bool = False) -> Path:
@@ -75,6 +97,7 @@ def _rel(path: Path) -> str:
 
 
 def next_step(sheet: SpecSheet, path: Path) -> str:
-    """The write-plan invocation that takes ``sheet`` at ``path`` as its spec."""
+    """The write-plan invocation that takes ``sheet`` at ``path`` as its spec; the title and the path are both
+    quoted, so a folder name holding a space stays one argument."""
     title = sheet.title.replace('"', "'")
-    return f'/harness:write-plan "{title}" --spec {_rel(path)}'
+    return f'/harness:write-plan "{title}" --spec "{_rel(path)}"'

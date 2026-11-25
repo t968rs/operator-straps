@@ -4,8 +4,8 @@
 ``check <path>``
     Parse the sheet at ``<path>`` (relative to the project root, or absolute) and print
     ``check [ok] | <path> | <n> lines | <g> goals | <a> avoid``, a ``warn:`` line when the page runs past the
-    250-line target, and ``next: /harness:write-plan "<title>" --spec <path>``. A missing sheet, a page out of
-    the layout ``render_sheet`` writes, a page over 500 lines and a banned field (an id, an issue number, a
+    250-line target, and ``next: /harness:write-plan "<title>" --spec "<path>"``. A missing sheet, a page out
+    of the layout ``render_sheet`` writes, a page over 500 lines and a banned field (an id, an issue number, a
     URL, a code fence) are refused: one ``problem:`` line each on stderr, exit 1.
 
 ``--repo`` (default: the working directory) names a directory inside the project.

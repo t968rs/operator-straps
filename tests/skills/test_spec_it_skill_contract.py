@@ -6,7 +6,7 @@ defines it.
 """
 from __future__ import annotations
 
-from datetime import date
+import re
 
 from harness_lib import spec_it_api, spec_it_models
 from harness_lib.project import plugin_root
@@ -45,10 +45,5 @@ def test_api_exports_existing_names() -> None:
 
 def test_the_skill_states_the_line_caps_the_model_enforces() -> None:
     body = skill_parts(SKILL)[1]
-    assert str(spec_it_models.MAX_LINES) in body
-    assert str(spec_it_models.TARGET_LINES) in body
-
-
-def test_sheet_round_trips_through_its_page() -> None:
-    sheet = spec_it_models.SpecSheet(title="T", day=date(2026, 1, 2), request="R.", goals=["G holds."])
-    assert spec_it_models.parse_sheet(spec_it_models.render_sheet(sheet)) == sheet
+    assert re.search(rf"\bat {spec_it_models.MAX_LINES}\s+lines\b", body)
+    assert re.search(rf"\b{spec_it_models.TARGET_LINES}-line\s+target\b", body)

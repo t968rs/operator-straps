@@ -1,8 +1,9 @@
 """The spec sheet model: a title, the request, goal and avoid lines, rendered to markdown and parsed back.
 
-A sheet carries no plan or skill-spec ids, no issue numbers, no URLs and no code, so it stands on its own in a
-scenario fixture; every goal and avoid line is one statement on one line; the rendered page holds at most
-``MAX_LINES`` lines.
+A sheet carries no plan or skill-spec ids, no issue numbers, no URLs and no code fences, so it stands on its
+own in a scenario fixture; every goal and avoid line is one statement on one line; the rendered page holds at
+most ``MAX_LINES`` lines. Inline code and function or field names pass the model: keeping them out is the
+skill's outcomes rule, not a model check.
 """
 from __future__ import annotations
 
@@ -101,14 +102,52 @@ def test_parse_refuses_a_page_out_of_shape() -> None:
         parse_sheet(text)
 
 
+@pytest.mark.parametrize("request_text", [
+    "Date: shown in the banner.",
+    "word " * 22 + "Date: tomorrow is fine.",
+    "x " * 54 + "Date: 2026-01-01 later",
+])
+def test_parse_reverses_a_request_that_wraps_a_date_line(request_text: str) -> None:
+    sheet = _sheet(request=request_text)
+    assert any(line.startswith("Date: ") for line in render_sheet(sheet).splitlines()[3:])
+    assert parse_sheet(render_sheet(sheet)) == sheet
+
+
+@pytest.mark.parametrize("request_text", ["## Goals first then more", "x " * 55 + "## Avoid later"])
+def test_a_request_that_wraps_a_heading_is_refused(request_text: str) -> None:
+    with pytest.raises(ValidationError, match="the request"):
+        _sheet(request=request_text)
+
+
+@pytest.mark.parametrize("brk", ["\r", "\x0c", "\x1c", " "])
+def test_a_title_or_statement_with_any_line_break_is_refused(brk: str) -> None:
+    with pytest.raises(ValidationError, match="the title is one line"):
+        _sheet(title=f"Spec{brk}sheet")
+    with pytest.raises(ValidationError, match="one line"):
+        _sheet(goals=[f"First.{brk}Second."])
+
+
+def _goals(count: int) -> list:
+    return [f"Goal number {n} holds." for n in range(count)]
+
+
+def _goals_for(lines: int) -> list:
+    """Goal lines that bring the default sheet's page to exactly ``lines`` lines."""
+    base = len(render_sheet(_sheet(goals=_goals(1))).splitlines())
+    return _goals(lines - base + 1)
+
+
 def test_the_rendered_page_holds_at_most_max_lines() -> None:
     assert TARGET_LINES == 250 and MAX_LINES == 500
-    many = [f"Goal number {n} holds." for n in range(MAX_LINES)]
-    with pytest.raises(ValidationError):
-        _sheet(goals=many)
+    assert len(render_sheet(_sheet(goals=_goals_for(MAX_LINES))).splitlines()) == MAX_LINES
+    with pytest.raises(ValidationError, match="line cap"):
+        _sheet(goals=_goals_for(MAX_LINES + 1))
 
 
 def test_parse_refuses_a_page_over_max_lines() -> None:
-    text = render_sheet(_sheet()) + "\n" * MAX_LINES
-    with pytest.raises(ValueError):
+    fields = {**_sheet().model_dump(), "goals": _goals_for(MAX_LINES + 1)}
+    text = render_sheet(SpecSheet.model_construct(**fields))
+    assert len(text.splitlines()) == MAX_LINES + 1
+    with pytest.raises(ValueError, match="line cap") as caught:
         parse_sheet(text)
+    assert not isinstance(caught.value, ValidationError)
