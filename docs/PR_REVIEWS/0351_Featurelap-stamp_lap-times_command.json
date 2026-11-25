@@ -1,0 +1,420 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 351,
+  "pr_title": "Feature(lap-stamp): `/lap-times` command",
+  "branch": "0010-timestamps-timestamps",
+  "base_branch": "main",
+  "base_sha": "3e618fcb1c14091e34b2c2a0fd7bee33ea401ab5",
+  "head_sha": "beee688cfb4cce084d512baeb20ff5f5fccbd46f",
+  "review_date": "2026-11-25",
+  "verdict": "READY TO MERGE - 12 of 12 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 444,
+    "deletions": 9,
+    "files_changed": 10,
+    "source": {
+      "additions": 444,
+      "deletions": 9,
+      "files_changed": 10
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0351/pr351_20261125T170325Z/findings/tests.json",
+    "docs/_scratch/pr_review/0351/pr351_20261125T170325Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0351/pr351_20261125T170325Z/findings/docs.json",
+    "docs/_scratch/pr_review/0351/pr351_20261125T170325Z/findings/roast.json",
+    "docs/_scratch/pr_review/0351/pr351_20261125T170325Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "table.test.ts exercises the pure table with real buildRow rows at a fixed UTC offset, so expected clock strings hold on any host; no stubs of the code under test.",
+    "The wide-terminal test pins every line of the output exactly, including padding, right-alignment colons in the delimiter and the wake/since-prompt cells.",
+    "parseLapArgs tests cover order independence, case folding, the default limit and the duplicate/zero/negative/fractional refusals.",
+    "lap.test.ts drives /lap-times end to end through the engine with a fake host (command.register recorder, in-memory laps file), including idempotent registration across two session starts and pass-through outside a harness project.",
+    "The 'all' test seeds a foreign session row in the laps file and proves the default view filters it while 'all' shows it.",
+    "parseRows now delegates to parseAllRows, so the session and all-sessions readers share one lenient line parser instead of a duplicate.",
+    "table.ts is pure and its width arithmetic is exact: rowWidth matches both the padded content lines and the delimiter line, and right-aligned delimiters keep the same width.",
+    "The command reads rows through serial(), so a /lap-times never interleaves with a stop's read-modify-write of the laps file.",
+    "Pipe escaping happens before width measurement, so an escaped cell never misaligns its column.",
+    "parseLapArgs rejects duplicates, zero and leading-zero counts, returning the usage line rather than guessing.",
+    "README drop order (stop reason, wake, session, #, date, kind, since prompt) matches the dropRank values in plugins/lap-stamp/hooks/table.ts:30-40 exactly, and the always-kept Stop and Lap match dropRank 0.",
+    "README example table's padding, right-aligned delimiter rows (`--:`, `-------:`) and column widths reproduce what `tableLines` emits, so the sample is a faithful rendering rather than hand-drawn.",
+    "The claim that output stays out of model requests is grounded: the handler returns `isTextDisplayOnly: true`, whose host contract says the row goes in no request.",
+    "TASK-10 receipt provenance checks out: tree 4f6cd3a is the tree of commit 8d1c2dd, and the shape matches the earlier sealed receipts.",
+    "EX6 records the design reason a mod command was chosen over a skill (only command.run carries presentation.columns), which is the non-obvious constraint a later reader needs.",
+    "table.ts is pure, and its tests pin exact line-by-line output for the wide, narrow, all-sessions, limited and empty cases, so a regression in the table shape cannot slip past.",
+    "parseRows now delegates to the new parseAllRows instead of duplicating the line loop, so the BOM and malformed-line handling lives in one place.",
+    "The README drop order (stop reason, wake, session, #, date, kind, since prompt) matches the dropRank values in table.ts exactly, and the README example table is the exact output asserted in table.test.ts.",
+    "The command answers with isTextDisplayOnly and passes command.run through when unregistered; a lap.test.ts case covers the non-project pass-through, so the mod stays inert outside harness projects as the root README claims.",
+    "DesignEvolution EX6 records the scope addition against TASK-7, including why a mod command was chosen over a skill: only command.run carries presentation.columns.",
+    "parseRows now delegates to parseAllRows, so the single-session and all-session parsers cannot drift apart.",
+    "Column fitting keeps Stop and Lap pinned (dropRank 0) and the loop breaks when nothing droppable remains, so a tiny width never loops forever.",
+    "rowWidth matches the rendered line and delimiter widths exactly (1 + sum(w + 3)), including right-aligned `-:` delimiters.",
+    "Stop and Date both read the stored ISO text as written, so date and clock stay consistent across offsets and DST.",
+    "The command answers with isTextDisplayOnly and passes through to `next` when unregistered, covered by the pass-through test outside a harness project.",
+    "parseLapArgs rejects 0, negatives, decimals and duplicate tokens, with tests for each."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "/lap-times failure branches untested",
+        "file": "plugins/lap-stamp/hooks/lap.test.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/lap.test.ts",
+          "plugins/lap-stamp/hooks/lap.ts"
+        ],
+        "lines": "778-830",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "lap.test.ts's module doc (lines 11-12) claims coverage of 'every way a host call can fail', and the new /lap-times glue adds three failure paths: a refused command.register leaves the command unregistered so command.run passes through (lap.ts:337-346, 370), an unreadable laps file under 'all' answers LAP_TIMES_UNAVAILABLE (lap.ts:354-356, 364), and a throw inside the handler answers LAP_TIMES_UNAVAILABLE only while registered (lap.ts:373-375). The new describe block (lap.test.ts:778-830) covers only the happy paths, the usage line and the no-harness.json pass-through; none of these branches has a test, so a regression in them (e.g. setting isCommandRegistered before the register promise resolves) goes unseen.",
+        "fix": [
+          "Add tests in the '/lap-times' block: (1) on('command.register', () => ({ deny: 'no' })) then start, expect seen.commands empty and a downstream on('command.run', () => ({ text: 'beneath' })) to answer; (2) seen.unreadable.add(LAPS) after a turn, expect lapTimes($, 'all') text toBe 'lap-stamp: the laps file could not be read.'"
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "/lap-times 'this session' shows the last known session, not the current one",
+        "file": "plugins/lap-stamp/hooks/lap.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/lap.ts",
+          "plugins/lap-stamp/hooks/table.ts",
+          "plugins/lap-stamp/hooks/lap.test.ts",
+          "plugins/lap-stamp/README.md"
+        ],
+        "lines": "315,337-346,348-357,367-376",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "lapTimesRows (lap.ts:349-353) is documented as returning 'the current session's [rows] from memory', but it reads sessionAtom, which holds the last session the glue loaded or stopped in. The clockFor docstring (lap.ts:94-99) states that a /clear or a resume raises no session.start, so after a /clear (or a resume not followed by session.attach) and before the first stop in the new session, `/lap-times` prints the previous session's rows under the summary label 'this session' (table.ts:93), and a resumed session's earlier rows in the laps file are not shown at all.\n\nAlso (runtime): registerLapTimes (lap.ts:337-346) is documented 'once per load' but registers once per ctx lifetime: after the first success, isCommandRegistered stays true forever. A later session.start that resolves to no project (watchOf returns undefined) leaves the command live; `/lap-times all` then answers 'the laps file could not be read' (lap.ts:354-356) instead of passing on, and if the host drops command registrations on a new session the flag prevents re-registering. pytest-scope registers on every session.start without a flag (scope.ts:631-636).\n\nAlso (roast): The default view reads rowsAtom (lap.ts:352), which load() builds with mergeRows (lap.ts:322), so it includes held rows whose file write was refused. The `all` view parses only the laps file (lap.ts:354-356). A turn whose write failed is therefore counted by `/lap-times` and missing from `/lap-times all`, so the two summaries disagree on this session's turn count and total. It is an edge case, but the command exists to report those totals.",
+        "fix": [
+          "In lapTimesRows, read the live id with sessionIdOf($); when it differs from sessionAtom (or sessionAtom is null), read the laps file and return parseRows(text, live) (undefined when the file does not read), otherwise keep the in-memory rows.",
+          "Alternatively return [] when the live session id differs from sessionAtom, so the table never labels another session's rows as 'this session'.",
+          "Register on every load in an active project (drop the early return, as pytest-scope does) and gate the command.run handler on the current watch (ctx.watch !== undefined) rather than on a flag set once.",
+          "Or at minimum reword the registerLapTimes docstring to 'once per registration' and reset isCommandRegistered when load resolves to no project.",
+          "In lapTimesRows' all branch, merge the in-memory rows the file lacks: `mergeRows(parseAllRows(text), await read($, rowsAtom))`, and add a lap.test.ts case with an unwritable laps file that expects the held row under `all`.",
+          "Or document in the README's /lap-times section that `all` shows only rows that reached the file."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note folds #351's /lap-times into the #349 entry",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "127-133",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "docs/RELEASES/v1.1.0.md appends the `/lap-times [all] [N]` sentence to the `#349 Feat(lap-stamp): new mod` entry, so the release notes attribute this PR's command to #349. The project's release convention is one line per change; lap-stamp is unreleased (0.1.0, v1.1.0 not cut), so folding is defensible, but the PR number is then lost from the notes.",
+        "fix": [
+          "Add a separate `- #351 Feat(lap-stamp): /lap-times ...` line after the #349 entry and keep the #349 entry to the mod itself.",
+          "Keep the fold and add `(#351)` after the `/lap-times` sentence."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "/lap-times registration described as session.start only",
+        "file": "plugins/lap-stamp/README.md",
+        "files": [
+          "plugins/lap-stamp/README.md",
+          "docs/plans/2031/DesignEvolution.json"
+        ],
+        "lines": "120,126",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The hooks table says `/lap-times` is registered at `session.start`, and EX6's new_outcome says the same. In code `registerLapTimes` runs from `load` (plugins/lap-stamp/hooks/lap.ts:313-315), which both the `session.start` and `session.attach` hooks call (lap.ts:436-446), so the command is registered at the first load of either event in an active project. The session.start/session.attach row of the table also says only that it loads rows.",
+        "fix": [
+          "README line 126: say `/lap-times` is registered at the first `session.start` or `session.attach` in an active project; EX6 new_outcome (DesignEvolution.json:166): `at session.start or session.attach`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "/lap-times example shows an impossible wake lap",
+        "file": "plugins/lap-stamp/README.md",
+        "lines": "130-133,136-141",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The README example has a prompt turn stopping at 14:00:05 with lap 5s (prompt pressed at 14:00:00), then a wake turn stopping at 14:01:15 with lap 1m 15s and since prompt 1m 15s. Per the Lap rules section a wake lap runs from its own start to its stop, and that start cannot precede the previous turn's stop at 14:00:05, so the lap is at most 1m 10s while since prompt (from 14:00:00) is 1m 15s. Lap equal to since prompt on a wake row contradicts the rules the same README states.\n\nAlso (docs): README line 130-131 says the summary line carries 'turn count, total lap, longest lap'. `summaryLine` (table.ts:92-101) also carries the scope (`this session` or `all sessions (<count>)`) and appends `last N shown` when the limit trims rows; `lapTimesText` prints `no turns recorded in ... yet` for zero rows and lap.ts:335 prints `lap-stamp: the laps file could not be read.` when `all` cannot read the file. A reader of the README cannot predict those outputs.",
+        "fix": [
+          "Set the wake row's Lap cell to `1m 10s` (same 6-char width, padding unchanged) and the summary line to `lap total 1m 15s · longest 1m 10s`.",
+          "Extend the /lap-times paragraph: the summary names the scope (with the session count under `all`) and adds `last N shown` when rows are trimmed; an empty scope prints a 'no turns recorded' line and an unreadable laps file prints a one-line failure."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Width guarantee overclaims for terminals narrower than Stop + Lap",
+        "file": "plugins/lap-stamp/README.md",
+        "files": [
+          "plugins/lap-stamp/README.md",
+          "plugins/lap-stamp/hooks/table.ts",
+          "plugins/lap-stamp/hooks/table.test.ts"
+        ],
+        "lines": "145-147",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README states 'No line is wider than the terminal at the moment the command runs' and the table.ts module docstring says 'Every table line fits the terminal width'. `fitColumns` (table.ts:71-80) breaks out of the loop when only dropRank-0 columns (Stop, Lap) remain, so a terminal narrower than those two columns (about 18+ cells, more with `1h 59m` laps) still gets lines wider than the terminal. The code behavior is sensible; the absolute claim is not what it does.\n\nAlso (roast): The lap-stamp README (line 145) promises that no line is wider than the terminal, and the table.ts module comment (lines 6-7) says every table line fits the terminal width. fitColumns (table.ts:71-80) stops dropping once only Stop and Lap remain, so any terminal narrower than about 18 columns gets a wider table. table.test.ts:88-91 pins exactly that: at columns 10 the header is '| Stop     | Lap |' (18 characters). The docs make a promise the test proves false.",
+        "fix": [
+          "README line 145-147 and table.ts:6: qualify the claim, e.g. 'columns go least useful first ... until the table fits or only the stop time and the lap remain'.",
+          "Qualify the claim in plugins/lap-stamp/README.md:145 and plugins/lap-stamp/hooks/table.ts:6-7: lines fit the terminal down to the width the stop time and lap columns need, and below that the two-column table is printed as is.",
+          "Alternatively, in lapTimesText, cut each table line to opts.columns with the same ellipsis summaryLine uses when the kept columns still overflow, and change table.test.ts:88-91 to assert that width."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "`all` view omits held rows that the session view shows",
+        "file": "plugins/lap-stamp/hooks/lap.ts",
+        "lines": "354-356",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The session view reads rowsAtom, which keeps rows whose file write was refused (mergeRows, lap.ts:68-72, 319-323); the `all` view reads only parseAllRows(text) (lap.ts:356). A refused-write row appears under `/lap-times` but vanishes under `/lap-times all`, so the two views disagree on the current session's turn count and totals.",
+        "fix": [
+          "In lapTimesRows' all-sessions branch, return mergeRows(parseAllRows(text), await read($, rowsAtom)) so held rows of the current session are included."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Module doc overstates the width guarantee",
+        "file": "plugins/lap-stamp/hooks/table.test.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/table.test.ts",
+          "plugins/lap-stamp/hooks/table.ts"
+        ],
+        "lines": "8",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "table.test.ts:8 says the table is one 'whose every line fits the terminal width', yet the test at table.test.ts:88-91 pins a header '| Stop     | Lap |' (18 wide) at columns 10, since Stop and Lap are never dropped. The same unqualified claim sits in table.ts:6-7 ('Every table line fits the terminal width'), which the next clause contradicts.",
+        "fix": [
+          "Qualify both docstrings: 'every line fits the terminal width, down to the stop time and lap, which are never dropped'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Module docstring promises every line fits the width; the never-dropped columns can overflow",
+        "file": "plugins/lap-stamp/hooks/table.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/table.ts",
+          "plugins/lap-stamp/README.md"
+        ],
+        "lines": "4-8",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "table.ts:6-7 says 'Every table line fits the terminal width', but fitColumns breaks out of its loop when only rank-0 columns (Stop, Lap) remain (table.ts:75), so a narrow terminal gets lines wider than `columns`; table.test.ts:88-91 pins exactly that ('| Stop     | Lap |' at columns 10). The README makes the same absolute claim (README.md:145).",
+        "fix": [
+          "Reword table.ts:6-7 to 'Every table line fits the terminal width when Stop and Lap alone fit: columns are dropped least useful first, and the stop time and the lap are never dropped, even past the width.' and the README sentence likewise."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Spread into Math.max over every row of the laps file",
+        "file": "plugins/lap-stamp/hooks/table.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/table.ts",
+          "plugins/lap-stamp/hooks/lap.ts"
+        ],
+        "lines": "67,95",
+        "reviewer": "runtime, roast, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "summaryLine computes `Math.max(...rows.map(r => r.lap_ms))` (table.ts:95) over all rows, which for `all` is every row of the laps file; the glue already reads files past 4 MiB in ranges (lap.ts:207-231), and a spread past the engine's argument limit throws RangeError. The throw is caught by the command's catch and reported as 'the laps file could not be read', a misleading message. filled (table.ts:67) has the same pattern over the shown rows, which an `N` as large as the file also reaches.\n\nAlso (roast): summaryLine computes `Math.max(...rows.map(r => r.lap_ms))` (table.ts:95) over every row in the laps file for `/lap-times all`. filled() does the same with `Math.max(header, ...cells)` (table.ts:67) over the shown rows, and `N` has no upper bound. lap.ts explicitly supports laps files larger than the host's 4 MiB read (RANGE_BYTES ranged reads), so the file is expected to grow without limit. A spread over very large arrays throws RangeError (too many arguments). The command's catch turns that into 'the laps file could not be read', a misleading message for a file that read fine.\n\nAlso (adv_code): summaryLine computes `longest` as `Math.max(...rows.map(r => r.lap_ms))` over every row passed in, and in `all` mode that is every row of the laps file (parseAllRows, unbounded). Spreading an array of roughly 125k elements into a call throws RangeError (Maximum call stack size exceeded) on V8; the same holds for `filled` when a user passes a large N. lapTimesText runs outside `serial`, so the throw reaches the command.run `.catch`, which answers `lap-stamp: the laps file could not be read.` -- a readable file is reported as unreadable, permanently once the file passes the threshold.\n\nAttack: In a table.test.ts case: `const rows = Array.from({ length: 130000 }, () => rowAt(5)); lapTimesText(rows, { isAllSessions: true, limit: 50, columns: 100 })` throws RangeError: Maximum call stack size exceeded from table.ts:95. Spread limit confirmed with `node -e \"Math.max(...new Array(125000).fill(1))\"` -> Maximum call stack size exceeded (100000 passes). End to end: a laps file of 130k valid rows (about 45 MB) makes `/lap-times all` answer `lap-stamp: the laps file could not be read.` via the catch at plugins/lap-stamp/hooks/lap.ts:373-375; `/lap-times all 130000` on the same file also throws from table.ts:67.",
+        "fix": [
+          "Use a reduce: `rows.reduce((m, r) => Math.max(m, r.lap_ms), 0)` at table.ts:95 and `cells.reduce((m, c) => Math.max(m, c.length), col.header.length)` at table.ts:67.",
+          "Replace both spreads with a reduce: `rows.reduce((m, r) => Math.max(m, r.lap_ms), 0)` in summaryLine, and `cells.reduce((m, c) => Math.max(m, c.length), col.header.length)` in filled().",
+          "Compute the longest lap with a reduce: `rows.reduce((m, r) => Math.max(m, r.lap_ms), 0)` in plugins/lap-stamp/hooks/table.ts:95, and the column width in `filled` (table.ts:67) with `cells.reduce((m, c) => Math.max(m, c.length), col.header.length)`."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Column fitting ignores the columns <= 0 case the summary line guards",
+        "file": "plugins/lap-stamp/hooks/table.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/table.ts",
+          "plugins/lap-stamp/hooks/table.test.ts"
+        ],
+        "lines": "71-80,100",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "summaryLine treats `opts.columns > 0` as the condition for cutting (table.ts:100), implying a zero width means 'unknown'. fitColumns (table.ts:71-80) has no such guard: with columns 0 every droppable column is removed, so an unknown-width presentation gets only Stop and Lap. The two width rules disagree on what 0 means.\n\nAlso (roast): summaryLine (table.ts:100) treats opts.columns <= 0 as an unknown width and does not cut the line. fitColumns (table.ts:73) treats the same 0 as a real width and drops every droppable column, down to Stop and Lap. render.tsx:73 already uses 0 as the 'width unknown' value (`columns ?? 0`), so a host that reports no width would get a full summary over a two-column table. The two helpers in one module disagree on what 0 means.",
+        "fix": [
+          "In fitColumns, return all columns unchanged when columns <= 0 (matching summaryLine), e.g. `if (columns <= 0) return [...all]` before the loop.",
+          "Or treat columns <= 0 as a width to fit in both places and drop the `opts.columns > 0` guard in summaryLine.",
+          "In fitColumns, return all columns unchanged when columns <= 0 (match the summaryLine guard), and add a table.test.ts case for columns: 0 that expects every column.",
+          "Or normalize once in lapTimesText (e.g. a non-positive width becomes Infinity) and drop the special case in summaryLine."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Column drop order is never pinned",
+        "file": "plugins/lap-stamp/hooks/table.test.ts",
+        "files": [
+          "plugins/lap-stamp/hooks/table.test.ts",
+          "plugins/lap-stamp/hooks/table.ts"
+        ],
+        "lines": "72-81",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test titled 'the least useful columns go first' (table.test.ts:72-81) asserts only that 'Stop reason' and 'Wake' are gone and that 'Stop' and 'Lap' remain. With two rows at 50 columns the rank order in table.ts:30-39 keeps '#', 'Kind' and 'Since prompt' (width 49), but a fitColumns that dropped every droppable column, or dropped by the wrong rank (e.g. 'Since prompt' before 'Wake'), still passes: both end without 'Wake'/'Stop reason'. No other test (lap.test.ts:59-65 checks only width; table.test.ts:88-91 checks only the never-dropped pair) pins which columns survive, and the all-sessions ranks for Session (5), # (4) and Date (3) are never exercised under a narrow width.",
+        "fix": [
+          "Replace the 'toContain'/'not.toContain' checks with an exact header: expect(header).toBe('| # | Stop     | Kind   |    Lap | Since prompt |'), and add an all-sessions case at a width that drops Session but keeps Date (assert its exact header)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 351 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"642ab79b85bd1c6b4dc42516627c86175484be34\",\"headRefName\":\"0010-timestamps-timestamps\",\"headRefOid\":\"beee688cfb4cce084d512baeb20ff5f5fccbd46f\",\"last_sha\":\"beee688cfb4cce084d512baeb20ff5f5fccbd46f\",\"mergeCommit\":null,\"number\":351,\"state\":\"OPEN\",\"title\":\"Feature(lap-stamp): `/lap-times` command\",\"url\":\"https://github.com/t968rs/operator-straps/pull/351\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (19 checked, 0 refuted, 1 code findings)",
+        "counts": {
+          "findings_checked": 19,
+          "findings_refuted": 0,
+          "findings_upheld": 19,
+          "code_findings": 1
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0010-timestamps-timestamps",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0010-timestamps-timestamps",
+        "head_ref_name": "0010-timestamps-timestamps",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "642ab79b85bd1c6b4dc42516627c86175484be34",
+        "head_sha": "beee688cfb4cce084d512baeb20ff5f5fccbd46f",
+        "base_ancestor_command": "git merge-base --is-ancestor 642ab79b85bd1c6b4dc42516627c86175484be34 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor beee688cfb4cce084d512baeb20ff5f5fccbd46f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - table.ts module docstring qualified: lines fit the terminal width when the stop time and the lap alone fit; the two never-dropped columns can pass the width. README and table.test.ts are the other part's edits.; README width sentence qualified: lines fit when Stop and Lap alone fit; columns drop until the table fits or only stop time and lap remain, which are never dropped even past the width. table.ts/table.test.ts belong to another fixer's part.; Claim lives in README and table.ts (other part); table.test.ts:88-91 already pins the narrow-width behavior (stop and lap kept at columns 10), so this part needs no edit"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - table.ts module docstring qualified to the stop time and lap never-dropped clause; table.test.ts module doc is the other part's edit.; table.test.ts:7-9 module docstring now says every line fits the width down to the stop time and lap, which are never dropped"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - table.ts:6-7 reworded to 'fits the terminal width when the stop time and the lap alone fit ... never dropped, even past the width'; README sentence is the other part's edit.; README sentence reworded to match the qualified table.ts wording (fits when Stop and Lap alone fit; those two never dropped, even past the width). table.ts belongs to another fixer's part."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - summaryLine longest and filled width now use reduce (table.ts summaryLine and filled) instead of Math.max spreads; lap.ts is the other part's file.; lap.ts: no edit needed, it holds no spread into Math.max; the reduce fix belongs to table.ts (other part)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - fitColumns returns all columns unchanged when columns <= 0, matching the summaryLine guard; table.test.ts case is the other part's edit.; Added test 'a width of 0 means unknown: no column is dropped' at table.test.ts (after the stop-and-lap test) expecting the full header at columns 0; the fitColumns guard itself is in table.ts (other part)"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - The drop-order pin lives in table.test.ts:72-81, the other part's edit; table.ts already drops by rank (table.ts:30-39, fitColumns) and needs no change.; Replaced the toContain/not.toContain checks in 'the least useful columns go first' with the exact 50-column header, and added an all-sessions case at columns 60 asserting the exact header that drops Session and keeps Date"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - Split /lap-times out of the #349 entry into its own '- #351 Feat(lap-stamp): /lap-times ...' line after it; #349 keeps the mod itself."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - README hooks table: session.start/session.attach row notes the first load in an active project registers /lap-times, command.run row says registered at the first session.start or session.attach; EX6 new_outcome says 'at session.start or session.attach'."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - README example wake row Lap set to 1m 10s (same width) and summary to 'lap total 1m 15s · longest 1m 10s'; /lap-times paragraph now names the scope, session count under all, 'last N shown' on trim, the empty-scope 'no turns recorded' line and the one-line unreadable-laps-file failure."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - lapTimesRows' all-sessions branch returns mergeRows(parseAllRows(text), rowsAtom) so held rows of a refused write show in both views; lap.test.ts gains a case pinning it"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - Added /lap-times tests for a refused command.register (unregistered, passes through) and an unreadable laps file under all (unavailable line), via a new Seen.isRegisterRefused flag; lap.ts: cited, no edit needed"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "beee688 (working-tree snapshot; developer commits) - lap.ts: default /lap-times view now reads the live session id (sessionRows) and parses that session's rows from the laps file when it differs from the session atom; load clears isCommandRegistered when it resolves to no project and the registerLapTimes docstring says once per registration; the all-view merge of held rows was already present (lapTimesRows mergeRows, test 'all keeps a held row'). lap.test.ts: cases for a switch without session.start and for re-registration after a no-project load. README: /lap-times and hook table describe both. table.ts: cited for the 'this session' label, which is correct once the rows are the live session's, so no edit."
+    }
+  ]
+}

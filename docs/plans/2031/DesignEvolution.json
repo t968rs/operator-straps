@@ -163,7 +163,7 @@
       },
       "new_outcome": {
         "doc": "plan",
-        "indicated": "lap.ts registers /lap-times [all] [N] at session.start in an active project and answers command.run without a model turn (isTextDisplayOnly); hooks/table.ts renders the summary line and a padded markdown table that drops columns least useful first to fit presentation.columns (stop time and lap always kept); row.ts adds parseAllRows for the all-sessions view."
+        "indicated": "lap.ts registers /lap-times [all] [N] at session.start or session.attach in an active project and answers command.run without a model turn (isTextDisplayOnly); hooks/table.ts renders the summary line and a padded markdown table that drops columns least useful first to fit presentation.columns (stop time and lap always kept); row.ts adds parseAllRows for the all-sessions view."
       },
       "why_new_outcome": {
         "category": "discoverability",
