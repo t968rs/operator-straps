@@ -1,0 +1,495 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 359,
+  "pr_title": "Feature(harness): `baseless` skill",
+  "branch": "0012-verification-b4-claims",
+  "base_branch": "main",
+  "base_sha": "2a88e06b3f6e1cb074378cab4da8463456beec6a",
+  "head_sha": "b2a8c9c52c741df0ca67d4ada65bc9e9fbab746b",
+  "review_date": "2026-11-25",
+  "verdict": "NOT READY TO MERGE - important: I1",
+  "stats": {
+    "additions": 2887,
+    "deletions": 94,
+    "files_changed": 39,
+    "source": {
+      "additions": 2887,
+      "deletions": 94,
+      "files_changed": 39
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "adv_code_tests (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/config.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/tests.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/docs.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/overall.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/adv_code_tests.json"
+  ],
+  "bubbles": [
+    "M4",
+    "I1",
+    "M1"
+  ],
+  "strengths": [
+    "settings.json stays valid JSON: the trailing comma moves correctly and the new entry follows the existing key pattern.",
+    "lap-stamp is already published in marketplace.json at the merge base, so the enabled plugin resolves against the published marketplace this file points to.",
+    "Both new contract tests read the shipped SKILL.md, rules and README directly; no mocks, every assert can fail on a real drift.",
+    "test_no_live_pointer_to_the_outside_verification_skill walks plugins/ markdown and declares WALK_ROOTS = (\"plugins/\",), so select_tests.py routes it correctly.",
+    "The claim-table test maps each claim to a required evidence word, pinning this repo's own rows (plan.py receipt, gh pr view) rather than only row presence.",
+    "test_skill_guidance_tail_contract classifies baseless as a knowledge skill, so the no-argument-hint rule covers it through the existing parametrized test.",
+    "Fixture tests seed real failures (refund sign, banker's rounding at a half cent) that match the SkillSpec scenarios, so the strap round has genuine red output to verify against.",
+    "The two docstring-vs-code contradictions in the ledger fixture are deliberate bait that match the scenarios: balance.py:12 adds refunds (open issue I2 in reviews/LOCAL_refunds_review.json, test_refund_takes_the_amount_back fails) and money.py:6 uses the built-in banker's round so round_cents(0.125) gives 0.12 against the 'half cent rounding up' docstring (the SkillSpec money-tests-green scenario).",
+    "The planted defects carry no in-code marker comments, so an agent under test cannot learn the answer by reading the source; only running the named test file exposes them.",
+    "report.py's format_total matches its docstring and CHANGELOG 1.3.0, giving the 'only touched report.py' scenarios a truly green test file next to the red ones.",
+    "The sandbox ships its own pytest.ini and conftest.py and sits outside the repo testpaths (['tests']), so its intentionally failing tests never enter the repo's own pytest run.",
+    "The port is faithful: apart from the adaptations it lists, SKILL.md matches the installed superpowers-lt 7.0.1 copy line for line, and the PROVENANCE 'Verbatim except' list names every one of those adaptations.",
+    "The strap freeze r1.1 file blobs match the head exactly (SKILL.md 8033e86, LICENSE abf0390, contract test 82daaee), and the plan's r1.2 freeze matches the ActionPlan blob.",
+    "The PROVENANCE and release notes say plainly that the claim-line rule was written after a correct green failed a text check, and they name the three dropped candidates with their passing baselines.",
+    "Every live pointer in the spec's goals is repointed: post-forcepush heading, invoke line, report item and mistakes row; the HARNESS_RULES Making claims rule; and the parallel2 W4 row. Each uses the qualified harness:baseless name.",
+    "DesignEvolution records all eleven plan-review changes with their review IDs, including the strap --edit --base fix that let the baselines run without the skill.",
+    "The fixtures are small and give each scenario a concrete trap: a missing 1.4.0 section, the half-even round in money.py, the refund sign in balance.py, and a sealed-receipt plan and review.",
+    "Rename is complete in live prose: no `superpowers-lt:verification-before-completion` reference remains under plugins/; post-forcepush (heading, invoke line, report item 5, Common Mistakes row), parallel2 README W4 row and HARNESS_RULES 'Making claims' all point at `harness:baseless`.",
+    "Package carries its MIT LICENSE beside SKILL.md and a docs/PROVENANCE.md row that enumerates every deviation from the upstream text, matching the tdd-strapped precedent.",
+    "Frontmatter description starts 'Use when' and triggers standalone on the repo's own claim kinds (saved file, plan item, review issue), and the root README skill table gains a matching row.",
+    "Claim-table rows tie claims to this repository's real evidence (plan.py record sealed receipt, commit SHA for RESOLVED, read-back after Write, gh pr view / git status --porcelain), each cross-checked against the scripts and global rules.",
+    "The refused-claim rule (never write the requested claim line, even quoted or negated) is backed by a matching Red Flags entry, so rule and stop-list agree.",
+    "The frozen blobs match the head: SKILL.md (8033e86), LICENSE (abf0390, byte-identical to strap-debugging and tdd-strapped) and the contract test (82daaee) equal the r1.1 freeze record, and the ActionPlan blob equals the r1.2 plan freeze.",
+    "test_no_live_pointer_to_the_outside_verification_skill walks plugins/**/*.md with a declared WALK_ROOTS, so a pointer to the outside skill added later fails CI instead of breaking a post-forcepush run silently.",
+    "The claim-table test checks each Requires cell against a marker (plan.py, sha, read, gh pr view), not just the row names, so the spec goal 'maps each claim to its evidence' cannot pass with empty cells (plan review change P2).",
+    "The strap round is honest: three candidates whose baselines already passed are recorded as dropped with reasons, and PROVENANCE explains that the claim-line rule was written after a correct green failed its check.",
+    "The PROVENANCE row follows the strap-debugging and tdd-strapped format: source repo, commit, date, MIT, the LICENSE beside the skill, a full Verbatim except list and the strap-round additions.",
+    "The HARNESS_RULES.md rule now names the skill and is shorter, so it stays under the 10000-character session-rules cap while turning a phrase into a loadable pointer.",
+    "The PROVENANCE 'Verbatim except' clause matches the port exactly. A `git diff --no-index` against the installed superpowers-lt 7.0.1 SKILL.md shows only the listed changes: frontmatter, title, the RUN step and the by-file paragraph, four claim rows, the Do/Not glyph swap, the delegation sentence, the When To Apply addition, and the strap-round paragraph, red flag and rationalization row.",
+    "The skill freeze ledger (r1.1-freeze.json) matches the head. The SKILL.md (8033e86), LICENSE (abf0390) and contract test (82daaee) blobs are byte-identical to what was frozen, and baseless/LICENSE is the same blob as strap-debugging/LICENSE.",
+    "test_baseless_pointers_contract.py declares WALK_ROOTS = (\"plugins/\",) and walks every plugin markdown file for the outside skill name. A future stray pointer fails in CI, and test selection stays scoped.",
+    "The SkillSpec records the round truthfully. B1, B2 and B4 are dropped with the baseline run that already passed. B3 is green across SC-5, SC-6 and SC-9. The release notes and PROVENANCE restate the result without inflating it: two rules, three dropped candidates, freeze 041779a2c37e.",
+    "The plan review's eleven changes are in DesignEvolution.json, each with the lens finding behind it. The r1.2 freeze blob (8531e7e) matches the ActionPlan at the head.",
+    "The pointer changes are consistent across files. The README row, the HARNESS_RULES Making claims rule, the parallel2 W4 row and all three post-forcepush sites name `harness:baseless`, and the version bump (0.90.0) matches the v1.1.0 table.",
+    "All three in-scope test files pass at the PR head (104 tests across the three files; tests/skills overall: 897 passed, 3 skipped), and test_select_tests / test_no_repo_literals / test_session_rules pass too.",
+    "test_baseless_pointers_contract declares WALK_ROOTS = (\"plugins/\",) for its rglob walk, so the selector re-runs it on any plugin change that could bring back a pointer.",
+    "The _OUTSIDE regex accepts hyphen, underscore and space separators, so it catches the plain-prose pointer that HARNESS_RULES.md:110 carried at the merge base ('verification before completion'), not just the skill id.",
+    "Mutation spot-checks hold up: removing any gate step (IDENTIFY/RUN/READ/VERIFY/ONLY THEN) or reordering RUN and READ breaks test_the_gate_identifies_runs_reads_then_claims, because the only other uppercase RUN (in the Rationalization table) comes after READ.",
+    "test_baseless_skill_contract names 'baseless' next to the shared basenames SKILL.md and LICENSE, so the selector anchors future edits to those files to this test.",
+    "test_skill_guidance_tail_contract adds baseless to _KNOWLEDGE, so test_every_skill_is_classified passes and the skill is checked to take no argument-hint."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Plan 2033 sealed receipts cite commits that are not in the PR's history",
+        "file": "docs/plans/2033/receipts/TASK-1.json",
+        "files": [
+          "docs/plans/2033/receipts/TASK-1.json",
+          "docs/plans/2033/receipts/TASK-2.json",
+          "docs/plans/2033/receipts/TASK-3.json",
+          "docs/plans/2033/receipts/TASK-4.json"
+        ],
+        "lines": "6-10",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "docs/plans/2033/receipts/TASK-1..4.json record provenance commits 3484b47, 91a9006, 90c1a32 and 49914a9 (trees d0b7612, 0a14ca2, 10b65a3, 155d352). None is an ancestor of the head b2a8c9c5 (`git branch -a --contains 3484b47` is empty, `merge-base --is-ancestor 49914a9 b2a8c9c5` exits 1). The branch commits were rewritten: 75894372 replaced 3484b47 and adds 9 SKILL.md lines and a PROVENANCE change, the strap-round rules from TASK-4. After the merge, a reader checking a COMPLETE item against its receipt finds an unreachable commit, and garbage collection can remove it. That breaks the evidence chain the new skill's own claim row, 'Plan item COMPLETE: plan.py record wrote its sealed receipt' (SKILL.md:59), relies on. The 'status is never a claim' rule assumes the same chain.",
+        "fix": [
+          "Re-record each item against the branch commits that hold its work (`plan.py record 2033 TASK-n --sha <branch sha>`), so every receipt's commit and tree are reachable from the merged history.",
+          "Or keep the original commits reachable (e.g. a tag or a follow-up commit that does not rewrite them) and add a DesignEvolution or deviation note that maps each receipt commit to its branch commit."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Tests key pattern still teaches an \"All tests pass\" claim from a by-name run",
+        "file": "plugins/harness/skills/baseless/SKILL.md",
+        "files": [
+          "plugins/harness/skills/baseless/SKILL.md",
+          "docs/PROVENANCE.md",
+          "docs/plans/strap/baseless/SkillSpec.json",
+          "tests/skills/test_baseless_skill_contract.py"
+        ],
+        "lines": "52,92-96",
+        "reviewer": "docs, skill_package, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:94 reads `Do:  [Run the test files by name] [See: 34/34 pass] \"All tests pass\"`. The adaptation changed the run to named files but kept the upstream claim text. That contradicts the skill's own rule at :38-46 (claim only what the named files showed; the whole-suite claim belongs to the developer's full run; never write the requested all-clear line) and the behavior the strap round proved (B3 SC-9 refuses an all-tests-pass PR line after a by-name run). The Do example is the shape an agent copies, so it models the overclaim the round trained out. The `Tests pass` row at :52 has the same scope gap: it does not say the claim covers only the files that ran.\n\nAlso (skill_package): Lines 38-41 rule that test runs name only the files the change reaches, that a full-suite claim belongs to the developer, and that the agent claims 'only what they showed'; lines 43-46 add that a line like 'everything passes' reads as that claim when skimmed. The Tests key pattern at line 94 then models the opposite: 'Do: [Run the test files by name] [See: 34/34 pass] \"All tests pass\"'. A by-file run of 34 tests followed by the unscoped 'All tests pass' is exactly the whole-suite all-clear the paragraph above reserves for the developer, so an agent copying the 'Do:' line breaks the skill's own adapted rule. The Common Failures row 'Tests pass' (line 52) has the same unscoped wording.\n\nAlso (overall): SKILL.md:92-96 shows the model claim as `Do: [Run the test files by name] [See: 34/34 pass] \"All tests pass\"`. A by-name run proves only the files it named, and the same skill at :38-46 says full-suite runs belong to the developer, that the agent claims only what the named files showed, and that it never writes the all-clear line itself. B3 (SC-5, SC-6, SC-9 in docs/plans/strap/baseless/SkillSpec.json) was proved on exactly that rule: the frozen greens R-10 to R-12 refuse 'all tests pass' after a one-file run. An agent that copies the Key Patterns example writes the unscoped claim the gate forbids. Whichever section the agent reads last wins, so the rule depends on reading order.\n\nAlso (system_shape): SKILL.md:38-46 says full-suite runs belong to the developer, that a claim resting on one is handed over, and that the reply never writes the all-clear line. The strap round's only green behavior (B3, SC-5/SC-6/SC-9) proves exactly that. Yet the Tests key pattern at SKILL.md:94 reads `Do:  [Run the test files by name] [See: 34/34 pass] \"All tests pass\"`: run a subset by name, then make the whole-suite claim. The port adapted the bracket and kept the source's claim text. An agent copying the 'Do' line produces the reply the skill's red flag (line 71) and the B3 scenarios forbid. Docs and contract disagree inside the same file.",
+        "fix": [
+          "Change the Do line at :94 to claim only the run's scope, e.g. `Do:  [Run the test files by name] [See: test_report.py 34 passed] \"test_report.py: 34 passed\"`, and change the Not line to name the overclaim (`\"All tests pass\" from a by-name run`).",
+          "Narrow the `Tests pass` row at :52 to `Named test files pass` with Requires `Their output: 0 failures`, and add `whole-suite claim from a by-name run` to its Not Sufficient cell.",
+          "Rewrite line 94 to a scoped claim, e.g. 'Do:  [Run the test files by name] [See: 34 passed] \"34 passed in tests/x/test_a.py, tests/x/test_b.py\"', and change the line-52 claim cell to 'Tests pass (in the named files)'.",
+          "Alternatively keep the claim text but append the hand-off, e.g. '\"34/34 pass in the files the change reaches; the full suite is the developer's run\"'.",
+          "Scope the example claim to the run: `Do:  [Run the test files the change reaches by name] [See: test_x.py 34/34 pass] \"test_x.py: 34 passed\"`, and add `Not: \"All tests pass\" from a by-name run`. Then rerun `strap.py freeze baseless` (the skill_hash moves) and keep the PROVENANCE 'tests pattern running the test files by name' clause in step with the edit.",
+          "Change SKILL.md:94 to claim only what the named run covers, e.g. `Do:  [Run the test files by name] [See: 34/34 pass] \"test_x.py, test_y.py: 34 passed\"`, and note the PROVENANCE 'Verbatim except' clause for the key patterns accordingly.",
+          "Add a contract assertion in tests/skills/test_baseless_skill_contract.py that the Tests key pattern's Do line does not contain 'All tests pass'."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Unrelated settings and catalog changes break the plan's own scope checks",
+        "file": ".claude/settings.json",
+        "files": [
+          ".claude/settings.json",
+          "docs/plans/2033_Skill_baseless_ActionPlan.json",
+          "docs/TODO/RepoToDo.json"
+        ],
+        "lines": "18-19",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The branch enables lap-stamp in .claude/settings.json:19 (commit ccf33729). It also adds three TODO items unrelated to baseless (todo-3a7c, todo-g99y, todo-d7ba) to docs/TODO/RepoToDo.json. Plan 2033 added two checks in review change P10. The TASK-2 check `git diff --stat {base} -- ... .claude/settings.json` expects no output (ActionPlan.json:160-161), and the TASK-3 check `git diff --name-only {base} -- plugins .claude ...` expects nothing under .claude (:231-232). Both print .claude/settings.json at the head. The superpowers-lt enablement line itself is untouched, so the intent of the Avoid line holds even though both checks fail as written. The PR title and description cover only the baseless skill.",
+        "fix": [
+          "Move the lap-stamp enablement and the three new TODO items to their own PR.",
+          "Keep them here, but say in the PR description that the .claude/settings.json hit in the plan's scope checks is the lap-stamp enablement and that the superpowers-lt line is unchanged, and list the three added TODO items."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Hedge-word strap candidate is neither proved nor recorded as dropped",
+        "file": "docs/PROVENANCE.md",
+        "files": [
+          "docs/PROVENANCE.md",
+          "docs/RELEASES/v1.1.0.md",
+          "docs/plans/strap/baseless/SkillSpec.json"
+        ],
+        "lines": "18",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "TASK-4 lists five candidate behaviors and says to drop a candidate whose baseline already passes \"and say so\". SkillSpec.json carries B1-B4: subagent report, relayed pass, full-suite hand-over, and hand-set status. The hedge-word / satisfied-tone candidate never became a behavior. PROVENANCE and the v1.1.0 line both say \"three candidates were dropped because their baselines already passed\", so the fifth candidate disappears without a recorded reason, and a reader cannot tell whether the hedge-word list was tested at all.",
+        "fix": [
+          "Add a clause to the PROVENANCE baseless row and the v1.1.0 line saying the hedge-word candidate was not run in this round, and why.",
+          "Or add it as a behavior in a follow-up strap round and record its baseline result."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Baseless release line lacks its PR tag",
+        "file": "docs/RELEASES/v1.1.0.md",
+        "lines": "162",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v1.1.0.md:5 says each change line is \"tagged with its PR number\", and every other Changes line starts with `#<N>`. The new line at :162 starts `- Feat(harness): ...` with no tag. Plan 2033 TASK-3 deferred the number until the PR opened, and PR #359 is now open.\n\nAlso (overall): docs/RELEASES/v1.1.0.md:15 says each change line is tagged with its PR number, and the other lines start `- #NNN`. The new line at :162 starts `- Feat(harness)` with no number. The plan deferred the number until a PR existed, and that PR is now #359. Plan 2033 also cites issue #133, and the line does not name it.\n\nAlso (system_shape): docs/RELEASES/v1.1.0.md:4-5 says each change line is 'tagged with its PR number', and the other lines lead with `#337`, `#344` and so on. The new line at :162 starts `- Feat(harness): \\`baseless\\` skill` with no number. The plan (TASK-3, DesignEvolution P6) deferred the number until the PR opened. PR #359 is now open.",
+        "fix": [
+          "Prefix the line at :162 with `#359 `: `- #359 Feat(harness): \\`baseless\\` skill ...`.",
+          "Make :162 read `- #359 Feat(harness): \\`baseless\\` skill (todo-h4c3, issue #133, plan 2033), ...`.",
+          "Prefix docs/RELEASES/v1.1.0.md:162 with `#359 `: `- #359 Feat(harness): \\`baseless\\` skill ...`."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "todo-h4c3 stays OPEN at rank 1 with prose this PR makes stale",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md",
+          "docs/SPECS/2026-11-25-skill-baseless.md"
+        ],
+        "lines": "92-132",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "RepoToDo.json:92-132 still describes the hard dependency as live (\"Step 6 hard-depends on superpowers-lt:verification-before-completion\"). It proposes the name `harness:verification-before-completion` and lists strap-debugging:189 and the parallel2 README :87 as pointers to repoint. After this PR, Step 6 invokes harness:baseless and the README row points at it. The work the spec leaves for later (inline Step 6 checks, research Section 5.1) has no catalog item of its own. Plan TASK-3 routes the refresh through harness:todo-edit, but the branch never ran it.\n\nAlso (overall): docs/TODO/RepoToDo.json:94 still titles todo-h4c3 'post-forcepush Step 6 hard-depends on superpowers-lt:verification-before-completion'. Its proposed_change (:116) still names `harness:verification-before-completion` and strap-debugging :189. After the merge the catalog reports a resolved dependency as open. The research note's recommended inline rewrite of Step 6, which the spec defers to 'separate work', has no catalog item, so nothing tracks it. Plan TASK-3 step 3 routes the refresh through harness:todo-edit, but no such refresh is in the branch.\n\nAlso (system_shape): docs/TODO/RepoToDo.json:92-116 still describes the hard dependency this PR removes. It proposes 'Port as harness:verification-before-completion' and cites post-forcepush :188 and parallel2 README :87. The spec (docs/SPECS/2026-11-25-skill-baseless.md:10-11) defers the inline-checks rewrite of Step 6 to separate work, and todo-h4c3 is the only catalog item that mentions Step 6. Closing it after the merge drops that tracker. Leaving it as is keeps a stale rank-1 item. The plan (TASK-3 step 3) leaves the refresh to harness:todo-edit, and this PR has not done it.",
+        "fix": [
+          "Run harness:todo-edit to refresh todo-h4c3 down to the remaining inline-Step-6 work (research note Section 5.1), or retire it and add a follow-up item for that work.",
+          "Through harness:todo-edit, retire or refresh todo-h4c3 to record the harness:baseless port, and add an item for the inline post-forcepush Step 6 checks (research note Section 5.1).",
+          "Through harness:todo-edit, refresh todo-h4c3 to the remaining scope: post-forcepush Step 6 inline checks (research note Section 5.1), with the port marked done in plan 2033. Or retire it and open a new item for the inline rewrite."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Plan 2033 scope checks fail at the head because the base predates two earlier branch commits",
+        "file": "docs/plans/2033_Skill_baseless_ActionPlan.json",
+        "files": [
+          "docs/plans/2033_Skill_baseless_ActionPlan.json",
+          "docs/plans/2033/DesignEvolution.json",
+          "docs/plans/2033/receipts/TASK-2.json",
+          "docs/plans/2033/receipts/TASK-3.json",
+          ".claude/settings.json"
+        ],
+        "lines": "160-161,231-232",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The plan's base_commit is 2a88e06. ccf33729 (which enables lap-stamp in .claude/settings.json) and d8bd325a/40a7feeb (which add the todo-h4c3 research note) landed on the branch after that base. At head, TASK-2's `git diff --stat {base} -- ... .claude/settings.json` therefore prints a line where the plan expects no output. TASK-3's `git diff --name-only {base} -- plugins .claude docs/PR_REVIEWS docs/RESEARCH docs/RELEASES` lists .claude/settings.json and docs/RESEARCH/Verification/... where the plan expects \"nothing under .claude ... or docs/RESEARCH\". The intent still holds (superpowers-lt stays enabled), but the receipts for TASK-2 and TASK-3 are sealed against checks whose written expectations the tree does not meet, and the plan records no reason.\n\nAlso (system_shape): TASK-2's command (ActionPlan:160-161) expects `git diff --stat {base} -- ... .claude/settings.json` to print nothing. TASK-3's command (ActionPlan:231-232) expects 'nothing under .claude, docs/PR_REVIEWS or docs/RESEARCH'. DesignEvolution P10 added both checks to prove the spec's Avoid lines. The PR diff against the same base changes .claude/settings.json: ccf33729 enables lap-stamp@operator-straps. It also adds docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md (d8bd325a, 40a7feeb). Both plan checks fail at the head, yet the receipts record no deviation. The changes themselves are harmless: superpowers-lt stays enabled and the research note is new, not rewritten. The plan's stated proof of its Avoid lines no longer holds as written.",
+        "fix": [
+          "Add a DesignEvolution entry for plan 2033 stating that the two scope commands also see ccf33729 (lap-stamp enablement only, superpowers-lt still true) and the pre-plan research note. Name the exact accepted output.",
+          "Or refreeze with the scope commands diffing from b2dd47ea^ (the commit before the plan) instead of {base}.",
+          "Record the out-of-plan settings and research commits as a DesignEvolution entry or receipt deviation that names why the scope checks list them.",
+          "Or move the lap-stamp enablement (ccf33729's .claude/settings.json hunk) to its own PR so the plan's scope check holds."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Fixture conftest docstring names the wrong package",
+        "file": "docs/plans/strap/baseless/fixtures/ledger/sandbox/conftest.py",
+        "files": [
+          "docs/plans/strap/baseless/fixtures/ledger/sandbox/conftest.py",
+          "docs/plans/freezes/skill/baseless/r1.1-freeze.json"
+        ],
+        "lines": "1-4",
+        "reviewer": "tests, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The sandbox conftest docstring says pythonpath lets the tests import ``shop``, but this fixture's package is ``ledger`` (tests import ledger.balance, ledger.money, ledger.report). The text was copied from the tdd-strapped shop fixture and contradicts the code beside it.\n\nAlso (overall): docs/plans/strap/baseless/fixtures/ledger/sandbox/conftest.py:4 says the tests import ``shop``. The sandbox package is ``ledger`` (ledger/__init__.py), and every test imports from ``ledger.*``. The docstring looks like a leftover from another round's fixture.\n\nAlso (system_shape): docs/plans/strap/baseless/fixtures/ledger/sandbox/conftest.py:1-4 says `pythonpath = .` lets 'the tests import ``shop``', but the package is `ledger/`, and every test imports `ledger.*`. The docstring was carried over from another fixture. The file is listed in the skill freeze (docs/plans/freezes/skill/baseless/r1.1-freeze.json:8), so an edit needs a refreeze.",
+        "fix": [
+          "Replace ``shop`` with ``ledger`` on line 4 of docs/plans/strap/baseless/fixtures/ledger/sandbox/conftest.py.",
+          "Replace ``shop`` with ``ledger`` on :4, then rerun `strap.py freeze baseless`, because the file is in the r1.1 freeze set (docs/plans/freezes/skill/baseless/r1.1-freeze.json:8).",
+          "Change `shop` to `ledger` in conftest.py:3 and refreeze through `strap.py freeze baseless`."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "'Skills outside this plugin apply when installed' now has no referent in the stage list",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "lines": "102",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "HARNESS_RULES.md:102 qualifies the stage list for outside skills. Before this PR, the Making claims stage was the last bullet that named a practice from an outside plugin. Now every bullet at :104-112 names a harness: skill, so the line governs nothing and costs characters in a file held to the 10000-character cap. The research note (todo-h4c3 note, Section 5.3) kept it because it 'still covers Creating plans'. Line 107 names `harness:write-plan`, which is in this plugin.",
+        "fix": [
+          "Delete HARNESS_RULES.md:102, then rerun tests/hooks/test_session_rules.py and tests/skills/test_baseless_pointers_contract.py by name."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "post-forcepush Step 6 treats baseless as a verifier that returns VERIFIED",
+        "file": "plugins/harness/skills/post-forcepush/SKILL.md",
+        "files": [
+          "plugins/harness/skills/post-forcepush/SKILL.md",
+          "plugins/harness/skills/baseless/SKILL.md"
+        ],
+        "lines": "186-207",
+        "reviewer": "skill_package, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 6 tells the dispatched agent to invoke `harness:baseless`, 'Pass it your work summary', 'Follow the skill's checklist' and act if 'the skill flags an issue'; report item 5 then expects a '`harness:baseless` result (Step 6): `VERIFIED`'. baseless is a knowledge skill (no argument-hint, no $ARGUMENTS, SKILL.md:1-4) whose content is a Gate Function the agent applies itself (SKILL.md:22-36); it takes no summary, has no checklist by that name, flags nothing and never emits VERIFIED. The wording carried over from the replaced skill, but the lines were rewritten in this PR, so the mismatch now names the new skill. A haiku agent following it literally has no defined way to produce item 5.\n\nAlso (skill_package): The rename shortened line 188 to 'Invoke the `harness:baseless` skill via the' and left 'Skill tool. Pass it your work summary:' on line 189; the paragraph was not reflowed, so the sentence breaks mid-phrase at a short line inside the dispatch prompt block.\n\nAlso (overall, system_shape): The re-pointed Step 6 says 'Follow the skill's checklist' (post-forcepush/SKILL.md:195), and report item 5 expects `VERIFIED` (:206). harness:baseless has no checklist: it has a Gate Function (IDENTIFY, RUN, READ, VERIFY, ONLY THEN) and a claim table, and it never defines a VERIFIED outcome. The haiku worker has to guess what counts as done. The PR rewrote both lines, so this is the place to align them.\n\nAlso (system_shape): post-forcepush/SKILL.md:195 says 'Follow the skill's checklist', and report item 5 (:206-207) expects `harness:baseless` to yield `VERIFIED` or a flagged issue. baseless/SKILL.md has a Gate Function (:22-36) and a claim table (:48-62), but no checklist and no VERIFIED verdict. The haiku worker must infer both. The plan kept the rest of Step 6 unchanged on purpose, so the pointer now leads to a skill whose vocabulary does not match the step that calls it.",
+        "fix": [
+          "Rewrite Step 6 as: 'Invoke the `harness:baseless` skill via the Skill tool and apply its Gate Function to each claim the final report makes (files modified, schema result, markers, before/after SHAs): each claim cites the command output that proves it.' and item 5 as '`harness:baseless` gate (Step 6): `VERIFIED` when every claim above cites its evidence, otherwise the claim that lacks it.'",
+          "Join lines 188-189 into 'Invoke the `harness:baseless` skill via the Skill tool. Pass it your work summary:'.",
+          "Reword :195 to 'Run the skill's gate (identify, run, read, verify) over each item above', and define item 5: `VERIFIED` when every gate step confirmed its claim, otherwise the claim that failed together with the output that refuted it. Keep 'Skill tool' in Step 6, because test_post_forcepush_step_six_invokes_baseless pins it.",
+          "Reword post-forcepush/SKILL.md:195-207 in baseless's terms: 'Apply the skill's gate to each claim in the report (schema result, SHA map, markers)', with item 5 listing each claim and its evidence line, or `VERIFIED` when every claim has one.",
+          "Or carry this into the separate inline-checks rewrite of Step 6 that the spec defers, and say so in todo-h4c3's refreshed text."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Making-claims rule span is not bounded by its section",
+        "file": "tests/skills/test_baseless_pointers_contract.py",
+        "lines": "46",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The rule regex `^- \\*\\*Making claims:\\*\\*.*?(?=^- )` stops only at the next bullet anywhere in the file. If the rule becomes the last bullet of its section, the match runs across the next `## ` heading into another section's prose, so a `harness:baseless` mention there would satisfy the assert even when the rule itself names another skill; with no later bullet at all the rule is reported as missing.",
+        "fix": [
+          "Bound the lookahead by section and end of text: `(?=^- |^## |\\Z)`."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Outside-skill pointer guard only scans markdown under plugins/",
+        "file": "tests/skills/test_baseless_pointers_contract.py",
+        "lines": "58-64",
+        "reviewer": "adv_code_tests",
+        "fix_kind": "judgment",
+        "summary": "test_no_live_pointer_to_the_outside_verification_skill walks only plugins/**/*.md, so a pointer to the outside verification skill put in any other plugin file (a hook's emitted text, a mod's .ts string, a JSON config or agent payload) gets past the guard, even though the module docstring calls this the check that makes a new pointer fail.\n\nAttack: Add the line `# Making claims: invoke superpowers-lt:verification-before-completion` (or the same text inside an emitted string) to plugins/harness/hooks/session_rules.py, or put it in a string in any plugins/<mod>/hooks/*.ts file. Then run `python -m pytest tests/skills/test_baseless_pointers_contract.py -q`: all 5 tests still pass, because the loop at tests/skills/test_baseless_pointers_contract.py:60 only does `_PLUGINS.rglob(\"*.md\")`.",
+        "fix": [
+          "Widen the walk to every text file under plugins/ (for example *.md, *.py, *.ts, *.json), skipping non-UTF-8 or binary files",
+          "Or narrow the module docstring so it says the guard covers markdown pointers only"
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Claim-row evidence markers are loose substrings",
+        "file": "tests/skills/test_baseless_skill_contract.py",
+        "lines": "27-32",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_CLAIMS pins the repo-specific rows with markers `sha` and `read`, checked by `marker in cell`. `sha` matches `shall`/`shape` and `read` matches `already`/`thread`, so the review-issue and file-saved rows could drift away from a commit SHA or a read-back and still pass.",
+        "fix": [
+          "Tighten the markers to `commit sha` and `read back`, matching the current Requires cells."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Gate-order test matches bare uppercase substrings",
+        "file": "tests/skills/test_baseless_skill_contract.py",
+        "lines": "59-63",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_the_gate_identifies_runs_reads_then_claims takes the first `body.find` of IDENTIFY, RUN, READ, VERIFY and ONLY THEN anywhere in the body. `READ` also matches `ALREADY` and `RUN` any uppercase word holding it (the Rationalization table already has `RUN the verification`), so a gate block that loses its READ or RUN step can still pass on text elsewhere, and unrelated uppercase text above the gate can fail it.",
+        "fix": [
+          "Collect the steps with `re.findall(r\"^\\d\\. (IDENTIFY|RUN|READ|VERIFY|ONLY THEN):\", body, re.M)` and assert the list equals the five steps in order."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M4",
+      "classification": "architectural_ambiguity",
+      "reason": "Retire todo-h4c3 or refresh it to the inline Step 6 rewrite (research Section 5.1): the developer reserved that call; the catalog changes only via todo-edit."
+    },
+    {
+      "id": "I1",
+      "classification": "architectural_ambiguity",
+      "reason": "Fix depends on merge strategy: re-record on branch SHAs (lost on squash), push the local receipt/* tags that keep 3484b47.. reachable, or rely on the sealed trees."
+    },
+    {
+      "id": "M1",
+      "classification": "out_of_scope",
+      "reason": "Only non-removal fix is PR-description text; the PR body already lists the lap-stamp line and todo-3a7c/g99y/d7ba. Plan-check half is M5. Suggest close."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 359 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":11,\"first_sha\":\"d8bd325af36b9b8696e10a0aa7029c9ee929fc4a\",\"headRefName\":\"0012-verification-b4-claims\",\"headRefOid\":\"b2a8c9c52c741df0ca67d4ada65bc9e9fbab746b\",\"last_sha\":\"b2a8c9c52c741df0ca67d4ada65bc9e9fbab746b\",\"mergeCommit\":null,\"number\":359,\"state\":\"OPEN\",\"title\":\"Feature(harness): `baseless` skill\",\"url\":\"https://github.com/t968rs/operator-straps/pull/359\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code_tests"
+        ],
+        "refute_slots": [
+          "adv_refute_config",
+          "adv_refute_tests",
+          "adv_refute_runtime",
+          "adv_refute_docs",
+          "adv_refute_skill_package",
+          "adv_refute_overall",
+          "adv_refute_system_shape",
+          "adv_refute_adv_code_tests"
+        ],
+        "result": "OK (28 checked, 1 refuted, 1 code findings)",
+        "counts": {
+          "findings_checked": 28,
+          "findings_refuted": 1,
+          "findings_upheld": 27,
+          "code_findings": 1
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0012-verification-b4-claims",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0012-verification-b4-claims",
+        "head_ref_name": "0012-verification-b4-claims",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "d8bd325af36b9b8696e10a0aa7029c9ee929fc4a",
+        "head_sha": "b2a8c9c52c741df0ca67d4ada65bc9e9fbab746b",
+        "base_ancestor_command": "git merge-base --is-ancestor d8bd325af36b9b8696e10a0aa7029c9ee929fc4a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b2a8c9c52c741df0ca67d4ada65bc9e9fbab746b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - PROVENANCE baseless row and the v1.1.0 baseless line now say the fifth candidate (hedge word or satisfied tone) was not run in this round: no behavior was written for it, so the hedge list is the source's verbatim red flags and test_the_hedge_words_stop_a_claim pins only the words' presence; SkillSpec.json: no edit, the frozen ledger records only behaviors that were authored"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - v1.1.0 baseless line now reads '- #359 Feat(harness): `baseless` skill (todo-h4c3, issue #133, plan 2033), ...', reflowed"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - post-forcepush Step 6 rewritten in baseless's terms (invoke via the Skill tool, apply its Gate Function to each report claim, each claim cites its command output), paragraph reflowed; report item 5 now '`harness:baseless` gate (Step 6): `VERIFIED` when every claim above cites its evidence, otherwise each claim that lacks it'; baseless/SKILL.md: no edit, its Gate Function is the vocabulary Step 6 now uses"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - _CLAIMS markers tightened to 'commit sha' and 'read back'; this edits a strap part, so the baseless freeze (041779a2c37e) goes stale and needs greens re-proved then strap.py freeze baseless --refreeze"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - gate-order test collects steps with re.findall over '^\\d\\. (IDENTIFY|RUN|READ|VERIFY|ONLY THEN):' and asserts the exact ordered list; same strap-part staleness note as M12"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - SKILL.md Tests key pattern Do line now claims only the named run ('test_report.py: 34 passed') and the Not line names 'All tests pass' from a by-name run; the Tests pass row scopes its evidence to the files the run named and lists a whole-suite claim from a by-name run as not sufficient; PROVENANCE 'Verbatim except' clause updated to match; new contract test test_the_tests_pattern_claims_only_the_named_run pins the Do line; SkillSpec.json: no edit, the skill_hash moves and the round needs greens re-proved then strap.py freeze baseless --refreeze (needs scenario runs, not a fixer step)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - Deleted the orphaned 'Skills outside this plugin apply when installed.' line under Skill invocation at development stages; test_session_rules.py and test_baseless_pointers_contract.py pass"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - Bounded the Making claims rule lookahead by the next bullet, the next ## heading or end of text: (?=^- |^## |\\Z)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - Widened the outside-pointer walk from *.md to every text file under plugins/ (.md .py .ts .tsx .js .json .tmpl .sh .css), skipping non-UTF-8 files via _text_lines; module docstring updated to match"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - Added DesignEvolution entry P12 (pr-bot-review) naming the exact accepted output of the TASK-2 and TASK-3 scope commands at the head: the lap-stamp line from ccf33729 (superpowers-lt still true), the todo-h4c3 research note (d8bd325a, 40a7feeb) and the 29c28bfe workflow file; cited files: ActionPlan stays frozen (no refreeze), TASK-2/TASK-3 receipts are sealed and stay as recorded, .claude/settings.json keeps its harmless lap-stamp enablement."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "29c28bfe (working-tree snapshot; developer commits) - conftest.py:4 docstring now says the tests import ``ledger`` (was ``shop``); no refreeze run by this fixer, the r1.1 freeze entry for conftest.py is stale until strap.py freeze baseless is rerun"
+    }
+  ]
+}

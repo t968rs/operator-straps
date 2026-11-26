@@ -303,6 +303,34 @@
         "free_form": "check holds while TASK-1 is in progress"
       },
       "date": "2026-11-25"
+    },
+    {
+      "id": "P12",
+      "discovered_by": "PR #359 review run pr359_20261126T000031Z (finding M5)",
+      "phase": "pr-bot-review",
+      "items": [
+        "TASK-2",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 commands (git diff --stat {base} ... .claude/settings.json) and TASK-3 commands (git diff --name-only {base} -- plugins .claude docs/PR_REVIEWS docs/RESEARCH docs/RELEASES)",
+        "indicated": "TASK-2 expects no output; TASK-3 expects only the plugins/ item files plus docs/RELEASES/v1.1.0.md, nothing under .claude, docs/PR_REVIEWS or docs/RESEARCH"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "scope checks diff from a base that predates out-of-plan branch commits",
+        "why_free_form": "The plan base 2a88e06 predates four branch commits outside the plan: d8bd325a and 40a7feeb (the todo-h4c3 research note, before plan commit b2dd47ea), ccf33729 (adds `\"lap-stamp@operator-straps\": true` to .claude/settings.json) and 29c28bfe (adds a .claude/workflows attachment, after TASK-3). Both scope commands list them at the head, so the TASK-2 and TASK-3 receipts sealed against expectations the tree does not meet as written."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Accepted output at the head. TASK-2: exactly ` .claude/settings.json | 3 ++-` and ` 1 file changed, 2 insertions(+), 1 deletion(-)`, the single hunk adding the lap-stamp@operator-straps line (ccf33729) while `\"superpowers-lt@operator-straps\": true` stays unchanged; nothing under the pr-review, consumer-contract-audit, parallel2/SKILL.md or PLANS_PIP_Template.md paths. TASK-3: the planned files (plugins/harness/.claude-plugin/plugin.json, plugins/harness/rules/HARNESS_RULES.md, plugins/harness/skills/baseless/LICENSE, plugins/harness/skills/baseless/SKILL.md, plugins/harness/skills/parallel2/README.md, plugins/harness/skills/post-forcepush/SKILL.md, docs/RELEASES/v1.1.0.md) plus exactly three out-of-plan paths: .claude/settings.json (ccf33729), .claude/workflows/adversarial-review-single-ongoing-code-attach.js (29c28bfe) and docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md (d8bd325a, 40a7feeb, a new file, not a rewrite); nothing under docs/PR_REVIEWS. Any other path is a scope break. The plan text and the sealed receipts stay as frozen."
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the Avoid lines still hold (superpowers-lt stays enabled, no other pointer changed, no history rewritten); the extra lines come from branch commits outside plan 2033, and this entry names them so the checks have an exact expected output"
+      },
+      "date": "2026-11-25"
     }
   ]
 }
