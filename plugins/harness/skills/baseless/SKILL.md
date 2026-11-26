@@ -49,7 +49,7 @@ pasted or searched. Name it by its kind instead ("the full-suite line", "the all
 
 | Claim | Requires | Not Sufficient |
 |-------|----------|----------------|
-| Tests pass | Test command output: 0 failures | Previous run, "should pass" |
+| Tests pass | Test command output: 0 failures, for the files it ran | Previous run, "should pass", a whole-suite claim from a by-name run |
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
@@ -91,8 +91,8 @@ pasted or searched. Name it by its kind instead ("the full-suite line", "the all
 
 **Tests:**
 ```
-Do:  [Run the test files by name] [See: 34/34 pass] "All tests pass"
-Not: "Should pass now" / "Looks correct"
+Do:  [Run the test files by name] [See: test_report.py 34 passed] "test_report.py: 34 passed"
+Not: "Should pass now" / "Looks correct" / "All tests pass" from a by-name run
 ```
 
 **Regression tests (TDD Red-Green):**

@@ -99,8 +99,6 @@ Schemas, templates and examples ship with the plugin (`schemas/`); a project may
 
 ## Skill invocation at development stages
 
-Skills outside this plugin apply when installed.
-
 - **Writing code:** `harness:tdd-strapped`; write or adapt the test, watch it fail, then fix.
 - **Troubleshooting:** `harness:strap-debugging`; finish the diagnosis before proposing a fix.
 - **Designing:** `harness:spec-it`, then `harness:write-plan`; no design doc.

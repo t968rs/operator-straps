@@ -185,15 +185,17 @@ If validation passes, capture the literal `SCHEMA OK` line as evidence.
 
 ## Step 6 — baseless skill
 
-Invoke the `harness:baseless` skill via the
-Skill tool. Pass it your work summary:
+Invoke the `harness:baseless` skill via the Skill tool and apply its
+Gate Function (identify, run, read, verify, then claim) to each claim
+the final report makes:
 - Files modified (one: the review JSON).
 - Schema validation result.
 - Any `[NEEDS USER VERIFICATION]` markers from Step 4.
 - The before/after SHAs for the refreshed fields.
 
-Follow the skill's checklist. If the skill flags an issue you cannot
-resolve, surface it in your final report — do NOT silently ship.
+Each claim cites the command output that proves it. If a claim lacks
+that evidence and you cannot produce it, surface it in your final
+report — do NOT silently ship.
 
 ## Step 7 — Final report
 
@@ -203,8 +205,8 @@ Output, exactly in this order:
 2. List of fields updated (Steps 3 + 4).
 3. List of `[NEEDS USER VERIFICATION]` markers (if any).
 4. Schema validation result (Step 5): `SCHEMA OK` or the verbatim error.
-5. `harness:baseless` result (Step 6): `VERIFIED`
-   or the verbatim flagged issue.
+5. `harness:baseless` gate (Step 6): `VERIFIED` when every claim above
+   cites its evidence, otherwise each claim that lacks it.
 6. One-sentence verdict: "Ready for user review" OR "BLOCKED: <reason>".
 
 Do NOT commit. Do NOT push. Do NOT modify any other files.
