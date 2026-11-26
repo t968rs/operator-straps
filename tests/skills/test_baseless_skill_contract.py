@@ -27,7 +27,7 @@ _PROVENANCE = _REPO / "docs" / "PROVENANCE.md"
 _CLAIMS = {
     "tests pass": "", "linter clean": "", "build succeeds": "", "bug fixed": "", "regression test works": "",
     "agent completed": "", "requirements met": "",
-    "plan item complete": "plan.py", "review issue resolved": "sha", "file saved": "read",
+    "plan item complete": "plan.py", "review issue resolved": "commit sha", "file saved": "read back",
     "branch or pr state": "gh pr view",
 }
 
@@ -57,10 +57,16 @@ def test_no_text_names_the_source_plugin() -> None:
 
 
 def test_the_gate_identifies_runs_reads_then_claims() -> None:
+    steps = re.findall(r"^\d\. (IDENTIFY|RUN|READ|VERIFY|ONLY THEN):", _parts()[1], re.M)
+    assert steps == ["IDENTIFY", "RUN", "READ", "VERIFY", "ONLY THEN"], f"the gate steps read {steps}"
+
+
+def test_the_tests_pattern_claims_only_the_named_run() -> None:
     body = _parts()[1]
-    order = [body.find(step) for step in ("IDENTIFY", "RUN", "READ", "VERIFY", "ONLY THEN")]
-    assert -1 not in order, f"a gate step is missing: {order}"
-    assert order == sorted(order), "the gate steps are out of order"
+    pattern = re.search(r"^\*\*Tests:\*\*\n```\n(Do:.*)$", body, re.M)
+    assert pattern, "the Tests key pattern has no Do line"
+    claim = pattern.group(1).lower()
+    assert "all tests pass" not in claim, "the Do line claims the whole suite from a by-name run"
 
 
 def test_the_gate_runs_named_files_and_hands_the_suite_over() -> None:
