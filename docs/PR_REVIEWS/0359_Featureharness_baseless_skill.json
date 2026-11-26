@@ -40,9 +40,7 @@
     "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/adv_code_tests.json"
   ],
   "bubbles": [
-    "M4",
-    "I1",
-    "M1"
+    "I1"
   ],
   "strengths": [
     "settings.json stays valid JSON: the trailing comma moves correctly and the new entry follows the existing key pattern.",
@@ -490,6 +488,18 @@
       "status": "RESOLVED",
       "date": "2026-11-25",
       "evidence": "29c28bfe (working-tree snapshot; developer commits) - conftest.py:4 docstring now says the tests import ``ledger`` (was ``shop``); no refreeze run by this fixer, the r1.1 freeze entry for conftest.py is stale until strap.py freeze baseless is rerun"
+    },
+    {
+      "id": "M1",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-25",
+      "evidence": "118a0bf5 (working-tree snapshot; developer commits) - closed, no action: PR 359 body's Files Changed table already lists the lap-stamp enablement and todo-3a7c/g99y/d7ba; the plan scope-check half is resolved by M5 (DesignEvolution P12)."
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "118a0bf5 (working-tree snapshot; developer commits) - todo-h4c3 refreshed via harness:todo-edit to the remaining inline post-forcepush Step 6 rewrite (research Section 5.1); severity 2, rank 6 (outside fixer waves)"
     }
   ]
 }

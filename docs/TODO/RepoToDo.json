@@ -65,10 +65,10 @@
       "OPEN": 32
     },
     "by_impact": {
-      "dev_velocity": 44,
+      "dev_velocity": 45,
       "docs_tooling": 25,
       "maintainability": 2,
-      "runtime_failure": 6,
+      "runtime_failure": 5,
       "data_correctness": 1,
       "silent_wrong_output": 1
     },
@@ -89,69 +89,8 @@
   },
   "items": [
     {
-      "id": "todo-h4c3",
-      "rank": 1,
-      "title": "post-forcepush Step 6 hard-depends on superpowers-lt:verification-before-completion",
-      "keyword": "post-forcepush",
-      "kind": "skill",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#133",
-          "url": "https://github.com/t968rs/operator-straps/issues/133"
-        }
-      ],
-      "gh_issues": [
-        133
-      ],
-      "related_gh_issues": [
-        142
-      ],
-      "catalog_entry_ids": [],
-      "summary": "Checked: plugins/harness/skills/post-forcepush/SKILL.md:186-188 makes Step 6 invoke `superpowers-lt:verification-before-completion` through the Skill tool, :206 makes its VERIFIED result a report field, and :233 calls skipping it non-negotiable, so a project without superpowers-lt cannot finish the skill. Soft references: plugins/harness/skills/strap-debugging/SKILL.md:189 and plugins/harness/skills/parallel2/README.md:87. HARNESS_RULES.md \"Verification\" (:83) carries one sentence of the principle; the 5-step gate, the claim-to-evidence table, the red-green-revert check and the hedge-word stop list are lost on retirement.",
-      "proposed_change": "Port as harness:verification-before-completion (MIT, as strap-debugging was) with the evidence-per-claim table and hedge-word stop list, or inline a checklist into post-forcepush Step 6; repoint post-forcepush :188, :206, :233, strap-debugging :189 and parallel2 README :87, and add LICENSE and a docs/PROVENANCE.md row if ported.",
-      "files": [
-        "plugins/harness/skills/post-forcepush/SKILL.md",
-        "plugins/harness/skills/strap-debugging/SKILL.md",
-        "plugins/harness/skills/parallel2/README.md",
-        "docs/PROVENANCE.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "post-forcepush plus two soft references.",
-        "consumers": [
-          "plugins/harness/skills/post-forcepush/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "A short skill port or an inline checklist, plus five reference edits."
-      },
-      "impact": "runtime_failure",
-      "severity": 3,
-      "priority": {
-        "score": 2.7577,
-        "components": {
-          "impact_weight": 1.3,
-          "value": 3.9,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 2.7577,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
-    },
-    {
       "id": "todo-e82z",
-      "rank": 2,
+      "rank": 1,
       "title": "merge-commit-msg: fall back to local git for commit messages and file stats when gh refuses a large PR diff",
       "keyword": "merge-commit-msg",
       "kind": "feature",
@@ -210,7 +149,7 @@
     },
     {
       "id": "todo-3a7c",
-      "rank": 3,
+      "rank": 2,
       "title": "parallel2 setup refuses a detached HEAD even when the wave holds only read-only lanes",
       "keyword": "parallel2",
       "kind": "bug",
@@ -274,7 +213,7 @@
     },
     {
       "id": "todo-f8mk",
-      "rank": 4,
+      "rank": 3,
       "title": "agent-watcher usage row lands in the lane worktree copy of agent_usage.jsonl, so parallel2 stage refuses the lane",
       "kind": "bug",
       "status": "OPEN",
@@ -333,7 +272,7 @@
     },
     {
       "id": "todo-rf8t",
-      "rank": 5,
+      "rank": 4,
       "title": "arc-help-pages: drop the self-referential 'Full help page: <Tool> help' paragraph from the built page header",
       "keyword": "arc-help-pages",
       "kind": "bug",
@@ -394,7 +333,7 @@
     },
     {
       "id": "todo-afq8",
-      "rank": 6,
+      "rank": 5,
       "title": "merge-commit-msg: relax the squash title check to capitalized, not the branch name, no leading digits, no trailing separator",
       "keyword": "merge-commit-msg",
       "kind": "bug",
@@ -453,6 +392,66 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 3 refusal of plain titles that forces a retitle before every squash-merge, dev_velocity impact, S size."
+    },
+    {
+      "id": "todo-h4c3",
+      "rank": 6,
+      "title": "post-forcepush Step 6: replace the harness:baseless call with inline verification checks",
+      "keyword": "post-forcepush",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#133",
+          "url": "https://github.com/t968rs/operator-straps/issues/133"
+        }
+      ],
+      "gh_issues": [
+        133
+      ],
+      "related_gh_issues": [
+        142
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The hard dependency on the outside verification skill is gone: PR 359 (plan 2033; commits 75894372, e09e7838, 6227fb21 on branch 0012-verification-b4-claims, PR still OPEN on 2026-11-25) ported the gate as harness:baseless and repointed post-forcepush Step 6 (plugins/harness/skills/post-forcepush/SKILL.md:186-198), report item 5 (:208-209), the Common Mistakes row (:235), the HARNESS_RULES Making claims rule (plugins/harness/rules/HARNESS_RULES.md:108) and the parallel2 README W4 row (plugins/harness/skills/parallel2/README.md:89). Left: the research note's recommended inline rewrite of Step 6 (docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md Section 5.1), which the spec defers to separate work (docs/SPECS/2026-11-25-skill-baseless.md:10-11). Step 6 still loads the general harness:baseless gate through the Skill tool (SKILL.md:188-190) for a worker that has one file, a schema result, a SHA map and a marker list to check, each provable by a concrete command (research Section 4). Pre-authorized tools still list Skill (:58). Source: PR 359 review issue M4 (docs/PR_REVIEWS/0359_Featureharness_baseless_skill.json).",
+      "proposed_change": "Per research Section 5.1: replace Step 6 (SKILL.md:186-198) with \"Step 6: verify before reporting\", five checks run after the last edit, each recording its line: (1) rerun the Step 5 command and require exactly `SCHEMA OK`; (2) `git -C \"<repo-root>\" cat-file -e <sha>^{commit}` exits 0 for each NEW SHA; (3) `git -C \"<repo-root>\" status --porcelain` lists the review JSON and nothing else; (4) no OLD SHA whose mapping changed remains outside `(squashed: previously ...)` and `[NEEDS USER VERIFICATION: was ...]` text; (5) the `[NEEDS USER VERIFICATION` markers added equal the entries in report item 3. Then make report item 5 \"Step 6 checks: one line each, `<check> [ok|fail] <evidence>`\", with any `fail` making item 6 BLOCKED; make the Common Mistakes row \"Reporting before the Step 6 checks | each check runs after the last edit\"; in the pre-authorized tools drop `Skill` and add `Bash(git -C * status *)`. The HARNESS_RULES Making claims rule keeps naming harness:baseless (option C). Optional follow-up from the note: fold checks 1, 3, 4 and 5 into one driver command under a new post-forcepush `commands/` folder. Update any post-forcepush contract test that pins the harness:baseless name in Step 6.",
+      "files": [
+        "plugins/harness/skills/post-forcepush/SKILL.md",
+        "docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One skill file: Step 6, report item 5, one Common Mistakes row and the pre-authorized tools line.",
+        "consumers": [
+          "plugins/harness/skills/post-forcepush/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A 15-line Step 6 rewrite plus three one-line edits, the text already drafted in research Section 5.1."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt (post-forcepush works today through harness:baseless, but its worker loads a general gate where five concrete checks would prove more), dev_velocity impact, S size.",
+      "code_snippet": "plugins/harness/skills/post-forcepush/SKILL.md:186\n## Step 6 — baseless skill\n\nInvoke the `harness:baseless` skill via the Skill tool and apply its\nGate Function (identify, run, read, verify, then claim) to each claim\nthe final report makes:"
     },
     {
       "id": "todo-7jb6",
