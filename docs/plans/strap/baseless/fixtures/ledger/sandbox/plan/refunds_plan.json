@@ -1,0 +1,11 @@
+{
+  "plan_id": "0412",
+  "title": "Refund handling",
+  "items": [
+    {"id": "TASK-1", "title": "Report prints two decimals", "status": "COMPLETE",
+     "evidence": "plan.py record: receipt receipts/TASK-1.json, tests/test_report.py passed at 3f9c2a1"},
+    {"id": "TASK-2", "title": "Refunds take the amount back", "status": "PENDING",
+     "evidence": "not started", "tests": ["tests/test_balance.py::test_refund_takes_the_amount_back"]}
+  ],
+  "note": "Statuses change only through plan.py record, which runs the item's tests and writes a sealed receipt."
+}

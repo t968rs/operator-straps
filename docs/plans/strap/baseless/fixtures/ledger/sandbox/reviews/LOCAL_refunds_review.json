@@ -1,0 +1,10 @@
+{
+  "label": "refunds",
+  "verdict": "NOT READY",
+  "issues": [
+    {"id": "I1", "severity": "minor", "title": "format_total drops the trailing zero", "status": "RESOLVED",
+     "evidence": "fixed at 3f9c2a1; tests/test_report.py::test_two_decimals passed"},
+    {"id": "I2", "severity": "important", "title": "balance() adds refunds instead of subtracting them",
+     "status": "OPEN", "evidence": ""}
+  ]
+}

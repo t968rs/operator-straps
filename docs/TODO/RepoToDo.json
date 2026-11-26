@@ -56,17 +56,17 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 76,
-    "needs_decision": 45,
+    "items": 79,
+    "needs_decision": 47,
     "trackers": 0,
     "close_candidates": 40,
     "by_status": {
-      "NEEDS_DECISION": 45,
-      "OPEN": 31
+      "NEEDS_DECISION": 47,
+      "OPEN": 32
     },
     "by_impact": {
-      "dev_velocity": 43,
-      "docs_tooling": 24,
+      "dev_velocity": 45,
+      "docs_tooling": 25,
       "maintainability": 2,
       "runtime_failure": 5,
       "data_correctness": 1,
@@ -74,13 +74,13 @@
     },
     "by_loe": {
       "XS": 4,
-      "S": 23,
-      "M": 34,
+      "S": 25,
+      "M": 35,
       "L": 13,
       "XL": 2
     },
     "sources_absorbed": {
-      "gh_issue": 67,
+      "gh_issue": 70,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 9
@@ -89,69 +89,8 @@
   },
   "items": [
     {
-      "id": "todo-h4c3",
-      "rank": 1,
-      "title": "post-forcepush Step 6 hard-depends on superpowers-lt:verification-before-completion",
-      "keyword": "post-forcepush",
-      "kind": "skill",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#133",
-          "url": "https://github.com/t968rs/operator-straps/issues/133"
-        }
-      ],
-      "gh_issues": [
-        133
-      ],
-      "related_gh_issues": [
-        142
-      ],
-      "catalog_entry_ids": [],
-      "summary": "Checked: plugins/harness/skills/post-forcepush/SKILL.md:186-188 makes Step 6 invoke `superpowers-lt:verification-before-completion` through the Skill tool, :206 makes its VERIFIED result a report field, and :233 calls skipping it non-negotiable, so a project without superpowers-lt cannot finish the skill. Soft references: plugins/harness/skills/strap-debugging/SKILL.md:189 and plugins/harness/skills/parallel2/README.md:87. HARNESS_RULES.md \"Verification\" (:83) carries one sentence of the principle; the 5-step gate, the claim-to-evidence table, the red-green-revert check and the hedge-word stop list are lost on retirement.",
-      "proposed_change": "Port as harness:verification-before-completion (MIT, as strap-debugging was) with the evidence-per-claim table and hedge-word stop list, or inline a checklist into post-forcepush Step 6; repoint post-forcepush :188, :206, :233, strap-debugging :189 and parallel2 README :87, and add LICENSE and a docs/PROVENANCE.md row if ported.",
-      "files": [
-        "plugins/harness/skills/post-forcepush/SKILL.md",
-        "plugins/harness/skills/strap-debugging/SKILL.md",
-        "plugins/harness/skills/parallel2/README.md",
-        "docs/PROVENANCE.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "post-forcepush plus two soft references.",
-        "consumers": [
-          "plugins/harness/skills/post-forcepush/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "A short skill port or an inline checklist, plus five reference edits."
-      },
-      "impact": "runtime_failure",
-      "severity": 3,
-      "priority": {
-        "score": 2.7577,
-        "components": {
-          "impact_weight": 1.3,
-          "value": 3.9,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 2.7577,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
-    },
-    {
       "id": "todo-e82z",
-      "rank": 2,
+      "rank": 1,
       "title": "merge-commit-msg: fall back to local git for commit messages and file stats when gh refuses a large PR diff",
       "keyword": "merge-commit-msg",
       "kind": "feature",
@@ -207,6 +146,70 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 3 failure on large but supported PRs, runtime_failure impact, S size."
+    },
+    {
+      "id": "todo-3a7c",
+      "rank": 2,
+      "title": "parallel2 setup refuses a detached HEAD even when the wave holds only read-only lanes",
+      "keyword": "parallel2",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#355",
+          "url": "https://github.com/t968rs/operator-straps/issues/355"
+        }
+      ],
+      "gh_issues": [
+        355
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Per the session: harness:parallel2 run from a harness:d-w worktree (always detached; this one cut at beee688) for a three-lane read-only research wave (kind research, tools Read/Grep/Glob). `parallel2.py plan` refused the detached HEAD until given `--target HEAD`; `parallel2.py setup` still refused, so the lanes were dispatched by hand without the driver's briefs and dispatch rows. Confirmed in the tree: plugins/harness/scripts/parallel2.py:101-106 (`run_target`) refuses a detached HEAD without `--target`; plugins/harness/scripts/parallel2.py:381-384 (`cmd_setup`) calls `require_checked_out` unconditionally, and plugins/harness/scripts/parallel2.py:133-137 compares the target with the checked-out branch, so a detached HEAD (no branch) always fails with `target <t> is not checked out in <repo> (on detached HEAD)` (the text the session saw was not recorded: unverified). The check guards nothing for a read-only wave: plugins/harness/scripts/parallel2.py:239-254 (`branch_problems`, `overlap_problems`), plugins/harness/scripts/parallel2.py:288 and :308-311 (`create_worktrees`) and :376 (`prepare_lanes`) act on implement lanes only, and `cut_base` (plugins/harness/scripts/parallel2.py:346-356) reads `rev-parse HEAD`, which works detached. The docs state the requirement: plugins/harness/skills/parallel2/README.md:56-57 (`setup` and `stage` still require the target to be checked out); plugins/harness/skills/parallel2/SKILL.md:43 marks review and research lanes read-only and :65 says a read-only wave prints `nothing to probe`, but the refusal table at plugins/harness/skills/parallel2/SKILL.md:101-114 has no row for the detached or not-checked-out refusal. Tests: tests/scripts/test_parallel2.py:157-163 covers plan's detached refusal and tests/scripts/test_parallel2.py:297-303 covers setup's not-checked-out refusal; none covers a read-only wave on a detached HEAD. Related catalog items on the same files, different defects: todo-f8mk (parallel2 stage refuses a lane over agent_usage.jsonl, #295), todo-m9mv (#140), todo-2jca (#137), todo-8thf (#127). No open issue covers this refusal.",
+      "proposed_change": "In cmd_setup, run require_checked_out only when the wave holds an implement lane, so a read-only wave sets up (briefs and dispatch rows) from any checkout, detached included. Consider also letting plan and setup default the target on a detached HEAD when every planned lane is read-only (for example `detached-<sha7>`) so `--target HEAD` is not needed; keep the refusal for implement waves, since stage applies onto the checkout's index and a detached target has no branch to stage onto. Add a test that a research-only wave sets up on a detached HEAD and prints its dispatch rows, keep tests/scripts/test_parallel2.py:297 for implement waves, update plugins/harness/skills/parallel2/README.md:56-57 to say the checkout requirement applies to implement waves, and add a SKILL.md refusal-table row for `target <t> is not checked out` / `detached HEAD`.",
+      "code_snippet": "plugins/harness/scripts/parallel2.py:381\ndef cmd_setup(repo: Path, args: argparse.Namespace) -> int:\n    target = run_target(repo, args)\n    lanes = require_lanes(repo, target)\n    require_checked_out(repo, target)",
+      "files": [
+        "plugins/harness/scripts/parallel2.py",
+        "plugins/harness/skills/parallel2/SKILL.md",
+        "plugins/harness/skills/parallel2/README.md",
+        "tests/scripts/test_parallel2.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One guard in parallel2.py setup (and optionally the detached-target default in run_target) plus parallel2 docs; implement waves keep the current check, so stage and worktree cutting are unchanged. The state file name follows the target, which the parallel2-lanes mod reads.",
+        "consumers": [
+          "plugins/harness/skills/parallel2/SKILL.md",
+          "plugins/harness/skills/parallel2/README.md",
+          "plugins/harness/scripts/plan.py",
+          "plugins/parallel2-lanes/hooks/lanes.ts",
+          "tests/scripts/test_parallel2.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A conditional around one call, one or two tests and two doc edits; the optional detached-target default adds a small branch in run_target."
+      },
+      "impact": "runtime_failure",
+      "severity": 3,
+      "priority": {
+        "score": 2.7577,
+        "components": {
+          "impact_weight": 1.3,
+          "value": 3.9,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 2.7577,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 because setup aborts on a supported but uncommon input (a read-only wave from a detached d-w worktree) with a hand-dispatch workaround; runtime_failure impact; S effort."
     },
     {
       "id": "todo-f8mk",
@@ -391,8 +394,68 @@
       "why_ranked": "Severity 3 refusal of plain titles that forces a retitle before every squash-merge, dev_velocity impact, S size."
     },
     {
-      "id": "todo-7jb6",
+      "id": "todo-h4c3",
       "rank": 6,
+      "title": "post-forcepush Step 6: replace the harness:baseless call with inline verification checks",
+      "keyword": "post-forcepush",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#133",
+          "url": "https://github.com/t968rs/operator-straps/issues/133"
+        }
+      ],
+      "gh_issues": [
+        133
+      ],
+      "related_gh_issues": [
+        142
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The hard dependency on the outside verification skill is gone: PR 359 (plan 2033; commits 75894372, e09e7838, 6227fb21 on branch 0012-verification-b4-claims, PR still OPEN on 2026-11-25) ported the gate as harness:baseless and repointed post-forcepush Step 6 (plugins/harness/skills/post-forcepush/SKILL.md:186-198), report item 5 (:208-209), the Common Mistakes row (:235), the HARNESS_RULES Making claims rule (plugins/harness/rules/HARNESS_RULES.md:108) and the parallel2 README W4 row (plugins/harness/skills/parallel2/README.md:89). Left: the research note's recommended inline rewrite of Step 6 (docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md Section 5.1), which the spec defers to separate work (docs/SPECS/2026-11-25-skill-baseless.md:10-11). Step 6 still loads the general harness:baseless gate through the Skill tool (SKILL.md:188-190) for a worker that has one file, a schema result, a SHA map and a marker list to check, each provable by a concrete command (research Section 4). Pre-authorized tools still list Skill (:58). Source: PR 359 review issue M4 (docs/PR_REVIEWS/0359_Featureharness_baseless_skill.json).",
+      "proposed_change": "Per research Section 5.1: replace Step 6 (SKILL.md:186-198) with \"Step 6: verify before reporting\", five checks run after the last edit, each recording its line: (1) rerun the Step 5 command and require exactly `SCHEMA OK`; (2) `git -C \"<repo-root>\" cat-file -e <sha>^{commit}` exits 0 for each NEW SHA; (3) `git -C \"<repo-root>\" status --porcelain` lists the review JSON and nothing else; (4) no OLD SHA whose mapping changed remains outside `(squashed: previously ...)` and `[NEEDS USER VERIFICATION: was ...]` text; (5) the `[NEEDS USER VERIFICATION` markers added equal the entries in report item 3. Then make report item 5 \"Step 6 checks: one line each, `<check> [ok|fail] <evidence>`\", with any `fail` making item 6 BLOCKED; make the Common Mistakes row \"Reporting before the Step 6 checks | each check runs after the last edit\"; in the pre-authorized tools drop `Skill` and add `Bash(git -C * status *)`. The HARNESS_RULES Making claims rule keeps naming harness:baseless (option C). Optional follow-up from the note: fold checks 1, 3, 4 and 5 into one driver command under a new post-forcepush `commands/` folder. Update any post-forcepush contract test that pins the harness:baseless name in Step 6.",
+      "files": [
+        "plugins/harness/skills/post-forcepush/SKILL.md",
+        "docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One skill file: Step 6, report item 5, one Common Mistakes row and the pre-authorized tools line.",
+        "consumers": [
+          "plugins/harness/skills/post-forcepush/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A 15-line Step 6 rewrite plus three one-line edits, the text already drafted in research Section 5.1."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt (post-forcepush works today through harness:baseless, but its worker loads a general gate where five concrete checks would prove more), dev_velocity impact, S size.",
+      "code_snippet": "plugins/harness/skills/post-forcepush/SKILL.md:186\n## Step 6 — baseless skill\n\nInvoke the `harness:baseless` skill via the Skill tool and apply its\nGate Function (identify, run, read, verify, then claim) to each claim\nthe final report makes:"
+    },
+    {
+      "id": "todo-7jb6",
+      "rank": 7,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -446,7 +509,7 @@
     },
     {
       "id": "todo-7vfg",
-      "rank": 7,
+      "rank": 8,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "keyword": "pr-team",
       "kind": "skill",
@@ -507,7 +570,7 @@
     },
     {
       "id": "todo-rst5",
-      "rank": 8,
+      "rank": 9,
       "title": "todo_sync add: accept catalog_entry_ids so a new item can cite a research entry (clears T4)",
       "kind": "feature",
       "status": "OPEN",
@@ -567,7 +630,7 @@
     },
     {
       "id": "todo-5rze",
-      "rank": 9,
+      "rank": 10,
       "title": "strap: refreeze review-local, stale since pr_review.py changed in 0ae8c1c (#239) and again in 757277a",
       "keyword": "strap",
       "kind": "skill",
@@ -632,7 +695,7 @@
     },
     {
       "id": "todo-67gw",
-      "rank": 10,
+      "rank": 11,
       "title": "plan.py relink writes the base and tag without checking anchors and sweeps at the new base",
       "kind": "bug",
       "status": "OPEN",
@@ -692,7 +755,7 @@
     },
     {
       "id": "todo-5qsm",
-      "rank": 11,
+      "rank": 12,
       "title": "strap relink keeps the bare 'pass --to REF' hint and writes a --to base without checking it",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -752,7 +815,7 @@
     },
     {
       "id": "todo-yu6v",
-      "rank": 12,
+      "rank": 13,
       "title": "Working refs: clear another branch's override (`/harness:working --clear --branch NAME`)",
       "kind": "feature",
       "status": "OPEN",
@@ -808,7 +871,7 @@
     },
     {
       "id": "todo-9yns",
-      "rank": 13,
+      "rank": 14,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "keyword": "merge-commit-msg",
       "kind": "feature",
@@ -870,7 +933,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 14,
+      "rank": 15,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "keyword": "pr-review",
       "kind": "bug",
@@ -931,7 +994,7 @@
     },
     {
       "id": "todo-g3zz",
-      "rank": 15,
+      "rank": 16,
       "title": "a-w attach drops a receipts plan's gitignored live.js, so the target's HTML PIP shows every item pending: rebuild live.js on attach and warn in plan.py check",
       "keyword": "plan_live",
       "kind": "bug",
@@ -1000,7 +1063,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 16,
+      "rank": 17,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1062,7 +1125,7 @@
     },
     {
       "id": "todo-2r6p",
-      "rank": 17,
+      "rank": 18,
       "title": "Narrow the PostToolUse Write|Edit|Bash hook that launches validate_pr_json_schema.py",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -1121,7 +1184,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 18,
+      "rank": 19,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "keyword": "d-w",
       "kind": "skill",
@@ -1180,8 +1243,78 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
+      "id": "todo-g99y",
+      "rank": 20,
+      "title": "working-refs: merged or deleted branches keep their override segment, and a closed issue the open list dropped waits out the 24h recheck",
+      "keyword": "working-refs",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "For branches that are gone or merged: hide their segments in the mod when the local branch no longer exists (B1), also hide branches whose PR merged via a cached gh lookup (B2), or leave hiding alone and add a harness `/harness:working --prune` that rewrites overrides.json (B3)? Part A (early recheck when a newer complete open list omits the issue) needs no decision.",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#358",
+          "url": "https://github.com/t968rs/operator-straps/issues/358"
+        }
+      ],
+      "gh_issues": [
+        358
+      ],
+      "related_gh_issues": [
+        268,
+        345,
+        346
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The banner still draws `[ 0008-write-plan-updates #345, #346 ] [ 0006-pr-sum-updates #268 ]` although #345 and #346 are closed (2026-11-25T05:13:40Z, checked with gh) and both branches landed: PR #347 (head 0008-write-plan-updates, closingIssuesReferences [345, 346]) merged 2026-11-25T05:13:38Z, PR #339 (head 0006-pr-sum-updates) merged 2026-11-24T15:14:55Z. Neither branch exists any more as a local branch or an origin/ remote-tracking ref (`git branch --list`, `git branch -r --list`); 1168-todo-banner and 1175-stop-hooks do. Is it by design? Partly: plugins/working-refs/README.md:148-149 documents that a closed issue keeps showing for up to `todo.gh.max_age_hours` (24, plugins/harness/config/defaults.json:96; .claude/harness.json does not set it), and plugins/working-refs/README.md:150-151 documents that nothing prunes a deleted branch's override and `/harness:working --clear` drops only the current branch's (plugins/harness/skills/working/commands/working.py:54-58, clear_override at plugins/harness/lib/harness_lib/working_refs.py:158-165); the design spec lists it as a non-goal (docs/superpowers/specs/2026-11-19-working-refs-cross-branch-design.md:55-57) and keeps overrides.json unrewritten by the hide rules (:49-50, plan 2027 D3). Two gaps follow. (1) Recheck lag on #345/#346: <state_dir>/working-refs/issues.json holds both as OPEN checked 2026-11-25T00:07:30Z, before the close; <state_dir>/todo-sync/open_issues.json was fetched 2026-11-25T05:15:59Z, after it, holds 63 numbers including 268 and omits 345 and 346. Only a cached gh CLOSED hides an issue (plugins/working-refs/hooks/hide.ts:128-131), and the recheck clock advances from the list only for numbers the list holds (answeredAt, plugins/working-refs/hooks/watch.ts:128-129; dueIssues :132-134), so a complete listing that drops a number after its last gh answer schedules nothing: the issues stay drawn until the 24h recheck at ~2026-11-26T00:07:30Z. The listing is complete by construction (plugins/harness/lib/harness_lib/todo_sync/issues.py:125-135 refuses a listing at LIST_LIMIT), so the absence means closed, transferred, deleted or a PR number. The spec says an issue missing from the list `is due for a gh check` (design spec :37-38) and plan 2027's test note says `shown, due for gh`; hide.test.ts:155-158 pins only the shown half and no watch.test.ts case covers an early recheck, so whether the spec meant an earlier recheck is unverified. (2) Merged or deleted branches: otherSegments (plugins/working-refs/hooks/line.ts:142-151) filters only the current branch and segments whose refs all hide; it never asks whether the branch still exists or landed. 0006's todo-n48z is in the catalog's retired_ids, so only #268 is left, and #268 is still OPEN (gh) because PR #339 carries no closing reference to it (closingIssuesReferences empty, body never names 268): that segment stays on every line indefinitely, and a squash merge leaves `git branch --merged main` blind to it. The 1168-todo-banner and 1175-stop-hooks overrides are not drawn because all their refs hide (todo-k69m and todo-jrz2 in retired_ids; #301 and #191 CLOSED in the cache at 2026-11-25T22:34:00Z), not because of the working_refs.max_chars cap. Related catalog item todo-yu6v (`/harness:working --clear --branch NAME`, manual clearing of another branch's override) covers the manual path; this item is the automatic one. No open GitHub issue found for working-refs overrides or stale banner branches (gh issue list --search).",
+      "proposed_change": "Two independent parts in the working-refs mod, plus a README update. (A) Early recheck on list absence: in answeredAt or dueIssues (plugins/working-refs/hooks/watch.ts:128-134), make an override issue due when an open list fetched after its last gh attempt (list.fetchedAt > triedAt) does not hold it, so the next recheck pass runs `gh issue view` for it at once; hiding still needs a gh CLOSED (hide.ts rule unchanged), and a PR number or transferred issue costs one extra gh call per new list, after which triedAt passes fetchedAt and the normal age applies. The alternative, letting list absence hide directly, is rejected: it breaks the spec's `only gh answers CLOSED` rule and would hide PR numbers. Add a watch.test.ts case (cache OPEN at T0, list at T0+1h without the number: one gh call; with the number: none). (B) Branches that are gone or merged, three options for the developer: (B1) hide in the mod: the scan already runs git, so read the local branch names once per scan (`git for-each-ref --format=%(refname:short) refs/heads`) and drop segments whose branch is not among them, `(detached)` excepted; consistent with D3 (overrides.json untouched, `/harness:working --list` still shows them) and with no gh cost; it covers both segments here, since both branches are deleted, but not a merged branch whose local ref is kept. (B2) also hide branches whose PR merged, by a cached `gh pr list --head <branch> --state merged` per override branch under the same max_age pacing as the issue cache, which handles squash merges `git branch --merged` cannot see; costs one gh call per branch per age. (B3) prune in the harness instead: `/harness:working --prune` drops entries whose branch no longer exists locally, building on todo-yu6v's `--branch` clear; this rewrites the file, so it is a command the developer runs, not a hide rule. Recommendation: A plus B1, with B3 folded into todo-yu6v if wanted; B2 only if kept-but-merged branches turn out to matter. Update the README Known limitations (plugins/working-refs/README.md:148-151) and the What hides section to match, and the design spec's non-goal stays as recorded history. Separately, #268 already sits in the catalog's close_candidates (`Close #268 once PR #339 merges to main`); PR #339 has merged, so closing #268 is issue hygiene outside this item, and once closed the 0006 segment hides under today's rules.",
+      "code_snippet": "plugins/working-refs/hooks/watch.ts:128\nexport const answeredAt = (n: number, list: OpenList | null, cache: ReadonlyMap<number, CachedIssue>): number =>\n  Math.max(cache.get(n)?.triedAt ?? -Infinity, list !== null && list.open.has(n) ? list.fetchedAt : -Infinity)",
+      "files": [
+        "plugins/working-refs/hooks/watch.ts",
+        "plugins/working-refs/hooks/watch.test.ts",
+        "plugins/working-refs/hooks/line.ts",
+        "plugins/working-refs/hooks/line.test.ts",
+        "plugins/working-refs/hooks/hide.ts",
+        "plugins/working-refs/README.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Confined to the working-refs mod's recheck scheduling and segment filter; the override file, the harness `working` command and the catalog are untouched under options A and B1, and band-line only reads the resulting line atom.",
+        "consumers": [
+          "plugins/working-refs/hooks/watch.ts (answeredAt, dueIssues, dueAtOf, runRecheck, the scan's LineView)",
+          "plugins/working-refs/hooks/line.ts (otherSegments, buildLine)",
+          "plugins/working-refs/hooks/hide.ts (isClosed, unchanged rule)",
+          "band-line (reads the working-refs line atom)",
+          "the ccstatusline widget (reads <state_dir>/working-refs/line.json)"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Two independent changes in one mod: a due-time rule with a watch test, and a per-scan git branch listing threaded into the line view with line and watch tests, plus README updates; B2 would add a second gh cache."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.0,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.0,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (documented limitations whose concrete cost is a banner that shows landed branches and closed issues as in-flight work, indefinitely when an issue stays open), dev_velocity impact, M size."
+    },
+    {
       "id": "todo-57az",
-      "rank": 19,
+      "rank": 21,
       "title": "strap.py rename: do the name-made moves and the in-file name swap instead of leaving them to the developer (#352)",
       "keyword": "strap",
       "kind": "feature",
@@ -1247,7 +1380,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 20,
+      "rank": 22,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "keyword": "branch-commit-msg",
       "kind": "feature",
@@ -1305,7 +1438,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 21,
+      "rank": 23,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "keyword": "write-plan",
       "kind": "skill",
@@ -1366,7 +1499,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 22,
+      "rank": 24,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "keyword": "roast-my-code",
       "kind": "skill",
@@ -1426,7 +1559,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 23,
+      "rank": 25,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "keyword": "strap",
       "kind": "feature",
@@ -1486,7 +1619,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 24,
+      "rank": 26,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "keyword": "branch-commit-msg",
       "kind": "bug",
@@ -1549,7 +1682,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 25,
+      "rank": 27,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "keyword": "pr-review",
       "kind": "skill",
@@ -1609,7 +1742,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 26,
+      "rank": 28,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "keyword": "pr-reviewer",
       "kind": "feature",
@@ -1674,7 +1807,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 27,
+      "rank": 29,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1734,7 +1867,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 28,
+      "rank": 30,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "keyword": "todo_sync",
       "kind": "feature",
@@ -1796,7 +1929,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 29,
+      "rank": 31,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "keyword": "pr-review",
       "kind": "feature",
@@ -1859,7 +1992,7 @@
     },
     {
       "id": "todo-jq3x",
-      "rank": 30,
+      "rank": 32,
       "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
       "keyword": "add_todo",
       "kind": "feature",
@@ -1919,7 +2052,7 @@
     },
     {
       "id": "todo-cvm4",
-      "rank": 31,
+      "rank": 33,
       "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1977,7 +2110,7 @@
     },
     {
       "id": "todo-e2jv",
-      "rank": 32,
+      "rank": 34,
       "title": "todo_sync snapshot: a catalog-only change still rewrites the tracked page and todo_live.js",
       "kind": "feature",
       "status": "OPEN",
@@ -2044,7 +2177,7 @@
     },
     {
       "id": "todo-af2e",
-      "rank": 33,
+      "rank": 35,
       "title": "Pydantic model for the TODO catalog item, with agent-facing read/write helpers",
       "keyword": "TodoCatalog",
       "kind": "feature",
@@ -2113,7 +2246,7 @@
     },
     {
       "id": "todo-7xjk",
-      "rank": 34,
+      "rank": 36,
       "title": "writing-docstrings -p relays every writer reply in full; the session reply is long and unreadable",
       "keyword": "writing-docstrings",
       "kind": "skill",
@@ -2172,7 +2305,7 @@
     },
     {
       "id": "todo-zes6",
-      "rank": 35,
+      "rank": 37,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "keyword": "pr-team",
       "kind": "feature",
@@ -2232,7 +2365,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 36,
+      "rank": 38,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -2287,7 +2420,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 37,
+      "rank": 39,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "keyword": "parallel2",
       "kind": "skill",
@@ -2349,7 +2482,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 38,
+      "rank": 40,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "keyword": "strap_scaffold",
       "kind": "bug",
@@ -2400,7 +2533,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 39,
+      "rank": 41,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2448,7 +2581,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 40,
+      "rank": 42,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2523,7 +2656,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 41,
+      "rank": 43,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "keyword": "end-of-branch",
       "kind": "skill",
@@ -2582,7 +2715,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 42,
+      "rank": 44,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "keyword": "HARNESS_RULES",
       "kind": "skill",
@@ -2638,8 +2771,76 @@
       "why_ranked": "Severity 2 lost guarantee once superpowers-lt retires, docs_tooling impact, S size."
     },
     {
+      "id": "todo-d7ba",
+      "rank": 45,
+      "title": "Repoint the executing-plans, subagent-driven-development and finishing-a-development-branch references to harness skills; fold the finishing facts in with a PROVENANCE row",
+      "keyword": "superpowers-refs",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Does this item take over the reference repoints that todo-4n8b (#135), todo-2jca (#137) and todo-x842 (#130) each carry, and settle todo-x842's open choice as 'fold, do not port'? And where do the finishing facts land: merge-commit-msg calls itself mechanical with 'no verdict on whether the PR should merge' (plugins/harness/skills/merge-commit-msg/SKILL.md:27-29), so do they go there anyway, or into pr-review and HARNESS_RULES.md? Last, with executing-plans mapped to parallel2, does a serial (one-lane) plan run still get its own pointer (todo-4n8b's inline path in write-plan)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#357",
+          "url": "https://github.com/t968rs/operator-straps/issues/357"
+        }
+      ],
+      "gh_issues": [
+        357
+      ],
+      "related_gh_issues": [
+        130,
+        135,
+        137,
+        140
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Developer's mapping (per the session, read here as: executing-plans and subagent-driven-development map to harness:parallel2, with harness:d-w lanes; finishing-a-development-branch is folded into merge-commit-msg, pr-review and similar skills, not ported; superpowers-lt stays installed for now). Checked: plugins/harness/skills/pr-review/SKILL.md:1184-1190 'Integration with Other Skills' lists `superpowers-lt:executing-plans` (:1188), `superpowers-lt:subagent-driven-development` (:1189) and `superpowers-lt:finishing-a-development-branch` (:1190) as upstream skills; plugins/harness/schemas/PLANS_PIP_Template.md:16 tells agentic workers to use `superpowers-lt:subagent-driven-development`, text copied into consumers' plans (the catalog items cite :14). No other plugin file names these three skills (Grep over plugins/). Already covered in harness: base-branch confirmation (plugins/harness/rules/HARNESS_RULES.md:59-61), the pre-merge recommendation (:44-52), d-w/a-w worktree flow (:65-68) and a-w's dirty-path refusal and removal on success (plugins/harness/skills/a-w/SKILL.md:40-52). Not covered (Grep of a-w, d-w, parallel2, merge-commit-msg and pr-review SKILL.md for 'worktree remove', '--force', 'base branch' found nothing): test the merged or integrated tree, not an earlier run; the typed `discard` confirmation before throwing work away; never `--force` a worktree removal refused for uncommitted files (show them and ask); keep the worktree while PR feedback is open; a rejected push is no reason to force-push. Source checked: the installed superpowers-lt 7.0.1 skills/finishing-a-development-branch/SKILL.md. Overlap: todo-4n8b (#135), todo-2jca (#137) and todo-x842 (#130) each already plan to repoint one of these lines, and todo-x842 holds the port-or-checklist decision this note answers; related todo-h4c3 (verification, plan 2033 ports it as harness:baseless), todo-m9mv (#140, parallel2's dispatching-parallel-agents line), todo-3a7c (#355). Tests: tests/schemas/test_agent_schemas.py:120-125 and tests/skills/test_write_plan_archive_contract.py:46-53 read PLANS_PIP_Template.md but assert other sections, not line 16. Out of scope: receiving-code-review (pr-review :93, consumer-contract-audit :156, todo-e7ha), writing-plans (consumer-contract-audit :153) and the docs/superpowers/ planning prefix.",
+      "proposed_change": "Replace pr-review/SKILL.md:1188-1189 with harness:parallel2 (lanes in harness:d-w worktrees, attached with harness:a-w) as the upstream that invokes pr-review on completion, and :1190 with the harness skill or rule that now holds the pre-merge gate. Repoint PLANS_PIP_Template.md:16 to harness:parallel2. Fold the uncovered finishing facts (test the integrated tree, typed discard confirmation, no --force on a refused worktree removal, keep the worktree while PR feedback is open, no force-push on a rejected push) into the decided homes (merge-commit-msg, pr-review, HARNESS_RULES.md Branch and worktree flow), never offering a merge or push. Add a docs/PROVENANCE.md row in the strap-debugging / tdd-strapped format (:16-17) naming t968rs/superpowers-lt skills/finishing-a-development-branch at its commit (MIT, Jesse Vincent) and each harness file the facts went into. Then retire or narrow the overlapping repoint steps in todo-4n8b, todo-2jca and todo-x842.",
+      "files": [
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/schemas/PLANS_PIP_Template.md",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "plugins/harness/rules/HARNESS_RULES.md",
+        "docs/PROVENANCE.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "The PIP template line propagates into consumers' plan files, and HARNESS_RULES.md reaches every session of every consuming project; the pr-review lines are prose only.",
+        "consumers": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/hooks/session_rules.py",
+          "tests/schemas/test_agent_schemas.py",
+          "tests/skills/test_write_plan_archive_contract.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Four reference lines, five short rule sentences across two or three files and one PROVENANCE row, once the homes are decided."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.7746,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 0.7746,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 stale pointers to a plugin slated to retire (one in template text copied into consumers' plans), docs_tooling impact, S size."
+    },
+    {
       "id": "todo-2jca",
-      "rank": 43,
+      "rank": 46,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "keyword": "parallel2",
       "kind": "feature",
@@ -2703,7 +2904,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 44,
+      "rank": 47,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "keyword": "pr-team-orchestrator",
       "kind": "feature",
@@ -2764,7 +2965,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 45,
+      "rank": 48,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "keyword": "write-plan",
       "kind": "feature",
@@ -2826,7 +3027,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 46,
+      "rank": 49,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "keyword": "fold-in-review",
       "kind": "feature",
@@ -2894,7 +3095,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 47,
+      "rank": 50,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "keyword": "strap",
       "kind": "feature",
@@ -2971,7 +3172,7 @@
     },
     {
       "id": "todo-yuy7",
-      "rank": 48,
+      "rank": 51,
       "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3031,7 +3232,7 @@
     },
     {
       "id": "todo-tq3u",
-      "rank": 49,
+      "rank": 52,
       "title": "plan.py renumber: move a plan to a new id (files, ledger, seals, tags) in one driver command",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3108,7 +3309,7 @@
     },
     {
       "id": "todo-ea49",
-      "rank": 50,
+      "rank": 53,
       "title": "harness: rebase-plan skill: plan and check restructures of existing branch commits, sharing branch-commit-msg piping",
       "keyword": "rebase-plan",
       "kind": "skill",
@@ -3170,7 +3371,7 @@
     },
     {
       "id": "todo-t7sw",
-      "rank": 51,
+      "rank": 54,
       "title": "Banner working-refs line: colors for the branch, TODO and plan link text",
       "keyword": "working-refs",
       "kind": "feature",
@@ -3230,7 +3431,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 52,
+      "rank": 55,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "keyword": "test-driven-development",
       "kind": "skill",
@@ -3293,7 +3494,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 53,
+      "rank": 56,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "keyword": "Spec-Sheet-Lite",
       "kind": "skill",
@@ -3353,7 +3554,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 54,
+      "rank": 57,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3414,7 +3615,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 55,
+      "rank": 58,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "keyword": "strap",
       "kind": "test",
@@ -3473,7 +3674,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 56,
+      "rank": 59,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "keyword": "bubble-memo",
       "kind": "feature",
@@ -3532,7 +3733,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 57,
+      "rank": 60,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "keyword": "SkillSpec",
       "kind": "bug",
@@ -3586,7 +3787,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 58,
+      "rank": 61,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "keyword": "write-plan",
       "kind": "skill",
@@ -3641,7 +3842,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 59,
+      "rank": 62,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "keyword": "pr-sum",
       "kind": "skill",
@@ -3698,7 +3899,7 @@
     },
     {
       "id": "todo-stw6",
-      "rank": 60,
+      "rank": 63,
       "title": "Reference icon: wi-flood.svg from erikflowers/weather-icons, with license credit",
       "kind": "docs",
       "status": "NEEDS_DECISION",
@@ -3752,7 +3953,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 61,
+      "rank": 64,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "keyword": "strap-debugging",
       "kind": "skill",
@@ -3813,7 +4014,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 62,
+      "rank": 65,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "keyword": "skill-tests",
       "kind": "test",
@@ -3869,7 +4070,7 @@
     },
     {
       "id": "todo-n9ht",
-      "rank": 63,
+      "rank": 66,
       "title": "PowerShell shortcut functions for harness scripts (plan, todo_sync, ...)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3924,7 +4125,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 64,
+      "rank": 67,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3975,7 +4176,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 65,
+      "rank": 68,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -4032,7 +4233,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 66,
+      "rank": 69,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "keyword": "diagnosing-superpowers",
       "kind": "skill",
@@ -4086,7 +4287,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 67,
+      "rank": 70,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "keyword": "writing-skills",
       "kind": "skill",
@@ -4142,7 +4343,7 @@
     },
     {
       "id": "todo-y9er",
-      "rank": 68,
+      "rank": 71,
       "title": "Browser tab icon (favicon) for the harness HTML pages",
       "keyword": "plan_render_html",
       "kind": "feature",
@@ -4204,7 +4405,7 @@
     },
     {
       "id": "todo-9ne6",
-      "rank": 69,
+      "rank": 72,
       "title": "`write-plan`: declared data shapes, and an opt-in repo guard against untyped structures",
       "keyword": "write-plan",
       "kind": "feature",
@@ -4269,7 +4470,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 70,
+      "rank": 73,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "keyword": "parallel_lanes",
       "kind": "skill",
@@ -4328,7 +4529,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 71,
+      "rank": 74,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -4383,7 +4584,7 @@
     },
     {
       "id": "todo-jt35",
-      "rank": 72,
+      "rank": 75,
       "title": "Config key for a per-project browser icon on the harness HTML pages",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4443,7 +4644,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 73,
+      "rank": 76,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -4506,7 +4707,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 74,
+      "rank": 77,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "keyword": "local-llm",
       "kind": "docs",
@@ -4562,7 +4763,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 75,
+      "rank": 78,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -4613,7 +4814,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 76,
+      "rank": 79,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "keyword": "local-llm",
       "kind": "feature",

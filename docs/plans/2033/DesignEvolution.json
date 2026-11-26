@@ -1,0 +1,336 @@
+{
+  "plan_id": "2033",
+  "feature": "Skill baseless",
+  "branch_lineage": "main-->0012-verification-b4-claims",
+  "primary_documents": {
+    "plan": "docs/plans/2033_Skill_baseless_ActionPlan.json",
+    "spec": "docs/SPECS/2026-11-25-skill-baseless.md"
+  },
+  "changes": [
+    {
+      "id": "P1",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-4"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-4 action, D1 strap option",
+        "indicated": "`strap.py new baseless` after TASK-1"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "strap new refuses an existing skill",
+        "why_free_form": "strap.py:345-348 refuses `new` once SKILL.md exists ('use --edit'); _edit_base (:303-306) needs the skill at HEAD; at base HEAD the baselines carry the port and cannot fail (review H1: EXE-1, COV-1, TES-1, CON-1)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-4 runs `strap.py new baseless --edit --base {base}` after the developer commits TASK-1; the plan base has no baseless SKILL.md, so baselines run without the skill (_skill_text :705-717)."
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "the round could not start, and its baselines could not fail"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P2",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "planned test test_the_claim_table_maps_each_claim_to_its_evidence",
+        "indicated": "checks only the claim column, nine names"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the evidence half of a goal passed vacuously",
+        "why_free_form": "Spec goal 'maps each kind of claim to the evidence it needs' had no check on the Requires cell, and the Linter clean and Build succeeds rows were not pinned (review M1: COV-3, TES-3)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "The test maps each claim to its Requires cell: non-empty for the seven source rows, and `plan.py`, `sha`, `read`, `gh pr view` in the four added rows; TASK-1 names those cells."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the test now proves the goal it cites"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P3",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 commands",
+        "indicated": "no command loads the skill"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the skill-list goal had no proof",
+        "why_free_form": "Spec goal 'appears in the skill list and loads through the Skill tool' was proven only by file and frontmatter checks (review M2: COV-2, EXE-2)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-3 adds a developer-run `claude --plugin-dir plugins/harness` check that lists and loads harness:baseless."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "a loader-level defect would otherwise ship unseen"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P4",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-4"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-4 files",
+        "indicated": "SkillSpec, fixtures, SKILL.md"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "action writes a file the item does not list",
+        "why_free_form": "TASK-4's action edits PROVENANCE's strap-round clause, and an --edit spec lists the contract test as a part (review L1: COV-6, EXE-3, CON-2)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-4 files add docs/PROVENANCE.md and tests/skills/test_baseless_skill_contract.py."
+      },
+      "why_new_outcome": {
+        "category": "mechanical-fix",
+        "free_form": "record would otherwise need a deviation"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P5",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 action; values: rules size",
+        "indicated": "shrinks by 11"
+      },
+      "issue": {
+        "category": "path-arithmetic",
+        "why_categorical": "off by one",
+        "why_free_form": "Read as test_session_rules.py reads it, HARNESS_RULES.md is 9989 and the edit removes 12 characters (review L2: TES-6, EXE-4, CON-6)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Shrinks by 12, to 9977."
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "recorded value matches the file"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P6",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 action step 2",
+        "indicated": "Changes line with its PR number"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "no PR exists while the plan runs",
+        "why_free_form": "gh pr list --head 0012-verification-b4-claims returns none (review L3: EXE-7, CON-4)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Line written without the number; the developer adds #<N> once the PR opens (plan 2030 precedent)."
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "no guessed PR number"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P7",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 version command expect; values: harness version",
+        "indicated": "expect 0.90.0"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "fixed expect contradicts bump-from-target rule",
+        "why_free_form": "The action bumps from main's version at landing; a concurrent harness bump would make 0.90.0 wrong (review L4: CON-3)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Expect one minor above main's harness version at landing."
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "action and expect agree"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P8",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "values: port source; TASK-1 step 4",
+        "indicated": "superpowers-lt 7.0.1, gitCommitSha 1beeef21e"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "source lacks repo slug and commit date",
+        "why_free_form": "PROVENANCE rows 16-17 record repo, branch, commit and date (review L5: CON-5)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "`t968rs/superpowers-lt` `main` at `1beeef21e` with its date and skill folder; source cites installed_plugins.json."
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "matches the PROVENANCE row format"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P9",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 action step 1; pointer test report-item check",
+        "indicated": "5. baseless skill result (Step 6)"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "report item names a bare skill",
+        "why_free_form": "Spec goal: the final report names harness:baseless; the planned text and test accepted bare 'baseless' (review L6: TES-5)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Item 5 reads `harness:baseless` result, and the test asserts the qualified name."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "goal met as written"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P10",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 commands",
+        "indicated": "no check on the outside plugin's other pointers"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "Avoid lines unproven",
+        "why_free_form": "Avoid lines 'outside plugin not uninstalled or disabled', 'other pointers unchanged' and 'history not rewritten' had no command or node (review L7: COV-5, TES-2)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 adds `git diff --stat {base}` over the other pointer files and .claude/settings.json (expect no output); TASK-3 adds a `git diff --name-only {base}` scope check."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "each Avoid line has a check"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P11",
+      "discovered_by": "plan review workflow wf_66f36a22-f60 (four lenses, adversarially verified)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 anchor tests/skills/test_skill_guidance_tail_contract.py:30-31",
+        "indicated": "expect '_KNOWLEDGE = [ \"agent-permissions\", \"consumer-contract-audit\",'"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "anchor goes stale once the planned copy lands",
+        "why_free_form": "The planned copy inserts \"baseless\" after agent-permissions, so `check` fails mid-item (review L8: EXE-6)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Expect `_KNOWLEDGE = [`."
+      },
+      "why_new_outcome": {
+        "category": "mechanical-fix",
+        "free_form": "check holds while TASK-1 is in progress"
+      },
+      "date": "2026-11-25"
+    },
+    {
+      "id": "P12",
+      "discovered_by": "PR #359 review run pr359_20261126T000031Z (finding M5)",
+      "phase": "pr-bot-review",
+      "items": [
+        "TASK-2",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 commands (git diff --stat {base} ... .claude/settings.json) and TASK-3 commands (git diff --name-only {base} -- plugins .claude docs/PR_REVIEWS docs/RESEARCH docs/RELEASES)",
+        "indicated": "TASK-2 expects no output; TASK-3 expects only the plugins/ item files plus docs/RELEASES/v1.1.0.md, nothing under .claude, docs/PR_REVIEWS or docs/RESEARCH"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "scope checks diff from a base that predates out-of-plan branch commits",
+        "why_free_form": "The plan base 2a88e06 predates four branch commits outside the plan: d8bd325a and 40a7feeb (the todo-h4c3 research note, before plan commit b2dd47ea), ccf33729 (adds `\"lap-stamp@operator-straps\": true` to .claude/settings.json) and 29c28bfe (adds a .claude/workflows attachment, after TASK-3). Both scope commands list them at the head, so the TASK-2 and TASK-3 receipts sealed against expectations the tree does not meet as written."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "Accepted output at the head. TASK-2: exactly ` .claude/settings.json | 3 ++-` and ` 1 file changed, 2 insertions(+), 1 deletion(-)`, the single hunk adding the lap-stamp@operator-straps line (ccf33729) while `\"superpowers-lt@operator-straps\": true` stays unchanged; nothing under the pr-review, consumer-contract-audit, parallel2/SKILL.md or PLANS_PIP_Template.md paths. TASK-3: the planned files (plugins/harness/.claude-plugin/plugin.json, plugins/harness/rules/HARNESS_RULES.md, plugins/harness/skills/baseless/LICENSE, plugins/harness/skills/baseless/SKILL.md, plugins/harness/skills/parallel2/README.md, plugins/harness/skills/post-forcepush/SKILL.md, docs/RELEASES/v1.1.0.md) plus exactly three out-of-plan paths: .claude/settings.json (ccf33729), .claude/workflows/adversarial-review-single-ongoing-code-attach.js (29c28bfe) and docs/RESEARCH/Verification/todo-h4c3_retire_superpowers_verification.md (d8bd325a, 40a7feeb, a new file, not a rewrite); nothing under docs/PR_REVIEWS. Any other path is a scope break. The plan text and the sealed receipts stay as frozen."
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the Avoid lines still hold (superpowers-lt stays enabled, no other pointer changed, no history rewritten); the extra lines come from branch commits outside plan 2033, and this entry names them so the checks have an exact expected output"
+      },
+      "date": "2026-11-25"
+    }
+  ]
+}

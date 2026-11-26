@@ -1,0 +1,34 @@
+{
+  "plan_id": "2033",
+  "item": "TASK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "7de49e86e90122c4845150c519b526fae5ce267c",
+      "commit": "d68a006401cbd5362e90151f1759c933589264a3"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_baseless_skill_contract.py::test_the_skill_triggers_on_its_own",
+        "tests/skills/test_baseless_skill_contract.py::test_no_text_names_the_source_plugin",
+        "tests/skills/test_baseless_skill_contract.py::test_the_gate_identifies_runs_reads_then_claims",
+        "tests/skills/test_baseless_skill_contract.py::test_the_gate_runs_named_files_and_hands_the_suite_over",
+        "tests/skills/test_baseless_skill_contract.py::test_the_claim_table_maps_each_claim_to_its_evidence",
+        "tests/skills/test_baseless_skill_contract.py::test_the_hedge_words_stop_a_claim",
+        "tests/skills/test_baseless_skill_contract.py::test_a_subagent_success_report_is_unverified",
+        "tests/skills/test_baseless_skill_contract.py::test_the_license_and_provenance_record_the_port",
+        "tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_baseless_skill_contract.py::test_the_skill_triggers_on_its_own tests/skills/test_baseless_skill_contract.py::test_no_text_names_the_source_plugin tests/skills/test_baseless_skill_contract.py::test_the_gate_identifies_runs_reads_then_claims tests/skills/test_baseless_skill_contract.py::test_the_gate_runs_named_files_and_hands_the_suite_over tests/skills/test_baseless_skill_contract.py::test_the_claim_table_maps_each_claim_to_its_evidence tests/skills/test_baseless_skill_contract.py::test_the_hedge_words_stop_a_claim tests/skills/test_baseless_skill_contract.py::test_a_subagent_success_report_is_unverified tests/skills/test_baseless_skill_contract.py::test_the_license_and_provenance_record_the_port tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified"
+    }
+  },
+  "evidence": "commit d68a006: 9 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-25",
+  "seal": "feae04fb01652d2cc01ccf5c61312071386c20a4d0141e6d8eac449acc326d55"
+}

@@ -1,0 +1,26 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 2,
+  "tree": "071633d441538178454f649bca2c960fe3f8cc58",
+  "files": {
+    "docs/plans/2033_Skill_baseless_ActionPlan.json": "8531e7e86da0ebbb839d1c8dcb65b6f30db247f8"
+  },
+  "ignored": {
+    "docs/plans/2033/tests/tests/skills/test_baseless_pointers_contract.py": "2ddbbf84794a61c0492fe167ab2d29b889269f18a15b251856e57ccfb8ba89c4",
+    "docs/plans/2033/tests/tests/skills/test_baseless_skill_contract.py": "99ab4e1101178b927d57a1a7c47a6760e9071fcf6f4c2eede521efa508e40287",
+    "docs/plans/2033/tests/tests/skills/test_skill_guidance_tail_contract.py": "eea97300a604373bd6258729681ad305d06d4f8999cf9b67e808df5a7afa01c9"
+  },
+  "at": "2026-11-25T23:16:53+00:00",
+  "base": "2a88e06b3f6e1cb074378cab4da8463456beec6a",
+  "history": false,
+  "digest": "69bd9ad87196d955185c9aaacd4613cffc0ccae478543d004badcc44b8043351",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null,
+  "from_name": null
+}

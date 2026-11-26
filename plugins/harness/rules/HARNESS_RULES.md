@@ -99,15 +99,13 @@ Schemas, templates and examples ship with the plugin (`schemas/`); a project may
 
 ## Skill invocation at development stages
 
-Skills outside this plugin apply when installed.
-
 - **Writing code:** `harness:tdd-strapped`; write or adapt the test, watch it fail, then fix.
 - **Troubleshooting:** `harness:strap-debugging`; finish the diagnosis before proposing a fix.
 - **Designing:** `harness:spec-it`, then `harness:write-plan`; no design doc.
 - **Creating plans:** `harness:write-plan` for multi-task work.
 - **Parallel subagent dispatch:** `harness:parallel2` first (vets the dispatch plan, prevents overlapping
   file sets), then dispatch.
-- **Making claims:** verification before completion; non-negotiable.
+- **Making claims:** `harness:baseless`; non-negotiable.
 - **Reviewing code:** `harness:pr-review` (single session) or `harness:pr-team` (parallel fan-out for PRs
   spanning several path buckets). Execute every phase of the chosen skill before stopping.
 

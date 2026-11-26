@@ -15,7 +15,8 @@
     "superpowers-lt@operator-straps": true,
     "banner-status@operator-straps": true,
     "parallel2-lanes@operator-straps": true,
-    "working-refs@operator-straps": true
+    "working-refs@operator-straps": true,
+    "lap-stamp@operator-straps": true
   },
   "extraKnownMarketplaces": {
     "operator-straps": {

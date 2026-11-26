@@ -28,7 +28,8 @@ _INVOCABLE = [
     "sync-gh-todo", "todo-edit", "working", "write-plan", "writing-docstrings",
 ]
 _KNOWLEDGE = [
-    "agent-permissions", "consumer-contract-audit", "decompose-module", "efficient-file-reading",
+    "agent-permissions", "baseless", "consumer-contract-audit", "decompose-module",
+    "efficient-file-reading",
     "searching-sourcegraph", "spatialist", "strap-debugging", "subagent-reporting", "tdd-strapped",
     "writing-comments",
 ]

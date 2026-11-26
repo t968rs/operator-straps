@@ -86,7 +86,7 @@ Skills that apply per wave (those outside this plugin apply when installed):
 | W1A, W2A | A failing test before runtime code | `harness:tdd-strapped` |
 | W1A, W1B | One evidence shape per lane for the merge decision | `harness:subagent-reporting` |
 | W1C | CI and guard-suite edits | the project's CI-discipline skill, if any |
-| W4 | Evidence before claiming done | `superpowers-lt:verification-before-completion` |
+| W4 | Evidence before claiming done | `harness:baseless` |
 
 Reading the example:
 
