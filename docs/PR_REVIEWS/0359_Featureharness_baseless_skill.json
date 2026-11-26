@@ -8,7 +8,7 @@
   "base_sha": "2a88e06b3f6e1cb074378cab4da8463456beec6a",
   "head_sha": "b2a8c9c52c741df0ca67d4ada65bc9e9fbab746b",
   "review_date": "2026-11-25",
-  "verdict": "NOT READY TO MERGE - important: I1",
+  "verdict": "READY TO MERGE - 14 of 14 findings resolved, 0 bubbled",
   "stats": {
     "additions": 2887,
     "deletions": 94,
@@ -39,9 +39,7 @@
     "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/system_shape.json",
     "docs/_scratch/pr_review/0359/pr359_20261126T000031Z/findings/adv_code_tests.json"
   ],
-  "bubbles": [
-    "I1"
-  ],
+  "bubbles": [],
   "strengths": [
     "settings.json stays valid JSON: the trailing comma moves correctly and the new entry follows the existing key pattern.",
     "lap-stamp is already published in marketplace.json at the merge base, so the enabled plugin resolves against the published marketplace this file points to.",
@@ -500,6 +498,12 @@
       "status": "RESOLVED",
       "date": "2026-11-25",
       "evidence": "118a0bf5 (working-tree snapshot; developer commits) - todo-h4c3 refreshed via harness:todo-edit to the remaining inline post-forcepush Step 6 rewrite (research Section 5.1); severity 2, rank 6 (outside fixer waves)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-25",
+      "evidence": "d68a0064 (working-tree snapshot; developer commits) - plan 2033 TASK-1..4 re-recorded with plan.py record --sha d68a0064 (branch head); receipts and receipt/*-commit.2 tags now name a commit on the PR history (outside fixer waves)"
     }
   ]
 }

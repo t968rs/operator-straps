@@ -5,8 +5,8 @@
     "kind": "complete",
     "provenance": {
       "source": "commit",
-      "tree": "d0b7612d3bb1617fb01f9bcf54509e44ba1d1af8",
-      "commit": "3484b47cccc39b1ed34f33fdd735f01fe7d50447"
+      "tree": "7de49e86e90122c4845150c519b526fae5ce267c",
+      "commit": "d68a006401cbd5362e90151f1759c933589264a3"
     },
     "tests": {
       "nodes": [
@@ -23,12 +23,12 @@
       "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_baseless_skill_contract.py::test_the_skill_triggers_on_its_own tests/skills/test_baseless_skill_contract.py::test_no_text_names_the_source_plugin tests/skills/test_baseless_skill_contract.py::test_the_gate_identifies_runs_reads_then_claims tests/skills/test_baseless_skill_contract.py::test_the_gate_runs_named_files_and_hands_the_suite_over tests/skills/test_baseless_skill_contract.py::test_the_claim_table_maps_each_claim_to_its_evidence tests/skills/test_baseless_skill_contract.py::test_the_hedge_words_stop_a_claim tests/skills/test_baseless_skill_contract.py::test_a_subagent_success_report_is_unverified tests/skills/test_baseless_skill_contract.py::test_the_license_and_provenance_record_the_port tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified"
     }
   },
-  "evidence": "commit 3484b47: 9 test node(s) passed",
+  "evidence": "commit d68a006: 9 test node(s) passed",
   "deviations": {
     "extra_files": [],
     "substitutions": [],
     "change_digests": {}
   },
   "date": "2026-11-25",
-  "seal": "1741d6356d0d800a37a69640345ecbec306e4269e1f2a074d9d18c05b59d537a"
+  "seal": "feae04fb01652d2cc01ccf5c61312071386c20a4d0141e6d8eac449acc326d55"
 }

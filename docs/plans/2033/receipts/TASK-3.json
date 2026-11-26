@@ -5,16 +5,16 @@
     "kind": "complete",
     "provenance": {
       "source": "commit",
-      "tree": "155d352ea3317cffd7c78d5cba979b3645333ee9",
-      "commit": "49914a9dee64eca357e66455002f9a66db4b1efa"
+      "tree": "7de49e86e90122c4845150c519b526fae5ce267c",
+      "commit": "d68a006401cbd5362e90151f1759c933589264a3"
     }
   },
-  "evidence": "commit 49914a9",
+  "evidence": "commit d68a006",
   "deviations": {
     "extra_files": [],
     "substitutions": [],
     "change_digests": {}
   },
   "date": "2026-11-25",
-  "seal": "ed2a9798dee1355aa7df64774dd53023d0039e09e688cfa355ffea725efabfe4"
+  "seal": "0721626a0f1c585a486a3affd3255cfedde904619e2cc34daabca6324b524d03"
 }
